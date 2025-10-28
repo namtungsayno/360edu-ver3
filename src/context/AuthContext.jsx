@@ -4,41 +4,39 @@
 //  Giúp tránh việc “props drilling” (truyền props lòng vòng nhiều component).
 
 // src/context/AuthContext.jsx
-import { createContext , useState, useEffect } from "react"
+// src/context/AuthContext.jsx
+import { createContext, useState, useEffect } from "react";
+import { authService } from "../services/auth/auth.service";
 
-// 1️⃣ Tạo Context
-const AuthContext = createContext()
+const AuthContext = createContext(null);
 
-// 2️⃣ Tạo Provider
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // khởi tạo từ localStorage
+  const [user, setUser] = useState(authService.loadSavedUser());
+  const [loading, setLoading] = useState(true);
 
-  // 3️⃣ Khi app khởi động, kiểm tra localStorage hoặc token còn không
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
-    setLoading(false)
-  }, [])
+    // Không còn /me để hydrate → chỉ cần bỏ loading sau tick đầu
+    const t = setTimeout(() => setLoading(false), 0);
+    return () => clearTimeout(t);
+  }, []);
 
-  // 4️⃣ Hàm đăng nhập
-  const login = (userData) => {
-    setUser(userData)
-    localStorage.setItem("user", JSON.stringify(userData))
-  }
+  const login = async ({ username, password, remember }) => {
+    const me = await authService.login({ username, password, remember });
+    setUser(me);
+    return me;
+  };
 
-  // 5️⃣ Hàm đăng xuất
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem("user")
-  }
+  const logout = async () => {
+    await authService.logout();
+    setUser(null);
+  };
 
-  // 6️⃣ Trả về Provider chia sẻ giá trị
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
-  )
-}
+  );
+};
+
+export default AuthContext;

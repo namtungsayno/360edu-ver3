@@ -8,9 +8,9 @@
 // Không return JSX	Custom hook chỉ trả về data hoặc function, không trả UI
 
 // src/hooks/useAuth.js
-import { useContext } from "react"
-import { AuthContext } from "@/context/AuthContext"
+import { useContext } from "react";
+import AuthContext from "../context/AuthContext";
 
 export const useAuth = () => {
-  return useContext(AuthContext)
-}
+  return useContext(AuthContext);
+};

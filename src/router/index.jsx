@@ -1,23 +1,23 @@
 /**
  * ROUTER INDEX - Cấu hình điều hướng chính cho toàn bộ ứng dụng
- * 
+ *
  * Trang được định tuyến:
  * AUTH ROUTES (AuthLayout):
  * - /home/login → Login.jsx
  * - /home/register → Register.jsx
- * 
+ *
  * GUEST ROUTES (GuestLayout):
  * - /home → Home.jsx (trang chủ)
  * - /home/profile → Profile.jsx
  * - /home/courses → CourseList.jsx
- * - /home/subjects → SubjectList.jsx  
+ * - /home/subjects → SubjectList.jsx
  * - /home/teachers → TeacherList.jsx
  * - /home/about → About.jsx
- * 
+ *
  * ADMIN ROUTES (AdminLayout):
  * - /home/admin/dashboard → Dashboard.jsx
  * - /home/admin/users → User.jsx
- * 
+ *
  * Chức năng:
  * - BrowserRouter cho client-side routing
  * - Nested routes với các Layout tương ứng
@@ -26,6 +26,8 @@
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { GuestOnly, RequireAuth, RequireRole } from "../utils/RouteGuards.jsx";
+
 import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import GuestLayout from "../layouts/GuestLayout";
@@ -61,19 +63,25 @@ function AppRouter() {
 
         {/* GUEST ROUTES - Các route cho người dùng chưa đăng nhập (có Header) */}
         <Route element={<GuestLayout />}>
-          <Route path="/home" element={<Home />} />                    {/* Trang chủ */}
-          <Route path="/home/profile" element={<Profile />} />         {/* Profile guest */}
-          <Route path="/home/courses" element={<CourseList />} />      {/* Danh sách khóa học */}
-          <Route path="/home/subjects" element={<SubjectList />} />    {/* Danh sách lớp học */}
-          <Route path="/home/teachers" element={<TeacherList />} />    {/* Danh sách giáo viên */}
-          <Route path="/home/about" element={<About />} />             {/* Giới thiệu */}
+          <Route path="/home" element={<Home />} /> {/* Trang chủ */}
+          <Route path="/home/profile" element={<Profile />} />{" "}
+          {/* Profile guest */}
+          <Route path="/home/courses" element={<CourseList />} />{" "}
+          {/* Danh sách khóa học */}
+          <Route path="/home/subjects" element={<SubjectList />} />{" "}
+          {/* Danh sách lớp học */}
+          <Route path="/home/teachers" element={<TeacherList />} />{" "}
+          {/* Danh sách giáo viên */}
+          <Route path="/home/about" element={<About />} /> {/* Giới thiệu */}
         </Route>
 
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
-        <Route path="/home/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />   {/* Redirect admin root */}
-          <Route path="dashboard" element={<Dashboard />} />              {/* Dashboard admin */}
-          <Route path="users" element={<User />} />                       {/* Quản lý users */}
+        <Route element={<RequireRole allow={["admin"]} />}>
+          <Route path="/home/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="users" element={<User />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

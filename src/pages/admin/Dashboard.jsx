@@ -11,26 +11,10 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard
-          title="Tổng người dùng"
-          value="1,250"
-          icon="👥"
-        />
-        <StatsCard
-          title="Khóa học"
-          value="45"
-          icon="📚"
-        />
-        <StatsCard
-          title="Doanh thu tháng"
-          value="12.5M"
-          icon="💰"
-        />
-        <StatsCard
-          title="Hoạt động"
-          value="98%"
-          icon="📊"
-        />
+        <StatsCard title="Tổng người dùng" value="1,250" icon="👥" />
+        <StatsCard title="Khóa học" value="45" icon="📚" />
+        <StatsCard title="Doanh thu tháng" value="12.5M" icon="💰" />
+        <StatsCard title="Hoạt động" value="98%" icon="📊" />
       </div>
 
       {/* Recent Activity */}
