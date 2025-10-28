@@ -1,3 +1,4 @@
+// E:\Semester9\360Edu\src\main.jsx  NgocHung
 //Khoi dong app 
 // Đây là entry point (điểm vào) của ứng dụng React khi Vite chạy.
 // Nó tạo root DOM (nơi React sẽ render vào HTML thật).

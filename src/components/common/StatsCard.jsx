@@ -1,3 +1,5 @@
+// E:\Semester9\360Edu\src\components\common\StatsCard.jsx NgocHung
+
 export default function StatsCard({ title, value, icon, trend, className = "" }) {
   return (
     <div className={`bg-gray-800 rounded-lg p-6 ${className}`}>

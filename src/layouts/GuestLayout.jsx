@@ -1,32 +1,80 @@
-import { Outlet } from "react-router-dom";
-import Navigation from "../components/common/Navigation";
+//src/layouts/GuestLayout.jsx NgocHung
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import Header from "../components/common/Header";
 
 export default function GuestLayout() {
-  const navigationItems = [
-    { path: "/home", label: "Home" },
-    { path: "/home/profile", label: "Profile" },
-    { path: "/home/admin", label: "Admin" },
-    { path: "/home/login", label: "Login" },
-  ];
+const navigate = useNavigate();
+const location = useLocation();
+const [currentPage, setCurrentPage] = useState({ type: "home" });
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-      <header className="bg-gray-800 shadow-lg border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-yellow-400">360Edu</h1>
-              <span className="ml-2 text-sm text-gray-400">Learning Platform</span>
-            </div>
-            <Navigation items={navigationItems} />
-          </div>
-        </div>
-      </header>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Outlet />
-      </main>
-    </div>
-  );
+// Update current page based on URL
+useEffect(() => {
+  const path = location.pathname;
+  if (path === "/home") {
+    setCurrentPage({ type: "home" });
+  } else if (path.includes("/profile")) {
+    setCurrentPage({ type: "profile" });
+  } else if (path.includes("/courses")) {
+    setCurrentPage({ type: "courses" });
+  } else if (path.includes("/subjects")) {
+    setCurrentPage({ type: "subjects" });
+  } else if (path.includes("/teachers")) {
+    setCurrentPage({ type: "teachers" });
+  } else if (path.includes("/news")) {
+    setCurrentPage({ type: "news" });
+  } else if (path.includes("/about")) {
+    setCurrentPage({ type: "about" });
+  }
+}, [location.pathname]);
+
+const onNavigate = (page) => {
+  switch (page.type) {
+    case "home":
+      navigate("/home");
+      break;
+    case "login":
+      navigate("/home/login");
+      break;
+    case "register":
+      // TODO: Create register route
+      console.log("Register page not implemented yet");
+      break;
+    case "profile":
+      navigate("/home/profile");
+      break;
+    case "courses":
+      // TODO: Create courses route
+      console.log("Courses page not implemented yet");
+      break;
+    case "subjects":
+      // TODO: Create subjects route
+      console.log("Subjects page not implemented yet");
+      break;
+    case "teachers":
+      // TODO: Create teachers route
+      console.log("Teachers page not implemented yet");
+      break;
+    case "news":
+      // TODO: Create news route
+      console.log("News page not implemented yet");
+      break;
+    case "about":
+      // TODO: Create about route
+      console.log("About page not implemented yet");
+      break;
+    default:
+      console.log("Unknown navigation:", page);
+  }
+};
+
+return (
+<div className="min-h-screen bg-white text-gray-900">
+<Header onNavigate={onNavigate} currentPage={currentPage} />
+<main>
+<Outlet context={{ onNavigate }} />
+</main>
+</div>
+);
 }
-
 

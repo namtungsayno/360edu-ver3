@@ -1,3 +1,4 @@
+//E:\Semester9\360Edu\src\router\index.jsx NgocHung
 // định tuyến & điều khiển layout
 // Dùng react-router-dom để định nghĩa đường dẫn URL → Component/Page tương ứng.
 // Có 3 nhóm route chính:
