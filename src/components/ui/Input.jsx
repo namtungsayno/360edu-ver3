@@ -3,8 +3,8 @@
  * 
  * Được sử dụng trong:
  * - Header.jsx (thanh tìm kiếm)
- * - Login.jsx (email, password)
- * - Register.jsx (fullName, email, phone, password, confirmPassword)
+ * - Login.jsx (username, password)
+ * - Register.jsx (fullName, username, email, phone, password, confirmPassword)
  * - Tất cả forms cần input fields
  * 
  * Chức năng:

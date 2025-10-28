@@ -5,7 +5,7 @@
  * Layout: AuthLayout
  * 
  * Chức năng:
- * - Form đăng ký với đầy đủ thông tin (họ tên, email, phone, password)
+ * - Form đăng ký với đầy đủ thông tin (họ tên, username, email, phone, password)
  * - Validation password confirmation
  * - Link quay về trang đăng nhập
  * - Link quay về trang chủ
@@ -24,9 +24,10 @@ export default function Register() {
   // Nhận onNavigate từ AuthLayout
   const { onNavigate } = useOutletContext();
   
-  // State quản lý form data đăng ký với 5 fields
+  // State quản lý form data đăng ký với 6 fields
   const [formData, setFormData] = useState({
     fullName: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -93,6 +94,23 @@ export default function Register() {
                 value={formData.fullName}
                 onChange={handleInputChange}
                 placeholder="Nhập họ và tên của bạn"
+                className="w-full"
+              />
+            </div>
+            
+            {/* Username Input */}
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                Tên đăng nhập
+              </label>
+              <Input
+                id="username"
+                name="username"
+                type="text"
+                required
+                value={formData.username}
+                onChange={handleInputChange}
+                placeholder="Nhập tên đăng nhập"
                 className="w-full"
               />
             </div>

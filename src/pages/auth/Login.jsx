@@ -5,7 +5,7 @@
  * Layout: AuthLayout
  * 
  * Chức năng:
- * - Form đăng nhập với email và password
+ * - Form đăng nhập với username và password
  * - Validation cơ bản
  * - Link đến trang đăng ký
  * - Quay về trang chủ
@@ -27,7 +27,7 @@ export default function Login() {
   
   // State quản lý form data
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: ""
   });
 
@@ -75,19 +75,19 @@ export default function Login() {
 
           {/* FORM ĐĂNG NHẬP */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Input */}
+            {/* Username Input */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                Tên đăng nhập
               </label>
               <Input
-                id="email"
-                name="email"
-                type="email"
+                id="username"
+                name="username"
+                type="text"
                 required
-                value={formData.email}
+                value={formData.username}
                 onChange={handleInputChange}
-                placeholder="your@email.com"
+                placeholder="Nhập tên đăng nhập"
                 className="w-full"
               />
             </div>
