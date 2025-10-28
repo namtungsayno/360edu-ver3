@@ -1,21 +1,43 @@
-// AuthLayout: Dành cho login/register, không có navbar.
+/**
+ * AUTH LAYOUT - Layout cho các trang authentication
+ * 
+ * Routes được quản lý:
+ * - /home/login → Login.jsx
+ * - /home/register → Register.jsx
+ * 
+ * Chức năng:
+ * - Layout đơn giản không có Header/Footer
+ * - Chỉ render Outlet với context navigation
+ * - onNavigate function cho phép navigate giữa login/register/home
+ * - Minimal design để focus vào form authentication
+ */
 
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 
 export default function AuthLayout() {
+  const navigate = useNavigate();
+
+  // Hàm navigation đơn giản cho auth pages
+  const onNavigate = (page) => {
+    switch (page.type) {
+      case "home":
+        navigate("/home");
+        break;
+      case "login":
+        navigate("/home/login");
+        break;
+      case "register":
+        navigate("/home/register");
+        break;
+      default:
+        console.log("Unknown navigation:", page);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/home" className="text-3xl font-bold text-yellow-400 hover:text-yellow-300">
-            360Edu
-          </Link>
-          <p className="text-gray-400 mt-2">Learning Platform</p>
-        </div>
-        <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700">
-          <Outlet />
-        </div>
-      </div>
+    <div>
+      {/* Chỉ render content, không có header/footer */}
+      <Outlet context={{ onNavigate }} />
     </div>
   );
 }

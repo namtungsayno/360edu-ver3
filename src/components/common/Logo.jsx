@@ -1,11 +1,24 @@
-//E:\Semester9\360Edu\src\components\common\Logo.jsx NgocHung
+/**
+ * LOGO COMPONENT - Component hiển thị logo của 360edu
+ * 
+ * Được sử dụng trong:
+ * - Header.jsx (trong navigation)
+ * - Login.jsx (trong form header)
+ * - Register.jsx (trong form header)
+ * 
+ * Chức năng:
+ * - Hiển thị logo từ /assets/images/logo.jpg
+ * - Size cố định 8x8 (32px x 32px)
+ * - Object-contain để giữ tỷ lệ ảnh
+ * - Rounded corners
+ */
+
 export default function Logo() {
-return (
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 48 48" className="w-8 h-8 text-blue-600" >
-<circle cx="24" cy="24" r="22" className="fill-blue-500/90" />
-<text x="24" y="29" textAnchor="middle" className="fill-white font-bold text-[16px]" >
-360
-</text>
-</svg>
-);
+  return (
+    <img
+      src="/assets/images/logo.jpg"
+      alt="360edu Logo"
+      className="w-8 h-8 object-contain rounded-lg"
+    />
+  );
 }

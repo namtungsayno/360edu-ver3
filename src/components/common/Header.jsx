@@ -1,4 +1,22 @@
-//src/components/common/Header.jsx
+/**
+ * HEADER COMPONENT - Thanh điều hướng chính của website
+ * 
+ * Các trang được truy cập:
+ * - /home (Trang chủ)
+ * - /home/subjects (Danh sách lớp học)
+ * - /home/courses (Danh sách khóa học) 
+ * - /home/teachers (Danh sách giáo viên)
+ * - /home/about (Giới thiệu)
+ * - /home/login (Đăng nhập)
+ * - /home/news (Tin tức - chưa implement)
+ * 
+ * Chức năng:
+ * - Điều hướng giữa các trang
+ * - Tìm kiếm khóa học/lớp học
+ * - Responsive mobile menu
+ * - Highlight trang hiện tại
+ */
+
 import { useState } from "react";
 import { Menu, X, User, LogIn, Video, GraduationCap, Search } from "lucide-react";
 import { Button } from "../ui/Button";
@@ -6,9 +24,12 @@ import { Input } from "../ui/Input";
 import Logo from "./Logo";
 
 export default function Header({ onNavigate, currentPage }) {
+  // State quản lý menu mobile (đóng/mở)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // State lưu từ khóa tìm kiếm
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Hàm kiểm tra trang hiện tại để highlight navigation item
   const isActive = (pageType) => {
     return currentPage.type === pageType || 
            (pageType === "subjects" && (currentPage.type === "subject" || currentPage.type === "class")) ||
@@ -17,27 +38,31 @@ export default function Header({ onNavigate, currentPage }) {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-gradient-to-r from-blue-600 via-blue-700 to-purple-600 shadow-lg">
-      <div className="container mx-auto px-4">
+    <header className="sticky top-0 z-50 shadow-lg header-gradient">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+          
+          {/* LOGO VÀ TÊN THƯƠNG HIỆU - Click để về trang chủ */}
           <button 
             onClick={() => onNavigate({ type: "home" })}
             className="flex items-center gap-3 hover:opacity-90 transition-opacity"
           >
+            {/* Container logo với background trắng */}
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-lg p-2">
               <Logo />
             </div>
+            {/* Tên thương hiệu */}
             <div>
-              <h1 className="text-white">360edu</h1>
-              <p className="text-xs text-blue-100">Education Management</p>
+              <h1 className="text-white text-xl font-bold">360edu</h1>
             </div>
           </button>
 
-          {/* Search Bar - Desktop */}
+          {/* THANH TÌM KIẾM - Chỉ hiển thị trên desktop */}
           <div className="hidden lg:block flex-1 max-w-md mx-4">
             <div className="relative">
+              {/* Icon tìm kiếm bên trái */}
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              {/* Input tìm kiếm với styling custom */}
               <Input
                 type="text"
                 placeholder="Tìm kiếm khóa học, lớp học..."
@@ -48,8 +73,9 @@ export default function Header({ onNavigate, currentPage }) {
             </div>
           </div>
 
-          {/* Desktop Navigation */}
+          {/* MENU ĐIỀU HƯỚNG DESKTOP - Chỉ hiển thị trên màn hình lớn */}
           <nav className="hidden lg:flex items-center gap-2">
+            {/* Nút Trang chủ */}
             <button 
               onClick={() => onNavigate({ type: "home" })}
               className={`px-4 py-2 rounded-lg transition-all ${
@@ -61,6 +87,7 @@ export default function Header({ onNavigate, currentPage }) {
               Trang chủ
             </button>
             
+            {/* Nút Lớp học với icon */}
             <button 
               onClick={() => onNavigate({ type: "subjects" })}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
@@ -73,6 +100,7 @@ export default function Header({ onNavigate, currentPage }) {
               Lớp học
             </button>
 
+            {/* Nút Khóa học với icon */}
             <button 
               onClick={() => onNavigate({ type: "courses" })}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
@@ -85,6 +113,7 @@ export default function Header({ onNavigate, currentPage }) {
               Khóa học
             </button>
 
+            {/* Nút Giáo viên */}
             <button 
               onClick={() => onNavigate({ type: "teachers" })}
               className={`px-4 py-2 rounded-lg transition-all ${
@@ -95,6 +124,8 @@ export default function Header({ onNavigate, currentPage }) {
             >
               Giáo viên
             </button>
+            
+            {/* Nút Tin tức - chưa có trang */}
             <button 
               onClick={() => onNavigate({ type: "news" })}
               className={`px-4 py-2 rounded-lg transition-all ${
@@ -105,6 +136,8 @@ export default function Header({ onNavigate, currentPage }) {
             >
               Tin tức
             </button>
+            
+            {/* Nút Giới thiệu */}
             <button 
               onClick={() => onNavigate({ type: "about" })}
               className={`px-4 py-2 rounded-lg transition-all ${
@@ -117,30 +150,24 @@ export default function Header({ onNavigate, currentPage }) {
             </button>
           </nav>
 
-          {/* Desktop Auth Buttons */}
-          <div className="hidden lg:flex items-center gap-3">
+          {/* NÚT ĐĂNG NHẬP DESKTOP - Styling transparent với border */}
+          <div className="hidden lg:flex items-center">
             <Button 
               onClick={() => onNavigate({ type: "login" })}
-              variant="ghost" 
-              className="gap-2 text-white hover:bg-white/10 hover:text-white"
-            >
-              <LogIn className="w-4 h-4" />
-              Đăng nhập
-            </Button>
-            <Button 
-              onClick={() => onNavigate({ type: "register" })}
-              className="bg-white text-blue-600 hover:bg-blue-50 gap-2 shadow-lg"
+              variant="ghost"
+              className="bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/30 gap-2 shadow-lg transition-all"
             >
               <User className="w-4 h-4" />
-              Đăng ký
+              Đăng nhập
             </Button>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* NÚT MỞ MENU MOBILE - Chỉ hiển thị trên màn hình nhỏ */}
           <button
             className="lg:hidden p-2 text-white"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
+            {/* Toggle icon giữa Menu và X */}
             {isMenuOpen ? (
               <X className="w-6 h-6" />
             ) : (
@@ -149,14 +176,15 @@ export default function Header({ onNavigate, currentPage }) {
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* MENU MOBILE - Hiển thị khi click nút menu trên mobile */}
         {isMenuOpen && (
           <div className="lg:hidden py-4 border-t border-blue-500/30">
             <nav className="flex flex-col gap-2">
+              {/* Các nút navigation mobile - Đóng menu sau khi click */}
               <button 
                 onClick={() => {
                   onNavigate({ type: "home" });
-                  setIsMenuOpen(false);
+                  setIsMenuOpen(false); // Đóng menu
                 }}
                 className={`text-left px-4 py-2 rounded-lg transition-all ${
                   isActive("home") 
@@ -210,6 +238,7 @@ export default function Header({ onNavigate, currentPage }) {
               >
                 Giáo viên
               </button>
+              
               <button 
                 onClick={() => {
                   onNavigate({ type: "news" });
@@ -223,6 +252,7 @@ export default function Header({ onNavigate, currentPage }) {
               >
                 Tin tức
               </button>
+              
               <button 
                 onClick={() => {
                   onNavigate({ type: "about" });
@@ -237,27 +267,18 @@ export default function Header({ onNavigate, currentPage }) {
                 Giới thiệu
               </button>
               
-              <div className="flex flex-col gap-2 pt-4 border-t border-blue-500/30">
+              {/* Nút đăng nhập mobile - Ở cuối với border top */}
+              <div className="pt-4 border-t border-blue-500/30">
                 <Button 
                   onClick={() => {
                     onNavigate({ type: "login" });
                     setIsMenuOpen(false);
                   }}
-                  variant="outline" 
-                  className="w-full gap-2 text-white border-white/30 hover:bg-white/10"
-                >
-                  <LogIn className="w-4 h-4" />
-                  Đăng nhập
-                </Button>
-                <Button 
-                  onClick={() => {
-                    onNavigate({ type: "register" });
-                    setIsMenuOpen(false);
-                  }}
-                  className="w-full bg-white text-blue-600 hover:bg-blue-50 gap-2"
+                  variant="ghost"
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/30 gap-2 transition-all"
                 >
                   <User className="w-4 h-4" />
-                  Đăng ký
+                  Đăng nhập
                 </Button>
               </div>
             </nav>

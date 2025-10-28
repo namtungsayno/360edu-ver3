@@ -17,8 +17,7 @@ export function Footer() {
                 <Logo />
               </div>
               <div>
-                <h3 className="text-white">360edu</h3>
-                <p className="text-xs">Education Management</p>
+                <h3 className="text-white text-xl font-bold">360edu</h3>
               </div>
             </div>
             <p className="text-gray-400 mb-4">
