@@ -1,0 +1,3 @@
+// Configuration files
+Chứa các file cấu hình (config) cho dự án — đặc biệt là cấu hình kết nối API, axios,…
+axios.config.js → cấu hình mặc định cho Axios (baseURL, header,…)

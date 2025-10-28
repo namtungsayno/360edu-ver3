@@ -1,3 +1,4 @@
+//E:\Semester9\360Edu\src\App.jsx   Ngoc Hung
 //Nạp router, là file component gốc của toàn bộ ứng dụng
 //Router quyết định layout nào + trang nào hiển thị
 // Là component gốc (root component).

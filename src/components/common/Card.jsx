@@ -1,3 +1,4 @@
+//E:\Semester9\360Edu\src\components\common\Card.jsx NgocHung
 export default function Card({ title, children, className = "" }) {
   return (
     <div className={`bg-gray-800 rounded-lg shadow-lg p-6 ${className}`}>
