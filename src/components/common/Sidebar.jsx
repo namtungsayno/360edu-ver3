@@ -143,7 +143,7 @@ const Sidebar = () => {
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-lg border border-gray-200">
             <img
-              src="/assets/img/logo/Screenshot_2025-10-21_205408-removebg-preview.png"
+              src="/assets/images/logo.jpg"
               alt="360edu Logo"
               className="w-8 h-8 object-contain"
             />
