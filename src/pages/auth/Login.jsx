@@ -52,7 +52,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       const me = await login(formData);
-      const to = from || landingPathByRoles(me.roles);
+      const to = from || landingPathByRoles(me.roles); // me.roles = ["Admin", "..."]
       nav(to, { replace: true });
     } catch (ex) {
       setErr(ex.displayMessage || "Đăng nhập thất bại");
