@@ -10,36 +10,42 @@ const normalizeRoles = (roles = []) =>
       .toLowerCase()
   );
 
-const MOCK_USERS = [
-  {
-    username: "admin",
-    password: "admin123",
-    fullName: "Admin Tester",
-    roles: ["admin"],
-  },
-];
+// ============================================================
+// MOCK ADMIN - Uncomment below for local testing without backend
+// ============================================================
+// const MOCK_USERS = [
+//   {
+//     username: "admin",
+//     password: "admin123",
+//     fullName: "Admin Tester",
+//     roles: ["admin"],
+//   },
+// ];
 
 export const authService = {
   async login({ username, password, remember }) {
     const trimmedUsername = username?.trim();
 
-    const matchedMock = MOCK_USERS.find(
-      (mock) => mock.username === trimmedUsername && mock.password === password
-    );
-
-    if (matchedMock) {
-      const mockUser = {
-        username: matchedMock.username,
-        fullName: matchedMock.fullName,
-        roles: normalizeRoles(matchedMock.roles),
-      };
-
-      if (remember) localStorage.setItem(REMEMBER_KEY, trimmedUsername || "");
-      else localStorage.removeItem(REMEMBER_KEY);
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(mockUser));
-      console.warn("Using mock admin credentials for local testing.");
-      return mockUser;
-    }
+    // ============================================================
+    // MOCK LOGIN - Uncomment this block for local testing
+    // ============================================================
+    // const matchedMock = MOCK_USERS.find(
+    //   (mock) => mock.username === trimmedUsername && mock.password === password
+    // );
+    //
+    // if (matchedMock) {
+    //   const mockUser = {
+    //     username: matchedMock.username,
+    //     fullName: matchedMock.fullName,
+    //     roles: normalizeRoles(matchedMock.roles),
+    //   };
+    //
+    //   if (remember) localStorage.setItem(REMEMBER_KEY, trimmedUsername || "");
+    //   else localStorage.removeItem(REMEMBER_KEY);
+    //   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(mockUser));
+    //   console.warn("Using mock admin credentials for local testing.");
+    //   return mockUser;
+    // }
 
     try {
       const me = await authApi.login({ username: trimmedUsername, password });
