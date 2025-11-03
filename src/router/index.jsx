@@ -43,6 +43,8 @@ import About from "../pages/guest/About";
 // ADMIN PAGES - Các trang dành cho admin (cần đăng nhập)
 import Dashboard from "../pages/admin/Dashboard";
 import User from "../pages/admin/User";
+import NewsList from "../pages/admin/news/NewsList";
+import CreateNews from "../pages/admin/news/CreateNews";
 
 // AUTH PAGES - Các trang đăng nhập/đăng ký
 import Login from "../pages/auth/Login";
@@ -81,6 +83,8 @@ function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<User />} />
+            <Route path="news" element={<NewsList />} />
+            <Route path="news/create" element={<CreateNews />} />
           </Route>
         </Route>
       </Routes>

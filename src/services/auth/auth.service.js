@@ -10,14 +10,47 @@ const normalizeRoles = (roles = []) =>
       .toLowerCase()
   );
 
+const MOCK_USERS = [
+  {
+    username: "admin",
+    password: "admin123",
+    fullName: "Admin Tester",
+    roles: ["admin"],
+  },
+];
+
 export const authService = {
   async login({ username, password, remember }) {
-    const me = await authApi.login({ username: username?.trim(), password });
-    me.roles = normalizeRoles(me.roles);
-    if (remember) localStorage.setItem(REMEMBER_KEY, username?.trim() || "");
-    else localStorage.removeItem(REMEMBER_KEY);
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(me));
-    return me;
+    const trimmedUsername = username?.trim();
+
+    const matchedMock = MOCK_USERS.find(
+      (mock) => mock.username === trimmedUsername && mock.password === password
+    );
+
+    if (matchedMock) {
+      const mockUser = {
+        username: matchedMock.username,
+        fullName: matchedMock.fullName,
+        roles: normalizeRoles(matchedMock.roles),
+      };
+
+      if (remember) localStorage.setItem(REMEMBER_KEY, trimmedUsername || "");
+      else localStorage.removeItem(REMEMBER_KEY);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(mockUser));
+      console.warn("Using mock admin credentials for local testing.");
+      return mockUser;
+    }
+
+    try {
+      const me = await authApi.login({ username: trimmedUsername, password });
+      me.roles = normalizeRoles(me.roles);
+      if (remember) localStorage.setItem(REMEMBER_KEY, trimmedUsername || "");
+      else localStorage.removeItem(REMEMBER_KEY);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(me));
+      return me;
+    } catch (error) {
+      throw error;
+    }
   },
 
   // ❌ Bỏ hẳn me()
