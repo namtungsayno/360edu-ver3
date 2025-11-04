@@ -89,10 +89,13 @@ export default function NewsList() {
 
 	const handleToggleStatus = async (id) => {
 		try {
-			// Gọi API toggle status
-			await newsService.toggleStatus(id);
+			// TODO: Uncomment khi backend sẵn sàng
+			// await newsService.toggleStatus(id);
 			
-			// Cập nhật UI
+			// Giả lập delay API (để test UX)
+			await new Promise(resolve => setTimeout(resolve, 300));
+			
+			// Tạm thời chỉ cập nhật UI (mock behavior)
 			setNews((prev) =>
 				prev.map((n) =>
 					n.id === id
@@ -103,6 +106,12 @@ export default function NewsList() {
 						: n
 				)
 			);
+			
+			// Thông báo thành công
+			const currentStatus = news.find(n => n.id === id)?.status;
+			const action = currentStatus === "published" ? "ẩn" : "hiện";
+			console.log(`Toggle status success: ${action} tin tức ID ${id}`);
+			
 		} catch (err) {
 			console.error("Failed to toggle status:", err);
 			alert(err.displayMessage || "Không thể cập nhật trạng thái");
