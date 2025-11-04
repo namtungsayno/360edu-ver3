@@ -47,10 +47,16 @@ import About from "../pages/guest/About";
 // ADMIN PAGES - Các trang dành cho admin (cần đăng nhập)
 import Dashboard from "../pages/admin/Dashboard";
 import User from "../pages/admin/User";
+import NewsList from "../pages/admin/news/NewsList";
+import CreateNews from "../pages/admin/news/CreateNews";
 import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
+
 // AUTH PAGES - Các trang đăng nhập/đăng ký
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
+import SubjectManagement from "../pages/admin/subject/SubjectManagement.jsx";
+import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagement.jsx";
+import SubjectDetail from "../pages/admin/subject/SubjectDetail.jsx";
 
 //TEACHER - Các trang danh cho Teacher
 import TeacherProfile from "../pages/teacher/TeacherManagement.jsx";
@@ -85,7 +91,15 @@ function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<User />} />
+            <Route path="news" element={<NewsList />} />
+            <Route path="news/create" element={<CreateNews />} />
             <Route path="classrooms" element={<ClassroomList />} />
+            <Route path="subject" element={<SubjectManagement />} />
+            <Route
+              path="subject/create"
+              element={<CreateSubjectManagement />}
+            />
+            <Route path="subject/:id" element={<SubjectDetail />} />
           </Route>
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}

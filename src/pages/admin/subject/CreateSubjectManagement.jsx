@@ -2,36 +2,18 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
-import { Select } from "../../../components/ui/Select";
+import { createSubject } from "../../../services/subject/subject.api";
+import { useToast } from "../../../hooks/use-toast";
 
 export default function CreateSubjectManagement() {
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    description: "",
-    credits: "",
-    department: "",
-    prerequisite: "",
-    status: "active"
+    name: ""
   });
 
   const [errors, setErrors] = useState({});
-
-  const departments = [
-    { value: "it", label: "Công nghệ thông tin" },
-    { value: "business", label: "Kinh doanh" },
-    { value: "engineering", label: "Kỹ thuật" },
-    { value: "math", label: "Toán học" },
-    { value: "science", label: "Khoa học" },
-    { value: "language", label: "Ngôn ngữ" }
-  ];
-
-  const statusOptions = [
-    { value: "active", label: "Hoạt động" },
-    { value: "inactive", label: "Không hoạt động" }
-  ];
 
   const handleInputChange = (name, value) => {
     setFormData(prev => ({
@@ -51,26 +33,10 @@ export default function CreateSubjectManagement() {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.code.trim()) {
-      newErrors.code = "Mã môn học là bắt buộc";
-    } else if (!/^[A-Z0-9]{3,10}$/.test(formData.code.trim())) {
-      newErrors.code = "Mã môn học phải có 3-10 ký tự chữ hoa và số";
-    }
-
     if (!formData.name.trim()) {
       newErrors.name = "Tên môn học là bắt buộc";
     } else if (formData.name.trim().length < 3) {
       newErrors.name = "Tên môn học phải có ít nhất 3 ký tự";
-    }
-
-    if (!formData.credits) {
-      newErrors.credits = "Số tín chỉ là bắt buộc";
-    } else if (Number.isNaN(Number(formData.credits)) || formData.credits < 1 || formData.credits > 10) {
-      newErrors.credits = "Số tín chỉ phải là số từ 1 đến 10";
-    }
-
-    if (!formData.department) {
-      newErrors.department = "Khoa/Bộ môn là bắt buộc";
     }
 
     setErrors(newErrors);
@@ -86,21 +52,15 @@ export default function CreateSubjectManagement() {
 
     setLoading(true);
     try {
-      // Call API to create subject when available
-      console.log("Creating subject:", formData);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Success - navigate back to subject list
-      navigate("/home/admin/subject", { 
-        state: { 
-          message: "Môn học đã được tạo thành công!" 
-        }
+      await createSubject({
+        name: formData.name.trim()
       });
-    } catch (error) {
-      console.error("Error creating subject:", error);
-      setErrors({ submit: "Có lỗi xảy ra khi tạo môn học. Vui lòng thử lại." });
+      
+      success("Môn học đã được tạo thành công!");
+      navigate("/home/admin/subject");
+    } catch (err) {
+      console.error("Error creating subject:", err);
+      showError(err?.response?.data?.message || "Có lỗi xảy ra khi tạo môn học. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -156,43 +116,10 @@ export default function CreateSubjectManagement() {
 
                 {/* Basic Information */}
                 <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Thông tin cơ bản</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Thông tin môn học</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 gap-6">
                     <div>
-                      <label htmlFor="subject-code" className="block text-sm font-medium text-gray-700 mb-2">
-                        Mã môn học <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        id="subject-code"
-                        type="text"
-                        value={formData.code}
-                        onChange={(e) => handleInputChange("code", e.target.value.toUpperCase())}
-                        placeholder="VD: IT101, MATH201"
-                        error={errors.code}
-                        className="w-full"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">3-10 ký tự chữ hoa và số</p>
-                    </div>
-
-                    <div>
-                      <label htmlFor="subject-credits" className="block text-sm font-medium text-gray-700 mb-2">
-                        Số tín chỉ <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        id="subject-credits"
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={formData.credits}
-                        onChange={(e) => handleInputChange("credits", e.target.value)}
-                        placeholder="Nhập số tín chỉ"
-                        error={errors.credits}
-                        className="w-full"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
                       <label htmlFor="subject-name" className="block text-sm font-medium text-gray-700 mb-2">
                         Tên môn học <span className="text-red-500">*</span>
                       </label>
@@ -201,67 +128,13 @@ export default function CreateSubjectManagement() {
                         type="text"
                         value={formData.name}
                         onChange={(e) => handleInputChange("name", e.target.value)}
-                        placeholder="Nhập tên môn học"
-                        error={errors.name}
-                        className="w-full"
+                        placeholder="Nhập tên môn học (VD: Toán học, Lập trình Java, ...)"
+                        className={`w-full ${errors.name ? 'border-red-500' : ''}`}
                       />
-                    </div>
-
-                    <div>
-                      <label htmlFor="subject-department" className="block text-sm font-medium text-gray-700 mb-2">
-                        Khoa/Bộ môn <span className="text-red-500">*</span>
-                      </label>
-                      <Select
-                        id="subject-department"
-                        value={formData.department}
-                        onChange={(value) => handleInputChange("department", value)}
-                        options={departments}
-                        placeholder="Chọn khoa/bộ môn"
-                        error={errors.department}
-                        className="w-full"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="subject-status" className="block text-sm font-medium text-gray-700 mb-2">
-                        Trạng thái
-                      </label>
-                      <Select
-                        id="subject-status"
-                        value={formData.status}
-                        onChange={(value) => handleInputChange("status", value)}
-                        options={statusOptions}
-                        className="w-full"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label htmlFor="subject-prerequisite" className="block text-sm font-medium text-gray-700 mb-2">
-                        Môn học tiên quyết
-                      </label>
-                      <Input
-                        id="subject-prerequisite"
-                        type="text"
-                        value={formData.prerequisite}
-                        onChange={(e) => handleInputChange("prerequisite", e.target.value)}
-                        placeholder="VD: IT101, MATH101 (tùy chọn)"
-                        className="w-full"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Nhập mã các môn học tiên quyết, cách nhau bằng dấu phẩy</p>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label htmlFor="subject-description" className="block text-sm font-medium text-gray-700 mb-2">
-                        Mô tả môn học
-                      </label>
-                      <textarea
-                        id="subject-description"
-                        rows={4}
-                        value={formData.description}
-                        onChange={(e) => handleInputChange("description", e.target.value)}
-                        placeholder="Nhập mô tả chi tiết về môn học..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                      />
+                      {errors.name && (
+                        <p className="text-xs text-red-600 mt-1">{errors.name}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">Tên môn học phải có ít nhất 3 ký tự</p>
                     </div>
                   </div>
                 </div>
