@@ -17,6 +17,9 @@
  * ADMIN ROUTES (AdminLayout):
  * - /home/admin/dashboard → Dashboard.jsx
  * - /home/admin/users → User.jsx
+ * - /home/admin/subject → SubjectManagement.jsx
+ * - /home/admin/subject/create → CreateSubjectManagement.jsx
+ * - /home/admin/subject/:id → SubjectDetail.jsx
  *
  * Chức năng:
  * - BrowserRouter cho client-side routing
@@ -26,7 +29,7 @@
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { GuestOnly, RequireAuth, RequireRole } from "../utils/RouteGuards.jsx";
+import { RequireRole } from "../utils/RouteGuards.jsx";
 
 import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
@@ -43,6 +46,10 @@ import About from "../pages/guest/About";
 // ADMIN PAGES - Các trang dành cho admin (cần đăng nhập)
 import Dashboard from "../pages/admin/Dashboard";
 import User from "../pages/admin/User";
+import SubjectManagement from "../pages/admin/subject/SubjectManagement.jsx";
+import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagement.jsx";
+import SubjectDetail from "../pages/admin/subject/SubjectDetail.jsx";
+
 
 // AUTH PAGES - Các trang đăng nhập/đăng ký
 import Login from "../pages/auth/Login";
@@ -81,6 +88,9 @@ function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<User />} />
+            <Route path="subject" element={<SubjectManagement />} />
+            <Route path="subject/create" element={<CreateSubjectManagement />} />
+            <Route path="subject/:id" element={<SubjectDetail />} />
           </Route>
         </Route>
       </Routes>
