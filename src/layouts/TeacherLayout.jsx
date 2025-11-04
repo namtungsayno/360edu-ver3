@@ -1,14 +1,11 @@
-// //Layout hiển thị khung chung (navbar/sidebar)
-// // Là khung giao diện cố định cho từng loại trang.
-// // AdminLayout: Có navbar, menu, hiển thị nội dung chính bằng <Outlet />.
-
+// giống với giao diện của adminlayouut
 import { useEffect, useState } from "react";
 import { Outlet, Link } from "react-router-dom";
 import Navigation from "../components/common/Navigation";
-import Sidebar from "../components/common/Sidebar";
+import SidebarTeacher from "../components/common/SideBarTeacher";
 import { Menu, X } from "lucide-react";
 
-export default function AdminLayout() {
+export default function TeacherLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -18,14 +15,13 @@ export default function AdminLayout() {
 
   const navigationItems = [
     { path: "/home", label: "← Back to Home" },
-    { path: "/home/admin/dashboard", label: "Dashboard" },
-    { path: "/home/admin/users", label: "User Management" },
+    { path: "/home/teacher/management", label: "Dashboard" },
+    { path: "/home/teacher/schedule", label: "Lịch dạy" }, // chỉ đổi tên nhãn cho hợp lý
   ];
 
   return (
-    // Toàn bộ nền sáng
     <div className="min-h-screen bg-gray-50">
-      {/* MOBILE SIDEBAR (sáng) */}
+      {/* MOBILE SIDEBAR */}
       <div className="lg:hidden">
         {mobileOpen && (
           <div
@@ -50,21 +46,22 @@ export default function AdminLayout() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <Sidebar />
+            {/* ⬇️ dùng SidebarTeacher */}
+            <SidebarTeacher />
           </div>
         </aside>
       </div>
 
-      {/* DESKTOP SIDEBAR (sáng) */}
+      {/* DESKTOP SIDEBAR */}
       <aside className="hidden lg:block fixed inset-y-0 left-0 z-30 w-72">
         <div className="h-full bg-white text-slate-900 border-r">
-          <Sidebar />
+          {/* ⬇️ dùng SidebarTeacher */}
+          <SidebarTeacher />
         </div>
       </aside>
 
       {/* MAIN */}
       <div className="lg:pl-72 min-h-screen flex flex-col">
-        {/* Header LIGHT */}
         <header className="sticky top-0 z-20 bg-white border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -78,11 +75,11 @@ export default function AdminLayout() {
                 </button>
 
                 <Link
-                  to="/home/admin/dashboard"
+                  to="/home/teacher/management"
                   className="flex items-baseline"
                 >
                   <h1 className="text-2xl font-bold text-slate-900">
-                    360Edu Admin
+                    360Edu Teacher
                   </h1>
                   <span className="ml-2 text-sm text-slate-500 hidden sm:inline">
                     Management Panel
@@ -90,17 +87,13 @@ export default function AdminLayout() {
                 </Link>
               </div>
 
-              {/* Navigation LIGHT (đã đổi ở file Navigation.jsx bên dưới) */}
               <Navigation items={navigationItems} />
             </div>
           </div>
         </header>
 
-        {/* Content LIGHT */}
         <main className="flex-1 text-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* nếu các trang con đang dùng lớp bg-dark, chúng sẽ vẫn tối.
-                Cứ để layout sáng trước, sau đó ta sửa từng trang sau. */}
             <Outlet />
           </div>
         </main>

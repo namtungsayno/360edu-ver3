@@ -31,6 +31,7 @@ import { GuestOnly, RequireAuth, RequireRole } from "../utils/RouteGuards.jsx";
 import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import GuestLayout from "../layouts/GuestLayout";
+import TeacherLayout from "../layouts/TeacherLayout.jsx";
 
 // GUEST PAGES - Các trang dành cho user chưa đăng nhập
 import Home from "../pages/guest/Home";
@@ -43,10 +44,13 @@ import About from "../pages/guest/About";
 // ADMIN PAGES - Các trang dành cho admin (cần đăng nhập)
 import Dashboard from "../pages/admin/Dashboard";
 import User from "../pages/admin/User";
-
+import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 // AUTH PAGES - Các trang đăng nhập/đăng ký
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
+
+//TEACHER - Các trang danh cho Teacher
+import TeacherProfile from "../pages/teacher/TeacherManagement.jsx";
 
 function AppRouter() {
   return (
@@ -54,13 +58,11 @@ function AppRouter() {
       <Routes>
         {/* ROOT REDIRECT - Tự động chuyển từ "/" về "/home" */}
         <Route path="/" element={<Navigate to="/home" replace />} />
-
         {/* AUTH ROUTES - Các route đăng nhập/đăng ký (không có Header) */}
         <Route element={<AuthLayout />}>
           <Route path="/home/login" element={<Login />} />
           <Route path="/home/register" element={<Register />} />
         </Route>
-
         {/* GUEST ROUTES - Các route cho người dùng chưa đăng nhập (có Header) */}
         <Route element={<GuestLayout />}>
           <Route path="/home" element={<Home />} /> {/* Trang chủ */}
@@ -74,14 +76,21 @@ function AppRouter() {
           {/* Danh sách giáo viên */}
           <Route path="/home/about" element={<About />} /> {/* Giới thiệu */}
         </Route>
-
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
         <Route element={<RequireRole allow={["admin"]} />}>
           <Route path="/home/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<User />} />
+            <Route path="classrooms" element={<ClassroomList />} />
           </Route>
+        </Route>
+        {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}
+        <Route path="/home/teacher" element={<TeacherLayout />}>
+          <Route path="management" element={<TeacherProfile />} />
+          <Route path="profile" element={<TeacherProfile />} />{" "}
+          {/* <Route path="schedule" element={<TeacherSchedule />} />
+          <Route path="attendance" element={<TeacherAttendance />} /> */}
         </Route>
       </Routes>
     </BrowserRouter>
