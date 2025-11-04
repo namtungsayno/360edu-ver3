@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Input } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
-import { classroomService } from "../../../services/classroom.service";
+import { classroomService } from "../../../services/classrooms/classroom.service";
 import { toast } from "../../../hooks/use-toast";
 
 export default function ClassroomForm({ initialData, onClose }) {

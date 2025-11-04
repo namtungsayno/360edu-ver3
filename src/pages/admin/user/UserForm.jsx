@@ -3,7 +3,7 @@ import { Input } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
 import { Label } from "../../../components/ui/Label";
 import { useToast } from "../../../hooks/use-toast";
-import { userService } from "../../../services/user.service";
+import { userService } from "../../../services/user/user.service";
 
 export default function UserForm({ user, onClose, onSuccess }) {
   const { success, error } = useToast();

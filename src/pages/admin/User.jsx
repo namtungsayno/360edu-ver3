@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "../../components/ui/Dialog";
 import { useToast } from "../../hooks/use-toast";
-import { userService } from "../../services/user.service";
+import { userService } from "../../services/user/user.service";
 import UserForm from "./user/UserForm";
 import UserViewDialog from "./user/UserViewDialog";
 import useDebounce from "../../hooks/useDebounce";
