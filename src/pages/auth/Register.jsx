@@ -4,22 +4,8 @@
  * Route: /home/register
  * Layout: AuthLayout
  *
- * Chức năng:
- * - Form đăng ký với đầy đủ thông tin (họ tên, username, email, phone, password)
- * - Validation password confirmation
- * - Link quay về trang đăng nhập
- * - Link quay về trang chủ
- * - UI tương tự Login.jsx với background animations
- *
- * TODO: Implement actual registration logic với API
- */ /**
- * REGISTER PAGE - Trang đăng ký tài khoản mới
- *
- * Route: /home/register
- * Layout: AuthLayout
- *
  * Core:
- * - Validate: fullName, username, email, phone, password, confirmPassword
+ * - Validate: fullName, username, email, phone, password, confirmPassword, parentName, parentEmail, parentPhone
  * - Hiển thị lỗi theo field + banner lỗi/ok
  * - Submit -> authService.register -> điều hướng /home/login
  * - Nền animation không chặn click (pointer-events-none) + z-index cho card
@@ -42,9 +28,12 @@ export default function Register() {
     fullName: "",
     username: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
-    phone: "",
+    parentName: "",
+    parentEmail: "",
+    parentPhone: "", // 👈 Thêm trường số điện thoại phụ huynh
   });
 
   const [errors, setErrors] = useState({});
@@ -82,6 +71,20 @@ export default function Register() {
     else if (formData.confirmPassword !== formData.password)
       next.confirmPassword = "Mật khẩu xác nhận không khớp.";
 
+    if (!formData.parentName.trim())
+      next.parentName = "Vui lòng nhập tên phụ huynh.";
+
+    if (!formData.parentEmail.trim())
+      next.parentEmail = "Vui lòng nhập email phụ huynh.";
+    else if (!EMAIL_REGEX.test(formData.parentEmail))
+      next.parentEmail = "Email phụ huynh không hợp lệ.";
+
+    if (!formData.parentPhone.trim())
+      next.parentPhone = "Vui lòng nhập số điện thoại phụ huynh.";
+    else if (!PHONE_REGEX.test(formData.parentPhone))
+      next.parentPhone =
+        "Số điện thoại phụ huynh không hợp lệ (10 số, bắt đầu bằng 0).";
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -100,6 +103,10 @@ export default function Register() {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         password: formData.password,
+        confirmPassword: formData.confirmPassword, // 👈 THÊM DÒNG NÀY
+        parentName: formData.parentName.trim(),
+        parentEmail: formData.parentEmail.trim(),
+        parentPhone: formData.parentPhone.trim(),
       });
 
       setBanner({
@@ -126,7 +133,7 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 overflow-hidden relative isolate">
-      {/* Animated Background Elements (không bắt click) */}
+      {/* Animated Background Elements */}
       <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse pointer-events-none"></div>
       <div className="absolute bottom-20 right-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-1000 pointer-events-none"></div>
       <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-2000 pointer-events-none"></div>
@@ -149,6 +156,26 @@ export default function Register() {
             <p className="text-gray-600">Tham gia cộng đồng học tập 360edu</p>
           </div>
 
+          <button
+            type="button"
+            onClick={() => authService.startGoogleOAuth("register")}
+            className="w-full border border-gray-300 rounded-lg py-2.5 px-4 flex items-center justify-center gap-3 hover:bg-gray-50 transition"
+          >
+            <img
+              alt="Google"
+              className="w-5 h-5"
+              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            />
+            <span className="text-gray-700 font-medium">
+              Đăng ký bằng Google
+            </span>
+          </button>
+          <div className="my-5 flex items-center">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="px-3 text-gray-500 text-sm">Hoặc</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
           {/* Banner */}
           {banner.message && (
             <div
@@ -165,147 +192,92 @@ export default function Register() {
           {/* Register Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Fullname */}
-            <div>
-              <label
-                htmlFor="fullName"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Họ và tên
-              </label>
-              <Input
-                id="fullName"
-                name="fullName"
-                type="text"
-                required
-                value={formData.fullName}
-                onChange={handleInputChange}
-                placeholder="Nhập họ và tên của bạn"
-                className="w-full"
-              />
-              {errors.fullName && (
-                <p className="mt-1 text-xs text-red-600">{errors.fullName}</p>
-              )}
-            </div>
+            <Field
+              id="fullName"
+              label="Họ và tên"
+              value={formData.fullName}
+              error={errors.fullName}
+              onChange={handleInputChange}
+            />
 
             {/* Username */}
-            <div>
-              <label
-                htmlFor="username"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Tên đăng nhập
-              </label>
-              <Input
-                id="username"
-                name="username"
-                type="text"
-                required
-                value={formData.username}
-                onChange={handleInputChange}
-                placeholder="Nhập tên đăng nhập"
-                className="w-full"
-              />
-              {errors.username && (
-                <p className="mt-1 text-xs text-red-600">{errors.username}</p>
-              )}
-            </div>
+            <Field
+              id="username"
+              label="Tên đăng nhập"
+              value={formData.username}
+              error={errors.username}
+              onChange={handleInputChange}
+            />
 
             {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Email
-              </label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="your@email.com"
-                className="w-full"
-              />
-              {errors.email && (
-                <p className="mt-1 text-xs text-red-600">{errors.email}</p>
-              )}
-            </div>
+            <Field
+              id="email"
+              label="Email"
+              type="email"
+              value={formData.email}
+              error={errors.email}
+              onChange={handleInputChange}
+            />
 
             {/* Phone */}
-            <div>
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Số điện thoại
-              </label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                required
-                value={formData.phone}
-                onChange={handleInputChange}
-                placeholder="0123456789"
-                className="w-full"
-              />
-              {errors.phone && (
-                <p className="mt-1 text-xs text-red-600">{errors.phone}</p>
-              )}
-            </div>
+            <Field
+              id="phone"
+              label="Số điện thoại"
+              type="tel"
+              value={formData.phone}
+              error={errors.phone}
+              onChange={handleInputChange}
+            />
 
             {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Mật khẩu
-              </label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Nhập mật khẩu"
-                className="w-full"
-              />
-              {errors.password && (
-                <p className="mt-1 text-xs text-red-600">{errors.password}</p>
-              )}
-              <p className="mt-1 text-[11px] text-gray-500">
-                Tối thiểu 6 ký tự.
-              </p>
-            </div>
+            <Field
+              id="password"
+              label="Mật khẩu"
+              type="password"
+              value={formData.password}
+              error={errors.password}
+              onChange={handleInputChange}
+              helper="Tối thiểu 6 ký tự."
+            />
 
             {/* Confirm */}
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Xác nhận mật khẩu
-              </label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                placeholder="Nhập lại mật khẩu"
-                className="w-full"
-              />
-              {errors.confirmPassword && (
-                <p className="mt-1 text-xs text-red-600">
-                  {errors.confirmPassword}
-                </p>
-              )}
-            </div>
+            <Field
+              id="confirmPassword"
+              label="Xác nhận mật khẩu"
+              type="password"
+              value={formData.confirmPassword}
+              error={errors.confirmPassword}
+              onChange={handleInputChange}
+            />
+
+            {/* Parent Name */}
+            <Field
+              id="parentName"
+              label="Tên phụ huynh"
+              value={formData.parentName}
+              error={errors.parentName}
+              onChange={handleInputChange}
+            />
+
+            {/* Parent Email */}
+            <Field
+              id="parentEmail"
+              label="Email phụ huynh"
+              type="email"
+              value={formData.parentEmail}
+              error={errors.parentEmail}
+              onChange={handleInputChange}
+            />
+
+            {/* Parent Phone */}
+            <Field
+              id="parentPhone"
+              label="Số điện thoại phụ huynh"
+              type="tel"
+              value={formData.parentPhone}
+              error={errors.parentPhone}
+              onChange={handleInputChange}
+            />
 
             <Button
               type="submit"
@@ -342,6 +314,32 @@ export default function Register() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Reusable field component */
+function Field({ id, label, type = "text", value, onChange, error, helper }) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="block text-sm font-medium text-gray-700 mb-1"
+      >
+        {label}
+      </label>
+      <Input
+        id={id}
+        name={id}
+        type={type}
+        required
+        value={value}
+        onChange={onChange}
+        placeholder={`Nhập ${label.toLowerCase()}`}
+        className="w-full"
+      />
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {helper && <p className="mt-1 text-[11px] text-gray-500">{helper}</p>}
     </div>
   );
 }
