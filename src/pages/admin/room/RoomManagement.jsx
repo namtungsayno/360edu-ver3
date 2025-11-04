@@ -1,6 +1,6 @@
 // src/pages/admin/classrooms/ClassroomList.jsx
 import { useEffect, useState, useCallback } from "react";
-import { classroomService } from "../../../services/classroom.service";
+import { classroomService } from "../../../services/classrooms/classroom.service";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
 import {

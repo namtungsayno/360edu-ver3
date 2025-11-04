@@ -16,11 +16,11 @@ export default function AdminLayout() {
     return () => (document.body.style.overflow = "");
   }, [mobileOpen]);
 
-  const navigationItems = [
-    { path: "/home", label: "← Back to Home" },
-    { path: "/home/admin/dashboard", label: "Dashboard" },
-    { path: "/home/admin/users", label: "User Management" },
-  ];
+  // const navigationItems = [
+  //   { path: "/home", label: "← Back to Home" },
+  //   { path: "/home/admin/dashboard", label: "Dashboard" },
+  //   { path: "/home/admin/users", label: "User Management" },
+  // ];
 
   return (
     // Toàn bộ nền sáng
@@ -66,34 +66,7 @@ export default function AdminLayout() {
       <div className="lg:pl-72 min-h-screen flex flex-col">
         {/* Header LIGHT */}
         <header className="sticky top-0 z-20 bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-3">
-                <button
-                  className="lg:hidden inline-flex items-center justify-center rounded-md p-2 hover:bg-gray-100"
-                  onClick={() => setMobileOpen(true)}
-                  aria-label="Open sidebar"
-                >
-                  <Menu className="h-5 w-5 text-slate-700" />
-                </button>
-
-                <Link
-                  to="/home/admin/dashboard"
-                  className="flex items-baseline"
-                >
-                  <h1 className="text-2xl font-bold text-slate-900">
-                    360Edu Admin
-                  </h1>
-                  <span className="ml-2 text-sm text-slate-500 hidden sm:inline">
-                    Management Panel
-                  </span>
-                </Link>
-              </div>
-
-              {/* Navigation LIGHT (đã đổi ở file Navigation.jsx bên dưới) */}
-              <Navigation items={navigationItems} />
-            </div>
-          </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"></div>
         </header>
 
         {/* Content LIGHT */}
