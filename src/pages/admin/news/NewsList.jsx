@@ -1,77 +1,57 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/Card";
 import { Input } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
 import { Badge } from "../../../components/ui/Badge";
-import { Search, Plus, Newspaper, Eye, Edit, EyeOff, Calendar } from "lucide-react";
+import { Search, Plus, Newspaper, Eye, Edit, EyeOff, Calendar, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/Tabs";
 import Modal from "../../../components/ui/Modal";
+import { newsService } from "../../../services/news/news.service";
+import { mockNewsData } from "./mockData";
 
 export default function NewsList() {
 	const navigate = useNavigate();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selected, setSelected] = useState(null);
 	const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState(null);
 
-	// Dữ liệu mẫu - sau này sẽ fetch từ API
-	const [news, setNews] = useState([
-		{
-			id: 1,
-			title: "Khai giảng khóa học Lập trình Python mùa Thu 2025",
-			excerpt: "Trung tâm 360edu trân trọng thông báo khai giảng khóa học Lập trình Python cơ bản dành cho người mới bắt đầu...",
-			content: "Nội dung chi tiết về khóa học Python...",
-			author: "Admin",
-			date: "18/10/2025",
-			status: "published",
-			views: 245,
-			tags: ["Khóa học mới", "Lập trình"]
-		},
-		{
-			id: 2,
-			title: "Thông báo lịch nghỉ lễ 20/10",
-			excerpt: "Kính gửi quý phụ huynh và các em học viên, nhân dịp kỷ niệm ngày Phụ nữ Việt Nam 20/10...",
-			content: "Chi tiết về lịch nghỉ lễ...",
-			author: "Admin",
-			date: "15/10/2025",
-			status: "published",
-			views: 523,
-			tags: ["Thông báo", "Lịch học"]
-		},
-		{
-			id: 3,
-			title: "Chương trình ưu đãi tháng 10 - Giảm 20%",
-			excerpt: "Nhân dịp khai trương cơ sở mới, 360edu triển khai chương trình ưu đãi đặc biệt với mức giảm giá lên đến 20%...",
-			content: "Chi tiết chương trình ưu đãi...",
-			author: "Admin",
-			date: "10/10/2025",
-			status: "published",
-			views: 892,
-			tags: ["Ưu đãi", "Khuyến mãi"]
-		},
-		{
-			id: 4,
-			title: "Cập nhật tính năng mới trên hệ thống",
-			excerpt: "Chúng tôi vừa hoàn thành việc nâng cấp hệ thống với nhiều tính năng mới hữu ích...",
-			content: "Chi tiết các tính năng mới...",
-			author: "Admin",
-			date: "08/10/2025",
-			status: "draft",
-			views: 0,
-			tags: ["Hệ thống", "Cập nhật"]
-		},
-		{
-			id: 5,
-			title: "Kết quả thi học kỳ I năm học 2024-2025",
-			excerpt: "Trung tâm xin công bố kết quả học tập của các em học viên trong kỳ thi học kỳ I...",
-			content: "Bảng kết quả chi tiết...",
-			author: "Admin",
-			date: "05/10/2025",
-			status: "hidden",
-			views: 156,
-			tags: ["Kết quả học tập", "Thi cử"]
-		},
-	]);
+	// Dữ liệu tin tức từ API
+	const [news, setNews] = useState([]);
+
+	// Fetch danh sách tin tức khi component mount
+	useEffect(() => {
+		fetchNews();
+	}, []);
+
+	const fetchNews = async () => {
+		try {
+			setLoading(true);
+			setError(null);
+			
+			// TODO: Uncomment khi backend sẵn sàng
+			// Real API call
+			// const response = await newsService.getNews({
+			// 	page: 1,
+			// 	size: 100,
+			// });
+			// const newsData = response.items || response.data || response || [];
+			// setNews(newsData);
+			
+			// Tạm thời dùng mock data để test UI
+			setNews(mockNewsData);
+			
+		} catch (err) {
+			console.error("Failed to fetch news:", err);
+			setError(err.displayMessage || "Không thể tải danh sách tin tức");
+			// Fallback to mock data nếu API lỗi
+			setNews(mockNewsData);
+		} finally {
+			setLoading(false);
+		}
+	};
 
 	const getStatusBadge = (status) => {
 		switch (status) {
@@ -107,17 +87,26 @@ export default function NewsList() {
 		setIsPreviewOpen(true);
 	};
 
-	const handleToggleStatus = (id) => {
-		setNews((prev) =>
-			prev.map((n) =>
-				n.id === id
-					? {
-							...n,
-							status: n.status === "published" ? "hidden" : "published",
-						}
-					: n
-			)
-		);
+	const handleToggleStatus = async (id) => {
+		try {
+			// Gọi API toggle status
+			await newsService.toggleStatus(id);
+			
+			// Cập nhật UI
+			setNews((prev) =>
+				prev.map((n) =>
+					n.id === id
+						? {
+								...n,
+								status: n.status === "published" ? "hidden" : "published",
+							}
+						: n
+				)
+			);
+		} catch (err) {
+			console.error("Failed to toggle status:", err);
+			alert(err.displayMessage || "Không thể cập nhật trạng thái");
+		}
 	};
 
 	const filteredNews = news.filter(item =>
@@ -139,7 +128,31 @@ export default function NewsList() {
 				</Button>
 			</div>
 
+			{/* Loading State */}
+			{loading && (
+				<Card>
+					<CardContent className="p-12 flex flex-col items-center justify-center">
+						<Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-2" />
+						<p className="text-slate-600">Đang tải danh sách tin tức...</p>
+					</CardContent>
+				</Card>
+			)}
+
+			{/* Error State */}
+			{error && !loading && (
+				<Card>
+					<CardContent className="p-12 flex flex-col items-center justify-center">
+						<div className="text-red-600 mb-2">⚠️</div>
+						<p className="text-slate-600 mb-4">{error}</p>
+						<Button onClick={fetchNews} variant="outline">
+							Thử lại
+						</Button>
+					</CardContent>
+				</Card>
+			)}
+
 			{/* Danh sách tin tức */}
+			{!loading && !error && (
 			<Card>
 				<CardHeader>
 					<div className="flex items-center justify-between">
@@ -292,8 +305,10 @@ export default function NewsList() {
 					</Tabs>
 				</CardContent>
 			</Card>
+			)}
 
 			{/* Thống kê */}
+			{!loading && !error && (
 			<div className="grid gap-6 md:grid-cols-4">
 				<Card>
 					<CardHeader>
@@ -335,6 +350,7 @@ export default function NewsList() {
 					</CardContent>
 				</Card>
 			</div>
+			)}
 
 			{/* Preview Modal */}
 			<Modal open={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} title={selected?.title}>

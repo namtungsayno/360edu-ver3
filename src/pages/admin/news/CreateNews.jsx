@@ -7,7 +7,8 @@ import { Badge } from "../../../components/ui/Badge";
 import { Label } from "../../../components/ui/Label";
 import { Textarea } from "../../../components/ui/Textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/Select";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
+import { newsService } from "../../../services/news/news.service";
 
 export default function CreateNews() {
 	const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function CreateNews() {
 	const draft = location.state?.draft;
 	const [tags, setTags] = useState([]);
 	const [tagInput, setTagInput] = useState("");
+	const [loading, setLoading] = useState(false);
 	const [formData, setFormData] = useState({
 		title: "",
 		excerpt: "",
@@ -58,14 +60,48 @@ export default function CreateNews() {
 		}
 	};
 
-	const handleSubmit = (status) => {
-		// TODO: Gửi dữ liệu lên API
-		console.log({
-			...formData,
-			status,
-			tags
-		});
-	navigate("/home/admin/news");
+	const handleSubmit = async (status) => {
+		// Validation cơ bản
+		if (!formData.title.trim()) {
+			alert("Vui lòng nhập tiêu đề");
+			return;
+		}
+		if (!formData.excerpt.trim()) {
+			alert("Vui lòng nhập mô tả ngắn");
+			return;
+		}
+		if (!formData.content.trim()) {
+			alert("Vui lòng nhập nội dung");
+			return;
+		}
+
+		try {
+			setLoading(true);
+			
+			const newsData = {
+				...formData,
+				status,
+				tags
+			};
+
+			if (isEditing && draft?.id) {
+				// Cập nhật tin tức hiện có
+				await newsService.updateNews(draft.id, newsData);
+				alert("Cập nhật tin tức thành công!");
+			} else {
+				// Tạo tin tức mới
+				await newsService.createNews(newsData);
+				alert("Tạo tin tức thành công!");
+			}
+
+			// Quay về danh sách
+			navigate("/home/admin/news");
+		} catch (error) {
+			console.error("Failed to submit news:", error);
+			alert(error.displayMessage || "Có lỗi xảy ra khi lưu tin tức");
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	return (
@@ -214,13 +250,22 @@ export default function CreateNews() {
 						<Button 
 							className="w-full bg-blue-600 text-white hover:bg-blue-700" 
 							onClick={() => handleSubmit(isEditing ? formData.status : "published")}
+							disabled={loading}
 						>
-							{isEditing ? "Cập nhật tin" : "Đăng tin tức"}
+							{loading ? (
+								<>
+									<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+									Đang xử lý...
+								</>
+							) : (
+								<>{isEditing ? "Cập nhật tin" : "Đăng tin tức"}</>
+							)}
 						</Button>
 						<Button 
 							variant="outline" 
 							className="w-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" 
 							onClick={() => handleSubmit("draft")}
+							disabled={loading}
 						>
 							Lưu nháp
 						</Button>
@@ -228,6 +273,7 @@ export default function CreateNews() {
 							variant="ghost" 
 							className="w-full bg-slate-100 text-slate-700 hover:bg-slate-200" 
 							onClick={() => navigate("/home/admin/news")}
+							disabled={loading}
 						>
 							Hủy
 						</Button>
