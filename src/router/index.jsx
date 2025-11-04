@@ -17,6 +17,9 @@
  * ADMIN ROUTES (AdminLayout):
  * - /home/admin/dashboard → Dashboard.jsx
  * - /home/admin/users → User.jsx
+ * - /home/admin/subject → SubjectManagement.jsx
+ * - /home/admin/subject/create → CreateSubjectManagement.jsx
+ * - /home/admin/subject/:id → SubjectDetail.jsx
  *
  * Chức năng:
  * - BrowserRouter cho client-side routing
@@ -26,7 +29,7 @@
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { GuestOnly, RequireAuth, RequireRole } from "../utils/RouteGuards.jsx";
+import { RequireRole } from "../utils/RouteGuards.jsx";
 
 import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
