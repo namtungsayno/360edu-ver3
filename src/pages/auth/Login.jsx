@@ -22,7 +22,7 @@ import { Input } from "../../components/ui/Input";
 import Logo from "../../components/common/Logo";
 import { useAuth } from "../../hooks/useAuth";
 import { landingPathByRoles } from "../../utils/auth-landing";
-
+import { authService } from "../../services/auth/auth.service";
 export default function Login() {
   const { onNavigate } = useOutletContext();
   const { login } = useAuth();
@@ -52,7 +52,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       const me = await login(formData);
-      const to = from || landingPathByRoles(me.roles);
+      const to = from || landingPathByRoles(me.roles); // me.roles = ["Admin", "..."]
       nav(to, { replace: true });
     } catch (ex) {
       setErr(ex.displayMessage || "Đăng nhập thất bại");
@@ -153,6 +153,27 @@ export default function Login() {
             >
               Đăng nhập
             </Button>
+
+            <div className="my-5 flex items-center">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="px-3 text-gray-500 text-sm">Hoặc</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => authService.loginWithGoogle()}
+              className="w-full border border-gray-300 rounded-lg py-2.5 px-4 flex items-center justify-center gap-3 hover:bg-gray-50 transition"
+            >
+              <img
+                alt="Google"
+                className="w-5 h-5"
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+              />
+              <span className="text-gray-700 font-medium">
+                Đăng nhập bằng Google
+              </span>
+            </button>
           </form>
 
           {/* LINK ĐẾN TRANG ĐĂNG KÝ */}
