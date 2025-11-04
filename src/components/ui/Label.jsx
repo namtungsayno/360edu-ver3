@@ -1,20 +1,25 @@
-/**
- * LABEL COMPONENT - Component label cho form inputs
- * 
- * Chức năng:
- * - Label cho các form fields
- * - Hỗ trợ htmlFor attribute
- */
+import React from "react";
 
-import { forwardRef } from "react";
+function cn(...a) {
+  return a.filter(Boolean).join(" ");
+}
 
-const Label = forwardRef(({ className = "", ...props }, ref) => (
-  <label
-    ref={ref}
-    className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`}
-    {...props}
-  />
-));
-Label.displayName = "Label";
+export const Label = React.forwardRef(function Label(
+  { className = "", required = false, children, ...props },
+  ref
+) {
+  return (
+    <label
+      ref={ref}
+      className={cn("block text-sm font-medium text-gray-700", className)}
+      {...props}
+    >
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {required ? <span className="text-red-500">*</span> : null}
+      </span>
+    </label>
+  );
+});
 
-export { Label };
+export default Label;

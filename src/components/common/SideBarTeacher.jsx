@@ -1,133 +1,43 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  GraduationCap,
-  BookOpen,
-  Library,
-  Award,
-  FileText,
-  MessageSquare,
-  CreditCard,
-  BarChart3,
-  Newspaper,
-  DoorOpen,
-  LogOut,
-} from "lucide-react";
+import { Calendar, User as UserIcon, CheckSquare, LogOut } from "lucide-react";
 
-const Sidebar = () => {
+const SidebarTeacher = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
   const nav = [
     {
-      section: "Tổng quan",
+      section: "Giảng dạy",
       items: [
         {
-          id: "dashboard",
-          label: "Dashboard",
-          icon: LayoutDashboard,
-          href: "/home/admin/dashboard",
-        },
-      ],
-    },
-    {
-      section: "Quản lý người dùng",
-      items: [
-        {
-          id: "users",
-          label: "Người dùng",
-          icon: Users,
-          href: "/home/admin/users",
-        },
-      ],
-    },
-    {
-      section: "Quản lý học tập",
-      items: [
-        {
-          id: "schedule",
-          label: "Lịch học",
+          id: "weekly-schedule",
+          label: "Lịch dạy trong tuần",
           icon: Calendar,
-          href: "/home/admin/schedule",
-        },
-        {
-          id: "classes",
-          label: "Lớp học",
-          icon: GraduationCap,
-          href: "/home/admin/classes",
-        },
-        {
-          id: "courses",
-          label: "Khóa học",
-          icon: BookOpen,
-          href: "/home/admin/courses",
-        },
-        {
-          id: "subjects",
-          label: "Môn học",
-          icon: Library,
-          href: "/home/admin/subject",
-        },
-        {
-          id: "classrooms",
-          label: "Phòng học",
-          icon: DoorOpen,
-          href: "/home/admin/classrooms",
+          href: "/home/teacher/schedule",
         },
       ],
     },
     {
-      section: "Theo dõi & Đánh giá",
+      section: "Tài khoản",
       items: [
         {
-          id: "awards",
-          label: "Khen thưởng",
-          icon: Award,
-          href: "/home/admin/awards",
-        },
-        {
-          id: "feedback",
-          label: "Phản hồi",
-          icon: MessageSquare,
-          href: "/home/admin/feedback",
+          id: "profile",
+          label: "Thông tin cá nhân",
+          icon: UserIcon,
+          href: "/home/teacher/profile",
         },
       ],
     },
     {
-      section: "Tài chính & Báo cáo",
+      section: "Điểm danh",
       items: [
         {
-          id: "payments",
-          label: "Thanh toán",
-          icon: CreditCard,
-          href: "/home/admin/payments",
-        },
-        {
-          id: "reports",
-          label: "Báo cáo",
-          icon: BarChart3,
-          href: "/home/admin/reports",
-        },
-      ],
-    },
-    {
-      section: "Khác",
-      items: [
-        {
-          id: "documents",
-          label: "Tài liệu",
-          icon: FileText,
-          href: "/home/admin/documents",
-        },
-        {
-          id: "news",
-          label: "Tin tức",
-          icon: Newspaper,
-          href: "/home/admin/news",
+          id: "attendance",
+          label: "Điểm danh",
+          icon: CheckSquare,
+          href: "/home/teacher/attendance",
         },
       ],
     },
@@ -150,7 +60,7 @@ const Sidebar = () => {
           </div>
           <div>
             <h1 className="text-lg font-bold text-black">360edu</h1>
-            <p className="text-xs text-gray-600">Admin Portal</p>
+            <p className="text-xs text-gray-600">Teacher Portal</p>
           </div>
         </div>
       </div>
@@ -212,4 +122,4 @@ const Sidebar = () => {
   );
 };
 
-export default Sidebar;
+export default SidebarTeacher;

@@ -1,33 +1,38 @@
-/**
- * TABS COMPONENTS - Components để tạo tabs navigation
- * 
- * Chức năng:
- * - Tabs: Container chính cho tabs
- * - TabsList: Danh sách các tab
- * - TabsTrigger: Button để chuyển tab
- * - TabsContent: Nội dung của mỗi tab
- */
+import React, { createContext, useContext, useMemo, useState } from "react";
 
-import { createContext, useContext, useState } from "react";
+function cn(...a) {
+  return a.filter(Boolean).join(" ");
+}
 
-const TabsContext = createContext();
+const TabsCtx = createContext(null);
 
-export function Tabs({ defaultValue, className = "", children, ...props }) {
-  const [activeTab, setActiveTab] = useState(defaultValue);
+export function Tabs({ value, defaultValue, onValueChange, children }) {
+  const isControlled = value !== undefined;
+  const [internal, setInternal] = useState(defaultValue);
 
-  return (
-    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
-      <div className={className} {...props}>
-        {children}
-      </div>
-    </TabsContext.Provider>
+  const current = isControlled ? value : internal;
+
+  const api = useMemo(
+    () => ({
+      value: current,
+      setValue: (v) => {
+        if (!isControlled) setInternal(v);
+        onValueChange?.(v);
+      },
+    }),
+    [current, isControlled, onValueChange]
   );
+
+  return <TabsCtx.Provider value={api}>{children}</TabsCtx.Provider>;
 }
 
 export function TabsList({ className = "", children, ...props }) {
   return (
     <div
-      className={`inline-flex h-9 w-fit items-center justify-center rounded-xl bg-green-50 p-[3px] ${className}`}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-lg bg-gray-100 p-1",
+        className
+      )}
       {...props}
     >
       {children}
@@ -36,18 +41,20 @@ export function TabsList({ className = "", children, ...props }) {
 }
 
 export function TabsTrigger({ value, className = "", children, ...props }) {
-  const { activeTab, setActiveTab } = useContext(TabsContext);
-  const isActive = activeTab === value;
-
+  const ctx = useContext(TabsCtx);
+  const active = ctx?.value === value;
   return (
     <button
       type="button"
-      className={`inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-xl border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
-        isActive
-          ? "bg-white text-green-700 shadow-sm border-green-200"
-          : "text-gray-600 hover:text-gray-900 hover:bg-green-100/50"
-      } ${className}`}
-      onClick={() => setActiveTab(value)}
+      onClick={() => ctx?.setValue(value)}
+      data-state={active ? "active" : "inactive"}
+      className={cn(
+        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+        active
+          ? "bg-white text-gray-900 shadow-sm"
+          : "text-gray-600 hover:bg-white/70",
+        className
+      )}
       {...props}
     >
       {children}
@@ -56,16 +63,13 @@ export function TabsTrigger({ value, className = "", children, ...props }) {
 }
 
 export function TabsContent({ value, className = "", children, ...props }) {
-  const { activeTab } = useContext(TabsContext);
-  
-  if (activeTab !== value) return null;
-
+  const ctx = useContext(TabsCtx);
+  if (ctx?.value !== value) return null;
   return (
-    <div
-      className={`mt-2 ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${className}`}
-      {...props}
-    >
+    <div className={cn("mt-3", className)} {...props}>
       {children}
     </div>
   );
 }
+
+export default { Tabs, TabsList, TabsTrigger, TabsContent };

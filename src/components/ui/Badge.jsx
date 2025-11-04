@@ -1,32 +1,36 @@
 /**
- * BADGE COMPONENT - Component hiển thị nhãn/tag
- *
+ * BADGE COMPONENT - Component badge tùy chỉnh
+ * 
+ * Được sử dụng trong:
+ * - SubjectDetail.jsx (status badge)
+ * - Các components cần hiển thị trạng thái
+ * 
  * Chức năng:
- * - Hỗ trợ nhiều variants: default, secondary, destructive, outline
- * - Có thể tùy chỉnh className
+ * - Hiển thị trạng thái với màu sắc khác nhau
+ * - Support variants: success, destructive, default
+ * - Custom styling với Tailwind CSS
  */
 
 import { forwardRef } from "react";
 
 const Badge = forwardRef(({ className = "", variant = "default", children, ...props }, ref) => {
-	const variants = {
-		default: "bg-blue-600 text-white hover:bg-blue-700",
-		secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200",
-		destructive: "bg-red-600 text-white hover:bg-red-700",
-		outline: "border border-gray-300 bg-white text-gray-900",
-	};
+  const variants = {
+    default: "bg-gray-100 text-gray-700 border border-gray-200",
+    success: "bg-green-100 text-green-700 border border-green-200",
+    destructive: "bg-red-100 text-red-700 border border-red-200",
+    warning: "bg-yellow-100 text-yellow-700 border border-yellow-200",
+    info: "bg-blue-100 text-blue-700 border border-blue-200"
+  };
 
-	const variantClasses = variants[variant] || variants.default;
-
-	return (
-		<div
-			ref={ref}
-			className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${variantClasses} ${className}`}
-			{...props}
-		>
-			{children}
-		</div>
-	);
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${variants[variant]} ${className}`}
+      ref={ref}
+      {...props}
+    >
+      {children}
+    </span>
+  );
 });
 
 Badge.displayName = "Badge";
