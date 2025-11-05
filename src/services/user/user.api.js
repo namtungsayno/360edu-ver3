@@ -18,4 +18,20 @@ export const userApi = {
       .patch(`/users/${userId}/status`, { active })
       .then((r) => r.data);
   },
+
+  // ✅ Tạo giáo viên đúng endpoint BE /api/auth/register-teacher
+  // Lưu ý: BE nhận "phoneNumber"
+  createTeacher({ fullName, email, phone }) {
+    const payload = {
+      fullName,
+      email,
+      phoneNumber: phone,
+    };
+    return http.post("/auth/register-teacher", payload).then((r) => r.data);
+  },
+
+  //  // (tuỳ chọn) cập nhật user cơ bản nếu bạn cần edit trong form
+  // update(userId, data) {
+  //   return http.put(`/users/${userId}`, data).then((r) => r.data);
+  // },
 };

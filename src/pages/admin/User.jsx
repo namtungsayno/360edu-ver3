@@ -11,12 +11,12 @@ import {
 } from "../../components/ui/Dialog";
 import { useToast } from "../../hooks/use-toast";
 import { userService } from "../../services/user/user.service";
-import UserForm from "./user/UserForm";
 import UserViewDialog from "./user/UserViewDialog";
 import useDebounce from "../../hooks/useDebounce";
 
 import UserTable from "./user/UserTable";
 import Pagination from "./user/Pagination";
+import CreateTeacherForm from "./user/CreateTeacherForm";
 
 const ROLE_LABEL = { STUDENT: "Student", TEACHER: "Teacher", PARENT: "Parent" };
 const ROLES = ["ALL", "STUDENT", "TEACHER", "PARENT"];
@@ -223,7 +223,7 @@ export default function UserManagement() {
               {selected ? "Cập nhật người dùng" : "Thêm giáo viên"}
             </DialogTitle>
           </DialogHeader>
-          <UserForm
+          <CreateTeacherForm
             user={selected}
             onClose={() => setOpenForm(false)}
             onSuccess={async () => {

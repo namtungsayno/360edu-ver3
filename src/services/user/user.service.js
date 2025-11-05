@@ -22,22 +22,24 @@ export const userService = {
       id: u.id,
       fullName: u.fullName || u.name || u.username || "",
       email: u.email || "",
-      phone: u.phone || "",
+      phone: u.phoneNumber || "", // ✅ Backend trả về phoneNumber
       role: u.role || normalizeRole(u.roles || []), // "TEACHER" | "STUDENT" | "PARENT"
       active: typeof u.active === "boolean" ? u.active : false, // boolean
       joinDate: u.joinDate || u.createdAt || "", // nếu có
     }));
   },
 
-  async createStudent(payload) {
-    return userApi.create({ ...payload, role: "STUDENT" });
-  },
-
+  // ✅ tạo giáo viên đúng luồng auth (khác với create generic)
   async createTeacher(payload) {
-    return userApi.create({ ...payload, role: "TEACHER" });
+    return userApi.createTeacher(payload);
   },
 
   async updateStatus(userId, active) {
     return userApi.updateStatus(userId, active);
   },
+
+  //  // (tuỳ chọn) dùng khi form edit người dùng
+  // async update(userId, data) {
+  //   return userApi.update(userId, data);
+  // },
 };

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import Card from "../../components/common/Card";
-import { teacherService } from "../../services/teacher.service";
+import { teacherProfileService } from "../../services/teacher/teacher.profile.service";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
@@ -25,7 +25,7 @@ export default function TeacherProfile() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await teacherService.getProfile();
+        const data = await teacherProfileService.getProfile();
         if (data) {
           setForm((prev) => ({
             ...prev,
@@ -103,7 +103,7 @@ export default function TeacherProfile() {
         payload.avatarUrl = base64; // với BE thực tế thì sẽ upload file -> nhận URL
       }
 
-      await teacherService.saveProfile(payload); // thử gọi BE, nếu lỗi dùng localStorage
+      await teacherProfileService.saveProfile(payload); // thử gọi BE, nếu lỗi dùng localStorage
       setSaved(true);
     } catch (err) {
       setError(err?.message || "Không thể lưu. Vui lòng thử lại.");
