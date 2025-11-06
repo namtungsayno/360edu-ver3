@@ -42,6 +42,7 @@ export default function Register() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    //prev là giá trị trước đó của formData
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
     if (banner.message) setBanner({ type: "", message: "" });
@@ -90,7 +91,7 @@ export default function Register() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // không cho reload trang
     setBanner({ type: "", message: "" });
     if (!validate()) return;
 

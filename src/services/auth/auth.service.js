@@ -10,7 +10,7 @@ const normalizeRoles = (roles = []) =>
       .replace(/^ROLE_/, "")
       .toLowerCase()
   );
-
+// Trim tất cả các giá trị string trong object, làm sách, tránh khoảng trắng thừa
 const trimDeep = (obj = {}) =>
   Object.fromEntries(
     Object.entries(obj).map(([k, v]) => [

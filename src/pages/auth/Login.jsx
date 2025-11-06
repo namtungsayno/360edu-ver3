@@ -25,9 +25,15 @@ import { landingPathByRoles } from "../../utils/auth-landing";
 import { authService } from "../../services/auth/auth.service";
 export default function Login() {
   const { onNavigate } = useOutletContext();
+
   const { login } = useAuth();
+
+  //useNavigate để chuyển hướng sau khi đăng nhập thành công
   const nav = useNavigate();
+  //useLocation để lấy thông tin(URL) hiện tại
   const loc = useLocation();
+
+  //Lấy state từ location hiện tại ( trang login ) nếu có state.from thì lấy pathname nếu không thì để undefined
   const from = loc.state?.from?.pathname;
 
   const [formData, setFormData] = useState({
@@ -38,6 +44,7 @@ export default function Login() {
   const [, setSubmitting] = useState(false);
   const [, setErr] = useState("");
 
+  // Xử lý thay đổi input
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -50,9 +57,13 @@ export default function Login() {
     e.preventDefault();
     setErr("");
     setSubmitting(true);
+
     try {
+      // await xử lý bất đồng bộ đăng nhập. await đợi đăng nhập xong mới chạy tiếp.
       const me = await login(formData);
       const to = from || landingPathByRoles(me.roles); // me.roles = ["Admin", "..."]
+
+      //sử dụng nav... để chuyển sang trang đích sau khi login
       nav(to, { replace: true });
     } catch (ex) {
       setErr(ex.displayMessage || "Đăng nhập thất bại");
