@@ -9,7 +9,7 @@ export default function ClassroomForm({ initialData, onClose }) {
   const [formData, setFormData] = useState(
     initialData || { name: "", capacity: "" }
   );
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false); // trạng thái hiển thị mặc định "lưu"
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,6 +21,7 @@ export default function ClassroomForm({ initialData, onClose }) {
     setSaving(true);
     try {
       if (initialData) {
+        // await và async để chờ kết quả trả về. Bất đồng bộ. Sau khi hoàn thành mới chạy tiếp
         await classroomService.update(initialData.id, formData);
         toast?.success?.("Cập nhật thành công!");
       } else {

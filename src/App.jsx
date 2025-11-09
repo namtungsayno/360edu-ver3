@@ -5,10 +5,27 @@
 // Quyết định hệ thống routing (điều hướng trang) nào sẽ được dùng.
 // Chứa <AppRouter />.
 
+import { useEffect } from "react";
 import AppRouter from "./router";
+import { ToastContainer } from "./components/ui/Toast";
+import { useNotification } from "./context/NotificationContext";
+import { setToastInstance } from "./hooks/use-toast";
 
 function App() {
-  return <AppRouter />;
+  const { toasts, removeToast, success, error, warning, info } =
+    useNotification();
+
+  // Set global toast instance để có thể sử dụng toast.success() ở bất kỳ đâu
+  useEffect(() => {
+    setToastInstance({ success, error, warning, info });
+  }, [success, error, warning, info]);
+
+  return (
+    <>
+      <AppRouter />
+      <ToastContainer toasts={toasts} onClose={removeToast} />
+    </>
+  );
 }
 
 export default App;

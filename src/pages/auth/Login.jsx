@@ -23,11 +23,19 @@ import Logo from "../../components/common/Logo";
 import { useAuth } from "../../hooks/useAuth";
 import { landingPathByRoles } from "../../utils/auth-landing";
 import { authService } from "../../services/auth/auth.service";
+import { useToast } from "../../hooks/use-toast";
+
 export default function Login() {
   const { onNavigate } = useOutletContext();
   const { login } = useAuth();
+  const { success, error } = useToast();
+
+  //useNavigate để chuyển hướng sau khi đăng nhập thành công
   const nav = useNavigate();
+  //useLocation để lấy thông tin(URL) hiện tại
   const loc = useLocation();
+
+  //Lấy state từ location hiện tại ( trang login ) nếu có state.from thì lấy pathname nếu không thì để undefined
   const from = loc.state?.from?.pathname;
 
   const [formData, setFormData] = useState({
@@ -35,9 +43,9 @@ export default function Login() {
     password: "",
     remember: true,
   });
-  const [, setSubmitting] = useState(false);
-  const [, setErr] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
+  // Xử lý thay đổi input
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -48,14 +56,21 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErr("");
     setSubmitting(true);
+
     try {
+      // await xử lý bất đồng bộ đăng nhập. await đợi đăng nhập xong mới chạy tiếp.
       const me = await login(formData);
+      success("Đăng nhập thành công! Chào mừng bạn trở lại 👋");
+
       const to = from || landingPathByRoles(me.roles); // me.roles = ["Admin", "..."]
-      nav(to, { replace: true });
+
+      // Delay một chút để user thấy toast trước khi chuyển trang
+      setTimeout(() => {
+        nav(to, { replace: true });
+      }, 500);
     } catch (ex) {
-      setErr(ex.displayMessage || "Đăng nhập thất bại");
+      error(ex.displayMessage || "Tên đăng nhập hoặc mật khẩu không chính xác");
     } finally {
       setSubmitting(false);
     }
@@ -149,9 +164,10 @@ export default function Login() {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 shadow-lg hover:shadow-xl transition-all duration-300"
+              disabled={submitting}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Đăng nhập
+              {submitting ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
 
             <div className="my-5 flex items-center">

@@ -51,6 +51,10 @@ import NewsList from "../pages/admin/news/NewsList";
 import CreateNews from "../pages/admin/news/CreateNews";
 import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 
+// tuấn test
+// FIXED: Import các component cho Class Management (Quản lý lớp học)
+import CreateClass from "../pages/admin/class/ClassManagement.jsx";
+
 // AUTH PAGES - Các trang đăng nhập/đăng ký
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
@@ -94,6 +98,9 @@ function AppRouter() {
             <Route path="news" element={<NewsList />} />
             <Route path="news/create" element={<CreateNews />} />
             <Route path="classrooms" element={<ClassroomList />} />
+            {/* Tuấn test */}
+            {/* FIXED: Thêm route cho Class Management - Quản lý lớp học */}
+            <Route path="classes" element={<CreateClass />} />
             <Route path="subject" element={<SubjectManagement />} />
             <Route
               path="subject/create"

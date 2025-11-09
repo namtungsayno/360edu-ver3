@@ -1,69 +1,3 @@
-// /**
-//  * Simple Dialog (Modal) Component — có hiệu ứng fadeIn/fadeOut + slide-up
-//  * Không cần Radix, chỉ React + Tailwind
-//  */
-
-// import React, { useEffect, useState } from "react";
-
-// export function Dialog({ open, onOpenChange, children }) {
-//   const [visible, setVisible] = useState(open);
-
-//   // Khi open = false thì delay 200ms để chạy animation fadeOut
-//   useEffect(() => {
-//     if (open) setVisible(true);
-//     else {
-//       const timer = setTimeout(() => setVisible(false), 200);
-//       return () => clearTimeout(timer);
-//     }
-//   }, [open]);
-
-//   if (!visible) return null;
-
-//   return (
-//     <div
-//       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm
-//         transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`}
-//       onClick={() => onOpenChange(false)}
-//     >
-//       <div
-//         className={`bg-gray-800 text-white rounded-xl shadow-xl border border-gray-700 p-6 w-[90%] max-w-md relative
-//           transform transition-all duration-300
-//           ${
-//             open
-//               ? "opacity-100 translate-y-0 scale-100"
-//               : "opacity-0 translate-y-4 scale-95"
-//           }`}
-//         onClick={(e) => e.stopPropagation()}
-//       >
-//         {children}
-//       </div>
-//     </div>
-//   );
-// }
-
-// export function DialogHeader({ children }) {
-//   return <div className="mb-4">{children}</div>;
-// }
-
-// export function DialogTitle({ children }) {
-//   return <h3 className="text-lg font-semibold text-yellow-400">{children}</h3>;
-// }
-
-// export function DialogContent({ children }) {
-//   return <div className="mt-2">{children}</div>;
-// }
-
-// export function DialogFooter({ children }) {
-//   return <div className="mt-4 flex justify-end gap-2">{children}</div>;
-// }
-/**
- * Simple Dialog (Modal) — Light by default
- * - giữ fadeIn/fadeOut + slide-up
- * - thêm variant: "light" | "dark" (mặc định: light)
- * - thêm size: "sm" | "md" | "lg"
- * - đóng khi bấm overlay hoặc ESC
- */
-
 import React, { useEffect, useState } from "react";
 
 function cn(...a) {
@@ -97,8 +31,20 @@ export function Dialog({
 
   if (!visible) return null;
 
+  // ✅ Support more sizes: sm | md | lg | xl | full
   const sizeCls =
-    size === "sm" ? "max-w-sm" : size === "lg" ? "max-w-2xl" : "max-w-md";
+    size === "sm"
+      ? "max-w-sm"
+      : size === "lg"
+      ? "max-w-2xl"
+      : size === "xl"
+      ? "max-w-6xl"
+      : size === "full"
+      ? "max-w-[95vw]"
+      : "max-w-md"; // default md
+
+  // Base width: use 90% for normal sizes, 95vw for full-width
+  const widthCls = size === "full" ? "w-[95vw]" : "w-[90%]";
 
   const lightCls = "bg-white text-gray-900 border border-gray-200 shadow-xl";
   const darkCls = "bg-gray-900 text-white border border-gray-700 shadow-2xl";
@@ -117,7 +63,8 @@ export function Dialog({
     >
       <div
         className={cn(
-          "rounded-xl p-6 w-[90%]",
+          "rounded-xl p-6",
+          widthCls,
           sizeCls,
           variant === "dark" ? darkCls : lightCls,
           "relative transform transition-all duration-300",

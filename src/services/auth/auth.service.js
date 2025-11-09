@@ -10,7 +10,7 @@ const normalizeRoles = (roles = []) =>
       .replace(/^ROLE_/, "")
       .toLowerCase()
   );
-
+// Trim tất cả các giá trị string trong object, làm sách, tránh khoảng trắng thừa
 const trimDeep = (obj = {}) =>
   Object.fromEntries(
     Object.entries(obj).map(([k, v]) => [
@@ -56,6 +56,7 @@ export const authService = {
     //   return mockUser;
     // }
 
+    // eslint-disable-next-line no-useless-catch
     try {
       const me = await authApi.login({ username: trimmedUsername, password });
       me.roles = normalizeRoles(me.roles);
@@ -70,7 +71,7 @@ export const authService = {
 
   async logout() {
     await authApi.logout();
-    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.clear();
   },
 
   async register(data) {
