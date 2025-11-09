@@ -45,7 +45,16 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
   const [semesters, setSemesters] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
 
-  const [weekStart] = useState(new Date());
+  // Start-of-week (Monday) to align headers T2..CN with actual dates
+  const [weekStart] = useState(() => {
+    const now = new Date();
+    const js = now.getDay(); // 0=Sun..6=Sat
+    const diff = js === 0 ? -6 : 1 - js; // move to Monday
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  });
   const [teacherBusy, setTeacherBusy] = useState([]);
   const [roomBusy, setRoomBusy] = useState([]);
   const [pickedSlots, setPickedSlots] = useState([]);
@@ -286,9 +295,8 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
     pickedSlots.forEach((slot) => {
       const slotDate = new Date(slot.isoStart);
       const jsDay = slotDate.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-
-      // Convert JS day (0-6) to business convention (2-8): Mon=2, Tue=3, ..., Sun=8
-      const dayOfWeek = jsDay === 0 ? 8 : jsDay + 1;
+      // ISO: 1=Monday, ..., 7=Sunday
+      const dayOfWeek = jsDay === 0 ? 7 : jsDay;
 
       // Find matching timeSlot by comparing start time
       const slotTimeStr = slotDate.toTimeString().substring(0, 5); // "HH:mm"

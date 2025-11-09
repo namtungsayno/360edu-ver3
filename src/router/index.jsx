@@ -53,7 +53,7 @@ import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 
 // tuấn test
 // FIXED: Import các component cho Class Management (Quản lý lớp học)
-import CreateClass from "../pages/admin/class/CreateClass.jsx";
+import CreateClass from "../pages/admin/class/ClassManagement.jsx";
 
 // AUTH PAGES - Các trang đăng nhập/đăng ký
 import Login from "../pages/auth/Login";

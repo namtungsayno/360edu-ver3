@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { dayLabelVi } from "../../../helper/formatters";
 import { Button } from "../../../components/ui/Button";
 import CreateOnlineClassModal from "./CreateOnlineClassModal";
 import CreateOfflineClassModal from "./CreateOfflineClassModal";
@@ -167,7 +168,7 @@ export default function CreateClassPage() {
                     ? c.schedule
                         .map(
                           (s) =>
-                            `Thứ ${s.dayOfWeek} - ${s.startTime?.slice(
+                            `${dayLabelVi(s.dayOfWeek)} - ${s.startTime?.slice(
                               0,
                               5
                             )}-${s.endTime?.slice(0, 5)}`

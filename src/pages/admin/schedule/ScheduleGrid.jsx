@@ -63,10 +63,11 @@ export default function ScheduleGrid({
       if (!b?.start) return;
       const d = new Date(b.start);
       const jsDay = d.getDay(); // 0..6 (Sun..Sat)
-      const bizDay = jsDay === 0 ? 8 : jsDay + 1; // 2..8
+      // ISO day 1..7 (Mon..Sun)
+      const isoDay = jsDay === 0 ? 7 : jsDay;
       const hhmm = String(b.start).substring(11, 16);
       const ts = timeSlots.find((t) => t.startTime === hhmm);
-      if (ts) keys.add(`${bizDay}-${ts.id}`);
+      if (ts) keys.add(`${isoDay}-${ts.id}`);
     });
     if (import.meta?.env?.MODE !== "production") {
       console.log("[GRID] busyKeysTeacher:", Array.from(keys));
@@ -87,10 +88,10 @@ export default function ScheduleGrid({
       if (!b?.start) return;
       const d = new Date(b.start);
       const jsDay = d.getDay();
-      const bizDay = jsDay === 0 ? 8 : jsDay + 1;
+      const isoDay = jsDay === 0 ? 7 : jsDay;
       const hhmm = String(b.start).substring(11, 16);
       const ts = timeSlots.find((t) => t.startTime === hhmm);
-      if (ts) keys.add(`${bizDay}-${ts.id}`);
+      if (ts) keys.add(`${isoDay}-${ts.id}`);
     });
     if (import.meta?.env?.MODE !== "production") {
       console.log("[GRID] busyKeysRoom:", Array.from(keys));
@@ -202,11 +203,9 @@ export default function ScheduleGrid({
                 const day = addDays(weekStart, idx);
                 const start = combine(day, slot.start);
                 const end = combine(day, slot.end);
-                const bizDayForColumn = idx + 2; // T2 starts at 2, ... CN=8
-
-                // Kiểm tra slot có bị bận không
-                // Prefer weekly pattern to reflect repeating schedules across semester
-                const patternKey = `${bizDayForColumn}-${slot.id}`;
+                // ISO: 1=Mon, ..., 7=Sun; idx=0 (T2/Mon), idx=6 (CN/Sun)
+                const isoDay = idx === 6 ? 7 : idx + 1;
+                const patternKey = `${isoDay}-${slot.id}`;
                 const busyTeacher =
                   busyKeysTeacher.has(patternKey) ||
                   (teacherBusy || []).some((b) =>
@@ -267,7 +266,7 @@ export default function ScheduleGrid({
                       onToggle?.({
                         isoStart: start,
                         isoEnd: end,
-                        dow: idx + 1,
+                        dow: isoDay,
                         startHHMM: slot.start,
                         endHHMM: slot.end,
                       })
