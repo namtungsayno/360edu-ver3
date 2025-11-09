@@ -1,25 +1,64 @@
+/**
+ * USE TOAST HOOK
+ *
+ * Hook wrapper để sử dụng toast notification dễ dàng hơn
+ * Re-export từ NotificationContext
+ *
+ * Cách dùng:
+ * const { success, error, warning, info } = useToast();
+ *
+ * success("Đã tạo thành công!");
+ * error("Có lỗi xảy ra!");
+ * warning("Vui lòng kiểm tra lại!");
+ * info("Thông tin quan trọng");
+ */
+
+import { useNotification } from "../context/NotificationContext";
+
 export function useToast() {
-  const success = (msg) => {
-    console.log("✅", msg);
-    alert(msg);
-  };
+  const notification = useNotification();
 
-  const error = (msg) => {
-    console.error("❌", msg);
-    alert(msg);
+  return {
+    success: notification.success,
+    error: notification.error,
+    warning: notification.warning,
+    info: notification.info,
+    clearAll: notification.clearToasts,
   };
-
-  const info = (msg) => {
-    console.log("ℹ️", msg);
-    alert(msg);
-  };
-
-  return { success, error, info };
 }
 
-// ✅ Thêm export này nếu bạn muốn import { toast } trực tiếp
+// Export singleton toast object để có thể sử dụng trực tiếp
+// import { toast } from '@/hooks/use-toast'
+// toast.success("Done!")
+let _notificationInstance = null;
+
+export function setToastInstance(instance) {
+  _notificationInstance = instance;
+}
+
 export const toast = {
-  success: (msg) => alert("✅ " + msg),
-  error: (msg) => alert("❌ " + msg),
-  info: (msg) => alert("ℹ️ " + msg),
+  success: (message, title) => {
+    if (_notificationInstance) {
+      return _notificationInstance.success(message, title);
+    }
+    console.warn("Toast not initialized");
+  },
+  error: (message, title) => {
+    if (_notificationInstance) {
+      return _notificationInstance.error(message, title);
+    }
+    console.warn("Toast not initialized");
+  },
+  warning: (message, title) => {
+    if (_notificationInstance) {
+      return _notificationInstance.warning(message, title);
+    }
+    console.warn("Toast not initialized");
+  },
+  info: (message, title) => {
+    if (_notificationInstance) {
+      return _notificationInstance.info(message, title);
+    }
+    console.warn("Toast not initialized");
+  },
 };
