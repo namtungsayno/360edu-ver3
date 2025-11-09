@@ -20,12 +20,13 @@ export const userApi = {
   },
 
   // ✅ Tạo giáo viên đúng endpoint BE /api/auth/register-teacher
-  // Lưu ý: BE nhận "phoneNumber"
-  createTeacher({ fullName, email, phone }) {
+  // Lưu ý: BE nhận "phoneNumber" và bắt buộc "subjectId"
+  createTeacher({ fullName, email, phone, subjectId }) {
     const payload = {
       fullName,
       email,
       phoneNumber: phone,
+      subjectId,
     };
     return http.post("/auth/register-teacher", payload).then((r) => r.data);
   },

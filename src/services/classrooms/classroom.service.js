@@ -28,4 +28,29 @@ export const classroomService = {
   async disable(id) {
     return classroomApi.disable(id);
   },
+
+  /**
+   * ✅ THÊM MỚI: Tìm kiếm phòng học theo keyword và type
+   * Wrapper cho classroomApi.search() với business logic nếu cần
+   *
+   * @param {string} keyword - Từ khóa tìm kiếm
+   * @param {string} type - Loại phòng: "OFFLINE" hoặc "ONLINE"
+   * @returns {Promise<Array>} - Danh sách phòng học
+   */
+  async search(keyword = "", type = "OFFLINE") {
+    return classroomApi.search(keyword, type);
+  },
+
+  /**
+   * ✅ THÊM MỚI: Lấy thông tin lịch rảnh/bận của phòng học
+   * Wrapper cho classroomApi.freeBusy() với business logic nếu cần
+   *
+   * @param {number|string} id - ID của phòng học
+   * @param {string} fromISO - Thời gian bắt đầu (ISO format)
+   * @param {string} toISO - Thời gian kết thúc (ISO format)
+   * @returns {Promise<Object>} - Thông tin lịch rảnh/bận
+   */
+  async getFreeBusy(id, fromISO, toISO) {
+    return classroomApi.freeBusy(id, fromISO, toISO);
+  },
 };
