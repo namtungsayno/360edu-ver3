@@ -55,8 +55,9 @@ export const Switch = React.forwardRef(function Switch(
       }}
       className={cn(
         "inline-flex h-[22px] w-[42px] items-center rounded-full transition-colors",
-        value ? "bg-gray-900" : "bg-gray-300",
-        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900",
+        value ? "bg-green-600" : "bg-red-500",
+        "focus:outline-none focus:ring-2 focus:ring-offset-2",
+        value ? "focus:ring-green-600" : "focus:ring-red-500",
         "disabled:opacity-60 disabled:cursor-not-allowed",
         className
       )}

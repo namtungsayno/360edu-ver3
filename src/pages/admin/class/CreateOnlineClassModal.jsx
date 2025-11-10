@@ -19,14 +19,13 @@ import {
 import { Loader2, CalendarCheck2, Users, Link2 } from "lucide-react";
 
 import ScheduleGrid from "../schedule/ScheduleGrid";
-import StudentPicker from "./StudentPicker";
 
 import { classService } from "../../../services/class/class.service";
 import { subjectService } from "../../../services/subject/subject.service";
-import { userService } from "../../../services/user/user.service";
-import { teacherService } from "../../../services/teacher.attendence/teacher.attendence.service";
+import { teacherService } from "../../../services/teacher/teacher.service";
 import { semesterService } from "../../../services/semester/semester.service";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
+import { useToast } from "../../../hooks/use-toast";
 
 export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
   const [className, setClassName] = useState("");
@@ -42,13 +41,22 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
 
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [students, setStudents] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
 
-  const [weekStart] = useState(new Date());
+  // Start-of-week (Monday) to align headers T2..CN with actual dates
+  const [weekStart] = useState(() => {
+    const now = new Date();
+    const js = now.getDay(); // 0=Sun..6=Sat
+    const diff = js === 0 ? -6 : 1 - js; // move to Monday
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  });
   const [teacherBusy, setTeacherBusy] = useState([]);
   const [pickedSlots, setPickedSlots] = useState([]);
+  const { error, success } = useToast();
 
   // Derived state from selected semester
   const selectedSemester = useMemo(
@@ -59,12 +67,22 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
   useEffect(() => {
     if (open) {
       loadSubjects();
-      loadTeachers();
       loadSemesters();
       loadTimeSlots();
       resetForm();
     }
   }, [open]);
+
+  // Reload teachers when subject changes
+  useEffect(() => {
+    if (open && subjectId) {
+      loadTeachers();
+      setTeacherId("");
+      setTeacherBusy([]);
+    }
+    // loadTeachers defined stable (no deps) so safe to ignore lint
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjectId, open]);
 
   async function loadSubjects() {
     try {
@@ -77,11 +95,13 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
 
   async function loadTeachers() {
     try {
-      const allUsers = await userService.list();
-      const teacherList = allUsers.filter((u) => u.role === "TEACHER");
-      setTeachers(teacherList);
+      // Load teachers filtered by selected subject
+      // If no subject selected, pass null to get all teachers
+      const subjectIdParam = subjectId ? parseInt(subjectId) : null;
+      const teacherList = await teacherService.list(subjectIdParam);
+      setTeachers(Array.isArray(teacherList) ? teacherList : []);
     } catch (e) {
-      console.error(e);
+      console.error("[ERROR] Failed to load teachers:", e);
       setTeachers([]);
     }
   }
@@ -107,16 +127,30 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
   }
 
   const loadTeacherBusy = React.useCallback(async () => {
-    if (!teacherId || !selectedSemester) return;
+    if (!teacherId || !selectedSemester) {
+      return;
+    }
     try {
+      const fromDate = new Date(selectedSemester.startDate).toISOString();
+      const toDate = new Date(selectedSemester.endDate).toISOString();
+
+      console.log("🔍 Loading teacher busy slots...", {
+        teacherId,
+        fromDate,
+        toDate,
+      });
+
       const data = await teacherService.getFreeBusy(
         teacherId,
-        new Date(selectedSemester.startDate).toISOString(),
-        new Date(selectedSemester.endDate).toISOString()
+        fromDate,
+        toDate
       );
+
+      console.log("📅 Teacher busy slots received:", data);
       setTeacherBusy(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
+      setTeacherBusy([]);
     }
   }, [teacherId, selectedSemester]);
 
@@ -135,13 +169,6 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
           )
         : [...prev, slot];
     });
-  }
-
-  function addStudent(s) {
-    if (!students.some((x) => x.id === s.id)) setStudents((p) => [...p, s]);
-  }
-  function removeStudent(id) {
-    setStudents((p) => p.filter((s) => s.id !== id));
   }
 
   function isValidUrl(url) {
@@ -189,7 +216,6 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
     setSemesterId("");
     setTotalSessions("");
     setDesc("");
-    setStudents([]);
     setPickedSlots([]);
     setTeacherBusy([]);
   }
@@ -229,7 +255,35 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
       const schedules = mapSlotsToSchedule();
 
       if (schedules.length === 0) {
-        alert("Không thể xác định lịch học. Vui lòng chọn lại!");
+        error("Không thể xác định lịch học. Vui lòng chọn lại slot!");
+        setSubmitting(false);
+        return;
+      }
+
+      // Validate active states
+      const subj = subjects.find((s) => String(s.id) === String(subjectId));
+      if (!subj) {
+        error("Không tìm thấy môn học được chọn");
+        setSubmitting(false);
+        return;
+      }
+      if (subj.status !== "AVAILABLE") {
+        error("Môn học đang không khả dụng");
+        setSubmitting(false);
+        return;
+      }
+
+      const teacher = teachers.find(
+        (t) => String(t.userId) === String(teacherId)
+      );
+
+      if (!teacher) {
+        error(`Không tìm thấy giáo viên với ID ${teacherId}`);
+        setSubmitting(false);
+        return;
+      }
+      if (teacher.active === false) {
+        error("Giáo viên đang không hoạt động hoặc bị khóa");
         setSubmitting(false);
         return;
       }
@@ -240,21 +294,37 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
         subjectId: parseInt(subjectId),
         teacherId: parseInt(teacherId),
         roomId: null,
-        capacity: parseInt(capacity),
+        maxStudents: parseInt(capacity),
         semesterId: parseInt(semesterId),
         totalSessions: parseInt(totalSessions),
         description: desc,
         meetingLink: meetingLink.trim(),
-        schedules: schedules,
+        schedule: schedules,
       };
 
       await classService.create(payload);
+      success("Tạo lớp online thành công");
       onCreated?.();
       onClose?.();
       resetForm();
     } catch (e) {
       console.error("Create online class error:", e);
-      alert("Không thể tạo lớp online. Vui lòng thử lại!");
+
+      // ✅ Hiển thị lỗi chi tiết từ backend
+      let errorMessage = "Không thể tạo lớp online";
+
+      if (e.response?.data?.message) {
+        // Backend trả về message cụ thể
+        errorMessage = e.response.data.message;
+      } else if (e.response?.data?.error) {
+        // Hoặc trong field error
+        errorMessage = e.response.data.error;
+      } else if (e.message) {
+        // Hoặc lỗi từ axios/network
+        errorMessage = `Lỗi: ${e.message}`;
+      }
+
+      error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -443,11 +513,11 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
                         </div>
                       ) : (
                         teachers.map((t) => (
-                          <SelectItem key={t.id} value={String(t.id)}>
+                          <SelectItem key={t.userId} value={String(t.userId)}>
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{t.fullName}</span>
                               <span className="text-gray-500 text-xs">
-                                ({t.email || `ID: ${t.id}`})
+                                ({t.email || `ID: ${t.userId}`})
                               </span>
                               {!t.active && (
                                 <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
@@ -472,25 +542,12 @@ export default function CreateOnlineClassModal({ open, onClose, onCreated }) {
               </h3>
               <ScheduleGrid
                 weekStart={weekStart}
+                timeSlots={timeSlots}
                 teacherBusy={teacherBusy}
                 roomBusy={[]}
                 selected={pickedSlots}
                 onToggle={toggleSlot}
-                disabled={!teacherId}
-              />
-            </div>
-
-            {/* Học sinh */}
-            <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-3 text-gray-900 flex items-center gap-2">
-                <div className="w-1 h-6 bg-indigo-600 rounded"></div>
-                Danh sách học sinh
-              </h3>
-              <StudentPicker
-                value={students}
-                onAdd={addStudent}
-                onRemove={removeStudent}
-                lookupApi={(code) => userService.lookupStudentByCode(code)}
+                disabled={!teacherId || !semesterId}
               />
             </div>
           </div>

@@ -17,10 +17,7 @@ export const userService = {
       ? rawData.content
       : rawData || [];
 
-    // 🔍 DEBUG: Log để xem backend trả về field gì
-    if (raw.length > 0) {
-      console.log("🔍 Backend response sample:", raw[0]);
-    }
+    // (đã bỏ debug log)
 
     // Chuẩn hoá shape cho UI
     return raw.map((u) => ({
@@ -33,6 +30,7 @@ export const userService = {
       role: u.role || normalizeRole(u.roles || []),
       active: typeof u.active === "boolean" ? u.active : false,
       joinDate: u.joinDate || u.createdAt || u.created_at || "",
+      // classCount không còn dùng ở danh sách (realtime check khi toggle)
     }));
   },
 

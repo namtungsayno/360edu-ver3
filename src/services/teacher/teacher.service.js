@@ -24,4 +24,11 @@ export const teacherService = {
   async getFreeBusy(userId, from, to) {
     return await teacherApi.getFreeBusy(userId, from, to);
   },
+
+  /**
+   * Get a teacher by userId (used to verify classCount before disabling)
+   */
+  async getByUserId(userId) {
+    return await teacherApi.getByUserId(userId);
+  },
 };

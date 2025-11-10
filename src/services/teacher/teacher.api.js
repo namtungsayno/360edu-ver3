@@ -29,4 +29,11 @@ export const teacherApi = {
       })
       .then((r) => r.data);
   },
+
+  /**
+   * Get a teacher by associated userId (includes classCount)
+   */
+  getByUserId(userId) {
+    return http.get(`/teachers/by-user/${userId}`).then((r) => r.data);
+  },
 };

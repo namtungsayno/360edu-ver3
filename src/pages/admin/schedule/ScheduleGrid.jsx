@@ -69,9 +69,6 @@ export default function ScheduleGrid({
       const ts = timeSlots.find((t) => t.startTime === hhmm);
       if (ts) keys.add(`${isoDay}-${ts.id}`);
     });
-    if (import.meta?.env?.MODE !== "production") {
-      console.log("[GRID] busyKeysTeacher:", Array.from(keys));
-    }
     return keys;
   }, [teacherBusy, timeSlots]);
 
@@ -93,9 +90,6 @@ export default function ScheduleGrid({
       const ts = timeSlots.find((t) => t.startTime === hhmm);
       if (ts) keys.add(`${isoDay}-${ts.id}`);
     });
-    if (import.meta?.env?.MODE !== "production") {
-      console.log("[GRID] busyKeysRoom:", Array.from(keys));
-    }
     return keys;
   }, [roomBusy, timeSlots]);
 
@@ -142,22 +136,6 @@ export default function ScheduleGrid({
   return (
     <div className="overflow-x-auto">
       <div className="inline-block min-w-full">
-        {import.meta?.env?.MODE !== "production" && (
-          <div className="hidden">
-            {/* Debug snapshot for F12 */}
-            {console.log("[GRID] timeSlots:", displaySlots)}
-            {console.log(
-              "[GRID] teacherBusy count:",
-              teacherBusy?.length,
-              teacherBusy?.slice?.(0, 3)
-            )}
-            {console.log(
-              "[GRID] roomBusy count:",
-              roomBusy?.length,
-              roomBusy?.slice?.(0, 3)
-            )}
-          </div>
-        )}
         {/* FIXED: Header ngày trong tuần với style đẹp hơn */}
         <div
           className="grid gap-0 bg-white rounded-lg shadow-sm overflow-hidden border"
@@ -217,17 +195,6 @@ export default function ScheduleGrid({
                     isOverlapping(start, end, b.start, b.end)
                   );
                 const busy = busyTeacher || busyRoom;
-
-                if (busy && import.meta?.env?.MODE !== "production") {
-                  console.log("[GRID] Busy cell:", {
-                    day: idx + 2,
-                    start,
-                    end,
-                    slotId: slot.id,
-                    busyTeacher,
-                    busyRoom,
-                  });
-                }
 
                 // Kiểm tra slot đã được chọn chưa
                 const picked = (selected || []).some(

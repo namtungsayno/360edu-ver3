@@ -1,5 +1,4 @@
 import { Switch } from "../../../components/ui/Switch";
-import { Button } from "../../../components/ui/Button";
 import {
   Table,
   TableBody,
@@ -8,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../../components/ui/Table";
-import { Eye, Edit } from "lucide-react";
+// no action icons needed
 
 /**
  * Table component for displaying subjects (similar to UserTable)
@@ -22,9 +21,8 @@ import { Eye, Edit } from "lucide-react";
 export default function SubjectTable({
   items = [],
   loading,
-  onView,
-  onEdit,
   onToggleStatus,
+  onRowClick,
 }) {
   return (
     <div className="rounded-lg border border-gray-200 overflow-hidden">
@@ -37,7 +35,6 @@ export default function SubjectTable({
             <TableHead>Số khóa học</TableHead>
             <TableHead>Số lớp học</TableHead>
             <TableHead>Trạng thái</TableHead>
-            <TableHead>Thao tác</TableHead>
           </TableRow>
         </TableHeader>
 
@@ -66,7 +63,15 @@ export default function SubjectTable({
 
           {!loading &&
             items.map((subject) => (
-              <TableRow key={subject.id} className="hover:bg-gray-50">
+              <TableRow
+                key={subject.id}
+                className={
+                  onRowClick
+                    ? "hover:bg-indigo-50 cursor-pointer"
+                    : "hover:bg-gray-50"
+                }
+                onClick={() => onRowClick && onRowClick(subject)}
+              >
                 <TableCell className="text-center text-gray-700">
                   {subject.id}
                 </TableCell>
@@ -89,32 +94,22 @@ export default function SubjectTable({
                 <TableCell className="text-gray-700">
                   {subject.numClasses || 0}
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={!!subject.active}
                       onCheckedChange={() => onToggleStatus(subject)}
                     />
-                    <span className="text-sm text-gray-600">
+                    <span
+                      className={
+                        subject.active
+                          ? "text-sm font-medium text-green-700"
+                          : "text-sm font-medium text-red-600"
+                      }
+                    >
                       {subject.active ? "Hoạt động" : "Vô hiệu hóa"}
                     </span>
                   </div>
-                </TableCell>
-                <TableCell className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onView(subject)}
-                  >
-                    <Eye className="w-4 h-4 mr-1" /> Xem
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onEdit(subject)}
-                  >
-                    <Edit className="w-4 h-4 mr-1" /> Sửa
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}

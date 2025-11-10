@@ -6,9 +6,8 @@
  * Tự động tạo ID và quản lý lifecycle của toast
  */
 
-import { createContext, useContext, useState, useCallback } from "react";
-
-const NotificationContext = createContext(null);
+import { useState, useCallback } from "react";
+import { NotificationContext } from "./NotificationContextCore";
 
 export function NotificationProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -77,12 +76,4 @@ export function NotificationProvider({ children }) {
   );
 }
 
-export function useNotification() {
-  const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error(
-      "useNotification phải được sử dụng trong NotificationProvider"
-    );
-  }
-  return context;
-}
+// Hook đã tách sang file hooks/use-notification.js để tránh Fast Refresh cảnh báo.
