@@ -13,7 +13,7 @@
  * info("Thông tin quan trọng");
  */
 
-import { useNotification } from "../context/NotificationContext";
+import { useNotification } from "./use-notification";
 
 export function useToast() {
   const notification = useNotification();

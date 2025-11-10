@@ -1,4 +1,10 @@
-export default function DataTable({ data, columns, loading = false, error = null }) {
+export default function DataTable({
+  data,
+  columns,
+  loading = false,
+  error = null,
+  onRowClick,
+}) {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8 bg-white">
@@ -41,13 +47,23 @@ export default function DataTable({ data, columns, loading = false, error = null
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {data.map((row, index) => (
-            <tr key={index} className="hover:bg-gray-50 transition-colors">
+            <tr
+              key={index}
+              className={`transition-colors ${
+                onRowClick
+                  ? "hover:bg-indigo-50 cursor-pointer"
+                  : "hover:bg-gray-50"
+              }`}
+              onClick={() => onRowClick && onRowClick(row)}
+            >
               {columns.map((column) => (
                 <td
                   key={column.key}
                   className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                 >
-                  {column.render ? column.render(row[column.key], row) : row[column.key]}
+                  {column.render
+                    ? column.render(row[column.key], row)
+                    : row[column.key]}
                 </td>
               ))}
             </tr>

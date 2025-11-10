@@ -8,7 +8,7 @@
 import { useEffect } from "react";
 import AppRouter from "./router";
 import { ToastContainer } from "./components/ui/Toast";
-import { useNotification } from "./context/NotificationContext";
+import { useNotification } from "./hooks/use-notification";
 import { setToastInstance } from "./hooks/use-toast";
 
 function App() {

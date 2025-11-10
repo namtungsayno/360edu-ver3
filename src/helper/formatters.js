@@ -1,9 +1,13 @@
 export const formatCurrency = (amount) =>
   `${amount?.toLocaleString?.() ?? 0} ₫`;
 
-// Convert ISO day (1=Mon..7=Sun) to Vietnamese short label
+// Convert day to Vietnamese label
+// Accepts both JS convention (0=Sun) and ISO convention (1=Mon..7=Sun)
 export const dayLabelVi = (day) => {
   switch (day) {
+    case 0: // Sunday (JS convention)
+    case 7: // Sunday (ISO convention)
+      return "CN";
     case 1:
       return "Thứ 2";
     case 2:
@@ -16,8 +20,6 @@ export const dayLabelVi = (day) => {
       return "Thứ 6";
     case 6:
       return "Thứ 7";
-    case 7:
-      return "CN";
     default:
       return `Thứ ${day}`;
   }

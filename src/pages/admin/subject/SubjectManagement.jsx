@@ -3,12 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen } from "lucide-react";
 import { Input } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/Dialog";
 import { useToast } from "../../../hooks/use-toast";
 import useDebounce from "../../../hooks/useDebounce";
 import {
@@ -18,6 +12,14 @@ import {
 } from "../../../services/subject/subject.api";
 import SubjectTable from "./SubjectTable";
 import SubjectViewDialog from "./SubjectViewDialog";
+// SidePanel removed theo yêu cầu -> chuyển sang Dialog popup
+// import SidePanel from "../../../components/ui/SidePanel";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/Dialog";
 import SubjectPagination from "./SubjectPagination";
 
 const STATUS_FILTERS = ["ALL", "ACTIVE", "INACTIVE"];
@@ -51,47 +53,57 @@ export default function SubjectManagement() {
 
   // Dialogs
   const [selected, setSelected] = useState(null);
-  const [openView, setOpenView] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  // panelMode removed (chỉ dùng view hiện tại). Nếu cần edit inline sau này có thể thêm lại.
 
   // Load data once
   useEffect(() => {
     let mounted = true;
-    
+
     (async () => {
       try {
         setLoading(true);
         const response = await getAllSubjects();
         if (!mounted) return;
-        
+
         const data = response?.data || response || [];
         console.log("📊 Backend response:", data); // Debug: xem dữ liệu thô từ backend
-        
+
         const subjects = data.map((s) => {
           // Xử lý status: hỗ trợ nhiều định dạng từ backend
           let isActive = false;
-          
+
           // Kiểm tra theo thứ tự ưu tiên
           if (s.active !== undefined && s.active !== null) {
             // Nếu active là string
-            if (typeof s.active === 'string') {
+            if (typeof s.active === "string") {
               const activeStr = s.active.toLowerCase();
-              isActive = activeStr === 'available' || activeStr === 'active' || activeStr === 'show' || activeStr === 'true';
+              isActive =
+                activeStr === "available" ||
+                activeStr === "active" ||
+                activeStr === "show" ||
+                activeStr === "true";
             } else {
               // Nếu active là boolean hoặc number
               isActive = Boolean(s.active);
             }
           } else if (s.status !== undefined && s.status !== null) {
             // Fallback sang status field
-            if (typeof s.status === 'string') {
+            if (typeof s.status === "string") {
               const statusStr = s.status.toLowerCase();
-              isActive = statusStr === 'available' || statusStr === 'active' || statusStr === 'show';
+              isActive =
+                statusStr === "available" ||
+                statusStr === "active" ||
+                statusStr === "show";
             } else {
               isActive = Boolean(s.status);
             }
           }
-          
-          console.log(`Subject "${s.name}": active=${s.active}, status=${s.status} => isActive=${isActive}`); // Debug mỗi subject
-          
+
+          console.log(
+            `Subject "${s.name}": active=${s.active}, status=${s.status} => isActive=${isActive}`
+          ); // Debug mỗi subject
+
           return {
             id: s.id ?? s.subjectId,
             code: s.code ?? s.subjectCode ?? s.maMon ?? "",
@@ -110,7 +122,7 @@ export default function SubjectManagement() {
         if (mounted) setLoading(false);
       }
     })();
-    
+
     return () => {
       mounted = false;
     };
@@ -161,6 +173,13 @@ export default function SubjectManagement() {
 
   const handleToggleStatus = async (subject) => {
     try {
+      // Guard: nếu đang được lớp sử dụng thì không cho vô hiệu hóa
+      if (subject.active && subject.numClasses > 0) {
+        error(
+          `Môn học đang được sử dụng bởi ${subject.numClasses} lớp chưa hoàn thành, không thể vô hiệu hóa.`
+        );
+        return;
+      }
       if (subject.active) {
         await disableSubject(subject.id);
       } else {
@@ -172,9 +191,7 @@ export default function SubjectManagement() {
         )
       );
       success(
-        subject.active
-          ? "Đã vô hiệu hóa môn học"
-          : "Đã kích hoạt môn học"
+        subject.active ? "Đã vô hiệu hóa môn học" : "Đã kích hoạt môn học"
       );
     } catch (e) {
       console.error(e);
@@ -233,9 +250,7 @@ export default function SubjectManagement() {
                 setPageForCurrentTab(0);
               }}
             />
-            <Button
-              onClick={() => navigate("/home/admin/subject/create")}
-            >
+            <Button onClick={() => navigate("/home/admin/subject/create")}>
               <BookOpen className="w-4 h-4 mr-2" /> Thêm môn học
             </Button>
           </div>
@@ -245,14 +260,11 @@ export default function SubjectManagement() {
         <SubjectTable
           items={pageItems}
           loading={loading}
-          onView={(s) => {
-            setSelected(s);
-            setOpenView(true);
-          }}
-          onEdit={(s) => {
-            navigate(`/home/admin/subject/${s.id}/edit`);
-          }}
           onToggleStatus={handleToggleStatus}
+          onRowClick={(s) => {
+            setSelected(s);
+            setDetailOpen(true);
+          }}
         />
 
         {/* Pagination */}
@@ -265,13 +277,38 @@ export default function SubjectManagement() {
         />
       </div>
 
-      {/* View Dialog */}
-      <Dialog open={openView} onOpenChange={setOpenView}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Thông tin môn học</DialogTitle>
+            <DialogTitle>
+              {selected
+                ? selected.name || "Thông tin môn học"
+                : "Thông tin môn học"}
+            </DialogTitle>
           </DialogHeader>
-          <SubjectViewDialog subject={selected} />
+          <div className="space-y-4">
+            <SubjectViewDialog subject={selected} />
+            {selected && (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    navigate(`/home/admin/subject/${selected.id}/edit`)
+                  }
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Sửa
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => error("Xóa môn học chưa được hỗ trợ")}
+                >
+                  Xóa
+                </Button>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

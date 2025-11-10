@@ -35,8 +35,8 @@ export default function UserViewDialog({ user }) {
 function Info({ label, value }) {
   return (
     <div>
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-sm text-gray-900">{value}</div>
+      <div className="text-base font-semibold text-gray-900">{label}</div>
+      <div className="text-sm text-gray-700">{value}</div>
     </div>
   );
 }

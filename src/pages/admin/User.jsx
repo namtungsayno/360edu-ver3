@@ -11,7 +11,10 @@ import {
 } from "../../components/ui/Dialog";
 import { useToast } from "../../hooks/use-toast";
 import { userService } from "../../services/user/user.service";
+import { teacherService } from "../../services/teacher/teacher.service";
 import UserViewDialog from "./user/UserViewDialog";
+// SidePanel removed (yêu cầu chuyển sang Modal)
+// import SidePanel from "../../components/ui/SidePanel";
 import useDebounce from "../../hooks/useDebounce";
 
 import UserTable from "./user/UserTable";
@@ -51,8 +54,9 @@ export default function UserManagement() {
 
   // dialogs
   const [selected, setSelected] = useState(null);
-  const [openView, setOpenView] = useState(false);
-  const [openForm, setOpenForm] = useState(false);
+  const [openForm, setOpenForm] = useState(false); // create teacher modal giữ nguyên
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailMode, setDetailMode] = useState("view"); // view | edit
 
   // load data once
   useEffect(() => {
@@ -111,6 +115,19 @@ export default function UserManagement() {
 
   const handleToggleStatus = async (u) => {
     try {
+      // Nếu là giáo viên, luôn fetch realtime classCount để chắc chắn
+      if (u.role === "TEACHER") {
+        const live = await teacherService.getByUserId(u.id);
+        const liveCount = live?.classCount ?? 0;
+        // Chặn vô hiệu hóa nếu còn lớp chưa hoàn thành
+        if (u.active && liveCount > 0) {
+          error(
+            `Giáo viên đang được sử dụng bởi ${liveCount} lớp chưa hoàn thành, không thể vô hiệu hóa.`
+          );
+          return;
+        }
+      }
+
       await userService.updateStatus(u.id, !u.active);
       setAllUsers((list) =>
         list.map((x) => (x.id === u.id ? { ...x, active: !u.active } : x))
@@ -120,7 +137,7 @@ export default function UserManagement() {
       );
     } catch (e) {
       console.error(e);
-      error("Cập nhật trạng thái thất bại");
+      error(e.response?.data?.message || "Cập nhật trạng thái thất bại");
     }
   };
 
@@ -186,15 +203,12 @@ export default function UserManagement() {
         <UserTable
           items={pageItems}
           loading={loading}
-          onView={(u) => {
-            setSelected(u);
-            setOpenView(true);
-          }}
-          onEdit={(u) => {
-            setSelected(u);
-            setOpenForm(true);
-          }}
           onToggleStatus={handleToggleStatus}
+          onRowClick={(u) => {
+            setSelected(u);
+            setDetailMode("view");
+            setDetailOpen(true);
+          }}
         />
 
         {/* Pagination */}
@@ -207,13 +221,64 @@ export default function UserManagement() {
         />
       </div>
 
-      {/* Dialogs */}
-      <Dialog open={openView} onOpenChange={setOpenView}>
-        <DialogContent className="sm:max-w-lg">
+      {/* Modal chi tiết / chỉnh sửa người dùng */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Thông tin người dùng</DialogTitle>
+            <DialogTitle>
+              {detailMode === "edit"
+                ? "Cập nhật người dùng"
+                : selected
+                ? selected.fullName || "Thông tin người dùng"
+                : "Thông tin người dùng"}
+            </DialogTitle>
           </DialogHeader>
-          <UserViewDialog user={selected} />
+          {detailMode === "view" && (
+            <div className="space-y-4">
+              <UserViewDialog user={selected} />
+              {selected && (
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    onClick={() => setDetailMode("edit")}
+                    className="bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    Sửa
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => error("Chức năng xóa chưa được hỗ trợ")}
+                  >
+                    Xóa
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          {detailMode === "edit" && (
+            <CreateTeacherForm
+              user={selected}
+              onClose={() => setDetailOpen(false)}
+              onSuccess={async () => {
+                success("Đã cập nhật người dùng");
+                const arr = await userService.list();
+                setAllUsers(Array.isArray(arr) ? arr : []);
+                setDetailMode("view");
+              }}
+            />
+          )}
+          {detailMode === "edit" && (
+            <div className="flex justify-end mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDetailMode("view")}
+              >
+                Hủy
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

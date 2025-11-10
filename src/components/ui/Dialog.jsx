@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 function cn(...a) {
   return a.filter(Boolean).join(" ");
@@ -29,6 +30,16 @@ export function Dialog({
     return () => window.removeEventListener("keydown", onEsc);
   }, [open, onOpenChange]);
 
+  // Lock body scroll when dialog is open to avoid layout shifts and stray gaps
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
   if (!visible) return null;
 
   // ✅ Support more sizes: sm | md | lg | xl | full
@@ -49,7 +60,7 @@ export function Dialog({
   const lightCls = "bg-white text-gray-900 border border-gray-200 shadow-xl";
   const darkCls = "bg-gray-900 text-white border border-gray-700 shadow-2xl";
 
-  return (
+  const overlay = (
     <div
       role="dialog"
       aria-modal="true"
@@ -73,11 +84,17 @@ export function Dialog({
             : "opacity-0 translate-y-4 scale-95"
         )}
         onClick={(e) => e.stopPropagation()}
+        tabIndex={-1}
+        // Avoid any default focus outline that can appear as a stray border
+        style={{ outline: "none" }}
       >
         {children}
       </div>
     </div>
   );
+
+  // Use a portal so the overlay is not constrained by parent stacking contexts (fixes white strip near header)
+  return createPortal(overlay, document.body);
 }
 
 export function DialogHeader({ children, className = "" }) {

@@ -1,5 +1,5 @@
 // src/pages/admin/classrooms/ClassroomList.jsx
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { classroomService } from "../../../services/classrooms/classroom.service";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
@@ -20,7 +20,15 @@ import {
 import { Switch } from "../../../components/ui/Switch";
 import ClassroomForm from "./RoomForm";
 import { useToast } from "../../../hooks/use-toast";
-import { Edit, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+// SidePanel removed: chuyển detail sang Dialog popup theo yêu cầu
+// import SidePanel from "../../../components/ui/SidePanel";
+import {
+  Dialog as DetailDialog,
+  DialogContent as DetailContent,
+  DialogHeader as DetailHeader,
+  DialogTitle as DetailTitle,
+} from "../../../components/ui/Dialog";
 import useDebounce from "../../../hooks/useDebounce";
 
 const SORTS = {
@@ -41,14 +49,20 @@ export default function ClassroomList() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
-  const [editing, setEditing] = useState(null);
+  const [editing, setEditing] = useState(null); // for form create/edit
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selected, setSelected] = useState(null);
 
   // sort & filter
   const [sortBy, setSortBy] = useState(SORTS.NAME_ASC);
   const [filterBy, setFilterBy] = useState(FILTERS.ALL);
 
   const toast = useToast();
+  const toastRef = useRef(toast);
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
 
   const normalizeRoom = (r) => ({
     ...r,
@@ -84,18 +98,34 @@ export default function ClassroomList() {
       setClassrooms(items.map(normalizeRoom));
       // eslint-disable-next-line no-unused-vars
     } catch (_) {
-      toast?.error?.("Lỗi tải danh sách lớp học");
+      // Tránh đưa toast vào dependency của useCallback/useEffect để không bị loop
+      toastRef.current?.error?.("Lỗi tải danh sách lớp học");
     } finally {
       setLoading(false);
     }
   }, [debouncedSearch]);
 
+  // Quan trọng: chỉ phụ thuộc vào debouncedSearch để tránh re-render vô hạn
   useEffect(() => {
     fetchClassrooms();
-  }, [fetchClassrooms]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
 
   const handleToggleStatus = async (id, nextEnabled) => {
     try {
+      // Find room for guard
+      const room = classrooms.find((c) => c.id === id);
+      if (
+        !nextEnabled &&
+        room &&
+        (room.numClasses || room.classCount || room.soLop) > 0
+      ) {
+        const count = room.numClasses || room.classCount || room.soLop;
+        toast?.error?.(
+          `Phòng đang được sử dụng bởi ${count} lớp chưa hoàn thành, không thể vô hiệu hóa.`
+        );
+        return;
+      }
       if (nextEnabled && classroomService.enable) {
         await classroomService.enable(id);
       } else if (!nextEnabled && classroomService.disable) {
@@ -146,11 +176,8 @@ export default function ClassroomList() {
       list = list.filter((r) => !r.enabled);
     }
 
-    // 2) Sắp xếp: luôn ưu tiên enabled=true lên trước
+    // 2) Sắp xếp: chỉ sort theo sortBy, không ưu tiên enabled nữa
     list.sort((a, b) => {
-      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
-
-      // sort phụ
       const nameA = (a.name ?? "").toString();
       const nameB = (b.name ?? "").toString();
       const capA = Number(a.capacity ?? 0);
@@ -175,6 +202,15 @@ export default function ClassroomList() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header giống SubjectManagement */}
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">
+          Quản lý phòng học
+        </h1>
+        <p className="text-gray-500">
+          Quản lý thông tin các phòng học trong hệ thống
+        </p>
+      </div>
       {/* Thanh điều khiển giống screenshot, có SORT + SEARCH ngắn */}
       <div className="flex items-center justify-between rounded-xl border bg-white p-3 md:p-4">
         {/* Pills filter bên trái */}
@@ -250,7 +286,7 @@ export default function ClassroomList() {
             <TableHead>Tên lớp</TableHead>
             <TableHead align="center">Sức chứa</TableHead>
             <TableHead align="center">Trạng thái</TableHead>
-            <TableHead align="right">Hành động</TableHead>
+            {/* removed action column */}
           </TableRow>
         </TableHeader>
 
@@ -263,39 +299,43 @@ export default function ClassroomList() {
             </TableRow>
           ) : displayedRooms.length ? (
             displayedRooms.map((c) => (
-              <TableRow key={c.id}>
+              <TableRow
+                key={c.id}
+                className="hover:bg-indigo-50 cursor-pointer"
+                onClick={(e) => {
+                  // Nếu click nằm trong vùng có class 'no-row-open' (toggle status) thì không mở detail
+                  if (e.target.closest(".no-row-open")) return;
+                  setSelected(c);
+                  setDetailOpen(true);
+                }}
+              >
                 <TableCell>{c.id}</TableCell>
                 <TableCell>{c.name}</TableCell>
                 <TableCell align="center">{c.capacity}</TableCell>
 
                 <TableCell align="center">
-                  <div className="flex items-center justify-center gap-2">
+                  <div
+                    className="flex items-center justify-center gap-2 no-row-open"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Switch
                       checked={!!c.enabled}
                       onCheckedChange={(v) => handleToggleStatus(c.id, v)}
                       aria-label={`Chuyển trạng thái phòng ${c.name}`}
                     />
-                    <span className="text-sm text-gray-600">
+                    <span
+                      className={
+                        c.enabled
+                          ? "text-sm font-medium text-green-700"
+                          : "text-sm font-medium text-red-600"
+                      }
+                    >
                       {c.enabled ? "Hoạt động" : "Tạm dừng"}
                     </span>
                   </div>
                 </TableCell>
 
-                <TableCell align="right">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label="Sửa"
-                    title="Sửa"
-                    onClick={() => {
-                      setEditing(c);
-                      setIsDialogOpen(true);
-                    }}
-                    className="hover:bg-gray-100"
-                  >
-                    <Edit className="h-5 w-5" />
-                  </Button>
-                </TableCell>
+                {/* removed action cell */}
               </TableRow>
             ))
           ) : (
@@ -325,6 +365,83 @@ export default function ClassroomList() {
           />
         </DialogContent>
       </Dialog>
+      <DetailDialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DetailContent className="sm:max-w-xl">
+          <DetailHeader>
+            <DetailTitle>
+              {selected
+                ? selected.name || "Thông tin phòng học"
+                : "Thông tin phòng học"}
+            </DetailTitle>
+          </DetailHeader>
+          {selected ? (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-base font-semibold text-gray-900">
+                    Mã phòng
+                  </p>
+                  <p className="text-sm text-gray-700">{selected.id}</p>
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-gray-900">
+                    Tên phòng
+                  </p>
+                  <p className="text-sm text-gray-700">{selected.name}</p>
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-gray-900">
+                    Sức chứa
+                  </p>
+                  <p className="text-sm text-gray-700">{selected.capacity}</p>
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-gray-900">
+                    Trạng thái
+                  </p>
+                  <p
+                    className={`text-sm font-medium ${
+                      selected.enabled ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {selected.enabled ? "Hoạt động" : "Tạm dừng"}
+                  </p>
+                </div>
+              </div>
+              <div className="border-t pt-4">
+                <p className="text-base font-semibold text-gray-900 mb-1">
+                  Mô tả
+                </p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {selected.description || "Không có mô tả"}
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setEditing(selected);
+                    setIsDialogOpen(true);
+                    setDetailOpen(false);
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Sửa
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => toast.error("Xóa phòng học chưa được hỗ trợ")}
+                >
+                  Xóa
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-gray-500">Không có dữ liệu</div>
+          )}
+        </DetailContent>
+      </DetailDialog>
     </div>
   );
 }

@@ -26,6 +26,7 @@ import { teacherService } from "../../../services/teacher/teacher.service";
 import { classroomService } from "../../../services/classrooms/classroom.service";
 import { semesterService } from "../../../services/semester/semester.service";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
+import { useToast } from "../../../hooks/use-toast";
 
 export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
   const [className, setClassName] = useState("");
@@ -58,6 +59,7 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
   const [teacherBusy, setTeacherBusy] = useState([]);
   const [roomBusy, setRoomBusy] = useState([]);
   const [pickedSlots, setPickedSlots] = useState([]);
+  const { error, success } = useToast();
 
   // Derived state from selected semester
   const selectedSemester = useMemo(
@@ -73,17 +75,16 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
       loadTimeSlots();
       resetForm();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Reload teachers when subject changes
   useEffect(() => {
     if (open && subjectId) {
       loadTeachers();
-      // Reset teacher selection when subject changes
       setTeacherId("");
       setTeacherBusy([]);
     }
+    // loadTeachers defined stable (no deps) so safe to ignore lint
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subjectId, open]);
 
@@ -98,15 +99,11 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
 
   async function loadTeachers() {
     try {
-      // Load teachers filtered by selected subject
-      // If no subject selected, pass null to get all teachers
       const subjectIdParam = subjectId ? parseInt(subjectId) : null;
-      console.log("[DEBUG] Loading teachers with subjectId:", subjectIdParam);
       const teacherList = await teacherService.list(subjectIdParam);
-      console.log("[DEBUG] Teachers loaded:", teacherList);
       setTeachers(Array.isArray(teacherList) ? teacherList : []);
     } catch (e) {
-      console.error("[ERROR] Failed to load teachers:", e);
+      console.error(e);
       setTeachers([]);
     }
   }
@@ -134,35 +131,26 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
   async function loadTimeSlots() {
     try {
       const data = await timeslotService.list();
-      console.log("[DEBUG] TimeSlots loaded from BE:", data);
       setTimeSlots(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("[ERROR] Failed to load timeSlots:", e);
+      console.error(e);
       setTimeSlots([]);
     }
   }
 
   const loadTeacherBusy = React.useCallback(async () => {
     if (!teacherId || !selectedSemester) {
-      console.log(
-        "[DEBUG] Skipping loadTeacherBusy - teacherId:",
-        teacherId,
-        "selectedSemester:",
-        selectedSemester
-      );
       return;
     }
     try {
       const fromDate = new Date(selectedSemester.startDate).toISOString();
       const toDate = new Date(selectedSemester.endDate).toISOString();
-      console.log(
-        "[DEBUG] Loading teacher busy slots - teacherId:",
+
+      console.log("🔍 Loading teacher busy slots...", {
         teacherId,
-        "from:",
         fromDate,
-        "to:",
-        toDate
-      );
+        toDate,
+      });
 
       const data = await teacherService.getFreeBusy(
         teacherId,
@@ -170,10 +158,10 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
         toDate
       );
 
-      console.log("[DEBUG] Teacher busy slots received:", data);
+      console.log("📅 Teacher busy slots received:", data);
       setTeacherBusy(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("[ERROR] Failed to load teacher busy slots:", e);
+      console.error(e);
       setTeacherBusy([]);
     }
   }, [teacherId, selectedSemester]);
@@ -184,32 +172,17 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
 
   const loadRoomBusy = React.useCallback(async () => {
     if (!roomId || !selectedSemester) {
-      console.log(
-        "[DEBUG] Skipping loadRoomBusy - roomId:",
-        roomId,
-        "selectedSemester:",
-        selectedSemester
-      );
       return;
     }
     try {
       const fromDate = new Date(selectedSemester.startDate).toISOString();
       const toDate = new Date(selectedSemester.endDate).toISOString();
-      console.log(
-        "[DEBUG] Loading room busy slots - roomId:",
-        roomId,
-        "from:",
-        fromDate,
-        "to:",
-        toDate
-      );
 
       const data = await classroomService.getFreeBusy(roomId, fromDate, toDate);
 
-      console.log("[DEBUG] Room busy slots received:", data);
       setRoomBusy(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("[ERROR] Failed to load room busy slots:", e);
+      console.error(e);
       setRoomBusy([]);
     }
   }, [roomId, selectedSemester]);
@@ -289,25 +262,15 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
   function mapSlotsToSchedule() {
     const scheduleMap = new Map();
 
-    console.log("[DEBUG] pickedSlots:", pickedSlots);
-    console.log("[DEBUG] timeSlots from BE:", timeSlots);
-
     pickedSlots.forEach((slot) => {
       const slotDate = new Date(slot.isoStart);
-      const jsDay = slotDate.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
-      // ISO: 1=Monday, ..., 7=Sunday
-      const dayOfWeek = jsDay === 0 ? 7 : jsDay;
+      const dayOfWeek = slotDate.getDay(); // 0=Sunday, 1=Monday, ...
 
       // Find matching timeSlot by comparing start time
       const slotTimeStr = slotDate.toTimeString().substring(0, 5); // "HH:mm"
-      console.log("[DEBUG] Looking for timeSlot with startTime:", slotTimeStr);
-
-      const matchingTimeSlot = timeSlots.find((ts) => {
-        console.log("[DEBUG] Comparing with ts.startTime:", ts.startTime);
-        return ts.startTime === slotTimeStr;
-      });
-
-      console.log("[DEBUG] matchingTimeSlot found:", matchingTimeSlot);
+      const matchingTimeSlot = timeSlots.find(
+        (ts) => ts.startTime === slotTimeStr
+      );
 
       if (matchingTimeSlot) {
         const key = `${dayOfWeek}-${matchingTimeSlot.id}`;
@@ -317,19 +280,10 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
             timeSlotId: matchingTimeSlot.id,
           });
         }
-      } else {
-        console.warn(
-          "[WARN] No matching timeSlot for:",
-          slotTimeStr,
-          "Available timeSlots:",
-          timeSlots
-        );
       }
     });
 
-    const result = Array.from(scheduleMap.values());
-    console.log("[DEBUG] Final schedules mapped:", result);
-    return result;
+    return Array.from(scheduleMap.values());
   }
 
   async function handleSubmit() {
@@ -339,7 +293,29 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
       const schedules = mapSlotsToSchedule();
 
       if (schedules.length === 0) {
-        alert("Không thể xác định lịch học. Vui lòng chọn lại!");
+        error("Không thể xác định lịch học. Vui lòng chọn lại slot!");
+        setSubmitting(false);
+        return;
+      }
+
+      // Validate active states
+      const subj = subjects.find((s) => String(s.id) === String(subjectId));
+      if (!subj || subj.active === false) {
+        error("Môn học đang không hoạt động hoặc bị khóa");
+        setSubmitting(false);
+        return;
+      }
+      const teacher = teachers.find(
+        (t) => String(t.userId || t.id) === String(teacherId)
+      );
+      if (!teacher || teacher.active === false) {
+        error("Giáo viên đang không hoạt động hoặc bị khóa");
+        setSubmitting(false);
+        return;
+      }
+      const room = rooms.find((r) => String(r.id) === String(roomId));
+      if (!room || room.enabled === false) {
+        error("Phòng học đang không hoạt động hoặc bị khóa");
         setSubmitting(false);
         return;
       }
@@ -350,21 +326,36 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
         subjectId: parseInt(subjectId),
         teacherId: parseInt(teacherId),
         roomId: parseInt(roomId),
-        capacity: parseInt(capacity), // auto from room
+        maxStudents: parseInt(capacity), // backend expects maxStudents, not capacity
         semesterId: parseInt(semesterId),
         totalSessions: parseInt(totalSessions),
         description: desc,
-        schedule: schedules, // Changed from 'schedules' to 'schedule' to match backend DTO
+        schedule: schedules, // backend expects 'schedule' not 'schedules'
       };
 
-      console.log("[DEBUG] Final payload before sending:", payload);
       await classService.create(payload);
+      success("Tạo lớp offline thành công");
       onCreated?.();
       onClose?.();
       resetForm();
     } catch (e) {
       console.error("Create offline class error:", e);
-      alert("Không thể tạo lớp offline. Vui lòng thử lại!");
+
+      // ✅ Hiển thị lỗi chi tiết từ backend
+      let errorMessage = "Không thể tạo lớp offline";
+
+      if (e.response?.data?.message) {
+        // Backend trả về message cụ thể
+        errorMessage = e.response.data.message;
+      } else if (e.response?.data?.error) {
+        // Hoặc trong field error
+        errorMessage = e.response.data.error;
+      } else if (e.message) {
+        // Hoặc lỗi từ axios/network
+        errorMessage = `Lỗi: ${e.message}`;
+      }
+
+      error(errorMessage);
     } finally {
       setSubmitting(false);
     }

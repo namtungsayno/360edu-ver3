@@ -1,7 +1,5 @@
 import { Badge } from "../../../components/ui/Badge";
 
-/* eslint-disable react/prop-types */
-
 export default function SubjectViewDialog({ subject }) {
   if (!subject) return <div className="text-gray-500">Không có dữ liệu</div>;
 
@@ -46,8 +44,8 @@ export default function SubjectViewDialog({ subject }) {
 function Info({ label, value }) {
   return (
     <div>
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-sm text-gray-900">{value}</div>
+      <div className="text-base font-semibold text-gray-900">{label}</div>
+      <div className="text-sm text-gray-700">{value}</div>
     </div>
   );
 }

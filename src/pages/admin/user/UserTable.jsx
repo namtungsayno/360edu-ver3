@@ -1,7 +1,6 @@
 // src/pages/admin/user/UserTable.jsx
 import { Badge } from "../../../components/ui/Badge";
 import { Switch } from "../../../components/ui/Switch";
-import { Button } from "../../../components/ui/Button";
 import {
   Table,
   TableBody,
@@ -10,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../../components/ui/Table";
-import { Eye, Edit } from "lucide-react";
+// action icons removed
 
 const ROLE_LABEL = { STUDENT: "Student", TEACHER: "Teacher", PARENT: "Parent" };
 
@@ -19,16 +18,14 @@ const ROLE_LABEL = { STUDENT: "Student", TEACHER: "Teacher", PARENT: "Parent" };
  * Props:
  * - items: array of users (đã được chuẩn bị/paginate ở parent)
  * - loading: boolean
- * - onView(user)
- * - onEdit(user)
+ * - onRowClick(user)
  * - onToggleStatus(user)
  */
 export default function UserTable({
   items = [],
   loading,
-  onView,
-  onEdit,
   onToggleStatus,
+  onRowClick,
 }) {
   return (
     <div className="rounded-lg border border-gray-200 overflow-hidden">
@@ -40,7 +37,7 @@ export default function UserTable({
             <TableHead>Số điện thoại</TableHead>
             <TableHead>Vai trò</TableHead>
             <TableHead>Trạng thái</TableHead>
-            <TableHead>Thao tác</TableHead>
+            {/* Removed action column */}
           </TableRow>
         </TableHeader>
 
@@ -69,7 +66,15 @@ export default function UserTable({
 
           {!loading &&
             items.map((u) => (
-              <TableRow key={u.id} className="hover:bg-gray-50">
+              <TableRow
+                key={u.id}
+                className={
+                  onRowClick
+                    ? "hover:bg-indigo-50 cursor-pointer"
+                    : "hover:bg-gray-50"
+                }
+                onClick={() => onRowClick && onRowClick(u)}
+              >
                 <TableCell className="font-medium">{u.fullName}</TableCell>
                 <TableCell>{u.email}</TableCell>
                 <TableCell>{u.phone}</TableCell>
@@ -86,25 +91,24 @@ export default function UserTable({
                     {ROLE_LABEL[u.role] || u.role}
                   </Badge>
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={!!u.active}
                       onCheckedChange={() => onToggleStatus(u)}
                     />
-                    <span className="text-sm text-gray-600">
+                    <span
+                      className={
+                        u.active
+                          ? "text-sm font-medium text-green-700"
+                          : "text-sm font-medium text-red-600"
+                      }
+                    >
                       {u.active ? "Hoạt động" : "Vô hiệu hóa"}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => onView(u)}>
-                    <Eye className="w-4 h-4 mr-1" /> Xem
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onEdit(u)}>
-                    <Edit className="w-4 h-4 mr-1" /> Sửa
-                  </Button>
-                </TableCell>
+                {/* Row click will handle view/edit in side panel */}
               </TableRow>
             ))}
         </TableBody>
