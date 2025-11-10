@@ -61,6 +61,7 @@ import Register from "../pages/auth/Register";
 import SubjectManagement from "../pages/admin/subject/SubjectManagement.jsx";
 import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagement.jsx";
 import SubjectDetail from "../pages/admin/subject/SubjectDetail.jsx";
+import ScheduleManagement from "../pages/admin/schedule/ScheduleManagement.jsx";
 
 //TEACHER - Các trang danh cho Teacher
 import TeacherProfile from "../pages/teacher/TeacherManagement.jsx";
@@ -107,6 +108,7 @@ function AppRouter() {
               element={<CreateSubjectManagement />}
             />
             <Route path="subject/:id" element={<SubjectDetail />} />
+            <Route path="schedule" element={<ScheduleManagement />} />
           </Route>
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}
