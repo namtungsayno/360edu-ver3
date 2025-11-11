@@ -364,6 +364,22 @@ export default function CreateClassPage() {
                   </div>
                 )}
               </div>
+              {/* Hiển thị Link Meet cho lớp Online */}
+              {selected.online && selected.meetingLink && (
+                <div>
+                  <h4 className="text-base font-semibold text-gray-900">
+                    Link Meeting
+                  </h4>
+                  <a
+                    href={selected.meetingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
+                  >
+                    {selected.meetingLink}
+                  </a>
+                </div>
+              )}
               <div>
                 <h4 className="text-base font-semibold text-gray-900">
                   Lịch học
