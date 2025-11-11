@@ -2,56 +2,66 @@
 // API layer for schedule management
 // Backend endpoints:
 //   GET /api/semesters - Get all semesters
-//   GET /api/slots - Get all time slots
-//   GET /api/classes?semesterId=x - Get classes by semester
-//   GET /api/class-schedules?semesterId=x - Get class schedules by semester
+//   GET /api/timeslots - Get all time slots
+//   GET /api/classes - Get classes (with optional filters)
+//   GET /api/teachers - Get teachers
 
 import { http } from "../http";
 
 export const scheduleApi = {
   /**
    * Fetch all semesters
-   * @returns {Promise<Array>} list of semesters {id, name, startDate, endDate}
+   * @returns {Promise<Array>} list of semesters {id, name, startDate, endDate, status}
    */
   getSemesters() {
-    return http.get("/api/semesters").then((r) => r.data);
+    return http.get("/semesters").then((r) => r.data);
   },
 
   /**
    * Fetch all time slots
-   * @returns {Promise<Array>} list of slots {id, code, startTime, endTime}
+   * @returns {Promise<Array>} list of slots {id, startTime, endTime}
    */
-  getSlots() {
-    return http.get("/api/slots").then((r) => r.data);
+  getTimeSlots() {
+    return http.get("/timeslots").then((r) => r.data);
   },
 
   /**
-   * Fetch classes by semester
-   * @param {number} semesterId
-   * @returns {Promise<Array>} list of classes {id, name, code, semesterId}
+   * Fetch classes with optional filters
+   * @param {Object} params - Optional filters {teacherUserId, timeSlotId}
+   * @returns {Promise<Array>} list of classes with detailed info
    */
-  getClasses(semesterId) {
-    return http.get("/api/classes", { params: { semesterId } }).then((r) => r.data);
+  getClasses(params = {}) {
+    return http.get("/classes", { params }).then((r) => r.data);
   },
 
   /**
-   * Fetch class schedules by semester
-   * @param {number} semesterId
-   * @returns {Promise<Array>} list of class schedules {id, classId, slotId, dayOfWeek, startTime, endTime}
+   * Fetch all teachers
+   * @param {Object} params - Optional filters {subjectId}
+   * @returns {Promise<Array>} list of teachers
    */
-  getClassSchedules(semesterId) {
-    return http.get("/api/class-schedules", { params: { semesterId } }).then((r) => r.data);
+  getTeachers(params = {}) {
+    return http.get("/teachers", { params }).then((r) => r.data);
   },
 
   /**
-   * Fetch attendance records for a class schedule
-   * @param {number} scheduleId
+   * Fetch teacher busy slots (for schedule visualization)
+   * @param {number} teacherUserId - User ID of the teacher
+   * @param {string} from - Start date in ISO format
+   * @param {string} to - End date in ISO format
+   * @returns {Promise<Array>} busy slots list
+   */
+  getTeacherBusySlots(teacherUserId, from, to) {
+    return http.get(`/teachers/${teacherUserId}/free-busy`, {
+      params: { from, to }
+    }).then((r) => r.data);
+  },
+
+  /**
+   * Fetch attendance data for a class
+   * @param {number} classId
    * @returns {Promise<Array>} attendance list
    */
-  getAttendance(scheduleId) {
-    return http
-      .get(`/api/class-schedules/${scheduleId}/attendance`)
-      .then((r) => r.data)
-      .catch(() => []); // Return empty if endpoint doesn't exist yet
+  getAttendance(classId) {
+    return http.get(`/classes/${classId}/attendance`).then((r) => r.data);
   },
 };

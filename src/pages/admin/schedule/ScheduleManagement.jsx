@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../compo
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/Select.jsx";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/Table.jsx";
 import { ChevronLeft, ChevronRight, ExternalLink, Filter } from "lucide-react";
-import { teacherService } from "../../../services/teacher/teacher.service";
 import { scheduleService } from "../../../services/schedule/schedule.service";
 import ClassCard from "./ClassCard.jsx";
 
@@ -74,9 +73,9 @@ function ScheduleManagement() {
     (async () => {
       try {
         const [semesterList, tList, slots] = await Promise.all([
-          scheduleService.getSemesters().catch(() => []),
-          teacherService.list().catch(() => []),
-          scheduleService.getSlots().catch(() => []),
+          scheduleService.getSemesters(),
+          scheduleService.getTeachers(),
+          scheduleService.getTimeSlots(),
         ]);
         
         setSemesters(semesterList);
@@ -85,16 +84,11 @@ function ScheduleManagement() {
           setSelectedSemester(semesterList[0].value);
         }
 
-        const fallbackTeachers = [
-          { id: "teacher1", name: "Nguyễn Văn Xuân" },
-          { id: "teacher2", name: "Trần Thị Yến" },
-          { id: "teacher3", name: "Lê Văn Z" },
-          { id: "teacher4", name: "Phạm Thị K" },
-        ];
-        setTeachers(tList?.length ? tList : fallbackTeachers);
+        setTeachers(tList);
         setTimeSlots(slots);
       } catch (e) {
-        console.warn("Init fetch failed", e.message);
+        console.error("Failed to load initial data:", e);
+        alert("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối backend.");
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,8 +98,14 @@ function ScheduleManagement() {
     if (!selectedSemester) return;
     
     (async () => {
-      const data = await scheduleService.getScheduleBySemester(Number(selectedSemester));
-      setWeekSchedule(data);
+      try {
+        const data = await scheduleService.getScheduleBySemester(Number(selectedSemester));
+        setWeekSchedule(data);
+      } catch (e) {
+        console.error("Failed to load schedule data:", e);
+        alert("Không thể tải dữ liệu lịch học. Vui lòng kiểm tra kết nối backend.");
+        setWeekSchedule([]);
+      }
     })();
   }, [selectedSemester]);
 
@@ -155,8 +155,13 @@ function ScheduleManagement() {
   const openClassDetail = async (classData) => {
     setSelectedClassDetail(classData);
     setIsClassDetailOpen(true);
-    const attendance = await scheduleService.getAttendance(classData.id);
-    setAttendanceDetails(attendance);
+    try {
+      const attendance = await scheduleService.getAttendance(classData.classId);
+      setAttendanceDetails(attendance);
+    } catch (e) {
+      console.error("Failed to load attendance:", e);
+      setAttendanceDetails([]);
+    }
   };
 
   return (
@@ -169,12 +174,13 @@ function ScheduleManagement() {
       </div>
 
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Học kỳ:</span>
+        <CardContent className="pt-4 pb-4">
+          <div className="flex flex-wrap items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-md border border-blue-200">
+            {/* Học kỳ */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-semibold text-blue-800">Học kỳ:</span>
               <Select value={selectedSemester || ""} onValueChange={setSelectedSemester}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-[120px] h-7 text-xs bg-white border-blue-200 focus:border-blue-400">
                   <SelectValue placeholder="Chọn học kỳ" />
                 </SelectTrigger>
                 <SelectContent>
@@ -187,10 +193,13 @@ function ScheduleManagement() {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Giáo viên:</span>
+            <div className="h-5 w-px bg-blue-300"></div>
+
+            {/* Giáo viên */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-semibold text-blue-800">GV:</span>
               <Select value={selectedTeacher || "all"} onValueChange={(value) => setSelectedTeacher(value === "all" ? null : value)}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[140px] h-7 text-xs bg-white border-blue-200 focus:border-blue-400">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -204,11 +213,14 @@ function ScheduleManagement() {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <span className="text-sm font-medium">Loại lớp:</span>
+            <div className="h-5 w-px bg-blue-300"></div>
+
+            {/* Loại lớp */}
+            <div className="flex items-center gap-1">
+              <Filter className="h-3 w-3 text-blue-600" />
+              <span className="text-xs font-semibold text-blue-800">Loại:</span>
               <Select value={classTypeFilter} onValueChange={setClassTypeFilter}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[100px] h-7 text-xs bg-white border-blue-200 focus:border-blue-400">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -219,15 +231,16 @@ function ScheduleManagement() {
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 ml-auto">
-              <Button variant="outline" size="sm" onClick={handlePreviousWeek}>
-                <ChevronLeft className="h-4 w-4" />
+            {/* Week Navigation */}
+            <div className="flex items-center gap-1 ml-auto bg-white px-2 py-1 rounded border border-blue-200">
+              <Button variant="ghost" size="sm" onClick={handlePreviousWeek} className="h-6 w-6 p-0 hover:bg-blue-100">
+                <ChevronLeft className="h-3 w-3 text-blue-600" />
               </Button>
-              <div className="text-sm font-medium min-w-[200px] text-center">
-                Tuần {fmt(weekStart, "dd/MM")} - {fmt(addDays(weekStart, 6), "dd/MM/yyyy")}
+              <div className="text-xs font-medium text-blue-900 px-2 min-w-[120px] text-center">
+                {fmt(weekStart, "dd/MM")} - {fmt(addDays(weekStart, 6), "dd/MM")}
               </div>
-              <Button variant="outline" size="sm" onClick={handleNextWeek}>
-                <ChevronRight className="h-4 w-4" />
+              <Button variant="ghost" size="sm" onClick={handleNextWeek} className="h-6 w-6 p-0 hover:bg-blue-100">
+                <ChevronRight className="h-3 w-3 text-blue-600" />
               </Button>
             </div>
           </div>
@@ -235,30 +248,30 @@ function ScheduleManagement() {
       </Card>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4">
           <div className="overflow-x-auto">
-            <div className="min-w-[1400px]">
-              <div className="grid grid-cols-8 gap-3 mb-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3 font-medium text-center">
-                  <div className="text-sm text-blue-900 font-bold">Slot</div>
+            <div className="min-w-[1100px]">
+              <div className="grid grid-cols-8 gap-2 mb-3">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-2 font-medium text-center">
+                  <div className="text-xs text-blue-900 font-bold">Slot</div>
                   <div className="text-xs text-blue-600 mt-1">Thời gian</div>
                 </div>
                 {weekDates.map((date, index) => {
                   const dayInfo = WEEK_DAYS[index];
                   return (
-                    <div key={fmt(date, "yyyy-MM-dd")} className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-lg p-3 text-center shadow-md">
-                      <div className="font-bold text-base">{dayInfo.name}</div>
+                    <div key={fmt(date, "yyyy-MM-dd")} className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-md p-2 text-center shadow-sm">
+                      <div className="font-bold text-sm">{dayInfo.name}</div>
                       <div className="text-xs mt-1 opacity-90">{fmt(date, "dd/MM")}</div>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {timeSlots.map((slot) => (
-                  <div key={slot.id} className="grid grid-cols-8 gap-3">
-                    <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-lg p-3 flex flex-col justify-center">
-                      <div className="font-bold text-sm text-gray-800">{slot.label}</div>
+                  <div key={slot.id} className="grid grid-cols-8 gap-2">
+                    <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-md p-2 flex flex-col justify-center">
+                      <div className="font-bold text-xs text-gray-800">{slot.label}</div>
                       <div className="text-xs text-gray-600 mt-1">{slot.time}</div>
                     </div>
 
@@ -266,9 +279,9 @@ function ScheduleManagement() {
                       const classes = getClassesForSlot(day.id, slot.id);
                       
                       return (
-                        <div key={day.id} className="border-2 border-gray-200 rounded-lg p-2 min-h-[140px] bg-gray-50">
+                        <div key={day.id} className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50">
                           {classes.length > 0 ? (
-                            <div className="space-y-2">
+                            <div className="space-y-1">
                               {classes.map((classData) => (
                                 <ClassCard
                                   key={classData.id}
@@ -278,7 +291,7 @@ function ScheduleManagement() {
                               ))}
                             </div>
                           ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                            <div className="flex items-center justify-center h-full text-gray-400 text-xs">
                               Trống
                             </div>
                           )}

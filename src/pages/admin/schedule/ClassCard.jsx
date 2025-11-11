@@ -4,7 +4,7 @@ import { Button } from "../../../components/ui/Button.jsx";
 import { Eye, Users, Video, MapPin } from "lucide-react";
 
 /**
- * ClassCard - Component hiển thị thông tin một lớp học trong schedule
+ * ClassCard - Component hiển thị thông tin một lớp học trong schedule (compact version)
  * Props:
  *  - classData: { id, className, subjectName, teacherName, studentCount, isOnline, room, meetLink, status }
  *  - onViewDetail: callback khi click xem chi tiết
@@ -24,81 +24,70 @@ export default function ClassCard({ classData, onViewDetail }) {
   // Status badge
   const getStatusBadge = () => {
     if (status === "completed") {
-      return <Badge className="text-xs bg-green-100 text-green-800">Hoàn thành</Badge>;
+      return <Badge className="text-xs bg-green-100 text-green-800 px-1 py-0">Hoàn thành</Badge>;
     }
     if (status === "not_yet") {
-      return <Badge className="text-xs bg-red-100 text-red-800">Chưa học</Badge>;
+      return <Badge className="text-xs bg-red-100 text-red-800 px-1 py-0">Chưa học</Badge>;
     }
-    return <Badge className="text-xs bg-blue-100 text-blue-800">Đã lên lịch</Badge>;
+    return <Badge className="text-xs bg-blue-100 text-blue-800 px-1 py-0">Đã lên lịch</Badge>;
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow space-y-2">
-      {/* Header: Tên lớp + Status */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-sm text-blue-700 truncate">
-            {className}
-          </h4>
-          <p className="text-xs text-gray-600 truncate">{subjectName}</p>
-        </div>
-        {getStatusBadge()}
-      </div>
-
-      {/* Giáo viên */}
-      <div className="flex items-center gap-2 text-xs text-gray-700">
-        <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center">
-          <span className="text-xs font-medium text-indigo-700">
-            {teacherName?.charAt(0)?.toUpperCase()}
+    <div className="bg-white border border-gray-300 rounded-md p-2 shadow-sm hover:shadow-md transition-shadow">
+      {/* Teacher info */}
+      <div className="flex items-center gap-1 mb-1">
+        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+          <span className="text-white text-xs font-bold">
+            {teacherName?.charAt(0) || "T"}
           </span>
         </div>
-        <span className="truncate">{teacherName}</span>
+        <span className="text-xs text-gray-600 truncate flex-1">{teacherName}</span>
       </div>
 
-      {/* Số lượng học sinh */}
-      <div className="flex items-center gap-1 text-xs text-gray-600">
-        <Users className="h-3.5 w-3.5" />
-        <span>{studentCount} học viên</span>
+      {/* Class name */}
+      <h4 className="font-bold text-blue-700 text-sm leading-tight mb-1 truncate">
+        {className}
+      </h4>
+
+      {/* Subject */}
+      <p className="text-xs text-gray-700 mb-2 truncate">{subjectName}</p>
+
+      {/* Student count */}
+      <div className="flex items-center gap-1 mb-2">
+        <Users className="h-3 w-3 text-gray-500" />
+        <span className="text-xs text-gray-600">{studentCount}</span>
       </div>
 
-      {/* Online/Offline + Room/Link */}
-      <div className="flex items-center gap-2">
+      {/* Online/Offline status */}
+      <div className="flex items-center gap-1 mb-2">
         {isOnline ? (
           <>
-            <Badge className="text-xs bg-purple-100 text-purple-800 flex items-center gap-1">
-              <Video className="h-3 w-3" />
-              Online
-            </Badge>
-            {meetLink && (
-              <a
-                href={meetLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:underline truncate"
-                title={meetLink}
-              >
-                Meet
-              </a>
-            )}
+            <Video className="h-3 w-3 text-purple-600" />
+            <Badge className="bg-purple-100 text-purple-800 text-xs px-1 py-0">Online</Badge>
           </>
         ) : (
-          <Badge className="text-xs bg-gray-100 text-gray-800 flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            {room || "Chưa có phòng"}
-          </Badge>
+          <>
+            <MapPin className="h-3 w-3 text-gray-600" />
+            <Badge className="bg-gray-100 text-gray-800 text-xs px-1 py-0">
+              {room || "TBA"}
+            </Badge>
+          </>
         )}
       </div>
 
-      {/* Action button */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full h-7 text-xs"
-        onClick={() => onViewDetail?.(classData)}
-      >
-        <Eye className="h-3 w-3 mr-1" />
-        Chi tiết
-      </Button>
+      {/* Status and detail button */}
+      <div className="flex items-center justify-between">
+        {getStatusBadge()}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onViewDetail(classData)}
+          className="h-6 px-2 text-xs"
+        >
+          <Eye className="h-3 w-3 mr-1" />
+          Chi tiết
+        </Button>
+      </div>
     </div>
   );
 }
