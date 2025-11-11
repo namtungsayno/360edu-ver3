@@ -1,268 +1,140 @@
-/**
- * ============================================================================
- * ScheduleGrid Component - Lưới chọn lịch học theo tuần
- * ============================================================================
- *
- * ✅ ĐÃ REDESIGN HOÀN TOÀN:
- * 1. Tạo lại toàn bộ component từ đầu (file cũ chỉ có snippet)
- * 2. Gradient styling với color-coded states
- * 3. Interactive hover effects
- * 4. Dynamic time slots loaded from backend (time_slots table)
- * 5. Hiển thị lịch bận của giáo viên và phòng học
- * 6. Responsive design
- *
- * @param {Date} weekStart - Ngày bắt đầu tuần (Monday)
- * @param {Array} teacherBusy - Danh sách slot giáo viên bận [{start, end}] (ISO format)
- * @param {Array} roomBusy - Danh sách slot phòng bận [{start, end}] (ISO format)
- * @param {Array} selected - Danh sách slot đã chọn
- * @param {Array} timeSlots - Time slots from backend [{id, startTime, endTime}]
- * @param {Function} onToggle - Callback khi toggle slot (day, slotKey)
- * @param {Boolean} disabled - Vô hiệu hóa grid (chưa chọn giáo viên/phòng)
- */
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { timeslotService } from "../../../services/timeslot/timeslot.service";
 
+// Minimal date helpers (keep in sync with ScheduleManagement)
+function addDays(d, n) {
+  const nd = new Date(d);
+  nd.setDate(nd.getDate() + n);
+  return nd;
+}
+function fmt(date, pattern) {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  if (pattern === "dd/MM") return `${dd}/${mm}`;
+  if (pattern === "yyyy-MM-dd") return `${yyyy}-${mm}-${dd}`;
+  return date.toISOString();
+}
+
+// Build slot object from date and timeslot
+function buildSlot(date, slot) {
+  const [sh, sm] = (slot.startTime || "16:00").split(":").map(Number);
+  const [eh, em] = (slot.endTime || "18:00").split(":").map(Number);
+  const s = new Date(date);
+  s.setHours(sh, sm, 0, 0);
+  const e = new Date(date);
+  e.setHours(eh, em, 0, 0);
+  return { isoStart: s.toISOString(), isoEnd: e.toISOString(), day: s.getDay(), slotId: slot.id };
+}
+
+/**
+ * ScheduleGrid - lightweight weekly grid used for picking slots
+ * Props:
+ *  - weekStart: Date (Monday)
+ *  - teacherBusy: Array of { day, slotId } (optional)
+ *  - selected: Array of { isoStart, isoEnd }
+ *  - onToggle: fn(slot)
+ *  - disabled: bool
+ */
 export default function ScheduleGrid({
   weekStart,
   teacherBusy = [],
-  roomBusy = [],
   selected = [],
-  timeSlots = [],
   onToggle,
   disabled = false,
 }) {
-  // Convert BE timeSlots to display format with Vietnamese labels
-  const displaySlots = useMemo(() => {
-    if (!timeSlots || timeSlots.length === 0) return [];
+  const [timeSlots, setTimeSlots] = useState([]);
 
-    return timeSlots.map((ts, idx) => {
-      const labelMap = ["Sáng 1", "Sáng 2", "Chiều 1", "Chiều 2", "Tối"];
-      const label = labelMap[idx] || `Slot ${idx + 1}`;
+  useEffect(() => {
+    (async () => {
+      try {
+        const slots = await timeslotService.list();
+        if (Array.isArray(slots) && slots.length) setTimeSlots(slots);
+        else
+          setTimeSlots([
+            { id: 1, startTime: "16:00", endTime: "18:00", name: "Slot 1" },
+            { id: 2, startTime: "18:00", endTime: "20:00", name: "Slot 2" },
+            { id: 3, startTime: "20:00", endTime: "22:00", name: "Slot 3" },
+          ]);
+      } catch {
+        setTimeSlots([
+          { id: 1, startTime: "16:00", endTime: "18:00", name: "Slot 1" },
+          { id: 2, startTime: "18:00", endTime: "20:00", name: "Slot 2" },
+          { id: 3, startTime: "20:00", endTime: "22:00", name: "Slot 3" },
+        ]);
+      }
+    })();
+  }, []);
 
-      return {
-        key: `slot${ts.id}`,
-        label: `${label}\n${ts.startTime}-${ts.endTime}`,
-        start: ts.startTime,
-        end: ts.endTime,
-        id: ts.id,
-      };
-    });
-  }, [timeSlots]);
+  const weekDates = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart]
+  );
 
-  // Build weekly busy pattern keys from busy ranges: `${bizDay}-${timeSlotId}`
-  // bizDay follows business convention: Mon=2 ... Sun=8
-  const busyKeysTeacher = useMemo(() => {
-    const keys = new Set();
-    if (
-      !teacherBusy ||
-      teacherBusy.length === 0 ||
-      !timeSlots ||
-      timeSlots.length === 0
-    )
-      return keys;
-    teacherBusy.forEach((b) => {
-      if (!b?.start) return;
-      const d = new Date(b.start);
-      const jsDay = d.getDay(); // 0..6 (Sun..Sat)
-      // ISO day 1..7 (Mon..Sun)
-      const isoDay = jsDay === 0 ? 7 : jsDay;
-      const hhmm = String(b.start).substring(11, 16);
-      const ts = timeSlots.find((t) => t.startTime === hhmm);
-      if (ts) keys.add(`${isoDay}-${ts.id}`);
-    });
-    return keys;
-  }, [teacherBusy, timeSlots]);
-
-  const busyKeysRoom = useMemo(() => {
-    const keys = new Set();
-    if (
-      !roomBusy ||
-      roomBusy.length === 0 ||
-      !timeSlots ||
-      timeSlots.length === 0
-    )
-      return keys;
-    roomBusy.forEach((b) => {
-      if (!b?.start) return;
-      const d = new Date(b.start);
-      const jsDay = d.getDay();
-      const isoDay = jsDay === 0 ? 7 : jsDay;
-      const hhmm = String(b.start).substring(11, 16);
-      const ts = timeSlots.find((t) => t.startTime === hhmm);
-      if (ts) keys.add(`${isoDay}-${ts.id}`);
-    });
-    return keys;
-  }, [roomBusy, timeSlots]);
-
-  // Header các ngày trong tuần
-  const header = useMemo(() => {
-    const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-    return days.map((day, idx) => ({
-      label: day,
-      date: addDays(weekStart, idx),
-    }));
-  }, [weekStart]);
-
-  // Helper: Thêm số ngày vào date
-  function addDays(date, days) {
-    const result = new Date(date);
-    result.setDate(result.getDate() + days);
-    return result;
+  function isSelected(slotObj) {
+    return selected.some(
+      (x) => x.isoStart === slotObj.isoStart && x.isoEnd === slotObj.isoEnd
+    );
   }
 
-  // Helper: Kết hợp date + time theo LOCAL TIME (tránh lệch múi giờ khi so sánh)
-  // Trả về chuỗi dạng YYYY-MM-DDTHH:mm:00 (KHÔNG có chữ Z)
-  function combine(date, timeHHMM) {
-    const [hh, mm] = timeHHMM.split(":");
-    const d = new Date(date);
-    d.setHours(parseInt(hh, 10), parseInt(mm, 10), 0, 0);
-
-    const y = d.getFullYear();
-    const M = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const H = String(d.getHours()).padStart(2, "0");
-    const m = String(d.getMinutes()).padStart(2, "0");
-    return `${y}-${M}-${day}T${H}:${m}:00`;
+  function isBusy(dayIdx, slotId) {
+    return teacherBusy.some((b) => String(b.day) === String(dayIdx) && String(b.slotId || b.timeSlotId) === String(slotId));
   }
 
-  // Helper: Kiểm tra 2 khoảng thời gian có chồng chéo không
-  function isOverlapping(start1, end1, start2, end2) {
-    const s1 = new Date(start1).getTime();
-    const e1 = new Date(end1).getTime();
-    const s2 = new Date(start2).getTime();
-    const e2 = new Date(end2).getTime();
-    return s1 < e2 && s2 < e1;
+  function getCellClass(selectedCell, busyCell) {
+    if (selectedCell) return "bg-blue-600 text-white border-blue-700";
+    if (busyCell) return "bg-red-50 text-red-700 border-red-200";
+    return "bg-white hover:bg-gray-50";
+  }
+
+  function getCellText(selectedCell, busyCell) {
+    if (selectedCell) return "Đã chọn";
+    if (busyCell) return "Bận";
+    return "Trống";
   }
 
   return (
     <div className="overflow-x-auto">
-      <div className="inline-block min-w-full">
-        {/* FIXED: Header ngày trong tuần với style đẹp hơn */}
-        <div
-          className="grid gap-0 bg-white rounded-lg shadow-sm overflow-hidden border"
-          style={{
-            gridTemplateColumns: "150px repeat(7, minmax(100px, 1fr))",
-          }}
-        >
-          {/* FIXED: Cell góc trên trái */}
-          <div className="p-3 font-semibold border-b-2 border-r bg-gradient-to-br from-gray-50 to-gray-100 text-gray-700 text-xs">
-            Thời gian
-          </div>
-
-          {/* FIXED: Header các ngày với highlight */}
-          {header.map((h, idx) => (
-            <div
-              key={idx}
-              className="p-3 text-center font-semibold border-b-2 border-gray-200 bg-gradient-to-br from-blue-50 to-indigo-50"
-            >
-              <div className="text-sm text-gray-900">{h.label}</div>
-              <div className="text-xs text-gray-600 mt-0.5">
-                {h.date.getDate()}/{h.date.getMonth() + 1}
-              </div>
+      <div className="min-w-[1000px]">
+        <div className="grid grid-cols-8 gap-2 mb-2">
+          <div className="p-2 text-center text-sm font-medium bg-gray-50 border rounded">Slot</div>
+          {weekDates.map((d) => (
+            <div key={fmt(d, "yyyy-MM-dd")} className="p-2 text-center text-sm font-medium bg-indigo-600 text-white rounded">
+              {fmt(d, "dd/MM")}
             </div>
           ))}
+        </div>
 
-          {/* FIXED: Các slot thời gian với màu sắc đẹp hơn */}
-          {displaySlots.map((slot) => (
-            <React.Fragment key={slot.key}>
-              {/* FIXED: Label thời gian với gradient */}
-              <div className="whitespace-pre-wrap p-3 text-xs font-medium text-gray-700 border-t border-r bg-gradient-to-r from-gray-50 to-gray-100 flex items-center">
-                <div>
-                  <div className="font-semibold text-gray-900">
-                    {slot.label.split("\n")[0]}
-                  </div>
-                  <div className="text-gray-500 mt-0.5">
-                    {slot.label.split("\n")[1]}
-                  </div>
-                </div>
+        {timeSlots.map((slot) => (
+          <div key={slot.id} className="grid grid-cols-8 gap-2 mb-2">
+            <div className="p-2 bg-white border rounded text-sm">
+              <div className="font-medium">{slot.name || `Slot ${slot.id}`}</div>
+              <div className="text-xs text-gray-500">
+                {slot.startTime} - {slot.endTime}
               </div>
-
-              {/* FIXED: Cells với hover effect và màu sắc đẹp */}
-              {header.map((_, idx) => {
-                const day = addDays(weekStart, idx);
-                const start = combine(day, slot.start);
-                const end = combine(day, slot.end);
-                // ISO: 1=Mon, ..., 7=Sun; idx=0 (T2/Mon), idx=6 (CN/Sun)
-                const isoDay = idx === 6 ? 7 : idx + 1;
-                const patternKey = `${isoDay}-${slot.id}`;
-                const busyTeacher =
-                  busyKeysTeacher.has(patternKey) ||
-                  (teacherBusy || []).some((b) =>
-                    isOverlapping(start, end, b.start, b.end)
-                  );
-                const busyRoom =
-                  busyKeysRoom.has(patternKey) ||
-                  (roomBusy || []).some((b) =>
-                    isOverlapping(start, end, b.start, b.end)
-                  );
-                const busy = busyTeacher || busyRoom;
-
-                // Kiểm tra slot đã được chọn chưa
-                const picked = (selected || []).some(
-                  (s) => s.isoStart === start && s.isoEnd === end
-                );
-
-                // FIXED: CSS classes với màu sắc đẹp hơn
-                let cellClasses =
-                  "m-1 h-16 rounded-lg border-2 text-center text-xs font-medium flex flex-col items-center justify-center transition-all select-none";
-                let statusText = "";
-
-                if (disabled) {
-                  cellClasses +=
-                    " bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50";
-                  statusText = "---";
-                } else if (picked) {
-                  cellClasses +=
-                    " bg-gradient-to-br from-green-400 to-green-500 text-white border-green-600 shadow-md cursor-pointer hover:shadow-lg transform hover:scale-105";
-                  statusText = "✓ Đã chọn";
-                } else if (busy) {
-                  cellClasses +=
-                    " bg-gradient-to-br from-red-100 to-red-200 text-red-700 border-red-300 cursor-not-allowed";
-                  statusText = "✕ Bận";
-                } else {
-                  cellClasses +=
-                    " bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200 cursor-pointer hover:border-blue-400 hover:bg-gradient-to-br hover:from-blue-100 hover:to-blue-200 hover:shadow-md";
-                  statusText = "○ Trống";
-                }
-
-                return (
-                  <div
-                    key={`${slot.key}-${idx}`}
-                    onClick={() =>
-                      !disabled &&
-                      !busy &&
-                      onToggle?.({
-                        isoStart: start,
-                        isoEnd: end,
-                        dow: isoDay,
-                        startHHMM: slot.start,
-                        endHHMM: slot.end,
-                      })
-                    }
-                    className={cellClasses}
-                  >
-                    <span className="font-semibold">{statusText}</span>
-                  </div>
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* FIXED: Legend hướng dẫn */}
-        <div className="mt-4 flex items-center justify-center gap-6 text-xs text-gray-600 bg-gray-50 rounded-lg p-3 border">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200"></div>
-            <span>Trống - Click để chọn</span>
+            </div>
+            {weekDates.map((d) => {
+              const sObj = buildSlot(d, slot);
+              const selectedCell = isSelected(sObj);
+              const busyCell = isBusy(((d.getDay() || 7) - 0), slot.id);
+              const base = "h-[70px] rounded border flex items-center justify-center text-sm";
+              const cls = getCellClass(selectedCell, busyCell);
+              const text = getCellText(selectedCell, busyCell);
+              return (
+                <button
+                  key={fmt(d, "yyyy-MM-dd") + "-" + slot.id}
+                  className={`${base} ${cls}`}
+                  type="button"
+                  disabled={disabled || busyCell}
+                  onClick={() => onToggle?.(sObj)}
+                  title={busyCell ? "Giờ này đã bận" : "Chọn giờ"}
+                >
+                  {text}
+                </button>
+              );
+            })}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-gradient-to-br from-green-400 to-green-500 border-2 border-green-600"></div>
-            <span>Đã chọn - Click để bỏ</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-gradient-to-br from-red-100 to-red-200 border-2 border-red-300"></div>
-            <span>Bận - Không thể chọn</span>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
