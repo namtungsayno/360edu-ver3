@@ -88,6 +88,7 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subjectId, open]);
 
+  // Call đến Api của môn học trong subjectService
   async function loadSubjects() {
     try {
       const data = await subjectService.all();
@@ -137,7 +138,7 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
       setTimeSlots([]);
     }
   }
-
+  // Kiểm tra lịch bận của giáo viên
   const loadTeacherBusy = React.useCallback(async () => {
     if (!teacherId || !selectedSemester) {
       return;
@@ -170,6 +171,7 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
     loadTeacherBusy();
   }, [loadTeacherBusy]);
 
+  // kiểm tra phòng phận
   const loadRoomBusy = React.useCallback(async () => {
     if (!roomId || !selectedSemester) {
       return;
