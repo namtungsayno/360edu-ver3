@@ -14,12 +14,12 @@ function cn(...a) {
 
 // (Nếu không muốn lucide-react, dùng SVG thay thế):
 const IconChevronDown = (props) => (
-  <svg viewBox="0 0 24 24" className="h-4 w-4" {...props}>
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
     <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" />
   </svg>
 );
 const IconCheck = (props) => (
-  <svg viewBox="0 0 24 24" className="h-4 w-4" {...props}>
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
     <path
       d="M20 6L9 17l-5-5"
       fill="none"
@@ -36,6 +36,8 @@ export function Select({ value, defaultValue, onValueChange, children }) {
   const [internal, setInternal] = useState(defaultValue ?? "");
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const registryRef = useRef(new Map()); // value -> label
+  const lastLabelRef = useRef(""); // immediate feedback label
 
   const val = isCtrl ? value : internal;
 
@@ -59,7 +61,22 @@ export function Select({ value, defaultValue, onValueChange, children }) {
         onValueChange?.(v);
         setOpen(false);
       },
+      setValueWithLabel: (v, label) => {
+        lastLabelRef.current = String(label ?? "");
+        if (!isCtrl) setInternal(v);
+        onValueChange?.(v);
+        setOpen(false);
+      },
       rootRef,
+      // label registry helpers
+      register: (v, label) => {
+        registryRef.current.set(String(v), String(label ?? ""));
+      },
+      unregister: (v) => {
+        registryRef.current.delete(String(v));
+      },
+      getLabel: (v) => registryRef.current.get(String(v)),
+      getImmediateLabel: () => lastLabelRef.current,
     }),
     [val, open, isCtrl, onValueChange]
   );
@@ -78,7 +95,8 @@ export function SelectTrigger({
   ...props
 }) {
   const { open, setOpen } = useContext(Ctx);
-  const sizeCls = size === "sm" ? "h-9 px-3 text-sm" : "h-10 px-3 text-sm";
+  const sizeCls = size === "sm" ? "h-9 px-3 text-sm" : "h-11 px-3 text-sm";
+  const iconCls = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
   return (
     <button
       type="button"
@@ -93,17 +111,20 @@ export function SelectTrigger({
       )}
       {...props}
     >
-      {children}
-      <IconChevronDown className="ml-2 opacity-60" />
+      <span className="flex-1 min-w-0 text-left truncate">{children}</span>
+      <IconChevronDown
+        className={cn("ml-2 opacity-60 text-gray-500", iconCls)}
+      />
     </button>
   );
 }
 
 export function SelectValue({ placeholder }) {
-  const { value } = useContext(Ctx);
+  const { value, getLabel, getImmediateLabel } = useContext(Ctx);
+  const label = value ? getLabel?.(value) || getImmediateLabel?.() : undefined;
   return (
-    <span className={cn(value ? "" : "text-gray-400")}>
-      {value || placeholder}
+    <span className={cn("block truncate", value ? "" : "text-gray-400")}>
+      {label || placeholder}
     </span>
   );
 }
@@ -127,6 +148,23 @@ export function SelectContent({ className = "", children }) {
 export function SelectItem({ value, children, className = "", ...props }) {
   const ctx = useContext(Ctx);
   const selected = ctx.value === value;
+  // try to extract a string label from children for the trigger display
+  const textLabel = useMemo(() => {
+    const walk = (node) => {
+      if (node == null) return "";
+      if (typeof node === "string" || typeof node === "number")
+        return String(node);
+      if (Array.isArray(node)) return node.map(walk).join("");
+      if (React.isValidElement(node)) return walk(node.props?.children);
+      return "";
+    };
+    return walk(children).trim();
+  }, [children]);
+
+  useEffect(() => {
+    ctx.register?.(value, textLabel);
+    return () => ctx.unregister?.(value);
+  }, [ctx, value, textLabel]);
   return (
     <div
       role="option"
@@ -134,12 +172,12 @@ export function SelectItem({ value, children, className = "", ...props }) {
       tabIndex={0}
       onMouseDown={(e) => {
         e.preventDefault();
-        ctx.setValue(value);
+        ctx.setValueWithLabel?.(value, textLabel);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          ctx.setValue(value);
+          ctx.setValueWithLabel?.(value, textLabel);
         }
         if (e.key === "Escape") ctx.setOpen(false);
       }}
@@ -150,8 +188,10 @@ export function SelectItem({ value, children, className = "", ...props }) {
       )}
       {...props}
     >
-      <span className="mr-6">{children}</span>
-      {selected ? <IconCheck className="absolute right-2" /> : null}
+      <span className="mr-6 leading-5">{children}</span>
+      {selected ? (
+        <IconCheck className="absolute right-2 h-4 w-4 text-gray-700" />
+      ) : null}
     </div>
   );
 }
