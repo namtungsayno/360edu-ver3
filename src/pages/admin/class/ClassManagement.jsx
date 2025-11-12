@@ -8,8 +8,7 @@ import { teacherService } from "../../../services/teacher/teacher.service";
 // timeslot service
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
 import { Input } from "../../../components/ui/Input";
-// SidePanel removed — chuyển sang Dialog popup cho xem chi tiết
-// import SidePanel from "../../../components/ui/SidePanel";
+
 import {
   Dialog,
   DialogContent,
@@ -20,9 +19,10 @@ import { useToast } from "../../../hooks/use-toast";
 
 /**
  * Trang quản lý lớp học
- * ✅ TÁCH FORM: Online & Offline riêng biệt theo yêu cầu
- * - Online: nhập thủ công sĩ số + meeting link
- * - Offline: chọn phòng → tự động hiển thị sức chứa, không nhập sĩ số
+ * List tất cả lớp học
+ * Add class offline/online
+ * Filter theo giáo viên, theo slot
+ * Xem chi tiết lớp học
  */
 export default function CreateClassPage() {
   const [openOnline, setOpenOnline] = useState(false);
@@ -46,6 +46,7 @@ export default function CreateClassPage() {
   useEffect(() => {
     (async () => {
       try {
+        // sử dụng Promise.all để call API song song
         const [ts, tch] = await Promise.all([
           timeslotService.list(),
           teacherService.list(),
@@ -110,7 +111,6 @@ export default function CreateClassPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Tiêu đề giống phòng học */}
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">
           Quản lý lớp học
@@ -287,7 +287,7 @@ export default function CreateClassPage() {
           ))}
       </div>
 
-      {/* Modal Online */}
+      {/* Modal tạo Online */}
       <CreateOnlineClassModal
         open={openOnline}
         onClose={() => setOpenOnline(false)}
@@ -296,7 +296,7 @@ export default function CreateClassPage() {
           loadClasses();
         }}
       />
-      {/* Modal Offline */}
+      {/* Modal tạo Offline */}
       <CreateOfflineClassModal
         open={openOffline}
         onClose={() => setOpenOffline(false)}

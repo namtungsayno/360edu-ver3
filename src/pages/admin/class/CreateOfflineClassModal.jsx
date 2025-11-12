@@ -46,11 +46,11 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
   const [semesters, setSemesters] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
 
-  // Start-of-week (Monday) to align headers T2..CN with actual dates
+  // Tính ra ngày thứ 2 của tuần hiện tại
   const [weekStart] = useState(() => {
     const now = new Date();
-    const js = now.getDay(); // 0=Sun..6=Sat
-    const diff = js === 0 ? -6 : 1 - js; // move to Monday
+    const js = now.getDay(); // số thứ tự ngày trong tuần (0=Chủ nhật..6=Thứ 7)
+    const diff = js === 0 ? -6 : 1 - js; // chuyển về thứ 2 dù hôm nay là thứ mấy
     const monday = new Date(now);
     monday.setDate(now.getDate() + diff);
     monday.setHours(0, 0, 0, 0);
@@ -61,7 +61,7 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
   const [pickedSlots, setPickedSlots] = useState([]);
   const { error, success } = useToast();
 
-  // Derived state from selected semester
+  // lấy ra thông tin của học kỳ được chọn
   const selectedSemester = useMemo(
     () => semesters.find((s) => s.id === parseInt(semesterId)),
     [semesters, semesterId]
@@ -77,7 +77,7 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
     }
   }, [open]);
 
-  // Reload teachers when subject changes
+  // Load lại teacher khi thay đổi môn học.
   useEffect(() => {
     if (open && subjectId) {
       loadTeachers();
@@ -203,6 +203,7 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
     if (r) setCapacity(String(r.capacity || 0));
   }, [roomId, rooms]);
 
+  // Chọn / bỏ chọn slot
   function toggleSlot(slot) {
     console.log("[DEBUG] toggleSlot called with:", slot);
     setPickedSlots((prev) => {
@@ -260,15 +261,15 @@ export default function CreateOfflineClassModal({ open, onClose, onCreated }) {
     setRoomBusy([]);
   }
 
-  // Helper function to map picked slots to backend format
+  //  map pickedSlots thành danh sách schedule theo định dạng backend
   function mapSlotsToSchedule() {
     const scheduleMap = new Map();
 
     pickedSlots.forEach((slot) => {
       const slotDate = new Date(slot.isoStart);
-      const dayOfWeek = slotDate.getDay(); // 0=Sunday, 1=Monday, ...
+      const dayOfWeek = slotDate.getDay(); // 0=chủ nhật, 1=thứ 2, ...
 
-      // Find matching timeSlot by comparing start time
+      // tìm timeSlot tương ứng
       const slotTimeStr = slotDate.toTimeString().substring(0, 5); // "HH:mm"
       const matchingTimeSlot = timeSlots.find(
         (ts) => ts.startTime === slotTimeStr
