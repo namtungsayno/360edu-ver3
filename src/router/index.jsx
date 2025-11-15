@@ -54,6 +54,8 @@ import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 // tuấn test
 // FIXED: Import các component cho Class Management (Quản lý lớp học)
 import CreateClass from "../pages/admin/class/ClassManagement.jsx";
+import CreateOfflineClassPage from "../pages/admin/class/CreateOfflineClassPage.jsx";
+import CreateOnlineClassPage from "../pages/admin/class/CreateOnlineClassPage.jsx";
 import ScheduleManagement from "../pages/admin/schedule/ScheduleManagement.jsx";
 
 // AUTH PAGES - Các trang đăng nhập/đăng ký
@@ -101,7 +103,15 @@ function AppRouter() {
             <Route path="classrooms" element={<ClassroomList />} />
             {/* Tuấn test */}
             {/* FIXED: Thêm route cho Class Management - Quản lý lớp học */}
-            <Route path="classes" element={<CreateClass />} />
+            <Route path="class" element={<CreateClass />} />
+            <Route
+              path="class/create-offline"
+              element={<CreateOfflineClassPage />}
+            />
+            <Route
+              path="class/create-online"
+              element={<CreateOnlineClassPage />}
+            />
             {/* FIXED: Thêm route cho Schedule Management - Quản lý lịch học */}
             <Route path="schedule" element={<ScheduleManagement />} />
             <Route path="subject" element={<SubjectManagement />} />

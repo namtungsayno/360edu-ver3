@@ -7,14 +7,7 @@ function addDays(base, n) {
   d.setDate(d.getDate() + n);
   return d;
 }
-function fmt(date, pattern) {
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  if (pattern === "dd/MM") return `${dd}/${mm}`;
-  if (pattern === "yyyy-MM-dd") return `${yyyy}-${mm}-${dd}`;
-  return date.toISOString();
-}
+
 function buildSlot(date, slot) {
   const [sh, sm] = slot.startTime.split(":").map(Number);
   const [eh, em] = slot.endTime.split(":").map(Number);
@@ -28,6 +21,7 @@ function buildSlot(date, slot) {
     slotId: slot.id,
   };
 }
+
 function isOverlapping(aStart, aEnd, bStart, bEnd) {
   if (!aStart || !aEnd || !bStart || !bEnd) return false;
   const as = new Date(aStart).getTime();
@@ -40,7 +34,7 @@ function isOverlapping(aStart, aEnd, bStart, bEnd) {
 
 export default function ScheduleGrid({
   weekStart,
-  teacherBusy = [], // format mới: [{start,end}] ; format cũ (fallback) {day,slotId}
+  teacherBusy = [],
   roomBusy = [],
   selected = [],
   timeSlots: propTimeSlots = [],
@@ -124,57 +118,42 @@ export default function ScheduleGrid({
     return set;
   }, [roomBusy, timeSlots]);
 
-  function isBusy(slotObj) {
+  function isTeacherBusySlot(slotObj) {
     const d = new Date(slotObj.isoStart);
     const isoDay = d.getDay() === 0 ? 7 : d.getDay();
     const pattern = `${isoDay}-${slotObj.slotId}`;
-    if (busyKeysTeacher.has(pattern) || busyKeysRoom.has(pattern)) return true;
-    // Fallback overlap (đề phòng lệch HH:mm)
-    return (
-      teacherBusy.some(
-        (b) =>
-          b.start &&
-          isOverlapping(slotObj.isoStart, slotObj.isoEnd, b.start, b.end)
-      ) ||
-      roomBusy.some(
-        (b) =>
-          b.start &&
-          isOverlapping(slotObj.isoStart, slotObj.isoEnd, b.start, b.end)
-      )
+    if (busyKeysTeacher.has(pattern)) return true;
+    return teacherBusy.some(
+      (b) =>
+        b.start &&
+        isOverlapping(slotObj.isoStart, slotObj.isoEnd, b.start, b.end)
     );
   }
 
-  function getCellClass(sel, busy) {
-    if (sel) return "bg-blue-600 text-white border-blue-700";
-    if (busy) return "bg-red-50 text-red-700 border-red-200";
-    return "bg-white hover:bg-gray-50";
-  }
-  function getCellText(sel, busy) {
-    if (sel) return "Đã chọn";
-    if (busy) return "Bận";
-    return "Trống";
+  function isRoomBusySlot(slotObj) {
+    const d = new Date(slotObj.isoStart);
+    const isoDay = d.getDay() === 0 ? 7 : d.getDay();
+    const pattern = `${isoDay}-${slotObj.slotId}`;
+    if (busyKeysRoom.has(pattern)) return true;
+    return roomBusy.some(
+      (b) =>
+        b.start &&
+        isOverlapping(slotObj.isoStart, slotObj.isoEnd, b.start, b.end)
+    );
   }
 
-  // Weekday labels in Vietnamese
-  const weekdayNames = [
-    "Thứ 2",
-    "Thứ 3",
-    "Thứ 4",
-    "Thứ 5",
-    "Thứ 6",
-    "Thứ 7",
-    "Chủ nhật",
-  ];
+  const weekdayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
   return (
     <div className="overflow-x-auto">
-      {/* local keyframes for fade-in */}
       <style>{`
-        @keyframes fadeIn { from {opacity:0; transform:translateY(4px);} to {opacity:1; transform:translateY(0);} }
-        .animate-fadeIn { animation: fadeIn .4s ease-out; }
+        @keyframes fadeIn { from {opacity:0; transform:translateY(8px) scale(0.98);} to {opacity:1; transform:translateY(0) scale(1);} }
+        @keyframes pop { 0% {transform:scale(0.95);} 60% {transform:scale(1.08);} 100% {transform:scale(1);} }
+        .animate-fadeIn { animation: fadeIn .5s cubic-bezier(.4,0,.2,1); }
+        .animate-pop { animation: pop .3s cubic-bezier(.4,0,.2,1); }
       `}</style>
-      <div className="min-w-[1000px] space-y-3">
-        {/* Header */}
+      <div className="min-w-[900px] space-y-3">
+        {/* Header: chỉ hiện thứ */}
         <div className="grid grid-cols-8 gap-2 sticky top-0 z-10 bg-white/80 backdrop-blur border-b pb-2">
           <div className="p-2 text-center text-xs font-semibold text-gray-600 flex flex-col items-center justify-center">
             <span className="uppercase tracking-wide">Slot</span>
@@ -182,17 +161,12 @@ export default function ScheduleGrid({
               Khung giờ
             </span>
           </div>
-          {weekDates.map((d, idx) => (
+          {weekdayNames.map((thu) => (
             <div
-              key={fmt(d, "yyyy-MM-dd")}
+              key={thu}
               className="p-2 rounded-lg flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 to-indigo-500 text-white shadow-sm animate-fadeIn"
             >
-              <span className="text-xs font-semibold tracking-wide">
-                {weekdayNames[idx]}
-              </span>
-              <span className="mt-1 text-[11px] font-medium opacity-90">
-                {fmt(d, "dd/MM")}
-              </span>
+              <span className="text-xs font-semibold tracking-wide">{thu}</span>
             </div>
           ))}
         </div>
@@ -210,34 +184,50 @@ export default function ScheduleGrid({
                   {slot.startTime} - {slot.endTime}
                 </div>
               </div>
-              {weekDates.map((d) => {
-                const sObj = buildSlot(d, slot);
-                const sel = isSelected(sObj);
-                const busy = isBusy(sObj);
-                const base =
-                  "h-[70px] rounded-lg border flex items-center justify-center text-xs font-medium transition-all duration-200 ease-out will-change-transform focus:outline-none focus:ring-2 focus:ring-indigo-400/60";
-                const cls = getCellClass(sel, busy);
-                const text = getCellText(sel, busy);
-                const extra = sel
-                  ? "shadow-md scale-[1.02]"
-                  : busy
-                  ? "bg-red-50 text-red-700"
-                  : "hover:shadow hover:scale-[1.02]";
-                return (
-                  <button
-                    key={fmt(d, "yyyy-MM-dd") + "-" + slot.id}
-                    className={`${base} ${cls} ${extra} animate-fadeIn`}
-                    type="button"
-                    disabled={disabled || busy}
-                    onClick={() => onToggle?.(sObj)}
-                    title={
-                      busy ? "Giờ này đã bận" : sel ? "Bỏ chọn" : "Chọn giờ"
-                    }
-                  >
-                    {text}
-                  </button>
-                );
-              })}
+              {Array(7)
+                .fill(0)
+                .map((_, dayIdx) => {
+                  const d = weekDates[dayIdx];
+                  const sObj = buildSlot(d, slot);
+                  const sel = isSelected(sObj);
+                  const teacherB = isTeacherBusySlot(sObj);
+                  const roomB = isRoomBusySlot(sObj);
+                  const busy = teacherB || roomB;
+                  const base =
+                    "h-[70px] rounded-lg border flex items-center justify-center text-xs font-medium transition-all duration-200 ease-out will-change-transform focus:outline-none focus:ring-2 focus:ring-indigo-400/60 cursor-pointer select-none";
+                  let cls = "";
+                  if (sel)
+                    cls = "bg-blue-600 text-white border-blue-700 animate-pop";
+                  else if (teacherB)
+                    cls =
+                      "bg-red-50 text-red-700 border-red-200 cursor-not-allowed";
+                  else if (roomB)
+                    cls =
+                      "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed";
+                  else
+                    cls =
+                      "bg-white hover:bg-blue-50 text-green-600 border-green-200 hover:shadow hover:scale-[1.03]";
+                  const text = teacherB
+                    ? "GV bận"
+                    : roomB
+                    ? "P bận"
+                    : sel
+                    ? "Đã chọn"
+                    : "Rảnh";
+                  return (
+                    <div
+                      key={dayIdx + "-" + slot.id}
+                      className={`${base} ${cls} animate-fadeIn`}
+                      style={{ transition: "all .2s cubic-bezier(.4,0,.2,1)" }}
+                      onClick={() => !busy && !disabled && onToggle?.(sObj)}
+                      title={
+                        busy ? "Giờ này đã bận" : sel ? "Bỏ chọn" : "Chọn giờ"
+                      }
+                    >
+                      {text}
+                    </div>
+                  );
+                })}
             </div>
           ))}
         </div>
@@ -248,7 +238,11 @@ export default function ScheduleGrid({
             <span className="h-4 w-4 rounded border bg-white" /> Trống
           </div>
           <div className="flex items-center gap-2">
-            <span className="h-4 w-4 rounded border bg-red-50" /> Bận
+            <span className="h-4 w-4 rounded border bg-red-50 border-red-200" />{" "}
+            GV bận
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-4 rounded border bg-gray-100" /> Phòng bận
           </div>
           <div className="flex items-center gap-2">
             <span className="h-4 w-4 rounded border bg-blue-600" /> Đã chọn

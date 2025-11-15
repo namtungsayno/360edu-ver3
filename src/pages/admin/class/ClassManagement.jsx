@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { dayLabelVi } from "../../../helper/formatters";
 import { Button } from "../../../components/ui/Button";
-import CreateOnlineClassModal from "./CreateOnlineClassModal";
-import CreateOfflineClassModal from "./CreateOfflineClassModal";
 import { classService } from "../../../services/class/class.service";
 import { teacherService } from "../../../services/teacher/teacher.service";
 // timeslot service
@@ -25,8 +24,7 @@ import { useToast } from "../../../hooks/use-toast";
  * Xem chi tiết lớp học
  */
 export default function CreateClassPage() {
-  const [openOnline, setOpenOnline] = useState(false);
-  const [openOffline, setOpenOffline] = useState(false);
+  const navigate = useNavigate();
 
   // filters
   const [teacherUserId, setTeacherUserId] = useState("");
@@ -167,13 +165,13 @@ export default function CreateClassPage() {
         <div className="flex gap-3">
           <Button
             variant="outline"
-            onClick={() => setOpenOffline(true)}
+            onClick={() => navigate("/home/admin/class/create-offline")}
             className="bg-white hover:bg-gray-50"
           >
             Tạo lớp Offline
           </Button>
           <Button
-            onClick={() => setOpenOnline(true)}
+            onClick={() => navigate("/home/admin/class/create-online")}
             className="bg-blue-600 hover:bg-blue-700"
           >
             Tạo lớp Online
@@ -262,7 +260,26 @@ export default function CreateClassPage() {
               </div>
               <div className="mt-4 space-y-2 text-sm text-gray-700">
                 <div>👨‍🏫 {c.teacherFullName}</div>
-                <div>📍 {c.online ? "Online" : c.roomName}</div>
+                <div className="flex items-center gap-1">
+                  {c.online ? (
+                    <>
+                      📡 Online
+                      {c.meetingLink && (
+                        <a
+                          href={c.meetingLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="ml-2 inline-flex items-center text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 hover:underline"
+                        >
+                          Vào học
+                        </a>
+                      )}
+                    </>
+                  ) : (
+                    <>📍 {c.roomName}</>
+                  )}
+                </div>
                 <div>
                   ⏰{" "}
                   {Array.isArray(c.schedule) && c.schedule.length > 0
@@ -286,25 +303,6 @@ export default function CreateClassPage() {
             </div>
           ))}
       </div>
-
-      {/* Modal tạo Online */}
-      <CreateOnlineClassModal
-        open={openOnline}
-        onClose={() => setOpenOnline(false)}
-        onCreated={() => {
-          // TODO: trigger reload list
-          loadClasses();
-        }}
-      />
-      {/* Modal tạo Offline */}
-      <CreateOfflineClassModal
-        open={openOffline}
-        onClose={() => setOpenOffline(false)}
-        onCreated={() => {
-          // TODO: trigger reload list
-          loadClasses();
-        }}
-      />
 
       {/* Modal chi tiết lớp học */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
