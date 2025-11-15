@@ -1,6 +1,7 @@
 // src/pages/admin/User.jsx
 import { useEffect, useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import {
@@ -26,6 +27,7 @@ const ROLES = ["ALL", "STUDENT", "TEACHER", "PARENT"];
 
 export default function UserManagement() {
   const { success, error } = useToast();
+  const navigate = useNavigate();
 
   // filter
   const [tab, setTab] = useState("ALL");
@@ -54,7 +56,6 @@ export default function UserManagement() {
 
   // dialogs
   const [selected, setSelected] = useState(null);
-  const [openForm, setOpenForm] = useState(false); // create teacher modal giữ nguyên
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailMode, setDetailMode] = useState("view"); // view | edit
 
@@ -189,10 +190,7 @@ export default function UserManagement() {
               }}
             />
             <Button
-              onClick={() => {
-                setSelected(null);
-                setOpenForm(true);
-              }}
+              onClick={() => navigate("/home/admin/users/create-teacher")}
             >
               <UserPlus className="w-4 h-4 mr-2" /> Thêm giáo viên
             </Button>
@@ -282,25 +280,7 @@ export default function UserManagement() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={openForm} onOpenChange={setOpenForm}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
-              {selected ? "Cập nhật người dùng" : "Thêm giáo viên"}
-            </DialogTitle>
-          </DialogHeader>
-          <CreateTeacherForm
-            user={selected}
-            onClose={() => setOpenForm(false)}
-            onSuccess={async () => {
-              setOpenForm(false);
-              // reload list cho chắc
-              const arr = await userService.list();
-              setAllUsers(Array.isArray(arr) ? arr : []);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Modal tạo giáo viên đã được thay bằng trang riêng /home/admin/users/create-teacher */}
     </div>
   );
 }
