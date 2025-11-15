@@ -294,6 +294,14 @@ export default function CreateClassPage() {
                         .join(", ")
                     : "Chưa có lịch"}
                 </div>
+                {(c.startDate || c.endDate) && (
+                  <div>
+                    📅{" "}
+                    {c.startDate && c.endDate
+                      ? `${c.startDate} → ${c.endDate}`
+                      : c.startDate || c.endDate}
+                  </div>
+                )}
               </div>
               {typeof c.maxStudents === "number" && (
                 <div className="mt-3 text-sm text-gray-600">
@@ -342,6 +350,18 @@ export default function CreateClassPage() {
                   </p>
                 </div>
               </div>
+              {(selected.startDate || selected.endDate) && (
+                <div>
+                  <h4 className="text-base font-semibold text-gray-900">
+                    Thời gian
+                  </h4>
+                  <p className="text-sm text-gray-700">
+                    {selected.startDate && selected.endDate
+                      ? `${selected.startDate} → ${selected.endDate}`
+                      : selected.startDate || selected.endDate}
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-base font-semibold text-gray-900">
