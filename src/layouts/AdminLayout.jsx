@@ -69,13 +69,9 @@ export default function AdminLayout() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"></div>
         </header>
 
-        {/* Content LIGHT */}
+        {/* Content LIGHT - No padding for full-screen pages */}
         <main className="flex-1 text-slate-900">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* nếu các trang con đang dùng lớp bg-dark, chúng sẽ vẫn tối.
-                Cứ để layout sáng trước, sau đó ta sửa từng trang sau. */}
-            <Outlet />
-          </div>
+          <Outlet />
         </main>
       </div>
     </div>

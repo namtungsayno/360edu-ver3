@@ -58,7 +58,7 @@ const Sidebar = () => {
           id: "classes",
           label: "Lớp học",
           icon: GraduationCap,
-          href: "/home/admin/classes",
+          href: "/home/admin/class",
         },
         {
           id: "courses",
