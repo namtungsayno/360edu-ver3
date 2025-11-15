@@ -64,6 +64,7 @@ import Register from "../pages/auth/Register";
 import SubjectManagement from "../pages/admin/subject/SubjectManagement.jsx";
 import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagement.jsx";
 import SubjectDetail from "../pages/admin/subject/SubjectDetail.jsx";
+import CreateTeacherPage from "../pages/admin/user/CreateTeacherPage.jsx";
 
 //TEACHER - Các trang danh cho Teacher
 import TeacherProfile from "../pages/teacher/TeacherManagement.jsx";
@@ -98,6 +99,10 @@ function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<User />} />
+            <Route
+              path="users/create-teacher"
+              element={<CreateTeacherPage />}
+            />
             <Route path="news" element={<NewsList />} />
             <Route path="news/create" element={<CreateNews />} />
             <Route path="classrooms" element={<ClassroomList />} />

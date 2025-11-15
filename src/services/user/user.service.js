@@ -36,9 +36,11 @@ export const userService = {
 
   // ✅ tạo giáo viên đúng luồng auth (khác với create generic)
   async createTeacher(payload) {
-    // Validate subjectId presence before calling API
-    if (!payload.subjectId) {
-      throw new Error("subjectId is required to create a teacher");
+    // Validate subjectIds presence before calling API
+    if (!Array.isArray(payload.subjectIds) || payload.subjectIds.length === 0) {
+      throw new Error(
+        "At least one subject must be selected to create a teacher"
+      );
     }
     return userApi.createTeacher(payload);
   },
