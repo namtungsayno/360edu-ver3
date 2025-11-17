@@ -2,10 +2,33 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Badge } from "../../../components/ui/Badge.jsx";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/Dialog.jsx";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/Select.jsx";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/ui/Table.jsx";
-import { ExternalLink, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/Dialog.jsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/Select.jsx";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../../components/ui/Table.jsx";
+import {
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+} from "lucide-react";
 import { scheduleService } from "../../../services/schedule/schedule.service";
 import ClassCard from "./ClassCard.jsx";
 
@@ -76,16 +99,20 @@ function ScheduleManagement() {
 
   // Calculate if can navigate to prev/next week based on semester range
   const canGoPrevWeek = useMemo(() => {
+    // If "All" is selected, allow unlimited navigation
+    if (selectedSemester === "all") return true;
     if (!selectedSemesterData?.startDate) return true;
     const prevWeekStart = subWeeks(weekStart, 1);
     return prevWeekStart >= new Date(selectedSemesterData.startDate);
-  }, [weekStart, selectedSemesterData]);
+  }, [weekStart, selectedSemesterData, selectedSemester]);
 
   const canGoNextWeek = useMemo(() => {
+    // If "All" is selected, allow unlimited navigation
+    if (selectedSemester === "all") return true;
     if (!selectedSemesterData?.endDate) return true;
     const nextWeekEnd = addDays(addWeeks(weekStart, 1), 6);
     return nextWeekEnd <= new Date(selectedSemesterData.endDate);
-  }, [weekStart, selectedSemesterData]);
+  }, [weekStart, selectedSemesterData, selectedSemester]);
 
   useEffect(() => {
     (async () => {
@@ -95,12 +122,14 @@ function ScheduleManagement() {
           scheduleService.getTeachers(),
           scheduleService.getTimeSlots(),
         ]);
-        
+
         setSemesters(semesterList);
-        // Auto-select first semester (usually current semester)
+        // Auto-select "All" option by default
         if (semesterList.length > 0 && !selectedSemester) {
-          setSelectedSemester(semesterList[0].value);
-          setSelectedSemesterData(semesterList[0]); // Store full semester data
+          setSelectedSemester("all");
+          setSelectedSemesterData(
+            semesterList.find((s) => s.value !== "all") || semesterList[0]
+          ); // Store first real semester data for reference
         }
 
         setTeachers(tList);
@@ -115,14 +144,19 @@ function ScheduleManagement() {
 
   useEffect(() => {
     if (!selectedSemester) return;
-    
+
     (async () => {
       try {
-        const data = await scheduleService.getScheduleBySemester(Number(selectedSemester));
+        // Pass 'all' or numeric semesterId to service
+        const data = await scheduleService.getScheduleBySemester(
+          selectedSemester
+        );
         setWeekSchedule(data);
       } catch (e) {
         console.error("Failed to load schedule data:", e);
-        alert("Không thể tải dữ liệu lịch học. Vui lòng kiểm tra kết nối backend.");
+        alert(
+          "Không thể tải dữ liệu lịch học. Vui lòng kiểm tra kết nối backend."
+        );
         setWeekSchedule([]);
       }
     })();
@@ -143,14 +177,37 @@ function ScheduleManagement() {
 
   const filteredSchedule = useMemo(() => {
     let filtered = weekSchedule;
+    console.log("🔍 Filter Debug - Initial schedule items:", filtered.length);
+    console.log("🔍 Selected teacher:", selectedTeacher);
+    console.log("🔍 Class type filter:", classTypeFilter);
+
     if (selectedTeacher) {
-      filtered = filtered.filter((s) => String(s.teacherId) === String(selectedTeacher));
+      console.log("👨‍🏫 Filtering by teacher ID:", selectedTeacher);
+      const before = filtered.length;
+      filtered = filtered.filter(
+        (s) => String(s.teacherId) === String(selectedTeacher)
+      );
+      console.log(
+        `👨‍🏫 After teacher filter: ${before} → ${filtered.length} items`
+      );
+      if (filtered.length > 0) {
+        console.log("Sample filtered item:", filtered[0]);
+      }
     }
     if (classTypeFilter === "online") {
+      const before = filtered.length;
       filtered = filtered.filter((s) => s.isOnline === true);
+      console.log(
+        `💻 After online filter: ${before} → ${filtered.length} items`
+      );
     } else if (classTypeFilter === "offline") {
+      const before = filtered.length;
       filtered = filtered.filter((s) => s.isOnline === false);
+      console.log(
+        `🏫 After offline filter: ${before} → ${filtered.length} items`
+      );
     }
+    console.log("✅ Final filtered schedule:", filtered.length, "items");
     return filtered;
   }, [weekSchedule, selectedTeacher, classTypeFilter]);
 
@@ -171,11 +228,13 @@ function ScheduleManagement() {
   // Handle semester change - update both value and full data, reset to first week
   const handleSemesterChange = (value) => {
     setSelectedSemester(value);
-    const semesterData = semesters.find(s => s.value === value);
+    const semesterData = semesters.find((s) => s.value === value);
     setSelectedSemesterData(semesterData || null);
-    
-    // Reset to first week of semester
-    if (semesterData?.startDate) {
+
+    // Reset to first week of semester or current week if "All"
+    if (value === "all") {
+      setCurrentWeek(new Date()); // Reset to current week
+    } else if (semesterData?.startDate) {
       setCurrentWeek(new Date(semesterData.startDate));
     }
   };
@@ -183,13 +242,13 @@ function ScheduleManagement() {
   // Week navigation handlers
   const handlePreviousWeek = () => {
     if (canGoPrevWeek) {
-      setCurrentWeek(prev => subWeeks(prev, 1));
+      setCurrentWeek((prev) => subWeeks(prev, 1));
     }
   };
 
   const handleNextWeek = () => {
     if (canGoNextWeek) {
-      setCurrentWeek(prev => addWeeks(prev, 1));
+      setCurrentWeek((prev) => addWeeks(prev, 1));
     }
   };
 
@@ -210,7 +269,9 @@ function ScheduleManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Quản lý lịch học</h1>
-          <p className="text-slate-600 mt-1">Xem lịch giảng dạy của tất cả giáo viên theo tuần</p>
+          <p className="text-slate-600 mt-1">
+            Xem lịch giảng dạy của tất cả giáo viên theo tuần
+          </p>
         </div>
       </div>
 
@@ -225,7 +286,10 @@ function ScheduleManagement() {
                   <div className="w-1 h-5 bg-blue-600 rounded"></div>
                   Học kỳ
                 </label>
-                <Select value={selectedSemester || ""} onValueChange={handleSemesterChange}>
+                <Select
+                  value={selectedSemester || ""}
+                  onValueChange={handleSemesterChange}
+                >
                   <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-blue-500 transition-colors [&>svg]:h-4 [&>svg]:w-4">
                     <SelectValue placeholder="Chọn học kỳ" />
                   </SelectTrigger>
@@ -237,10 +301,25 @@ function ScheduleManagement() {
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedSemesterData && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {fmt(new Date(selectedSemesterData.startDate), "dd/MM/yyyy")} - {fmt(new Date(selectedSemesterData.endDate), "dd/MM/yyyy")}
+                {selectedSemester === "all" ? (
+                  <p className="text-xs text-blue-600 mt-1 font-medium">
+                    📅 Xem toàn bộ lịch học
                   </p>
+                ) : (
+                  selectedSemesterData &&
+                  selectedSemesterData.startDate && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {fmt(
+                        new Date(selectedSemesterData.startDate),
+                        "dd/MM/yyyy"
+                      )}{" "}
+                      -{" "}
+                      {fmt(
+                        new Date(selectedSemesterData.endDate),
+                        "dd/MM/yyyy"
+                      )}
+                    </p>
+                  )
                 )}
               </div>
 
@@ -250,7 +329,12 @@ function ScheduleManagement() {
                   <div className="w-1 h-5 bg-green-600 rounded"></div>
                   Giáo viên
                 </label>
-                <Select value={selectedTeacher || "all"} onValueChange={(value) => setSelectedTeacher(value === "all" ? null : value)}>
+                <Select
+                  value={selectedTeacher || "all"}
+                  onValueChange={(value) =>
+                    setSelectedTeacher(value === "all" ? null : value)
+                  }
+                >
                   <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-green-500 transition-colors [&>svg]:h-4 [&>svg]:w-4">
                     <SelectValue />
                   </SelectTrigger>
@@ -271,7 +355,10 @@ function ScheduleManagement() {
                   <div className="w-1 h-5 bg-purple-600 rounded"></div>
                   Loại lớp
                 </label>
-                <Select value={classTypeFilter} onValueChange={setClassTypeFilter}>
+                <Select
+                  value={classTypeFilter}
+                  onValueChange={setClassTypeFilter}
+                >
                   <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-purple-500 transition-colors [&>svg]:h-4 [&>svg]:w-4">
                     <SelectValue />
                   </SelectTrigger>
@@ -286,28 +373,29 @@ function ScheduleManagement() {
 
             {/* Week Navigation */}
             <div className="flex items-center justify-center gap-3 pt-2 border-t border-gray-200">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handlePreviousWeek} 
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreviousWeek}
                 disabled={!canGoPrevWeek}
                 className="h-9 px-3 hover:bg-blue-50 disabled:opacity-50"
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Tuần trước
               </Button>
-              
+
               <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                 <Calendar className="h-4 w-4 text-blue-600" />
                 <span className="text-sm font-semibold text-blue-900">
-                  {fmt(weekStart, "dd/MM/yyyy")} - {fmt(addDays(weekStart, 6), "dd/MM/yyyy")}
+                  {fmt(weekStart, "dd/MM/yyyy")} -{" "}
+                  {fmt(addDays(weekStart, 6), "dd/MM/yyyy")}
                 </span>
               </div>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleNextWeek} 
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextWeek}
                 disabled={!canGoNextWeek}
                 className="h-9 px-3 hover:bg-blue-50 disabled:opacity-50"
               >
@@ -331,9 +419,14 @@ function ScheduleManagement() {
                 {weekDates.map((date, index) => {
                   const dayInfo = WEEK_DAYS[index];
                   return (
-                    <div key={fmt(date, "yyyy-MM-dd")} className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-md p-2 text-center shadow-sm">
+                    <div
+                      key={fmt(date, "yyyy-MM-dd")}
+                      className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-md p-2 text-center shadow-sm"
+                    >
                       <div className="font-bold text-sm">{dayInfo.name}</div>
-                      <div className="text-xs mt-1 opacity-90">{fmt(date, "dd/MM")}</div>
+                      <div className="text-xs mt-1 opacity-90">
+                        {fmt(date, "dd/MM")}
+                      </div>
                     </div>
                   );
                 })}
@@ -343,15 +436,22 @@ function ScheduleManagement() {
                 {timeSlots.map((slot) => (
                   <div key={slot.id} className="grid grid-cols-8 gap-2">
                     <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-md p-2 flex flex-col justify-center">
-                      <div className="font-bold text-xs text-gray-800">{slot.label}</div>
-                      <div className="text-xs text-gray-600 mt-1">{slot.time}</div>
+                      <div className="font-bold text-xs text-gray-800">
+                        {slot.label}
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1">
+                        {slot.time}
+                      </div>
                     </div>
 
                     {WEEK_DAYS.map((day) => {
                       const classes = getClassesForSlot(day.id, slot.id);
-                      
+
                       return (
-                        <div key={day.id} className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50">
+                        <div
+                          key={day.id}
+                          className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50"
+                        >
                           {classes.length > 0 ? (
                             <div className="space-y-1">
                               {classes.map((classData) => (
@@ -378,15 +478,21 @@ function ScheduleManagement() {
         </CardContent>
       </Card>
 
-      <Dialog open={isClassDetailOpen} onOpenChange={setIsClassDetailOpen} size="xl">
+      <Dialog
+        open={isClassDetailOpen}
+        onOpenChange={setIsClassDetailOpen}
+        size="xl"
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Chi tiết lớp {selectedClassDetail?.className}</span>
               {selectedClassDetail?.meetLink && (
-                <Button 
+                <Button
                   size="sm"
-                  onClick={() => window.open(selectedClassDetail.meetLink, '_blank')}
+                  onClick={() =>
+                    window.open(selectedClassDetail.meetLink, "_blank")
+                  }
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Vào lớp học
@@ -394,22 +500,39 @@ function ScheduleManagement() {
               )}
             </DialogTitle>
             <div className="text-sm text-slate-600 space-y-1 mt-3">
-              <div>Môn học: <span className="font-medium">{selectedClassDetail?.subjectName}</span></div>
-              <div>Giáo viên: <span className="font-medium">{selectedClassDetail?.teacherName}</span></div>
               <div>
-                Địa điểm: 
+                Môn học:{" "}
+                <span className="font-medium">
+                  {selectedClassDetail?.subjectName}
+                </span>
+              </div>
+              <div>
+                Giáo viên:{" "}
+                <span className="font-medium">
+                  {selectedClassDetail?.teacherName}
+                </span>
+              </div>
+              <div>
+                Địa điểm:
                 <span className="font-medium ml-1">
                   {selectedClassDetail?.isOnline ? (
-                    <Badge className="bg-purple-100 text-purple-800">Online</Badge>
+                    <Badge className="bg-purple-100 text-purple-800">
+                      Online
+                    </Badge>
                   ) : (
                     selectedClassDetail?.room || "Chưa có phòng"
                   )}
                 </span>
               </div>
-              <div>Số học viên: <span className="font-medium">{selectedClassDetail?.studentCount}</span></div>
+              <div>
+                Số học viên:{" "}
+                <span className="font-medium">
+                  {selectedClassDetail?.studentCount}
+                </span>
+              </div>
             </div>
           </DialogHeader>
-          
+
           <div className="py-4">
             <h3 className="font-medium mb-3">Danh sách điểm danh</h3>
             <Table>
@@ -427,27 +550,40 @@ function ScheduleManagement() {
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>{record.student}</TableCell>
                     <TableCell>{getStatusBadge(record.status)}</TableCell>
-                    <TableCell className="text-sm text-slate-600">{record.time}</TableCell>
+                    <TableCell className="text-sm text-slate-600">
+                      {record.time}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-          
+
           <div className="flex items-center justify-between pt-4 border-t">
             <div className="text-sm text-slate-600">
-              <span className="font-medium">Tổng: {attendanceDetails.length}</span> • 
+              <span className="font-medium">
+                Tổng: {attendanceDetails.length}
+              </span>{" "}
+              •
               <span className="text-green-600 font-medium ml-2">
-                {attendanceDetails.filter((a) => a.status === "present").length} có mặt
-              </span> • 
+                {attendanceDetails.filter((a) => a.status === "present").length}{" "}
+                có mặt
+              </span>{" "}
+              •
               <span className="text-red-600 font-medium ml-2">
-                {attendanceDetails.filter((a) => a.status === "absent").length} vắng
-              </span> • 
+                {attendanceDetails.filter((a) => a.status === "absent").length}{" "}
+                vắng
+              </span>{" "}
+              •
               <span className="text-yellow-600 font-medium ml-2">
-                {attendanceDetails.filter((a) => a.status === "late").length} muộn
+                {attendanceDetails.filter((a) => a.status === "late").length}{" "}
+                muộn
               </span>
             </div>
-            <Button variant="outline" onClick={() => setIsClassDetailOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsClassDetailOpen(false)}
+            >
               Đóng
             </Button>
           </div>
