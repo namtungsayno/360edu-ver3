@@ -15,8 +15,17 @@ export const scheduleService = {
    */
   async getSemesters() {
     const semesters = await semesterService.getAllSemesters();
+    // Add "All Semesters" option at the beginning
+    const allOption = {
+      id: "all",
+      value: "all",
+      label: "Tất cả học kỳ",
+      startDate: null,
+      endDate: null,
+      status: "ACTIVE",
+    };
     // Transform to format: {id, value, label}
-    return semesters.map((s) => ({
+    const semesterOptions = semesters.map((s) => ({
       id: s.id,
       value: String(s.id),
       label: s.name,
@@ -24,6 +33,7 @@ export const scheduleService = {
       endDate: s.endDate,
       status: s.status,
     }));
+    return [allOption, ...semesterOptions];
   },
 
   /**
@@ -63,19 +73,52 @@ export const scheduleService = {
    * @returns {Promise<Array>} schedule items formatted for the grid
    */
   async getScheduleBySemester(semesterId) {
+    console.log("🔍 Loading schedule for semester:", semesterId);
+
     // Get all classes from backend - Sử dụng classService.list()
     const classes = await classService.list();
-    
+    console.log("📚 Total classes loaded:", classes.length);
+
     // Filter classes by semester if provided
     let filteredClasses = classes;
-    if (semesterId) {
-      filteredClasses = classes.filter(cls => cls.semesterId === Number(semesterId));
+    if (semesterId && semesterId !== "all") {
+      filteredClasses = classes.filter((cls) => {
+        // Match if semesterId matches OR if class has no semester (null)
+        // This allows viewing classes created without semester assignment
+        const match =
+          cls.semesterId === Number(semesterId) || cls.semesterId === null;
+        if (!match) {
+          console.log(
+            `⏭️ Skipping class ${cls.id} (${cls.name}) - semesterId: ${cls.semesterId} != ${semesterId}`
+          );
+        } else if (cls.semesterId === null) {
+          console.log(
+            `✅ Including class ${cls.id} (${cls.name}) - no semester assigned (showing in all semesters)`
+          );
+        }
+        return match;
+      });
+      console.log(
+        `✅ Filtered to ${
+          filteredClasses.length
+        } classes for semester ${semesterId} (including ${
+          classes.filter((c) => c.semesterId === null).length
+        } classes without semester)`
+      );
+    } else if (semesterId === "all") {
+      console.log(`📋 Showing all classes (${classes.length} total)`);
     }
 
     // Transform classes to schedule items for the grid
     const scheduleItems = [];
-    
+
     for (const cls of filteredClasses) {
+      console.log(`📋 Processing class ${cls.id}: ${cls.name}`, {
+        hasSchedule: !!cls.schedule,
+        scheduleLength: cls.schedule?.length || 0,
+        schedule: cls.schedule,
+      });
+
       // Each class has a schedule array with dayOfWeek and timeSlot info
       if (cls.schedule && cls.schedule.length > 0) {
         for (const scheduleItem of cls.schedule) {
@@ -90,7 +133,8 @@ export const scheduleService = {
             startTime: scheduleItem.startTime,
             endTime: scheduleItem.endTime,
             // Teacher information
-            teacherId: cls.teacherId,
+            teacherId: cls.teacherUserId, // Use teacherUserId (User ID) for filtering
+            teacherEntityId: cls.teacherId, // Keep original teacher entity ID for reference
             teacherName: cls.teacherFullName || "TBA",
             // Subject and room information
             subjectId: cls.subjectId,
@@ -101,16 +145,19 @@ export const scheduleService = {
             studentCount: cls.currentStudents || 0,
             maxStudents: cls.maxStudents || 0,
             isOnline: cls.online || false,
-            meetLink: cls.meetLink || null,
+            meetLink: cls.meetingLink || null, // Fix: use meetingLink not meetLink
             status: cls.status || "ACTIVE",
             // Original class data for reference
             originalClass: cls,
           });
         }
+      } else {
+        console.warn(`⚠️ Class ${cls.id} (${cls.name}) has no schedule data`);
       }
     }
 
-    console.log("Schedule data loaded:", scheduleItems.length, "items"); // Debug log
+    console.log("✨ Schedule data loaded:", scheduleItems.length, "items");
+    console.log("📊 Schedule items:", scheduleItems);
     return scheduleItems;
   },
 
