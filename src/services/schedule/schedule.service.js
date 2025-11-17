@@ -48,7 +48,8 @@ export const scheduleService = {
   async getTeachers() {
     const teachers = await teacherService.list();
     return teachers.map((t) => ({
-      id: t.userId, // Use userId for compatibility with existing schedule logic
+      id: t.userId, // Use userId for dropdown filter
+      teacherId: t.id, // Keep original teacher.id for reference
       name: t.fullName,
       email: t.email,
       subjectId: t.subjectId,
@@ -65,11 +66,51 @@ export const scheduleService = {
   async getScheduleBySemester(semesterId) {
     // Get all classes from backend - Sử dụng classService.list()
     const classes = await classService.list();
+    console.log("Raw classes from backend:", classes);
+    
+    // Get all teachers to create teacherId -> userId mapping
+    const teachers = await teacherService.list();
+    const teacherIdToUserIdMap = {};
+    for (const t of teachers) {
+      teacherIdToUserIdMap[t.id] = t.userId; // Map teacher.id to user.id
+    }
+    console.log("Teacher ID to User ID mapping:", teacherIdToUserIdMap);
     
     // Filter classes by semester if provided
     let filteredClasses = classes;
     if (semesterId) {
-      filteredClasses = classes.filter(cls => cls.semesterId === Number(semesterId));
+      // Get semester details to check date range
+      const semesters = await this.getSemesters();
+      const semester = semesters.find(s => s.id === Number(semesterId));
+      
+      console.log("Filtering by semesterId:", semesterId, "semester data:", semester);
+      console.log("Classes semesterIds:", classes.map(c => ({ id: c.id, semesterId: c.semesterId, startDate: c.startDate, endDate: c.endDate })));
+      
+      // Filter by semesterId OR by date overlap if semesterId is null
+      filteredClasses = classes.filter(cls => {
+        // If class has semesterId, match directly
+        if (cls.semesterId !== null && cls.semesterId !== undefined) {
+          return cls.semesterId === Number(semesterId);
+        }
+        
+        // If class has no semesterId, check if class date range overlaps with semester
+        if (semester && cls.startDate && cls.endDate) {
+          const classStart = new Date(cls.startDate);
+          const classEnd = new Date(cls.endDate);
+          const semesterStart = new Date(semester.startDate);
+          const semesterEnd = new Date(semester.endDate);
+          
+          // Check if there's any overlap between class and semester dates
+          const hasOverlap = classStart <= semesterEnd && classEnd >= semesterStart;
+          console.log(`Class ${cls.id}: ${cls.startDate} to ${cls.endDate}, overlap with semester: ${hasOverlap}`);
+          return hasOverlap;
+        }
+        
+        // If no semesterId and no valid dates, include it (show all)
+        return true;
+      });
+      
+      console.log(`Filtered to semester ${semesterId}:`, filteredClasses.length, "classes");
     }
 
     // Transform classes to schedule items for the grid
@@ -78,6 +119,9 @@ export const scheduleService = {
     for (const cls of filteredClasses) {
       // Each class has a schedule array with dayOfWeek and timeSlot info
       if (cls.schedule && cls.schedule.length > 0) {
+        // Get the userId from teacherId mapping
+        const teacherUserId = teacherIdToUserIdMap[cls.teacherId] || cls.teacherId;
+        
         for (const scheduleItem of cls.schedule) {
           scheduleItems.push({
             id: `${cls.id}-${scheduleItem.dayOfWeek}-${scheduleItem.timeSlotId}`, // Unique ID
@@ -89,8 +133,8 @@ export const scheduleService = {
             slotId: scheduleItem.timeSlotId,
             startTime: scheduleItem.startTime,
             endTime: scheduleItem.endTime,
-            // Teacher information
-            teacherId: cls.teacherId,
+            // Teacher information - use userId for filtering compatibility
+            teacherId: teacherUserId, // Use userId instead of backend's teacherId
             teacherName: cls.teacherFullName || "TBA",
             // Subject and room information
             subjectId: cls.subjectId,
@@ -101,7 +145,7 @@ export const scheduleService = {
             studentCount: cls.currentStudents || 0,
             maxStudents: cls.maxStudents || 0,
             isOnline: cls.online || false,
-            meetLink: cls.meetLink || null,
+            meetLink: cls.meetingLink || null, // Fix: use meetingLink instead of meetLink
             status: cls.status || "ACTIVE",
             // Original class data for reference
             originalClass: cls,
@@ -110,7 +154,8 @@ export const scheduleService = {
       }
     }
 
-    console.log("Schedule data loaded:", scheduleItems.length, "items"); // Debug log
+    console.log("Schedule items created:", scheduleItems.length, "items");
+    console.log("Sample schedule item:", scheduleItems[0]);
     return scheduleItems;
   },
 

@@ -118,7 +118,10 @@ function ScheduleManagement() {
     
     (async () => {
       try {
+        console.log("Fetching schedule for semester:", selectedSemester);
         const data = await scheduleService.getScheduleBySemester(Number(selectedSemester));
+        console.log("Schedule data received:", data);
+        console.log("Number of schedule items:", data.length);
         setWeekSchedule(data);
       } catch (e) {
         console.error("Failed to load schedule data:", e);
@@ -141,18 +144,58 @@ function ScheduleManagement() {
     }
   };
 
+  // Filter schedule by teacher + class type + current week dates
   const filteredSchedule = useMemo(() => {
+    console.log("Filtering schedule. weekSchedule length:", weekSchedule.length);
+    console.log("Selected teacher:", selectedTeacher);
+    console.log("Class type filter:", classTypeFilter);
+    console.log("Current week start:", fmt(weekStart, "yyyy-MM-dd"));
+    console.log("Current week end:", fmt(addDays(weekStart, 6), "yyyy-MM-dd"));
+    
     let filtered = weekSchedule;
+    
+    // Filter by current week - only show classes that are active during this week
+    const weekEnd = addDays(weekStart, 6);
+    // Set to end of day to include full week
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    filtered = filtered.filter((scheduleItem) => {
+      // Check if the class is active during the current week
+      const classStart = new Date(scheduleItem.originalClass.startDate);
+      classStart.setHours(0, 0, 0, 0); // Start of day
+      
+      const classEnd = new Date(scheduleItem.originalClass.endDate);
+      classEnd.setHours(23, 59, 59, 999); // End of day
+      
+      // Class must overlap with current week
+      const isActiveThisWeek = classStart <= weekEnd && classEnd >= weekStart;
+      
+      if (!isActiveThisWeek) {
+        console.log(`Class ${scheduleItem.className} (${fmt(classStart, "yyyy-MM-dd")} - ${fmt(classEnd, "yyyy-MM-dd")}) is NOT active this week (${fmt(weekStart, "yyyy-MM-dd")} - ${fmt(weekEnd, "yyyy-MM-dd")})`);
+      }
+      
+      return isActiveThisWeek;
+    });
+    console.log("After week filter:", filtered.length);
+    
+    // Filter by teacher
     if (selectedTeacher) {
       filtered = filtered.filter((s) => String(s.teacherId) === String(selectedTeacher));
+      console.log("After teacher filter:", filtered.length);
     }
+    
+    // Filter by class type
     if (classTypeFilter === "online") {
       filtered = filtered.filter((s) => s.isOnline === true);
+      console.log("After online filter:", filtered.length);
     } else if (classTypeFilter === "offline") {
       filtered = filtered.filter((s) => s.isOnline === false);
+      console.log("After offline filter:", filtered.length);
     }
+    
+    console.log("Final filtered schedule:", filtered);
     return filtered;
-  }, [weekSchedule, selectedTeacher, classTypeFilter]);
+  }, [weekSchedule, selectedTeacher, classTypeFilter, weekStart]);
 
   const scheduleLookup = useMemo(() => {
     const map = {};
@@ -168,16 +211,14 @@ function ScheduleManagement() {
     return scheduleLookup?.[dayId]?.[slotId] || [];
   };
 
-  // Handle semester change - update both value and full data, reset to first week
+  // Handle semester change - update both value and full data, keep current week
   const handleSemesterChange = (value) => {
     setSelectedSemester(value);
     const semesterData = semesters.find(s => s.value === value);
     setSelectedSemesterData(semesterData || null);
     
-    // Reset to first week of semester
-    if (semesterData?.startDate) {
-      setCurrentWeek(new Date(semesterData.startDate));
-    }
+    // Don't reset week - keep current week to maintain user's position
+    // Users can use "Today" button if they want to jump to current date
   };
 
   // Week navigation handlers
@@ -314,6 +355,21 @@ function ScheduleManagement() {
                 Tuần sau
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
+
+              {/* Today button */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  const today = new Date();
+                  setCurrentWeek(today);
+                  console.log("Reset to today:", fmt(today, "yyyy-MM-dd"));
+                }}
+                className="h-9 px-3 hover:bg-green-50 border-green-300 text-green-700"
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                Hôm nay
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -321,60 +377,91 @@ function ScheduleManagement() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="overflow-x-auto">
-            <div className="min-w-[1100px]">
-              <div className="grid grid-cols-8 gap-2 mb-3">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-2 font-medium text-center">
-                  <div className="text-xs text-blue-900 font-bold">Slot</div>
-                  <div className="text-xs text-blue-600 mt-1">Thời gian</div>
+          {/* Show stats */}
+          <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                <span className="font-semibold text-gray-700">Tổng lớp trong tuần:</span>
+                <span className="text-blue-700 font-bold">{filteredSchedule.length}</span>
+              </div>
+              {selectedTeacher && (
+                <div className="flex items-center gap-2 text-green-700">
+                  <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                  <span>Lọc theo giáo viên</span>
                 </div>
-                {weekDates.map((date, index) => {
-                  const dayInfo = WEEK_DAYS[index];
-                  return (
-                    <div key={fmt(date, "yyyy-MM-dd")} className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-md p-2 text-center shadow-sm">
-                      <div className="font-bold text-sm">{dayInfo.name}</div>
-                      <div className="text-xs mt-1 opacity-90">{fmt(date, "dd/MM")}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="space-y-2">
-                {timeSlots.map((slot) => (
-                  <div key={slot.id} className="grid grid-cols-8 gap-2">
-                    <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-md p-2 flex flex-col justify-center">
-                      <div className="font-bold text-xs text-gray-800">{slot.label}</div>
-                      <div className="text-xs text-gray-600 mt-1">{slot.time}</div>
-                    </div>
-
-                    {WEEK_DAYS.map((day) => {
-                      const classes = getClassesForSlot(day.id, slot.id);
-                      
-                      return (
-                        <div key={day.id} className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50">
-                          {classes.length > 0 ? (
-                            <div className="space-y-1">
-                              {classes.map((classData) => (
-                                <ClassCard
-                                  key={classData.id}
-                                  classData={classData}
-                                  onViewDetail={openClassDetail}
-                                />
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-xs">
-                              Trống
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
+              )}
+              {classTypeFilter !== "all" && (
+                <div className="flex items-center gap-2 text-purple-700">
+                  <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                  <span>Lọc: {classTypeFilter === "online" ? "Online" : "Offline"}</span>
+                </div>
+              )}
             </div>
           </div>
+
+          {filteredSchedule.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <Calendar className="h-16 w-16 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Không có lịch học trong tuần này</p>
+              <p className="text-sm mt-2">Hãy thử chọn tuần khác hoặc thay đổi bộ lọc</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="min-w-[1100px]">
+                <div className="grid grid-cols-8 gap-2 mb-3">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-2 font-medium text-center">
+                    <div className="text-xs text-blue-900 font-bold">Slot</div>
+                    <div className="text-xs text-blue-600 mt-1">Thời gian</div>
+                  </div>
+                  {weekDates.map((date, index) => {
+                    const dayInfo = WEEK_DAYS[index];
+                    return (
+                      <div key={fmt(date, "yyyy-MM-dd")} className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-md p-2 text-center shadow-sm">
+                        <div className="font-bold text-sm">{dayInfo.name}</div>
+                        <div className="text-xs mt-1 opacity-90">{fmt(date, "dd/MM")}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-2">
+                  {timeSlots.map((slot) => (
+                    <div key={slot.id} className="grid grid-cols-8 gap-2">
+                      <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-md p-2 flex flex-col justify-center">
+                        <div className="font-bold text-xs text-gray-800">{slot.label}</div>
+                        <div className="text-xs text-gray-600 mt-1">{slot.time}</div>
+                      </div>
+
+                      {WEEK_DAYS.map((day) => {
+                        const classes = getClassesForSlot(day.id, slot.id);
+                        
+                        return (
+                          <div key={day.id} className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50">
+                            {classes.length > 0 ? (
+                              <div className="space-y-1">
+                                {classes.map((classData) => (
+                                  <ClassCard
+                                    key={classData.id}
+                                    classData={classData}
+                                    onViewDetail={openClassDetail}
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center h-full text-gray-400 text-xs">
+                                Trống
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

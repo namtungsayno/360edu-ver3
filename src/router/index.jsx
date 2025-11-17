@@ -37,12 +37,17 @@ import GuestLayout from "../layouts/GuestLayout";
 import TeacherLayout from "../layouts/TeacherLayout.jsx";
 
 // GUEST PAGES - Các trang dành cho user chưa đăng nhập
-import Home from "../pages/guest/Home";
-import Profile from "../pages/guest/Profile";
-import CourseList from "../pages/guest/CourseList";
-import SubjectList from "../pages/guest/SubjectList";
-import TeacherList from "../pages/guest/TeacherList";
-import About from "../pages/guest/About";
+import Home from "../pages/guest/home/Home";
+import Profile from "../pages/guest/profile/Profile";
+import CourseList from "../pages/guest/courses/CourseList";
+import SubjectList from "../pages/guest/subjects/SubjectList";
+import TeacherList from "../pages/guest/teachers/TeacherList";
+// Guest - Classes
+import ClassList from "../pages/guest/classes/ClassList.jsx";
+import ClassDetail from "../pages/guest/classes/ClassDetail.jsx";
+// Guest - News
+import GuestNewsList from "../pages/guest/news/NewsList.jsx";
+import About from "../pages/guest/about/About";
 
 // ADMIN PAGES - Các trang dành cho admin (cần đăng nhập)
 import Dashboard from "../pages/admin/Dashboard";
@@ -83,14 +88,11 @@ function AppRouter() {
         {/* GUEST ROUTES - Các route cho người dùng chưa đăng nhập (có Header) */}
         <Route element={<GuestLayout />}>
           <Route path="/home" element={<Home />} /> {/* Trang chủ */}
-          <Route path="/home/profile" element={<Profile />} />{" "}
-          {/* Profile guest */}
-          <Route path="/home/courses" element={<CourseList />} />{" "}
-          {/* Danh sách khóa học */}
-          <Route path="/home/subjects" element={<SubjectList />} />{" "}
-          {/* Danh sách lớp học */}
-          <Route path="/home/teachers" element={<TeacherList />} />{" "}
-          {/* Danh sách giáo viên */}
+          <Route path="/home/profile" element={<Profile />} />
+          <Route path="/home/classes" element={<ClassList />} /> {/* Danh sách lớp học */}
+          <Route path="/home/classes/:id" element={<ClassDetail />} />
+          <Route path="/home/teachers" element={<TeacherList />} /> {/* Danh sách giáo viên */}
+          <Route path="/home/news" element={<GuestNewsList />} /> {/* Tin tức */}
           <Route path="/home/about" element={<About />} /> {/* Giới thiệu */}
         </Route>
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
