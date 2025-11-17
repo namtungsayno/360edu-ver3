@@ -336,7 +336,7 @@ function ScheduleManagement() {
                   }
                 >
                   <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-green-500 transition-colors [&>svg]:h-4 [&>svg]:w-4">
-                    <SelectValue />
+                    <SelectValue placeholder="Tất cả giáo viên" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả giáo viên</SelectItem>
@@ -360,7 +360,7 @@ function ScheduleManagement() {
                   onValueChange={setClassTypeFilter}
                 >
                   <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-purple-500 transition-colors [&>svg]:h-4 [&>svg]:w-4">
-                    <SelectValue />
+                    <SelectValue placeholder="Tất cả" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả</SelectItem>
