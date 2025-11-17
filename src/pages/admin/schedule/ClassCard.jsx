@@ -10,26 +10,39 @@ import { Eye, Users, Video, MapPin } from "lucide-react";
  *  - onViewDetail: callback khi click xem chi tiết
  */
 export default function ClassCard({ classData, onViewDetail }) {
-  const { 
-    className, 
-    subjectName, 
-    teacherName, 
-    studentCount, 
-    isOnline, 
-    room, 
+  const {
+    className,
+    subjectName,
+    teacherName,
+    studentCount,
+    isOnline,
+    room,
+    // eslint-disable-next-line no-unused-vars
     meetLink,
-    status 
+    status,
   } = classData;
 
   // Status badge
   const getStatusBadge = () => {
     if (status === "completed") {
-      return <Badge className="text-xs bg-green-100 text-green-800 px-1 py-0">Hoàn thành</Badge>;
+      return (
+        <Badge className="text-xs bg-green-100 text-green-800 px-1 py-0">
+          Hoàn thành
+        </Badge>
+      );
     }
     if (status === "not_yet") {
-      return <Badge className="text-xs bg-red-100 text-red-800 px-1 py-0">Chưa học</Badge>;
+      return (
+        <Badge className="text-xs bg-red-100 text-red-800 px-1 py-0">
+          Chưa học
+        </Badge>
+      );
     }
-    return <Badge className="text-xs bg-blue-100 text-blue-800 px-1 py-0">Đã lên lịch</Badge>;
+    return (
+      <Badge className="text-xs bg-blue-100 text-blue-800 px-1 py-0">
+        Đã lên lịch
+      </Badge>
+    );
   };
 
   return (
@@ -41,7 +54,9 @@ export default function ClassCard({ classData, onViewDetail }) {
             {teacherName?.charAt(0) || "T"}
           </span>
         </div>
-        <span className="text-xs text-gray-600 truncate flex-1">{teacherName}</span>
+        <span className="text-xs text-gray-600 truncate flex-1">
+          {teacherName}
+        </span>
       </div>
 
       {/* Class name */}
@@ -63,7 +78,9 @@ export default function ClassCard({ classData, onViewDetail }) {
         {isOnline ? (
           <>
             <Video className="h-3 w-3 text-purple-600" />
-            <Badge className="bg-purple-100 text-purple-800 text-xs px-1 py-0">Online</Badge>
+            <Badge className="bg-purple-100 text-purple-800 text-xs px-1 py-0">
+              Online
+            </Badge>
           </>
         ) : (
           <>
