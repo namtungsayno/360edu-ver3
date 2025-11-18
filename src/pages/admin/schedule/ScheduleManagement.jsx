@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
-import { Badge } from "../../../components/ui/Badge.jsx";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/Dialog.jsx";
 import {
   Select,
   SelectContent,
@@ -15,20 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/Select.jsx";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../../components/ui/Table.jsx";
-import {
-  ExternalLink,
-  ChevronLeft,
-  ChevronRight,
-  Calendar,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { scheduleService } from "../../../services/schedule/schedule.service";
 import ClassCard from "./ClassCard.jsx";
 
@@ -74,18 +55,16 @@ const WEEK_DAYS = [
 ];
 
 function ScheduleManagement() {
+  const navigate = useNavigate();
   const [currentWeek, setCurrentWeek] = useState(new Date()); // Current week state
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedSemesterData, setSelectedSemesterData] = useState(null); // Store full semester object
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [classTypeFilter, setClassTypeFilter] = useState("all");
-  const [isClassDetailOpen, setIsClassDetailOpen] = useState(false);
-  const [selectedClassDetail, setSelectedClassDetail] = useState(null);
   const [semesters, setSemesters] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [weekSchedule, setWeekSchedule] = useState([]);
-  const [attendanceDetails, setAttendanceDetails] = useState([]);
 
   // Calculate week dates based on currentWeek
   const weekStart = useMemo(() => {
@@ -151,6 +130,7 @@ function ScheduleManagement() {
         const data = await scheduleService.getScheduleBySemester(
           selectedSemester
         );
+
         setWeekSchedule(data);
       } catch (e) {
         console.error("Failed to load schedule data:", e);
@@ -162,21 +142,19 @@ function ScheduleManagement() {
     })();
   }, [selectedSemester]);
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "present":
-        return <Badge className="bg-green-100 text-green-800">Có mặt</Badge>;
-      case "absent":
-        return <Badge className="bg-red-100 text-red-800">Vắng</Badge>;
-      case "late":
-        return <Badge className="bg-yellow-100 text-yellow-800">Muộn</Badge>;
-      default:
-        return <Badge className="bg-slate-100 text-slate-800">-</Badge>;
-    }
-  };
-
+  // Filter schedule by teacher + class type + current week dates
   const filteredSchedule = useMemo(() => {
+    console.log(
+      "Filtering schedule. weekSchedule length:",
+      weekSchedule.length
+    );
+    console.log("Selected teacher:", selectedTeacher);
+    console.log("Class type filter:", classTypeFilter);
+    console.log("Current week start:", fmt(weekStart, "yyyy-MM-dd"));
+    console.log("Current week end:", fmt(addDays(weekStart, 6), "yyyy-MM-dd"));
+
     let filtered = weekSchedule;
+
     console.log("🔍 Filter Debug - Initial schedule items:", filtered.length);
     console.log("🔍 Selected teacher:", selectedTeacher);
     console.log("🔍 Class type filter:", classTypeFilter);
@@ -194,9 +172,12 @@ function ScheduleManagement() {
         console.log("Sample filtered item:", filtered[0]);
       }
     }
+
+    // Filter by class type
     if (classTypeFilter === "online") {
       const before = filtered.length;
       filtered = filtered.filter((s) => s.isOnline === true);
+
       console.log(
         `💻 After online filter: ${before} → ${filtered.length} items`
       );
@@ -209,7 +190,7 @@ function ScheduleManagement() {
     }
     console.log("✅ Final filtered schedule:", filtered.length, "items");
     return filtered;
-  }, [weekSchedule, selectedTeacher, classTypeFilter]);
+  }, [weekSchedule, selectedTeacher, classTypeFilter, weekStart]);
 
   const scheduleLookup = useMemo(() => {
     const map = {};
@@ -225,7 +206,7 @@ function ScheduleManagement() {
     return scheduleLookup?.[dayId]?.[slotId] || [];
   };
 
-  // Handle semester change - update both value and full data, reset to first week
+  // Handle semester change - update both value and full data, keep current week
   const handleSemesterChange = (value) => {
     setSelectedSemester(value);
     const semesterData = semesters.find((s) => s.value === value);
@@ -252,16 +233,9 @@ function ScheduleManagement() {
     }
   };
 
-  const openClassDetail = async (classData) => {
-    setSelectedClassDetail(classData);
-    setIsClassDetailOpen(true);
-    try {
-      const attendance = await scheduleService.getAttendance(classData.classId);
-      setAttendanceDetails(attendance);
-    } catch (e) {
-      console.error("Failed to load attendance:", e);
-      setAttendanceDetails([]);
-    }
+  const openClassDetail = (classData) => {
+    // Navigate to admin class detail page
+    navigate(`/home/admin/schedule/class/${classData.classId}`);
   };
 
   return (
@@ -402,6 +376,21 @@ function ScheduleManagement() {
                 Tuần sau
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
+
+              {/* Today button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const today = new Date();
+                  setCurrentWeek(today);
+                  console.log("Reset to today:", fmt(today, "yyyy-MM-dd"));
+                }}
+                className="h-9 px-3 hover:bg-green-50 border-green-300 text-green-700"
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                Hôm nay
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -409,186 +398,107 @@ function ScheduleManagement() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="overflow-x-auto">
-            <div className="min-w-[1100px]">
-              <div className="grid grid-cols-8 gap-2 mb-3">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-2 font-medium text-center">
-                  <div className="text-xs text-blue-900 font-bold">Slot</div>
-                  <div className="text-xs text-blue-600 mt-1">Thời gian</div>
+          {/* Show stats */}
+          <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                <span className="font-semibold text-gray-700">
+                  Tổng lớp trong tuần:
+                </span>
+                <span className="text-blue-700 font-bold">
+                  {filteredSchedule.length}
+                </span>
+              </div>
+              {selectedTeacher && (
+                <div className="flex items-center gap-2 text-green-700">
+                  <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                  <span>Lọc theo giáo viên</span>
                 </div>
-                {weekDates.map((date, index) => {
-                  const dayInfo = WEEK_DAYS[index];
-                  return (
-                    <div
-                      key={fmt(date, "yyyy-MM-dd")}
-                      className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-md p-2 text-center shadow-sm"
-                    >
-                      <div className="font-bold text-sm">{dayInfo.name}</div>
-                      <div className="text-xs mt-1 opacity-90">
-                        {fmt(date, "dd/MM")}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="space-y-2">
-                {timeSlots.map((slot) => (
-                  <div key={slot.id} className="grid grid-cols-8 gap-2">
-                    <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-md p-2 flex flex-col justify-center">
-                      <div className="font-bold text-xs text-gray-800">
-                        {slot.label}
-                      </div>
-                      <div className="text-xs text-gray-600 mt-1">
-                        {slot.time}
-                      </div>
-                    </div>
-
-                    {WEEK_DAYS.map((day) => {
-                      const classes = getClassesForSlot(day.id, slot.id);
-
-                      return (
-                        <div
-                          key={day.id}
-                          className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50"
-                        >
-                          {classes.length > 0 ? (
-                            <div className="space-y-1">
-                              {classes.map((classData) => (
-                                <ClassCard
-                                  key={classData.id}
-                                  classData={classData}
-                                  onViewDetail={openClassDetail}
-                                />
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-xs">
-                              Trống
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
+              )}
             </div>
           </div>
+
+          {filteredSchedule.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <Calendar className="h-16 w-16 mb-4 opacity-50" />
+              <p className="text-lg font-medium">
+                Không có lịch học trong tuần này
+              </p>
+              <p className="text-sm mt-2">
+                Hãy thử chọn tuần khác hoặc thay đổi bộ lọc
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="min-w-[1100px]">
+                <div className="grid grid-cols-8 gap-2 mb-3">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-2 font-medium text-center">
+                    <div className="text-xs text-blue-900 font-bold">Slot</div>
+                    <div className="text-xs text-blue-600 mt-1">Thời gian</div>
+                  </div>
+                  {weekDates.map((date, index) => {
+                    const dayInfo = WEEK_DAYS[index];
+                    return (
+                      <div
+                        key={fmt(date, "yyyy-MM-dd")}
+                        className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-md p-2 text-center shadow-sm"
+                      >
+                        <div className="font-bold text-sm">{dayInfo.name}</div>
+                        <div className="text-xs mt-1 opacity-90">
+                          {fmt(date, "dd/MM")}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-2">
+                  {timeSlots.map((slot) => (
+                    <div key={slot.id} className="grid grid-cols-8 gap-2">
+                      <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-md p-2 flex flex-col justify-center">
+                        <div className="font-bold text-xs text-gray-800">
+                          {slot.label}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {slot.time}
+                        </div>
+                      </div>
+
+                      {WEEK_DAYS.map((day) => {
+                        const classes = getClassesForSlot(day.id, slot.id);
+
+                        return (
+                          <div
+                            key={day.id}
+                            className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50"
+                          >
+                            {classes.length > 0 ? (
+                              <div className="space-y-1">
+                                {classes.map((classData) => (
+                                  <ClassCard
+                                    key={classData.id}
+                                    classData={classData}
+                                    onViewDetail={openClassDetail}
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center h-full text-gray-400 text-xs">
+                                Trống
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      <Dialog
-        open={isClassDetailOpen}
-        onOpenChange={setIsClassDetailOpen}
-        size="xl"
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Chi tiết lớp {selectedClassDetail?.className}</span>
-              {selectedClassDetail?.meetLink && (
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    window.open(selectedClassDetail.meetLink, "_blank")
-                  }
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Vào lớp học
-                </Button>
-              )}
-            </DialogTitle>
-            <div className="text-sm text-slate-600 space-y-1 mt-3">
-              <div>
-                Môn học:{" "}
-                <span className="font-medium">
-                  {selectedClassDetail?.subjectName}
-                </span>
-              </div>
-              <div>
-                Giáo viên:{" "}
-                <span className="font-medium">
-                  {selectedClassDetail?.teacherName}
-                </span>
-              </div>
-              <div>
-                Địa điểm:
-                <span className="font-medium ml-1">
-                  {selectedClassDetail?.isOnline ? (
-                    <Badge className="bg-purple-100 text-purple-800">
-                      Online
-                    </Badge>
-                  ) : (
-                    selectedClassDetail?.room || "Chưa có phòng"
-                  )}
-                </span>
-              </div>
-              <div>
-                Số học viên:{" "}
-                <span className="font-medium">
-                  {selectedClassDetail?.studentCount}
-                </span>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="py-4">
-            <h3 className="font-medium mb-3">Danh sách điểm danh</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>STT</TableHead>
-                  <TableHead>Học viên</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Thời gian</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {attendanceDetails.map((record, index) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{record.student}</TableCell>
-                    <TableCell>{getStatusBadge(record.status)}</TableCell>
-                    <TableCell className="text-sm text-slate-600">
-                      {record.time}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t">
-            <div className="text-sm text-slate-600">
-              <span className="font-medium">
-                Tổng: {attendanceDetails.length}
-              </span>{" "}
-              •
-              <span className="text-green-600 font-medium ml-2">
-                {attendanceDetails.filter((a) => a.status === "present").length}{" "}
-                có mặt
-              </span>{" "}
-              •
-              <span className="text-red-600 font-medium ml-2">
-                {attendanceDetails.filter((a) => a.status === "absent").length}{" "}
-                vắng
-              </span>{" "}
-              •
-              <span className="text-yellow-600 font-medium ml-2">
-                {attendanceDetails.filter((a) => a.status === "late").length}{" "}
-                muộn
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setIsClassDetailOpen(false)}
-            >
-              Đóng
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { semesterService } from "../semester/semester.service";
 import { timeslotService } from "../timeslot/timeslot.service";
 import { teacherService } from "../teacher/teacher.service";
 import { classService } from "../class/class.service";
+import { enrollmentService } from "../enrollment/enrollment.service";
 
 // Helper to map dayOfWeek number to day names
 const DAY_NAMES = ["", "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -58,7 +59,8 @@ export const scheduleService = {
   async getTeachers() {
     const teachers = await teacherService.list();
     return teachers.map((t) => ({
-      id: t.userId, // Use userId for compatibility with existing schedule logic
+      id: t.userId, // Use userId for dropdown filter
+      teacherId: t.id, // Keep original teacher.id for reference
       name: t.fullName,
       email: t.email,
       subjectId: t.subjectId,
@@ -78,6 +80,14 @@ export const scheduleService = {
     // Get all classes from backend - Sử dụng classService.list()
     const classes = await classService.list();
     console.log("📚 Total classes loaded:", classes.length);
+
+    // Get all teachers to create teacherId -> userId mapping
+    const teachers = await teacherService.list();
+    const teacherIdToUserIdMap = {};
+    for (const t of teachers) {
+      teacherIdToUserIdMap[t.id] = t.userId; // Map teacher.id to user.id
+    }
+    console.log("Teacher ID to User ID mapping:", teacherIdToUserIdMap);
 
     // Filter classes by semester if provided
     let filteredClasses = classes;
@@ -121,6 +131,10 @@ export const scheduleService = {
 
       // Each class has a schedule array with dayOfWeek and timeSlot info
       if (cls.schedule && cls.schedule.length > 0) {
+        // Get the userId from teacherId mapping
+        const teacherUserId =
+          teacherIdToUserIdMap[cls.teacherId] || cls.teacherId;
+
         for (const scheduleItem of cls.schedule) {
           scheduleItems.push({
             id: `${cls.id}-${scheduleItem.dayOfWeek}-${scheduleItem.timeSlotId}`, // Unique ID
@@ -132,8 +146,8 @@ export const scheduleService = {
             slotId: scheduleItem.timeSlotId,
             startTime: scheduleItem.startTime,
             endTime: scheduleItem.endTime,
-            // Teacher information
-            teacherId: cls.teacherUserId, // Use teacherUserId (User ID) for filtering
+            // Teacher information - use userId for filtering compatibility
+            teacherId: teacherUserId, // Use userId instead of backend's teacherId
             teacherEntityId: cls.teacherId, // Keep original teacher entity ID for reference
             teacherName: cls.teacherFullName || "TBA",
             // Subject and room information
@@ -145,7 +159,7 @@ export const scheduleService = {
             studentCount: cls.currentStudents || 0,
             maxStudents: cls.maxStudents || 0,
             isOnline: cls.online || false,
-            meetLink: cls.meetingLink || null, // Fix: use meetingLink not meetLink
+            meetLink: cls.meetingLink || null,
             status: cls.status || "ACTIVE",
             // Original class data for reference
             originalClass: cls,
@@ -162,13 +176,49 @@ export const scheduleService = {
   },
 
   /**
-   * Get attendance for a class
-   * NOTE: Attendance API chưa có trong backend hiện tại
-   * @returns {Promise<Array>} attendance records (empty for now)
+   * Get schedule filtered by specific teacher's userId
+   * @param {number} teacherUserId - User ID of the teacher
+   * @returns {Promise<Array>} schedule items for that teacher only
    */
-  async getAttendance() {
-    // Backend chưa có endpoint attendance
-    // Trả về empty array để tránh lỗi UI
-    return [];
+  async getScheduleByTeacher(teacherUserId) {
+    console.log("🔍 Loading schedule for teacher userId:", teacherUserId);
+
+    // Get all classes and filter by teacher
+    const allSchedule = await this.getScheduleBySemester("all");
+
+    // Filter by teacherId (which is actually userId in our mapping)
+    const teacherSchedule = allSchedule.filter(
+      (item) => String(item.teacherId) === String(teacherUserId)
+    );
+
+    console.log(
+      `✅ Found ${teacherSchedule.length} schedule items for teacher ${teacherUserId}`
+    );
+    return teacherSchedule;
+  },
+
+  /**
+   * Get attendance for a class
+   * Tạm thời sử dụng danh sách học sinh đã đăng ký lớp
+   * (GET /classes/{classId}/enrollments) để hiển thị trong modal.
+   * @returns {Promise<Array>} mapped records for the UI table
+   */
+  async getAttendance(classId) {
+    try {
+      const students = await enrollmentService.listStudentsByClass(classId);
+      // Map to UI structure used by ScheduleManagement modal
+      return students.map((s, idx) => ({
+        id: s.studentId ?? idx,
+        student:
+          s.fullName && s.email
+            ? `${s.fullName} (${s.email})`
+            : s.fullName || s.email || `Student #${idx + 1}`,
+        status: "-", // not counted in present/absent/late summary
+        time: "", // no attendance time yet
+      }));
+    } catch (e) {
+      console.error("Failed to load enrolled students:", e);
+      return [];
+    }
   },
 };
