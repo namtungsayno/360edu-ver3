@@ -9,18 +9,11 @@ const BASE =
 
 export const http = axios.create({
   baseURL: BASE.replace(/\/$/, ""), // remove trailing slash if any
-  withCredentials: true, // to send/receive jwt cookie
+  withCredentials: true, // to send/receive jwt cookie (backend uses HTTP-only cookie)
   headers: { "Content-Type": "application/json" },
 });
 
-// Attach Authorization header if token stored (support future JWT header usage)
-http.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
-  if (token && !config.headers.Authorization) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// No need for Authorization header interceptor - backend uses HTTP-only cookie for JWT
 
 http.interceptors.response.use(
   (r) => r,

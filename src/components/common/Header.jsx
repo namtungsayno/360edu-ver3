@@ -3,8 +3,7 @@
  * 
  * Các trang được truy cập:
  * - /home (Trang chủ)
- * - /home/subjects (Danh sách lớp học)
- * - /home/courses (Danh sách khóa học) 
+ * - /home/classes (Danh sách lớp học)
  * - /home/teachers (Danh sách giáo viên)
  * - /home/about (Giới thiệu)
  * - /home/login (Đăng nhập)
@@ -17,23 +16,36 @@
  * - Highlight trang hiện tại
  */
 
-import { useState } from "react";
-import { Menu, X, User, LogIn, Video, GraduationCap, Search } from "lucide-react";
+import { useState, useContext } from "react";
+import { Menu, X, User, GraduationCap, Search, LogOut } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import Logo from "./Logo";
+import AuthContext from "../../context/AuthContext";
 
 export default function Header({ onNavigate, currentPage }) {
+  const { user, logout } = useContext(AuthContext);
   // State quản lý menu mobile (đóng/mở)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // State lưu từ khóa tìm kiếm
   const [searchQuery, setSearchQuery] = useState("");
+  // State quản lý dropdown profile
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setShowProfileMenu(false);
+      onNavigate({ type: "home" });
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   // Hàm kiểm tra trang hiện tại để highlight navigation item
   const isActive = (pageType) => {
     return currentPage.type === pageType || 
-           (pageType === "subjects" && (currentPage.type === "subject" || currentPage.type === "class")) ||
-           (pageType === "courses" && currentPage.type === "course") ||
+           (pageType === "classes" && (currentPage.type === "class" || currentPage.type === "classes")) ||
            (pageType === "teachers" && currentPage.type === "teacher");
   };
 
@@ -89,28 +101,15 @@ export default function Header({ onNavigate, currentPage }) {
             
             {/* Nút Lớp học với icon */}
             <button 
-              onClick={() => onNavigate({ type: "subjects" })}
+              onClick={() => onNavigate({ type: "classes" })}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                isActive("subjects") 
+                isActive("classes") 
                   ? "bg-white/20 text-white" 
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
               }`}
             >
               <GraduationCap className="w-4 h-4" />
               Lớp học
-            </button>
-
-            {/* Nút Khóa học với icon */}
-            <button 
-              onClick={() => onNavigate({ type: "courses" })}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                isActive("courses") 
-                  ? "bg-white/20 text-white" 
-                  : "text-blue-50 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <Video className="w-4 h-4" />
-              Khóa học
             </button>
 
             {/* Nút Giáo viên */}
@@ -150,16 +149,50 @@ export default function Header({ onNavigate, currentPage }) {
             </button>
           </nav>
 
-          {/* NÚT ĐĂNG NHẬP DESKTOP - Styling transparent với border */}
+          {/* NÚT ĐĂNG NHẬP / PROFILE DESKTOP */}
           <div className="hidden lg:flex items-center">
-            <Button 
-              onClick={() => onNavigate({ type: "login" })}
-              variant="ghost"
-              className="bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/30 gap-2 shadow-lg transition-all"
-            >
-              <User className="w-4 h-4" />
-              Đăng nhập
-            </Button>
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                    {user.username?.charAt(0).toUpperCase() || user.fullName?.charAt(0).toUpperCase() || "U"}
+                  </div>
+                  <span className="text-white text-sm font-medium max-w-[120px] truncate">
+                    {user.fullName || user.username}
+                  </span>
+                </button>
+                
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {user.fullName || user.username}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Đăng xuất
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Button 
+                onClick={() => onNavigate({ type: "login" })}
+                variant="ghost"
+                className="bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/30 gap-2 shadow-lg transition-all"
+              >
+                <User className="w-4 h-4" />
+                Đăng nhập
+              </Button>
+            )}
           </div>
 
           {/* NÚT MỞ MENU MOBILE - Chỉ hiển thị trên màn hình nhỏ */}
@@ -197,32 +230,17 @@ export default function Header({ onNavigate, currentPage }) {
               
               <button 
                 onClick={() => {
-                  onNavigate({ type: "subjects" });
+                  onNavigate({ type: "classes" });
                   setIsMenuOpen(false);
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                  isActive("subjects") 
+                  isActive("classes") 
                     ? "bg-white/20 text-white" 
                     : "text-blue-50 hover:bg-white/10"
                 }`}
               >
                 <GraduationCap className="w-4 h-4" />
                 Lớp học
-              </button>
-
-              <button 
-                onClick={() => {
-                  onNavigate({ type: "courses" });
-                  setIsMenuOpen(false);
-                }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                  isActive("courses") 
-                    ? "bg-white/20 text-white" 
-                    : "text-blue-50 hover:bg-white/10"
-                }`}
-              >
-                <Video className="w-4 h-4" />
-                Khóa học
               </button>
 
               <button 
@@ -267,19 +285,46 @@ export default function Header({ onNavigate, currentPage }) {
                 Giới thiệu
               </button>
               
-              {/* Nút đăng nhập mobile - Ở cuối với border top */}
+              {/* Nút đăng nhập / profile mobile */}
               <div className="pt-4 border-t border-blue-500/30">
-                <Button 
-                  onClick={() => {
-                    onNavigate({ type: "login" });
-                    setIsMenuOpen(false);
-                  }}
-                  variant="ghost"
-                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/30 gap-2 transition-all"
-                >
-                  <User className="w-4 h-4" />
-                  Đăng nhập
-                </Button>
+                {user ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 px-4 py-2 bg-white/10 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold">
+                        {user.username?.charAt(0).toUpperCase() || user.fullName?.charAt(0).toUpperCase() || "U"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-medium truncate">
+                          {user.fullName || user.username}
+                        </p>
+                        <p className="text-blue-100 text-xs truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => {
+                        handleLogout();
+                        setIsMenuOpen(false);
+                      }}
+                      variant="ghost"
+                      className="w-full bg-red-500/10 border border-red-400/20 text-red-100 hover:bg-red-500/20 gap-2 transition-all"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Đăng xuất
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    onClick={() => {
+                      onNavigate({ type: "login" });
+                      setIsMenuOpen(false);
+                    }}
+                    variant="ghost"
+                    className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/30 gap-2 transition-all"
+                  >
+                    <User className="w-4 h-4" />
+                    Đăng nhập
+                  </Button>
+                )}
               </div>
             </nav>
           </div>

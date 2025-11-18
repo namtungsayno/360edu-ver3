@@ -4,8 +4,8 @@
  * Routes được quản lý:
  * - /home (Trang chủ)
  * - /home/profile (Profile guest)
- * - /home/courses (Danh sách khóa học)
- * - /home/subjects (Danh sách lớp học) 
+ * - /home/classes (Danh sách lớp học)
+ * - /home/classes/:id (Chi tiết lớp)
  * - /home/teachers (Danh sách giáo viên)
  * - /home/about (Giới thiệu)
  * - /home/news (Tin tức - chưa implement)
@@ -35,10 +35,8 @@ export default function GuestLayout() {
       setCurrentPage({ type: "home" });
     } else if (path === "/home/profile") {
       setCurrentPage({ type: "profile" });
-    } else if (path === "/home/courses") {
-      setCurrentPage({ type: "courses" });
-    } else if (path === "/home/subjects") {
-      setCurrentPage({ type: "subjects" });
+    } else if (path === "/home/classes" || path.startsWith("/home/classes/")) {
+      setCurrentPage({ type: "classes" });
     } else if (path === "/home/teachers") {
       setCurrentPage({ type: "teachers" });
     } else if (path === "/home/about") {
@@ -63,18 +61,18 @@ export default function GuestLayout() {
       case "profile":
         navigate("/home/profile");
         break;
-      case "courses":
-        navigate("/home/courses");
-        break;
-      case "subjects":
-        navigate("/home/subjects");
+      case "classes":
+        navigate("/home/classes");
         break;
       case "teachers":
         navigate("/home/teachers");
         break;
       case "news":
-        // TODO: Tạo route cho news
-        console.log("News page not implemented yet");
+        if (page.id) {
+          navigate(`/home/news/${page.id}`);
+        } else {
+          navigate("/home/news");
+        }
         break;
       case "about":
         navigate("/home/about");
