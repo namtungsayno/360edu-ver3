@@ -6,8 +6,8 @@
  *
  * Core:
  * - Validate: fullName, username, email, phone, password, confirmPassword, parentName, parentEmail, parentPhone
- * - Hiển thị lỗi theo field + banner lỗi/ok
- * - Submit -> authService.register -> điều hướng /home/login
+ * - Hiển thị lỗi theo field + toast notifications cho thành công/thất bại
+ * - Submit -> authService.register -> toast thông báo -> điều hướng /home/login
  * - Nền animation không chặn click (pointer-events-none) + z-index cho card
  */
 
@@ -17,12 +17,14 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import Logo from "../../components/common/Logo";
 import { authService } from "../../services/auth/auth.service";
+import { useToast } from "../../hooks/use-toast";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const PHONE_REGEX = /^0\d{9}$/; // 10 số, bắt đầu bằng 0
 
 export default function Register() {
   const nav = useNavigate();
+  const { success, error } = useToast();
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -38,14 +40,12 @@ export default function Register() {
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [banner, setBanner] = useState({ type: "", message: "" }); // 'success' | 'error'
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     //prev là giá trị trước đó của formData
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
-    if (banner.message) setBanner({ type: "", message: "" });
   };
 
   const validate = () => {
@@ -92,8 +92,13 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault(); // không cho reload trang
-    setBanner({ type: "", message: "" });
-    if (!validate()) return;
+    if (!validate()) {
+      error(
+        "Có một số trường chưa được điền đúng",
+        "Vui lòng kiểm tra lại thông tin"
+      );
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -104,24 +109,29 @@ export default function Register() {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         password: formData.password,
-        confirmPassword: formData.confirmPassword, // 👈 THÊM DÒNG NÀY
+        confirmPassword: formData.confirmPassword,
         parentName: formData.parentName.trim(),
         parentEmail: formData.parentEmail.trim(),
         parentPhone: formData.parentPhone.trim(),
       });
 
-      setBanner({
-        type: "success",
-        message: "Đăng ký thành công! Vui lòng đăng nhập.",
-      });
-      nav("/home/login");
+      success(
+        "Tài khoản của bạn đã được tạo thành công! Vui lòng đăng nhập.",
+        "Đăng ký thành công 🎉"
+      );
+
+      // Delay để user thấy toast trước khi chuyển trang
+      setTimeout(() => {
+        nav("/home/login");
+      }, 1500);
     } catch (err) {
       const apiMsg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||
         err?.message ||
         "Đăng ký thất bại. Vui lòng thử lại.";
-      setBanner({ type: "error", message: apiMsg });
+
+      error(apiMsg, "Đăng ký thất bại");
 
       const fieldErrors = err?.response?.data?.errors;
       if (fieldErrors && typeof fieldErrors === "object") {
@@ -176,19 +186,6 @@ export default function Register() {
             <span className="px-3 text-gray-500 text-sm">Hoặc</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
-
-          {/* Banner */}
-          {banner.message && (
-            <div
-              className={`mb-4 rounded-md px-3 py-2 text-sm ${
-                banner.type === "success"
-                  ? "bg-green-50 text-green-700 border border-green-200"
-                  : "bg-red-50 text-red-700 border border-red-200"
-              }`}
-            >
-              {banner.message}
-            </div>
-          )}
 
           {/* Register Form */}
           <form onSubmit={handleSubmit} className="space-y-4">

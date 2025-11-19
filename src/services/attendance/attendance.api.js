@@ -14,4 +14,10 @@ export const attendanceApi = {
     http
       .get(`/attendance/class/${classId}`, { params: { date } })
       .then((r) => r.data),
+
+  // Get attendance detail by classId and date for Admin (no ownership check)
+  getByClassForAdmin: (classId, date, slotId) =>
+    http
+      .get(`/attendance/admin/class/${classId}`, { params: { date, slotId } })
+      .then((r) => r.data),
 };

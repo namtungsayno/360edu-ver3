@@ -37,4 +37,29 @@ export const attendanceService = {
       note: it.note || "",
     }));
   },
+
+  async getByClassForAdmin(classId, date, slotId) {
+    const data = await attendanceApi.getByClassForAdmin(classId, date, slotId);
+    // Map backend response to UI format
+    const mapStatus = (s) => {
+      switch (s) {
+        case "PRESENT":
+          return "present";
+        case "ABSENT":
+          return "absent";
+        case "LATE":
+          return "late";
+        case "UNMARKED":
+        default:
+          return "-";
+      }
+    };
+
+    return (data.students || []).map((it) => ({
+      id: it.studentId,
+      student: it.studentName,
+      status: mapStatus(it.status),
+      note: it.note || "",
+    }));
+  },
 };

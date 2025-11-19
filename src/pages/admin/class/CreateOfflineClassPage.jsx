@@ -216,29 +216,41 @@ export default function CreateOfflineClassPage() {
       setEndDate("");
       return;
     }
-    const slotDays = Array.from(
-      new Set(pickedSlots.map((slot) => new Date(slot.isoStart).getDay()))
+
+    // Tạo map: dayOfWeek -> số slot trong ngày đó
+    const slotCountByDay = {};
+    pickedSlots.forEach((slot) => {
+      const day = new Date(slot.isoStart).getDay();
+      slotCountByDay[day] = (slotCountByDay[day] || 0) + 1;
+    });
+
+    // Tính tổng slot/tuần
+    const slotsPerWeek = Object.values(slotCountByDay).reduce(
+      (sum, count) => sum + count,
+      0
     );
-    if (!slotDays.length) {
+    if (slotsPerWeek === 0) {
       setEndDate("");
       return;
     }
-    slotDays.sort((a, b) => a - b);
 
-    const sessionsPerWeek = slotDays.length;
-    const weeksNeeded = Math.ceil(parseInt(totalSessions) / sessionsPerWeek);
-
-    let count = 0;
+    // Duyệt từng ngày, đếm slot cho đến khi đủ totalSessions
+    const targetSlots = parseInt(totalSessions);
+    let countedSlots = 0;
     let current = new Date(startDate);
     let lastDate = null;
-    const maxIterations = weeksNeeded * 7 + 7;
+    const maxIterations = Math.ceil(targetSlots / slotsPerWeek) * 7 + 14;
     let iterations = 0;
 
-    while (count < parseInt(totalSessions) && iterations < maxIterations) {
-      if (slotDays.includes(current.getDay())) {
-        count++;
+    while (countedSlots < targetSlots && iterations < maxIterations) {
+      const dayOfWeek = current.getDay();
+      const slotsOnThisDay = slotCountByDay[dayOfWeek] || 0;
+
+      if (slotsOnThisDay > 0) {
+        countedSlots += slotsOnThisDay;
         lastDate = new Date(current);
       }
+
       current.setDate(current.getDate() + 1);
       iterations++;
     }
@@ -312,6 +324,45 @@ export default function CreateOfflineClassPage() {
         error("Không thể xác định lịch học. Vui lòng chọn lại slot!");
         setSubmitting(false);
         return;
+      }
+
+      // Validate: Giáo viên không được dạy quá 3 slot/ngày thường, 5 slot/ngày cuối tuần
+      const slotsPerDay = {};
+      schedules.forEach((s) => {
+        slotsPerDay[s.dayOfWeek] = (slotsPerDay[s.dayOfWeek] || 0) + 1;
+      });
+      for (const [day, count] of Object.entries(slotsPerDay)) {
+        const dayOfWeek = parseInt(day);
+        const dayNames = [
+          "",
+          "Thứ 2",
+          "Thứ 3",
+          "Thứ 4",
+          "Thứ 5",
+          "Thứ 6",
+          "Thứ 7",
+          "Chủ nhật",
+        ];
+
+        // Thứ 7 (6) và Chủ nhật (7): tối đa 5 slot
+        if (dayOfWeek === 6 || dayOfWeek === 7) {
+          if (count > 5) {
+            error(
+              `Giáo viên không được dạy quá 5 slot vào cuối tuần (vi phạm: ${dayNames[dayOfWeek]} có ${count} slot)`
+            );
+            setSubmitting(false);
+            return;
+          }
+        } else {
+          // Các ngày thường (Thứ 2-6): tối đa 3 slot
+          if (count > 3) {
+            error(
+              `Giáo viên không được dạy quá 3 slot vào ngày thường (vi phạm: ${dayNames[dayOfWeek]} có ${count} slot)`
+            );
+            setSubmitting(false);
+            return;
+          }
+        }
       }
 
       const subj = subjects.find((s) => String(s.id) === String(subjectId));
