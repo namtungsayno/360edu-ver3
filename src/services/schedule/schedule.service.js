@@ -136,6 +136,23 @@ export const scheduleService = {
           teacherIdToUserIdMap[cls.teacherId] || cls.teacherId;
 
         for (const scheduleItem of cls.schedule) {
+          // Normalize start/end dates to yyyy-MM-dd (component expects this)
+          const normalizeDate = (d) => {
+            if (!d) return null;
+            // Accept Date object or string with time; always return first 10 chars yyyy-MM-dd
+            try {
+              if (d instanceof Date) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, "0");
+                const dd = String(d.getDate()).padStart(2, "0");
+                return `${yyyy}-${mm}-${dd}`;
+              }
+              return String(d).slice(0, 10);
+            } catch {
+              return null;
+            }
+          };
+
           scheduleItems.push({
             id: `${cls.id}-${scheduleItem.dayOfWeek}-${scheduleItem.timeSlotId}`, // Unique ID
             classId: cls.id,
@@ -146,6 +163,9 @@ export const scheduleService = {
             slotId: scheduleItem.timeSlotId,
             startTime: scheduleItem.startTime,
             endTime: scheduleItem.endTime,
+            // Date range of the class (used for weekly filtering in UI)
+            startDate: normalizeDate(cls.startDate),
+            endDate: normalizeDate(cls.endDate),
             // Teacher information - use userId for filtering compatibility
             teacherId: teacherUserId, // Use userId instead of backend's teacherId
             teacherEntityId: cls.teacherId, // Keep original teacher entity ID for reference

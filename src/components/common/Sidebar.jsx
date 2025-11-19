@@ -1,6 +1,7 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../hooks/use-toast";
 import {
   LayoutDashboard,
   Users,
@@ -20,7 +21,9 @@ import {
 
 const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { success } = useToast();
 
   const nav = [
     {
@@ -189,7 +192,13 @@ const Sidebar = () => {
       {/* User & Logout */}
       <div className="border-t border-gray-200 p-6">
         <button
-          onClick={logout}
+          onClick={async () => {
+            await logout();
+            success("Đã đăng xuất thành công", "Đăng xuất");
+            setTimeout(() => {
+              navigate("/home/login");
+            }, 1000);
+          }}
           className="flex items-center w-full text-sm text-gray-600 hover:text-black mb-4 transition-colors duration-200"
         >
           <LogOut className="h-5 w-5 mr-3 text-current" />

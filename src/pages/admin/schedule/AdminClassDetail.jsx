@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Badge } from "../../../components/ui/Badge.jsx";
@@ -11,24 +11,51 @@ import {
   TableHeader,
   TableRow,
 } from "../../../components/ui/Table.jsx";
-import { ExternalLink, ArrowLeft } from "lucide-react";
+import { ExternalLink, ArrowLeft, AlertCircle } from "lucide-react";
 import { scheduleService } from "../../../services/schedule/schedule.service";
+import { attendanceService } from "../../../services/attendance/attendance.service";
+import { toast } from "../../../hooks/use-toast";
 
 function AdminClassDetail() {
   const { classId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [classDetail, setClassDetail] = useState(null);
   const [attendanceDetails, setAttendanceDetails] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!classId) return;
+    if (!classId) {
+      console.error("❌ classId is missing!");
+      setError("Class ID không hợp lệ");
+      setLoading(false);
+      return;
+    }
 
     (async () => {
       try {
         setLoading(true);
-        // Fetch class detail and attendance
-        const attendance = await scheduleService.getAttendance(classId);
+        setError(null);
+
+        // Lấy date từ location state, nếu không có thì dùng hôm nay
+        const date =
+          location.state?.date || new Date().toISOString().split("T")[0];
+
+        console.log("🔍 Loading class detail:", {
+          classId,
+          date,
+          type: typeof classId,
+        });
+
+        // Load attendance from backend by class + date (admin endpoint)
+        const slotId = location.state?.slotId;
+        const attendance = await attendanceService.getByClassForAdmin(
+          classId,
+          date,
+          slotId
+        );
+        console.log("✅ Attendance loaded:", attendance.length, "students");
         setAttendanceDetails(attendance);
 
         // Get class info from schedule
@@ -41,16 +68,29 @@ function AdminClassDetail() {
           setClassDetail({
             ...classInfo,
             studentCount: attendance.length,
+            viewDate: date, // Lưu ngày đang xem
           });
         }
       } catch (e) {
         console.error("Failed to load class details:", e);
-        alert("Không thể tải thông tin lớp học");
+        if (e?.response?.status === 404) {
+          setError(
+            e.response.data?.message ||
+              "Không có buổi học nào cho lớp này vào ngày đã chọn."
+          );
+          toast.error(
+            e.response.data?.message ||
+              "Không có buổi học nào cho lớp này vào ngày đã chọn."
+          );
+        } else {
+          setError("Không thể tải thông tin lớp học");
+          toast.error("Không thể tải thông tin lớp học");
+        }
       } finally {
         setLoading(false);
       }
     })();
-  }, [classId]);
+  }, [classId, location.state]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -60,6 +100,13 @@ function AdminClassDetail() {
         return <Badge className="bg-red-100 text-red-800">Vắng</Badge>;
       case "late":
         return <Badge className="bg-yellow-100 text-yellow-800">Muộn</Badge>;
+      case "-":
+      case "":
+      case null:
+      case undefined:
+        return (
+          <Badge className="bg-slate-100 text-slate-800">Chưa điểm danh</Badge>
+        );
       default:
         return <Badge className="bg-slate-100 text-slate-800">-</Badge>;
     }
@@ -70,6 +117,27 @@ function AdminClassDetail() {
       <div className="p-6">
         <div className="flex items-center justify-center py-12">
           <p className="text-gray-500">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Button variant="outline" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Quay lại
+        </Button>
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <AlertCircle className="h-16 w-16 text-orange-500 mb-4" />
+          <p className="text-lg font-semibold text-gray-700 mb-2">
+            Không tìm thấy buổi học
+          </p>
+          <p className="text-gray-500 max-w-md">{error}</p>
+          <p className="text-sm text-gray-400 mt-4">
+            Có thể buổi học này chưa được tạo trong hệ thống, hoặc đã bị hủy.
+          </p>
         </div>
       </div>
     );
@@ -190,10 +258,10 @@ function AdminClassDetail() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>STT</TableHead>
+                <TableHead className="w-16">STT</TableHead>
                 <TableHead>Học viên</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead>Thời gian</TableHead>
+                <TableHead className="w-48">Trạng thái</TableHead>
+                <TableHead>Ghi chú</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -207,10 +275,12 @@ function AdminClassDetail() {
                 attendanceDetails.map((record, index) => (
                   <TableRow key={record.id}>
                     <TableCell>{index + 1}</TableCell>
-                    <TableCell>{record.student}</TableCell>
+                    <TableCell className="font-medium">
+                      {record.student}
+                    </TableCell>
                     <TableCell>{getStatusBadge(record.status)}</TableCell>
                     <TableCell className="text-sm text-slate-600">
-                      {record.time}
+                      {record.note || ""}
                     </TableCell>
                   </TableRow>
                 ))

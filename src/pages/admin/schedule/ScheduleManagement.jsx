@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "../../../hooks/use-toast";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import {
@@ -57,11 +58,8 @@ const WEEK_DAYS = [
 function ScheduleManagement() {
   const navigate = useNavigate();
   const [currentWeek, setCurrentWeek] = useState(new Date()); // Current week state
-  const [selectedSemester, setSelectedSemester] = useState(null);
-  const [selectedSemesterData, setSelectedSemesterData] = useState(null); // Store full semester object
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [classTypeFilter, setClassTypeFilter] = useState("all");
-  const [semesters, setSemesters] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [weekSchedule, setWeekSchedule] = useState([]);
@@ -76,40 +74,16 @@ function ScheduleManagement() {
     [weekStart]
   );
 
-  // Calculate if can navigate to prev/next week based on semester range
-  const canGoPrevWeek = useMemo(() => {
-    // If "All" is selected, allow unlimited navigation
-    if (selectedSemester === "all") return true;
-    if (!selectedSemesterData?.startDate) return true;
-    const prevWeekStart = subWeeks(weekStart, 1);
-    return prevWeekStart >= new Date(selectedSemesterData.startDate);
-  }, [weekStart, selectedSemesterData, selectedSemester]);
-
-  const canGoNextWeek = useMemo(() => {
-    // If "All" is selected, allow unlimited navigation
-    if (selectedSemester === "all") return true;
-    if (!selectedSemesterData?.endDate) return true;
-    const nextWeekEnd = addDays(addWeeks(weekStart, 1), 6);
-    return nextWeekEnd <= new Date(selectedSemesterData.endDate);
-  }, [weekStart, selectedSemesterData, selectedSemester]);
+  const canGoPrevWeek = true;
+  const canGoNextWeek = true;
 
   useEffect(() => {
     (async () => {
       try {
-        const [semesterList, tList, slots] = await Promise.all([
-          scheduleService.getSemesters(),
+        const [tList, slots] = await Promise.all([
           scheduleService.getTeachers(),
           scheduleService.getTimeSlots(),
         ]);
-
-        setSemesters(semesterList);
-        // Auto-select "All" option by default
-        if (semesterList.length > 0 && !selectedSemester) {
-          setSelectedSemester("all");
-          setSelectedSemesterData(
-            semesterList.find((s) => s.value !== "all") || semesterList[0]
-          ); // Store first real semester data for reference
-        }
 
         setTeachers(tList);
         setTimeSlots(slots);
@@ -118,19 +92,12 @@ function ScheduleManagement() {
         alert("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối backend.");
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!selectedSemester) return;
-
     (async () => {
       try {
-        // Pass 'all' or numeric semesterId to service
-        const data = await scheduleService.getScheduleBySemester(
-          selectedSemester
-        );
-
+        const data = await scheduleService.getScheduleBySemester("all");
         setWeekSchedule(data);
       } catch (e) {
         console.error("Failed to load schedule data:", e);
@@ -140,55 +107,48 @@ function ScheduleManagement() {
         setWeekSchedule([]);
       }
     })();
-  }, [selectedSemester]);
+  }, []);
 
   // Filter schedule by teacher + class type + current week dates
   const filteredSchedule = useMemo(() => {
-    console.log(
-      "Filtering schedule. weekSchedule length:",
-      weekSchedule.length
-    );
-    console.log("Selected teacher:", selectedTeacher);
-    console.log("Class type filter:", classTypeFilter);
-    console.log("Current week start:", fmt(weekStart, "yyyy-MM-dd"));
-    console.log("Current week end:", fmt(addDays(weekStart, 6), "yyyy-MM-dd"));
-
+    // Lọc theo giáo viên, loại lớp, và chỉ lấy lớp có ngày slot nằm trong khoảng startDate-endDate
     let filtered = weekSchedule;
 
-    console.log("🔍 Filter Debug - Initial schedule items:", filtered.length);
-    console.log("🔍 Selected teacher:", selectedTeacher);
-    console.log("🔍 Class type filter:", classTypeFilter);
-
+    // Lọc theo giáo viên
     if (selectedTeacher) {
-      console.log("👨‍🏫 Filtering by teacher ID:", selectedTeacher);
-      const before = filtered.length;
       filtered = filtered.filter(
         (s) => String(s.teacherId) === String(selectedTeacher)
       );
-      console.log(
-        `👨‍🏫 After teacher filter: ${before} → ${filtered.length} items`
-      );
-      if (filtered.length > 0) {
-        console.log("Sample filtered item:", filtered[0]);
-      }
     }
 
-    // Filter by class type
+    // Lọc theo loại lớp
     if (classTypeFilter === "online") {
-      const before = filtered.length;
       filtered = filtered.filter((s) => s.isOnline === true);
-
-      console.log(
-        `💻 After online filter: ${before} → ${filtered.length} items`
-      );
     } else if (classTypeFilter === "offline") {
-      const before = filtered.length;
       filtered = filtered.filter((s) => s.isOnline === false);
-      console.log(
-        `🏫 After offline filter: ${before} → ${filtered.length} items`
-      );
     }
-    console.log("✅ Final filtered schedule:", filtered.length, "items");
+
+    // Lọc theo ngày slot nằm trong khoảng startDate-endDate của lớp
+    const weekStartDate = weekStart;
+    filtered = filtered.filter((s) => {
+      // Nếu thiếu dữ liệu ngày hoặc day, loại bỏ khỏi lịch
+      if (!s.startDate || !s.endDate || !s.day || isNaN(Number(s.day))) {
+        console.warn(
+          "[Schedule] Bỏ qua lớp do thiếu startDate/endDate/day:",
+          s
+        );
+        return false;
+      }
+      // Lấy ngày slot thực tế trong tuần này
+      const slotDate = addDays(weekStartDate, Number(s.day) - 1); // day: 1-7 (Mon-Sun)
+      if (isNaN(slotDate.getTime())) {
+        console.warn("[Schedule] Bỏ qua lớp do slotDate không hợp lệ:", s);
+        return false;
+      }
+      const slotDateStr = fmt(slotDate, "yyyy-MM-dd");
+      // So sánh ngày dạng chuỗi yyyy-MM-dd
+      return slotDateStr >= s.startDate && slotDateStr <= s.endDate;
+    });
     return filtered;
   }, [weekSchedule, selectedTeacher, classTypeFilter, weekStart]);
 
@@ -206,20 +166,6 @@ function ScheduleManagement() {
     return scheduleLookup?.[dayId]?.[slotId] || [];
   };
 
-  // Handle semester change - update both value and full data, keep current week
-  const handleSemesterChange = (value) => {
-    setSelectedSemester(value);
-    const semesterData = semesters.find((s) => s.value === value);
-    setSelectedSemesterData(semesterData || null);
-
-    // Reset to first week of semester or current week if "All"
-    if (value === "all") {
-      setCurrentWeek(new Date()); // Reset to current week
-    } else if (semesterData?.startDate) {
-      setCurrentWeek(new Date(semesterData.startDate));
-    }
-  };
-
   // Week navigation handlers
   const handlePreviousWeek = () => {
     if (canGoPrevWeek) {
@@ -234,8 +180,27 @@ function ScheduleManagement() {
   };
 
   const openClassDetail = (classData) => {
-    // Navigate to admin class detail page
-    navigate(`/home/admin/schedule/class/${classData.classId}`);
+    console.log("🎯 Opening class detail:", classData);
+
+    // Tính ngày của slot này dựa vào weekStart + day index
+    const dayIdx = WEEK_DAYS.findIndex((d) => d.id === classData.day);
+    if (dayIdx === -1) {
+      toast.error("Không thể xác định ngày học.");
+      return;
+    }
+    const date = addDays(weekStart, dayIdx);
+    const dateStr = fmt(date, "yyyy-MM-dd");
+
+    console.log("📅 Navigating to:", {
+      classId: classData.classId,
+      date: dateStr,
+      url: `/home/admin/schedule/class/${classData.classId}`,
+    });
+
+    // Điều hướng đến trang chi tiết lớp, truyền date qua URL state
+    navigate(`/home/admin/schedule/class/${classData.classId}`, {
+      state: { date: dateStr, classData, slotId: classData.slotId },
+    });
   };
 
   return (
@@ -253,50 +218,7 @@ function ScheduleManagement() {
         <CardContent className="pt-6 pb-6">
           <div className="space-y-4">
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Học kỳ */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  <div className="w-1 h-5 bg-blue-600 rounded"></div>
-                  Học kỳ
-                </label>
-                <Select
-                  value={selectedSemester || ""}
-                  onValueChange={handleSemesterChange}
-                >
-                  <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-blue-500 transition-colors [&>svg]:h-4 [&>svg]:w-4">
-                    <SelectValue placeholder="Chọn học kỳ" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {semesters.map((semester) => (
-                      <SelectItem key={semester.id} value={semester.value}>
-                        {semester.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedSemester === "all" ? (
-                  <p className="text-xs text-blue-600 mt-1 font-medium">
-                    📅 Xem toàn bộ lịch học
-                  </p>
-                ) : (
-                  selectedSemesterData &&
-                  selectedSemesterData.startDate && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {fmt(
-                        new Date(selectedSemesterData.startDate),
-                        "dd/MM/yyyy"
-                      )}{" "}
-                      -{" "}
-                      {fmt(
-                        new Date(selectedSemesterData.endDate),
-                        "dd/MM/yyyy"
-                      )}
-                    </p>
-                  )
-                )}
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Giáo viên */}
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
@@ -474,13 +396,71 @@ function ScheduleManagement() {
                             className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50"
                           >
                             {classes.length > 0 ? (
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 {classes.map((classData) => (
-                                  <ClassCard
+                                  <div
                                     key={classData.id}
-                                    classData={classData}
-                                    onViewDetail={openClassDetail}
-                                  />
+                                    className="rounded-lg bg-white border border-gray-200 shadow-sm px-2 py-2 flex flex-col gap-1 min-h-[60px] hover:shadow-md transition cursor-pointer"
+                                    onClick={() => openClassDetail(classData)}
+                                    title={classData.className}
+                                  >
+                                    {/* Tên lớp */}
+                                    <div
+                                      className="font-semibold text-sm text-blue-900 truncate"
+                                      style={{ maxWidth: "140px" }}
+                                    >
+                                      {classData.className}
+                                    </div>
+                                    {/* Giáo viên */}
+                                    <div
+                                      className="text-xs text-gray-600 truncate"
+                                      style={{ maxWidth: "140px" }}
+                                    >
+                                      {classData.teacherName}
+                                    </div>
+                                    {/* Loại lớp + Phòng/Meet */}
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {classData.isOnline ? (
+                                        <>
+                                          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200">
+                                            Online
+                                          </span>
+                                          {classData.meetLink && (
+                                            <a
+                                              href={classData.meetLink}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="ml-1 px-2 py-0.5 rounded bg-green-50 text-green-700 text-xs font-medium border border-green-200 hover:bg-green-100"
+                                              onClick={(e) =>
+                                                e.stopPropagation()
+                                              }
+                                            >
+                                              Meet
+                                            </a>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded bg-orange-50 text-orange-700 text-xs font-medium border border-orange-200">
+                                          Offline
+                                          {classData.room
+                                            ? ` • ${classData.room}`
+                                            : ""}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {/* Nút chi tiết */}
+                                    <div className="mt-1 flex justify-end">
+                                      <button
+                                        className="text-xs px-2 py-1 rounded bg-gray-100 border border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openClassDetail(classData);
+                                        }}
+                                      >
+                                        Chi tiết
+                                      </button>
+                                    </div>
+                                  </div>
                                 ))}
                               </div>
                             ) : (

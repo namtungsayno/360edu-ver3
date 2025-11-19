@@ -7,14 +7,17 @@ import { Button } from "../../components/ui/Button.jsx";
 import { Badge } from "../../components/ui/Badge.jsx";
 import { Input } from "../../components/ui/Input.jsx";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../components/ui/Table.jsx";
-import { ExternalLink, ArrowLeft, Save } from "lucide-react";
+  ArrowLeft,
+  Save,
+  Calendar,
+  Users,
+  Check,
+  X,
+  Clock,
+  MapPin,
+  BookOpen,
+  User as UserIcon,
+} from "lucide-react";
 import { scheduleService } from "../../services/schedule/schedule.service";
 
 export default function ClassDetail() {
@@ -151,119 +154,300 @@ export default function ClassDetail() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Quay lại
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">
-              Chi tiết lớp {classDetail.className}
-            </h1>
-            <p className="text-slate-600 mt-1">
-              {classDetail.subjectName} - {classDetail.teacherName}
-            </p>
-          </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Breadcrumb Header */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-sm text-[#45556c] hover:text-neutral-950 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Quay lại</span>
+          </button>
         </div>
-        {classDetail.meetLink && (
-          <Button onClick={() => window.open(classDetail.meetLink, "_blank")}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Vào lớp học
-          </Button>
-        )}
-      </div>
 
-      {/* Class Info */}
-      <Card>
-        <CardContent className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Thông tin lớp học</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div>
-                <span className="text-sm text-gray-600">Môn học:</span>
-                <p className="font-medium">{classDetail.subjectName}</p>
+        {/* Page Title */}
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-950">
+            Chi tiết buổi học
+          </h1>
+          <p className="text-sm text-[#45556c] mt-1">
+            {classDetail.subjectName}
+          </p>
+        </div>
+
+        {/* Class Info Card */}
+        <Card className="border border-gray-200 rounded-[14px] bg-white">
+          <CardContent className="p-6">
+            <h2 className="text-lg font-bold text-neutral-950 mb-4">
+              Thông tin buổi học
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Tên lớp */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Tên lớp
+                  </p>
+                  <p className="text-[14px] text-neutral-950 font-semibold mt-1">
+                    {classDetail.classFullName || classDetail.className}
+                  </p>
+                </div>
               </div>
-              <div>
-                <span className="text-sm text-gray-600">Giáo viên:</span>
-                <p className="font-medium">{classDetail.teacherName}</p>
+
+              {/* Giáo viên */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <UserIcon className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Giáo viên
+                  </p>
+                  <p className="text-[14px] text-neutral-950 font-semibold mt-1">
+                    {classDetail.teacherName}
+                  </p>
+                </div>
               </div>
-              <div>
-                <span className="text-sm text-gray-600">Địa điểm:</span>
-                <p className="font-medium">
-                  {classDetail.isOnline ? (
-                    <Badge className="bg-purple-100 text-purple-800">
-                      Online
-                    </Badge>
-                  ) : (
-                    classDetail.room || "Chưa có phòng"
-                  )}
-                </p>
+
+              {/* Môn học */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Môn học
+                  </p>
+                  <p className="text-[14px] text-neutral-950 font-semibold mt-1">
+                    {classDetail.subjectName}
+                  </p>
+                </div>
+              </div>
+
+              {/* Loại lớp */}
+              <div className="flex items-start gap-3">
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    classDetail.isOnline ? "bg-purple-100" : "bg-green-100"
+                  }`}
+                >
+                  <MapPin
+                    className={`w-5 h-5 ${
+                      classDetail.isOnline
+                        ? "text-purple-600"
+                        : "text-green-600"
+                    }`}
+                  />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Loại lớp
+                  </p>
+                  <Badge
+                    className={`mt-1 border-0 font-semibold ${
+                      classDetail.isOnline
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-green-100 text-green-700"
+                    }`}
+                  >
+                    {classDetail.isOnline ? "Online" : "Offline"}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Phòng học */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Phòng học
+                  </p>
+                  <p className="text-[14px] text-neutral-950 font-semibold mt-1">
+                    {classDetail.isOnline
+                      ? "Phòng Online"
+                      : classDetail.room ||
+                        classDetail.roomName ||
+                        "Chưa xếp phòng"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Sĩ số */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Users className="w-5 h-5 text-pink-600" />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Sĩ số
+                  </p>
+                  <p className="text-[14px] text-neutral-950 font-semibold mt-1">
+                    {classDetail.studentCount || 0}/
+                    {classDetail.maxStudents || 0}
+                  </p>
+                </div>
+              </div>
+
+              {/* Thời gian */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Thời gian
+                  </p>
+                  <p className="text-[14px] text-neutral-950 font-semibold mt-1">
+                    {classDetail.startTime} - {classDetail.endTime}
+                  </p>
+                </div>
+              </div>
+
+              {/* Lịch học */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-5 h-5 text-teal-600" />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Lịch học
+                  </p>
+                  <p className="text-[14px] text-neutral-950 font-semibold mt-1">
+                    {classDetail.dayName}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="space-y-3">
+          </CardContent>
+        </Card>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Tổng số */}
+          <div className="bg-white border border-gray-200 rounded-[14px] p-4">
+            <div className="flex items-center justify-between">
               <div>
-                <span className="text-sm text-gray-600">Số học viên:</span>
-                <p className="font-medium">{classDetail.studentCount}</p>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">Thời gian:</span>
-                <p className="font-medium">
-                  {classDetail.startTime} - {classDetail.endTime}
+                <p className="text-[12px] text-[#62748e] font-medium">
+                  Tổng số
+                </p>
+                <p className="text-2xl font-bold text-neutral-950 mt-1">
+                  {attendanceDetails.length}
                 </p>
               </div>
-              <div>
-                <span className="text-sm text-gray-600">Ngày học:</span>
-                <p className="font-medium">{classDetail.dayName}</p>
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Student List */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Danh sách học viên</h2>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-4 text-sm">
-                <span className="text-gray-600">
-                  Tổng:{" "}
-                  <span className="font-bold">{attendanceDetails.length}</span>
-                </span>
-                <span className="text-green-600">
+          {/* Có mặt */}
+          <div className="bg-white border border-gray-200 rounded-[14px] p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[12px] text-[#62748e] font-medium">Có mặt</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">
                   {
                     attendanceDetails.filter((a) => a.status === "present")
                       .length
-                  }{" "}
-                  có mặt
-                </span>
-                <span className="text-red-600">
+                  }
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <Check className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          {/* Vắng mặt */}
+          <div className="bg-white border border-gray-200 rounded-[14px] p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[12px] text-[#62748e] font-medium">
+                  Vắng mặt
+                </p>
+                <p className="text-2xl font-bold text-red-600 mt-1">
                   {
                     attendanceDetails.filter((a) => a.status === "absent")
                       .length
-                  }{" "}
-                  vắng
-                </span>
-                <span className="text-yellow-600">
-                  {attendanceDetails.filter((a) => a.status === "late").length}{" "}
-                  muộn
-                </span>
+                  }
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                <X className="w-5 h-5 text-red-600" />
+              </div>
+            </div>
+          </div>
+
+          {/* Muộn */}
+          <div className="bg-white border border-gray-200 rounded-[14px] p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[12px] text-[#62748e] font-medium">Muộn</p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">
+                  {attendanceDetails.filter((a) => a.status === "late").length}
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-orange-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Student Attendance List */}
+        <Card className="border border-gray-200 rounded-[14px] bg-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-bold text-neutral-950">
+                  Danh sách điểm danh ({attendanceDetails.length} học viên)
+                </h2>
+                <p className="text-[12px] text-[#62748e] mt-1">
+                  <span className="text-green-600 font-semibold">
+                    {
+                      attendanceDetails.filter((a) => a.status === "present")
+                        .length
+                    }{" "}
+                    có mặt
+                  </span>
+                  ,{" "}
+                  <span className="text-red-600 font-semibold">
+                    {
+                      attendanceDetails.filter((a) => a.status === "absent")
+                        .length
+                    }{" "}
+                    vắng
+                  </span>
+                  ,{" "}
+                  <span className="text-orange-600 font-semibold">
+                    {
+                      attendanceDetails.filter((a) => a.status === "late")
+                        .length
+                    }{" "}
+                    muộn
+                  </span>
+                </p>
               </div>
               {editMode ? (
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   {hasChanges && (
-                    <Button onClick={handleSaveAttendance} size="sm">
+                    <Button
+                      onClick={handleSaveAttendance}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
                       <Save className="h-4 w-4 mr-2" />
                       Lưu điểm danh
                     </Button>
                   )}
                   <Button
                     variant="outline"
-                    size="sm"
                     onClick={() => {
                       setAttendanceDetails(originalDetails);
                       setHasChanges(false);
@@ -275,141 +459,152 @@ export default function ClassDetail() {
                 </div>
               ) : (
                 <Button
-                  variant="outline"
-                  size="sm"
                   onClick={() => setEditMode(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Sửa điểm danh
                 </Button>
               )}
             </div>
-          </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">STT</TableHead>
-                <TableHead>Học viên</TableHead>
-                <TableHead className="w-96">Trạng thái</TableHead>
-                <TableHead>Ghi chú</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+            {/* Student List */}
+            <div className="space-y-3">
               {attendanceDetails.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-gray-500">
-                    Chưa có học viên nào trong lớp
-                  </TableCell>
-                </TableRow>
+                <div className="text-center py-12 text-gray-400">
+                  <Users className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                  <p className="text-sm">Chưa có học viên nào trong lớp</p>
+                </div>
               ) : (
                 attendanceDetails.map((record, index) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell className="font-medium">
-                      {record.student}
-                    </TableCell>
-                    <TableCell>
-                      {editMode ? (
-                        <div className="flex gap-2">
-                          <Button
-                            variant={
-                              record.status === "present"
-                                ? "default"
-                                : "outline"
-                            }
-                            size="sm"
-                            onClick={() =>
-                              handleAttendanceChange(record.id, "present")
-                            }
-                            className={
-                              record.status === "present"
-                                ? "bg-green-600 hover:bg-green-700"
-                                : ""
-                            }
-                          >
-                            Có mặt
-                          </Button>
-                          <Button
-                            variant={
-                              record.status === "absent" ? "default" : "outline"
-                            }
-                            size="sm"
-                            onClick={() =>
-                              handleAttendanceChange(record.id, "absent")
-                            }
-                            className={
-                              record.status === "absent"
-                                ? "bg-red-600 hover:bg-red-700"
-                                : ""
-                            }
-                          >
-                            Vắng
-                          </Button>
-                          <Button
-                            variant={
-                              record.status === "late" ? "default" : "outline"
-                            }
-                            size="sm"
-                            onClick={() =>
-                              handleAttendanceChange(record.id, "late")
-                            }
-                            className={
-                              record.status === "late"
-                                ? "bg-orange-600 hover:bg-orange-700"
-                                : ""
-                            }
-                          >
-                            Muộn
-                          </Button>
-                        </div>
-                      ) : (
-                        <div>
-                          {record.status === "present" && (
-                            <Badge className="bg-green-100 text-green-800">
-                              Có mặt
-                            </Badge>
-                          )}
-                          {record.status === "absent" && (
-                            <Badge className="bg-red-100 text-red-800">
-                              Vắng
-                            </Badge>
-                          )}
-                          {record.status === "late" && (
-                            <Badge className="bg-yellow-100 text-yellow-800">
-                              Muộn
-                            </Badge>
-                          )}
-                          {!record.status || record.status === "-" ? (
-                            <Badge className="bg-slate-100 text-slate-800">
-                              Chưa điểm danh
-                            </Badge>
-                          ) : null}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editMode ? (
-                        <Input
-                          value={record.note || ""}
-                          onChange={(e) =>
-                            handleNoteChange(record.id, e.target.value)
-                          }
-                          placeholder="Nhập ghi chú..."
-                          className="text-sm"
-                        />
-                      ) : (
-                        <span className="text-sm text-slate-600">
-                          {record.note || ""}
+                  <div
+                    key={record.id}
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* STT & Avatar */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-500 w-6">
+                          {index + 1}
                         </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <UserIcon className="w-6 h-6 text-gray-500" />
+                        </div>
+                      </div>
+
+                      {/* Student Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-semibold text-neutral-950">
+                          {record.student}
+                        </p>
+                        <p className="text-[12px] text-[#62748e]">
+                          {record.studentCode || `HS00${index + 1}`}
+                        </p>
+                      </div>
+
+                      {/* Attendance Status Buttons */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() =>
+                            editMode &&
+                            handleAttendanceChange(record.id, "present")
+                          }
+                          disabled={!editMode}
+                          className={`px-4 py-2 rounded-lg text-[12px] font-medium transition-colors ${
+                            record.status === "present"
+                              ? "bg-green-100 text-green-700 border-2 border-green-600"
+                              : editMode
+                              ? "bg-gray-100 hover:bg-green-50 text-gray-600 border border-gray-200"
+                              : "bg-gray-50 text-gray-400 border border-gray-100 cursor-not-allowed"
+                          }`}
+                        >
+                          <Check className="w-4 h-4 inline mr-1" />
+                          Có mặt
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            editMode &&
+                            handleAttendanceChange(record.id, "absent")
+                          }
+                          disabled={!editMode}
+                          className={`px-4 py-2 rounded-lg text-[12px] font-medium transition-colors ${
+                            record.status === "absent"
+                              ? "bg-red-100 text-red-700 border-2 border-red-600"
+                              : editMode
+                              ? "bg-gray-100 hover:bg-red-50 text-gray-600 border border-gray-200"
+                              : "bg-gray-50 text-gray-400 border border-gray-100 cursor-not-allowed"
+                          }`}
+                        >
+                          <X className="w-4 h-4 inline mr-1" />
+                          Vắng
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            editMode &&
+                            handleAttendanceChange(record.id, "late")
+                          }
+                          disabled={!editMode}
+                          className={`px-4 py-2 rounded-lg text-[12px] font-medium transition-colors ${
+                            record.status === "late"
+                              ? "bg-orange-100 text-orange-700 border-2 border-orange-600"
+                              : editMode
+                              ? "bg-gray-100 hover:bg-orange-50 text-gray-600 border border-gray-200"
+                              : "bg-gray-50 text-gray-400 border border-gray-100 cursor-not-allowed"
+                          }`}
+                        >
+                          <Clock className="w-4 h-4 inline mr-1" />
+                          Muộn
+                        </button>
+                      </div>
+
+                      {/* Note Input */}
+                      <div className="w-48">
+                        {editMode ? (
+                          <input
+                            type="text"
+                            value={record.note || ""}
+                            onChange={(e) =>
+                              handleNoteChange(record.id, e.target.value)
+                            }
+                            placeholder="Ghi chú..."
+                            className="w-full px-3 py-2 text-[12px] border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        ) : (
+                          <span className="text-[12px] text-[#62748e]">
+                            {record.note || ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 ))
               )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Legend */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-[12px] text-[#45556c] font-medium mb-2">
+            Chú thích:
+          </p>
+          <div className="flex items-center gap-6 text-[12px]">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded"></div>
+              <span className="text-[#45556c]">Có mặt</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-red-500 rounded"></div>
+              <span className="text-[#45556c]">Vắng mặt</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-orange-500 rounded"></div>
+              <span className="text-[#45556c]">Muộn</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
