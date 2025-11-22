@@ -4,7 +4,7 @@ import { ArrowLeft, Clock, Calendar, MapPin, Users, Star, CheckCircle, Video, Aw
 import { classService } from "../../../services/class/class.service";
 import { enrollmentService } from "../../../services/enrollment/enrollment.service";
 import { Badge } from "../../../components/ui/Badge.jsx";
-import { Button } from "../../../components/ui/Button.jsx";
+import EnrollButton from "../../../components/common/EnrollButton.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import AuthContext from "../../../context/AuthContext";
 import { useToast } from "../../../hooks/use-toast";
@@ -400,13 +400,12 @@ export default function ClassDetail() {
                       </span>
                     </div>
 
-                    <Button
+                    <EnrollButton
                       onClick={handleEnroll}
-                      disabled={enrolling}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-6"
-                    >
-                      {enrolling ? "Đang xử lý..." : user ? "Đăng ký ngay" : "Đăng nhập để đăng ký"}
-                    </Button>
+                      state={enrolling ? "loading" : (user ? "default" : "login")}
+                      fullWidth
+                      className="text-base"
+                    />
 
                     <p className="text-xs text-gray-500 text-center mt-3">
                       Hoặc liên hệ: 0123 456 789

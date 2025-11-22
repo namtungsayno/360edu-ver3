@@ -16,9 +16,17 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Không còn /me để hydrate → chỉ cần bỏ loading sau tick đầu
-    const t = setTimeout(() => setLoading(false), 0);
-    return () => clearTimeout(t);
+    let mounted = true;
+    (async () => {
+      // Thử gọi /auth/me để xác thực lại user lưu trong localStorage
+      const fresh = await authService.revalidate();
+      if (!mounted) return;
+      setUser(fresh); // nếu null → UI chuyển guest
+      setLoading(false);
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const login = async ({ username, password, remember }) => {

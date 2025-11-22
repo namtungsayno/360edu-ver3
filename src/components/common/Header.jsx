@@ -17,7 +17,7 @@
  */
 
 import { useState, useContext } from "react";
-import { Menu, X, User, GraduationCap, Search, LogOut } from "lucide-react";
+import { Menu, X, User, GraduationCap, Search, LogOut, Bell, CalendarDays } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import Logo from "./Logo";
@@ -31,6 +31,7 @@ export default function Header({ onNavigate, currentPage }) {
   const [searchQuery, setSearchQuery] = useState("");
   // State quản lý dropdown profile
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotif, setShowNotif] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -51,7 +52,7 @@ export default function Header({ onNavigate, currentPage }) {
 
   return (
     <header className="sticky top-0 z-50 shadow-lg header-gradient">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-screen-2xl mx-auto px-6 md:px-8">
         <div className="flex items-center justify-between h-16">
           
           {/* LOGO VÀ TÊN THƯƠNG HIỆU - Click để về trang chủ */}
@@ -80,7 +81,7 @@ export default function Header({ onNavigate, currentPage }) {
                 placeholder="Tìm kiếm khóa học, lớp học..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 h-10 bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-blue-100 focus:bg-white/20 focus:border-white/30 rounded-lg"
+                className="pl-10 pr-4 h-10 bg-white/20 focus:bg-white/30 backdrop-blur-sm border border-white/30 focus:border-white/40 text-white placeholder:text-white/70 caret-white rounded-lg"
               />
             </div>
           </div>
@@ -123,6 +124,21 @@ export default function Header({ onNavigate, currentPage }) {
             >
               Giáo viên
             </button>
+
+            {/* Nút Lịch học */}
+            {user && (
+              <button 
+                onClick={() => onNavigate({ type: "schedule" })}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                  isActive("schedule") 
+                    ? "bg-white/20 text-white" 
+                    : "text-blue-50 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <CalendarDays className="w-4 h-4" />
+                Lịch học
+              </button>
+            )}
             
             {/* Nút Tin tức - chưa có trang */}
             <button 
@@ -150,7 +166,24 @@ export default function Header({ onNavigate, currentPage }) {
           </nav>
 
           {/* NÚT ĐĂNG NHẬP / PROFILE DESKTOP */}
-          <div className="hidden lg:flex items-center">
+          <div className="hidden lg:flex items-center gap-3">
+            {user && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotif((v) => !v)}
+                  className="p-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 transition"
+                  aria-label="Thông báo"
+                >
+                  <Bell className="w-5 h-5" />
+                </button>
+                {showNotif && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg py-2 z-50">
+                    <div className="px-4 py-2 border-b border-gray-100 text-sm font-medium text-gray-700">Thông báo</div>
+                    <div className="px-4 py-3 text-sm text-gray-500">Hiện chưa có thông báo mới.</div>
+                  </div>
+                )}
+              </div>
+            )}
             {user ? (
               <div className="relative">
                 <button
@@ -173,6 +206,22 @@ export default function Header({ onNavigate, currentPage }) {
                       </p>
                       <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
+                    {Array.isArray(user.roles) && user.roles.includes("student") && (
+                      <button
+                        onClick={() => { onNavigate({ type: "profile" }); setShowProfileMenu(false); }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        Hồ sơ học viên
+                      </button>
+                    )}
+                    {user && (
+                      <button
+                        onClick={() => { onNavigate({ type: "schedule" }); setShowProfileMenu(false); }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        Lịch học của tôi
+                      </button>
+                    )}
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
@@ -256,6 +305,23 @@ export default function Header({ onNavigate, currentPage }) {
               >
                 Giáo viên
               </button>
+
+              {user && (
+                <button 
+                  onClick={() => {
+                    onNavigate({ type: "schedule" });
+                    setIsMenuOpen(false);
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                    isActive("schedule") 
+                      ? "bg-white/20 text-white" 
+                      : "text-blue-50 hover:bg-white/10"
+                  }`}
+                >
+                  <CalendarDays className="w-4 h-4" />
+                  Lịch học
+                </button>
+              )}
               
               <button 
                 onClick={() => {

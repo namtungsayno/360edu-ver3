@@ -11,7 +11,7 @@
  * - Responsive design với animations
  */
 
-import { ArrowRight, PlayCircle, Sparkles, Star, TrendingUp, GraduationCap, Video } from "lucide-react";
+import { ArrowRight, Sparkles, Star, TrendingUp, GraduationCap } from "lucide-react";
 import { Button } from "../ui/Button";
 import { ImageWithFallback } from "../ui/ImageWithFallback";
 
@@ -23,7 +23,7 @@ export default function Banner({ onNavigate }) {
       <div className="absolute bottom-20 right-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-1000"></div>
       <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-2000"></div>
 
-      <div className="container mx-auto px-4 relative z-10">
+      <div className="max-w-screen-2xl mx-auto px-6 md:px-8 relative z-10">
         <div className="grid md:grid-cols-2 gap-8 items-center max-w-6xl mx-auto">
           {/* NỘI DUNG CHÍNH - Bên trái */}
           <div className="space-y-6 animate-fadeIn flex flex-col justify-center">
@@ -38,9 +38,9 @@ export default function Banner({ onNavigate }) {
               Học tập linh hoạt với 360edu
             </h1>
 
-            {/* Mô tả chi tiết về 3 hình thức học tập */}
+            {/* Mô tả chi tiết về hình thức học tập */}
             <p className="text-gray-600 leading-relaxed">
-              Nền tảng giáo dục hiện đại hỗ trợ 3 hình thức học tập: <span className="text-blue-600">Học Online</span>, <span className="text-purple-600">Học Offline</span> tại trung tâm, và <span className="text-pink-600">Khóa học Video</span> theo nhu cầu. Trải nghiệm học tập tối ưu với đội ngũ giáo viên chuyên nghiệp.
+              Nền tảng giáo dục hiện đại hỗ trợ <span className="text-blue-600">Học Online</span> và <span className="text-purple-600">Học Offline</span> tại trung tâm. Trải nghiệm học tập tối ưu với đội ngũ giáo viên chuyên nghiệp.
             </p>
 
             {/* CÁC NÚT CALL-TO-ACTION */}
@@ -49,27 +49,16 @@ export default function Banner({ onNavigate }) {
               <Button
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white gap-2 shadow-lg hover:shadow-xl transition-all duration-300 group"
                 size="lg"
-                onClick={() => onNavigate({ type: "subjects" })}
+                onClick={() => onNavigate({ type: "classes" })}
               >
                 <GraduationCap className="w-5 h-5" />
                 Xem lớp học
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              
-              {/* Button phụ - Khóa học Video */}
-              <Button
-                variant="outline"
-                className="gap-2 border-2 hover:bg-gray-50 group"
-                size="lg"
-                onClick={() => onNavigate({ type: "courses" })}
-              >
-                <Video className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                Khóa học Video
-              </Button>
             </div>
 
-            {/* THỐNG KÊ SỐ LIỆU - 3 cột responsive */}
-            <div className="grid grid-cols-3 gap-6 pt-8">
+            {/* THỐNG KÊ SỐ LIỆU */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-8">
               {/* Số học viên */}
               <div className="group cursor-pointer">
                 <div className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent transition-all group-hover:scale-110">
@@ -81,16 +70,6 @@ export default function Banner({ onNavigate }) {
                 </p>
               </div>
               
-              {/* Số khóa học */}
-              <div className="group cursor-pointer">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent transition-all group-hover:scale-110">
-                  50+
-                </div>
-                <p className="text-gray-600 flex items-center gap-1">
-                  Khóa học
-                  <Star className="w-3 h-3 text-yellow-500" />
-                </p>
-              </div>
               
               {/* Số giáo viên */}
               <div className="group cursor-pointer">
@@ -100,6 +79,17 @@ export default function Banner({ onNavigate }) {
                 <p className="text-gray-600 flex items-center gap-1">
                   Giáo viên
                   <Sparkles className="w-3 h-3 text-blue-500" />
+                </p>
+              </div>
+
+              {/* Số lớp học */}
+              <div className="group cursor-pointer">
+                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent transition-all group-hover:scale-110">
+                  40+
+                </div>
+                <p className="text-gray-600 flex items-center gap-1">
+                  Lớp học
+                  <GraduationCap className="w-3 h-3 text-indigo-500" />
                 </p>
               </div>
             </div>
@@ -119,19 +109,7 @@ export default function Banner({ onNavigate }) {
               />
             </div>
             
-            {/* FLOATING CARD - Video miễn phí (góc dưới trái) */}
-            <div className="absolute bottom-4 left-2 bg-white p-4 rounded-xl shadow-2xl border border-gray-100 hover:shadow-3xl transition-all duration-300 animate-float">
-              <div className="flex items-center gap-3">
-                {/* Icon video với gradient background */}
-                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <PlayCircle className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="text-gray-900 text-sm">Video miễn phí</p>
-                  <p className="text-gray-600 text-xs">Xem trước khóa học</p>
-                </div>
-              </div>
-            </div>
+            {/* Bỏ floating card Video miễn phí */}
 
             {/* FLOATING CARD - Rating (góc trên phải) */}
             <div className="absolute top-4 right-2 bg-white p-3 rounded-xl shadow-2xl border border-gray-100 hover:shadow-3xl transition-all duration-300 animate-float delay-500">

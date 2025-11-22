@@ -26,6 +26,8 @@ export const authApi = {
     http
       .post("/auth/signup", payload, { withCredentials: false })
       .then((r) => r.data),
+  // ✅ Lấy thông tin user hiện tại từ cookie (JWT) nếu còn hợp lệ
+  me: () => http.get("/auth/me").then((r) => r.data),
   // ✅ Thêm mode để phân biệt login/register (đi qua tham số state)
   getGoogleOAuthUrl(mode = "login") {
     const start = `${API_BASE_ORIGIN}/oauth2/authorization/google`;

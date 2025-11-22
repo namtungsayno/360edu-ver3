@@ -133,4 +133,19 @@ export const authService = {
       return null;
     }
   },
+  // ✅ Revalidate user against backend. Nếu BE không trả về user hợp lệ → clear local.
+  async revalidate() {
+    const cached = authService.loadSavedUser();
+    if (!cached) return null; // không có user để xác thực
+    try {
+      const fresh = await authApi.me();
+      fresh.roles = normalizeRoles(fresh.roles);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(fresh));
+      return fresh;
+    } catch (e) {
+      // Token / cookie không còn hợp lệ hoặc server down → xóa local để UI chuyển sang trạng thái guest
+      localStorage.removeItem(AUTH_USER_KEY);
+      return null;
+    }
+  },
 };

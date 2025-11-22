@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, Users, BookOpen, TrendingUp } from "lucide-react";
 import { classService } from "../../../services/class/class.service";
 import { Badge } from "../../../components/ui/Badge.jsx";
-import { Button } from "../../../components/ui/Button.jsx";
+import EnrollButton from "../../../components/common/EnrollButton.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Input } from "../../../components/ui/Input.jsx";
 
@@ -244,12 +244,14 @@ export default function ClassList() {
                         {c.fee ? `${c.fee.toLocaleString()}đ` : "2.500.000đ"}
                       </div>
                     </div>
-                    <Button 
+                    <EnrollButton
+                      fullWidth={false}
+                      state={(c.currentStudents || 0) >= (c.maxStudents || 99999) ? "disabled" : "default"}
                       onClick={() => goDetail(c.id)}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="!py-2 px-4 text-xs"
                     >
-                      Xem chi tiết & Đăng ký
-                    </Button>
+                      Xem chi tiết
+                    </EnrollButton>
                   </div>
                 </CardContent>
               </Card>

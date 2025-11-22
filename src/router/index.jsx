@@ -42,6 +42,7 @@ import Profile from "../pages/guest/profile/Profile";
 import CourseList from "../pages/guest/courses/CourseList";
 import SubjectList from "../pages/guest/subjects/SubjectList";
 import TeacherList from "../pages/guest/teachers/TeacherList";
+import Schedule from "../pages/guest/schedule/Schedule.jsx";
 // Guest - Classes
 import ClassList from "../pages/guest/classes/ClassList.jsx";
 import ClassDetail from "../pages/guest/classes/ClassDetail.jsx";
@@ -92,6 +93,7 @@ function AppRouter() {
           <Route path="/home/classes" element={<ClassList />} /> {/* Danh sách lớp học */}
           <Route path="/home/classes/:id" element={<ClassDetail />} />
           <Route path="/home/teachers" element={<TeacherList />} /> {/* Danh sách giáo viên */}
+          <Route path="/home/schedule" element={<Schedule />} /> {/* Lịch học của tôi */}
           <Route path="/home/news" element={<GuestNewsList />} /> {/* Tin tức */}
           <Route path="/home/about" element={<About />} /> {/* Giới thiệu */}
         </Route>

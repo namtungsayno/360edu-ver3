@@ -35,6 +35,8 @@ export default function GuestLayout() {
       setCurrentPage({ type: "home" });
     } else if (path === "/home/profile") {
       setCurrentPage({ type: "profile" });
+    } else if (path === "/home/schedule") {
+      setCurrentPage({ type: "schedule" });
     } else if (path === "/home/classes" || path.startsWith("/home/classes/")) {
       setCurrentPage({ type: "classes" });
     } else if (path === "/home/teachers") {
@@ -66,6 +68,16 @@ export default function GuestLayout() {
         break;
       case "teachers":
         navigate("/home/teachers");
+        break;
+      case "schedule":
+        navigate("/home/schedule");
+        break;
+      case "class":
+        if (page.classId) {
+          navigate(`/home/classes/${page.classId}`);
+        } else {
+          navigate("/home/classes");
+        }
         break;
       case "news":
         if (page.id) {
