@@ -22,6 +22,7 @@ import { Footer } from "../../../components/common/Footer";
 import { Card, CardContent } from "../../../components/ui/Card";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
+import { ImageWithFallback } from "../../../components/ui/ImageWithFallback";
 import { classService } from "../../../services/class/class.service";
 import { newsService } from "../../../services/news/news.service";
 
@@ -177,7 +178,7 @@ export default function Home() {
       
       {/* Features Section - Tính năng nổi bật */}
       <section className="py-16 bg-gradient-to-b from-blue-50 to-white">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-screen-2xl mx-auto px-6 md:px-8">
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 rounded-full mb-4">
@@ -218,7 +219,7 @@ export default function Home() {
       
       {/* Popular Classes Section - Lớp học phổ biến */}
       <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-screen-2xl mx-auto px-6 md:px-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -349,11 +350,13 @@ export default function Home() {
                             {cls.fee ? `${cls.fee.toLocaleString()}đ` : "2.500.000đ"}
                           </p>
                         </div>
-                        <Button 
+                        <Button
                           size="sm"
+                          disabled={currentStudents >= maxStudents}
+                          onClick={(e) => { e.stopPropagation(); onNavigate({ type: "class", classId: cls.id }); }}
                           className="group-hover:bg-blue-700 transition-colors"
                         >
-                          Đăng ký
+                          {currentStudents >= maxStudents ? "Hết chỗ" : "Đăng ký"}
                           <ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
                       </div>
@@ -381,7 +384,7 @@ export default function Home() {
       
       {/* Teachers Section - Đội ngũ giáo viên */}
       <section className="py-16 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-screen-2xl mx-auto px-6 md:px-8">
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 rounded-full mb-4">
@@ -398,7 +401,10 @@ export default function Home() {
 
           {/* Teachers Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {teachers.map((teacher) => (
+            {teachers.map((teacher) => {
+              const nameParts = (teacher.name || "").trim().split(" ");
+              const lastInitial = nameParts.length ? nameParts[nameParts.length - 1].charAt(0) : "?";
+              return (
               <Card 
                 key={teacher.id}
                 className="group hover:shadow-2xl transition-all duration-300 overflow-hidden"
@@ -406,10 +412,19 @@ export default function Home() {
                 <CardContent className="p-6 text-center">
                   {/* Avatar */}
                   <div className="relative mx-auto mb-4">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-3xl font-bold mx-auto group-hover:scale-110 transition-transform">
-                      {teacher.name.charAt(teacher.name.indexOf(' ') + 1)}
+                    <div className="w-24 h-24 aspect-square rounded-full ring-2 ring-blue-100 overflow-hidden mx-auto bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center shrink-0">
+                      {teacher.avatar ? (
+                        <ImageWithFallback
+                          src={teacher.avatar}
+                          alt={teacher.name}
+                          className="w-full h-full object-cover object-center select-none"
+                          fallbackSrc="/assets/images/logo.jpg"
+                        />
+                      ) : (
+                        <span className="text-2xl font-bold text-blue-700">{lastInitial}</span>
+                      )}
                     </div>
-                    <div className="absolute -top-1 -right-1 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
+                    <div className="absolute top-0 right-0 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
                       <span className="text-xs font-bold text-gray-900">{teacher.rating}</span>
                     </div>
                   </div>
@@ -445,17 +460,18 @@ export default function Home() {
                     ))}
                   </div>
 
-                  {/* View Profile Button */}
-                  <Button 
+                  {/* View Profile Button (navigate to teacher detail) */}
+                  <Button
                     size="sm"
                     variant="outline"
                     className="w-full"
+                    onClick={() => onNavigate({ type: "teacher", teacherId: teacher.id })}
                   >
                     Xem hồ sơ
                   </Button>
                 </CardContent>
               </Card>
-            ))}
+            );})}
           </div>
 
           {/* View All Teachers Button */}
@@ -475,7 +491,7 @@ export default function Home() {
       
       {/* News Section - Tin tức & Sự kiện */}
       <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-screen-2xl mx-auto px-6 md:px-8">
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-100 rounded-full mb-4">
