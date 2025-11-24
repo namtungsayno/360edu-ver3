@@ -64,6 +64,13 @@ export default function GuestLayout() {
       case "classes":
         navigate("/home/classes");
         break;
+      case "class":
+        if (page.classId) {
+          navigate(`/home/classes/${page.classId}`);
+        } else {
+          navigate("/home/classes");
+        }
+        break;
       case "teachers":
         navigate("/home/teachers");
         break;
@@ -86,8 +93,12 @@ export default function GuestLayout() {
         console.log("Navigate to subject:", page.subjectId);
         break;
       case "teacher":
-        // TODO: Navigate đến profile teacher
-        console.log("Navigate to teacher:", page.teacherId);
+        // Navigate to teacher detail page
+        if (page.teacherId) {
+          navigate(`/home/teachers/${page.teacherId}`);
+        } else {
+          navigate("/home/teachers");
+        }
         break;
       default:
         console.log("Unknown navigation:", page);

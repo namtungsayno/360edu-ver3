@@ -40,7 +40,7 @@ export default function Banner({ onNavigate }) {
 
             {/* Mô tả chi tiết về 3 hình thức học tập */}
             <p className="text-gray-600 leading-relaxed">
-              Nền tảng giáo dục hiện đại hỗ trợ 3 hình thức học tập: <span className="text-blue-600">Học Online</span>, <span className="text-purple-600">Học Offline</span> tại trung tâm, và <span className="text-pink-600">Khóa học Video</span> theo nhu cầu. Trải nghiệm học tập tối ưu với đội ngũ giáo viên chuyên nghiệp.
+              Nền tảng giáo dục hiện đại hỗ trợ 2 hình thức học tập: <span className="text-blue-600">Học Online</span> và <span className="text-purple-600">Học Offline</span> tại trung tâm. Trải nghiệm học tập tối ưu với đội ngũ giáo viên chuyên nghiệp và lịch học linh hoạt.
             </p>
 
             {/* CÁC NÚT CALL-TO-ACTION */}
@@ -49,22 +49,11 @@ export default function Banner({ onNavigate }) {
               <Button
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white gap-2 shadow-lg hover:shadow-xl transition-all duration-300 group"
                 size="lg"
-                onClick={() => onNavigate({ type: "subjects" })}
+                onClick={() => onNavigate({ type: "classes" })}
               >
                 <GraduationCap className="w-5 h-5" />
                 Xem lớp học
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              
-              {/* Button phụ - Khóa học Video */}
-              <Button
-                variant="outline"
-                className="gap-2 border-2 hover:bg-gray-50 group"
-                size="lg"
-                onClick={() => onNavigate({ type: "courses" })}
-              >
-                <Video className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                Khóa học Video
               </Button>
             </div>
 
@@ -81,13 +70,13 @@ export default function Banner({ onNavigate }) {
                 </p>
               </div>
               
-              {/* Số khóa học */}
+              {/* Số lớp học */}
               <div className="group cursor-pointer">
                 <div className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent transition-all group-hover:scale-110">
                   50+
                 </div>
                 <p className="text-gray-600 flex items-center gap-1">
-                  Khóa học
+                  Lớp học
                   <Star className="w-3 h-3 text-yellow-500" />
                 </p>
               </div>
@@ -112,7 +101,7 @@ export default function Banner({ onNavigate }) {
               {/* Gradient overlay cho depth */}
               <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/20 to-purple-500/20 z-10"></div>
               
-              {/* Ảnh banner từ assets */}
+              {/* Ảnh banner lớp học từ assets */}
               <ImageWithFallback
                src="/assets/images/banner.jpg"
                 className="w-full h-auto"

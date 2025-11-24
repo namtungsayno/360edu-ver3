@@ -9,9 +9,13 @@
  * GUEST ROUTES (GuestLayout):
  * - /home → Home.jsx (trang chủ)
  * - /home/profile → Profile.jsx
+ * - /home/classes → ClassList.jsx
+ * - /home/classes/:id → ClassDetail.jsx
  * - /home/courses → CourseList.jsx
  * - /home/subjects → SubjectList.jsx
  * - /home/teachers → TeacherList.jsx
+ * - /home/teachers/:id → TeacherDetail.jsx
+ * - /home/news → NewsList.jsx
  * - /home/about → About.jsx
  *
  * ADMIN ROUTES (AdminLayout):
@@ -42,11 +46,13 @@ import Profile from "../pages/guest/profile/Profile";
 import CourseList from "../pages/guest/courses/CourseList";
 import SubjectList from "../pages/guest/subjects/SubjectList";
 import TeacherList from "../pages/guest/teachers/TeacherList";
+import TeacherDetail from "../pages/guest/teachers/TeacherDetail";
 // Guest - Classes
 import ClassList from "../pages/guest/classes/ClassList.jsx";
 import ClassDetail from "../pages/guest/classes/ClassDetail.jsx";
 // Guest - News
 import GuestNewsList from "../pages/guest/news/NewsList.jsx";
+import NewsDetail from "../pages/guest/news/NewsDetail.jsx";
 import About from "../pages/guest/about/About";
 
 // ADMIN PAGES - Các trang dành cho admin (cần đăng nhập)
@@ -97,8 +103,12 @@ function AppRouter() {
           <Route path="/home/classes/:id" element={<ClassDetail />} />
           <Route path="/home/teachers" element={<TeacherList />} />{" "}
           {/* Danh sách giáo viên */}
+          <Route path="/home/teachers/:id" element={<TeacherDetail />} />{" "}
+          {/* Chi tiết giáo viên */}
           <Route path="/home/news" element={<GuestNewsList />} />{" "}
           {/* Tin tức */}
+          <Route path="/home/news/:id" element={<NewsDetail />} />{" "}
+          {/* Chi tiết tin tức */}
           <Route path="/home/about" element={<About />} /> {/* Giới thiệu */}
         </Route>
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}

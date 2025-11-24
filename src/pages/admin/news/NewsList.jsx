@@ -26,8 +26,7 @@ import {
   TabsTrigger,
 } from "../../../components/ui/Tabs";
 import Modal from "../../../components/ui/Modal";
-// import { newsService } from "../../../services/news/news.service";
-import { mockNewsData } from "./mockData";
+import { newsService } from "../../../services/news/news.service";
 
 export default function NewsList() {
   const navigate = useNavigate();
@@ -50,22 +49,17 @@ export default function NewsList() {
       setLoading(true);
       setError(null);
 
-      // TODO: Uncomment khi backend sẵn sàng
       // Real API call
-      // const response = await newsService.getNews({
-      // 	page: 1,
-      // 	size: 100,
-      // });
-      // const newsData = response.items || response.data || response || [];
-      // setNews(newsData);
-
-      // Tạm thời dùng mock data để test UI
-      setNews(mockNewsData);
+      const response = await newsService.getNews({
+        page: 0,
+        size: 100,
+      });
+      const newsData = response.content || response.data || response || [];
+      setNews(newsData);
     } catch (err) {
       console.error("Failed to fetch news:", err);
       setError(err.displayMessage || "Không thể tải danh sách tin tức");
-      // Fallback to mock data nếu API lỗi
-      setNews(mockNewsData);
+      setNews([]);
     } finally {
       setLoading(false);
     }
@@ -233,9 +227,17 @@ export default function NewsList() {
                   >
                     <CardContent className="p-6">
                       <div className="flex gap-6">
-                        <div className="flex items-center justify-center h-24 w-24 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white flex-shrink-0 self-center">
-                          <Newspaper className="h-10 w-10" />
-                        </div>
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.title}
+                            className="h-24 w-24 rounded-lg object-cover flex-shrink-0 self-center"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-24 w-24 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white flex-shrink-0 self-center">
+                            <Newspaper className="h-10 w-10" />
+                          </div>
+                        )}
 
                         <div className="flex-1 space-y-3">
                           <div className="flex items-start justify-between">
@@ -253,7 +255,10 @@ export default function NewsList() {
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            {item.tags.map((tag, index) => (
+                            {(typeof item.tags === 'string' 
+                              ? item.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+                              : item.tags || []
+                            ).map((tag, index) => (
                               <Badge
                                 key={index}
                                 variant="outline"
@@ -397,6 +402,13 @@ export default function NewsList() {
       >
         {selected && (
           <div className="space-y-4">
+            {selected.imageUrl && (
+              <img
+                src={selected.imageUrl}
+                alt={selected.title}
+                className="w-full h-64 object-cover rounded-lg"
+              />
+            )}
             <div className="flex items-center gap-4 text-sm text-slate-600">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />

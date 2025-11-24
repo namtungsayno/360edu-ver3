@@ -7,20 +7,24 @@ import { Badge } from "../../../components/ui/Badge";
 import { Label } from "../../../components/ui/Label";
 import { Textarea } from "../../../components/ui/Textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/Select";
-import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, X, Loader2, Upload, Image as ImageIcon } from "lucide-react";
 import { newsService } from "../../../services/news/news.service";
+import { useToast } from "../../../hooks/use-toast";
 
 export default function CreateNews() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const draft = location.state?.draft;
+	const { success, error: showError } = useToast();
 	const [tags, setTags] = useState([]);
 	const [tagInput, setTagInput] = useState("");
 	const [loading, setLoading] = useState(false);
+	const [imagePreview, setImagePreview] = useState(null);
 	const [formData, setFormData] = useState({
 		title: "",
 		excerpt: "",
 		content: "",
+		imageUrl: "",
 		status: "draft",
 		author: "Admin",
 		date: new Date().toISOString().split('T')[0]
@@ -34,11 +38,15 @@ export default function CreateNews() {
 				title: draft.title || "",
 				excerpt: draft.excerpt || "",
 				content: draft.content || "",
+				imageUrl: draft.imageUrl || "",
 				status: draft.status || "draft",
 				author: draft.author || "Admin",
 				date: draft.date || new Date().toISOString().split('T')[0],
 			});
 			setTags(draft.tags || []);
+			if (draft.imageUrl) {
+				setImagePreview(draft.imageUrl);
+			}
 		}
 	}, [draft]);
 
@@ -60,18 +68,41 @@ export default function CreateNews() {
 		}
 	};
 
+	const handleImageChange = (e) => {
+		const file = e.target.files[0];
+		if (file) {
+			// Validate file type
+			if (!file.type.startsWith('image/')) {
+				showError('Vui lòng chọn file ảnh', 'Lỗi');
+				return;
+			}
+			// Validate file size (max 5MB)
+			if (file.size > 5 * 1024 * 1024) {
+				showError('Kích thước ảnh tối đa 5MB', 'Lỗi');
+				return;
+			}
+			// Create preview
+			const reader = new FileReader();
+			reader.onloadend = () => {
+				setImagePreview(reader.result);
+				setFormData({...formData, imageUrl: reader.result});
+			};
+			reader.readAsDataURL(file);
+		}
+	};
+
 	const handleSubmit = async (status) => {
 		// Validation cơ bản
 		if (!formData.title.trim()) {
-			alert("Vui lòng nhập tiêu đề");
+			showError("Vui lòng nhập tiêu đề", "Lỗi");
 			return;
 		}
 		if (!formData.excerpt.trim()) {
-			alert("Vui lòng nhập mô tả ngắn");
+			showError("Vui lòng nhập mô tả ngắn", "Lỗi");
 			return;
 		}
 		if (!formData.content.trim()) {
-			alert("Vui lòng nhập nội dung");
+			showError("Vui lòng nhập nội dung", "Lỗi");
 			return;
 		}
 
@@ -79,26 +110,33 @@ export default function CreateNews() {
 			setLoading(true);
 			
 			const newsData = {
-				...formData,
+				title: formData.title.trim(),
+				excerpt: formData.excerpt.trim(),
+				content: formData.content.trim(),
+				imageUrl: formData.imageUrl || null,
 				status,
-				tags
+				author: formData.author,
+				tags: tags // Backend expects array, not comma-separated string
 			};
 
 			if (isEditing && draft?.id) {
 				// Cập nhật tin tức hiện có
 				await newsService.updateNews(draft.id, newsData);
-				alert("Cập nhật tin tức thành công!");
+				success("Cập nhật tin tức thành công!", "Thành công");
 			} else {
 				// Tạo tin tức mới
 				await newsService.createNews(newsData);
-				alert("Tạo tin tức thành công!");
+				success("Tạo tin tức thành công!", "Thành công");
 			}
 
-			// Quay về danh sách
-			navigate("/home/admin/news");
+			// Quay về danh sách sau 1s
+			setTimeout(() => {
+				navigate("/home/admin/news");
+			}, 1000);
 		} catch (error) {
 			console.error("Failed to submit news:", error);
-			alert(error.displayMessage || "Có lỗi xảy ra khi lưu tin tức");
+			const errorMsg = error.response?.data?.message || error.message || "Có lỗi xảy ra khi lưu tin tức";
+			showError(errorMsg, "Lỗi");
 		} finally {
 			setLoading(false);
 		}
@@ -159,6 +197,46 @@ export default function CreateNews() {
 									value={formData.content}
 									onChange={(e) => setFormData({...formData, content: e.target.value})}
 								/>
+							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="newsImage">Ảnh đại diện</Label>
+								<div className="space-y-3">
+									{imagePreview ? (
+										<div className="relative border-2 border-dashed rounded-lg p-4 hover:border-blue-400 transition-colors">
+											<img 
+												src={imagePreview} 
+												alt="Preview" 
+												className="w-full h-48 object-cover rounded-lg"
+											/>
+											<Button
+												type="button"
+												variant="destructive"
+												size="sm"
+												className="absolute top-2 right-2"
+												onClick={() => {
+													setImagePreview(null);
+													setFormData({...formData, imageUrl: ''});
+												}}
+											>
+												<X className="h-4 w-4" />
+											</Button>
+										</div>
+									) : (
+										<label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 cursor-pointer hover:border-blue-400 transition-colors">
+											<Upload className="h-12 w-12 text-gray-400 mb-3" />
+											<span className="text-sm text-gray-600 mb-1">Click để tải ảnh lên</span>
+											<span className="text-xs text-gray-400">PNG, JPG, GIF (tối đa 5MB)</span>
+											<input
+												id="newsImage"
+												type="file"
+												accept="image/*"
+												className="hidden"
+												onChange={handleImageChange}
+											/>
+										</label>
+									)}
+								</div>
 							</div>
 						</CardContent>
 					</Card>
@@ -249,7 +327,7 @@ export default function CreateNews() {
 					<div className="flex flex-col gap-2">
 						<Button 
 							className="w-full bg-blue-600 text-white hover:bg-blue-700" 
-							onClick={() => handleSubmit(isEditing ? formData.status : "published")}
+							onClick={() => handleSubmit("published")}
 							disabled={loading}
 						>
 							{loading ? (
@@ -258,7 +336,7 @@ export default function CreateNews() {
 									Đang xử lý...
 								</>
 							) : (
-								<>{isEditing ? "Cập nhật tin" : "Đăng tin tức"}</>
+								<>{isEditing ? "Cập nhật tin tức" : "Đăng tin tức"}</>
 							)}
 						</Button>
 						<Button 
