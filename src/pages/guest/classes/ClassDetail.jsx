@@ -66,6 +66,8 @@ export default function ClassDetail() {
         setTimeout(() => {
           navigate("/home/login", { state: { from: `/home/classes/${classId}` } });
         }, 2000);
+      } else if (msg.includes("already enrolled")) {
+        warning("Bạn đã đăng ký lớp học này", "Thông báo");
       } else {
         showError(msg, "Lỗi");
       }

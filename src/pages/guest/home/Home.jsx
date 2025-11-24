@@ -25,14 +25,18 @@ import { Button } from "../../../components/ui/Button";
 import { ImageWithFallback } from "../../../components/ui/ImageWithFallback";
 import { classService } from "../../../services/class/class.service";
 import { newsService } from "../../../services/news/news.service";
+import { teacherService } from "../../../services/teacher/teacher.service";
+import { dayLabelVi } from "../../../helper/formatters";
 
 export default function Home() {
   // Nhận onNavigate function từ GuestLayout qua context
   const { onNavigate } = useOutletContext();
   const [classes, setClasses] = useState([]);
   const [news, setNews] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newsLoading, setNewsLoading] = useState(true);
+  const [teachersLoading, setTeachersLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("Tất cả");
 
   // Fetch classes from API
@@ -55,12 +59,13 @@ export default function Home() {
     const fetchNews = async () => {
       try {
         const response = await newsService.getNews({ 
-          status: "published",
-          sortBy: "date",
-          order: "desc",
+          page: 0,
           size: 3
         });
-        setNews(response.items || []);
+        const newsData = response.content || response.data || response || [];
+        // Filter published news and take first 3
+        const publishedNews = newsData.filter(n => n.status?.toLowerCase() === 'published').slice(0, 3);
+        setNews(publishedNews);
       } catch (error) {
         console.error("Failed to fetch news:", error);
       } finally {
@@ -78,53 +83,35 @@ export default function Home() {
     ? classes.slice(0, 6) 
     : classes.filter(cls => cls.subjectName === activeFilter).slice(0, 6);
 
-  // Mock teachers data
-  const teachers = [
-    {
-      id: 1,
-      name: "Thầy Nguyễn Văn A",
-      subject: "Toán học",
-      experience: "10 năm kinh nghiệm",
-      students: 500,
-      courses: 12,
-      rating: 4.9,
-      achievements: ["Giáo viên xuất sắc 2023", "Thạc sĩ Toán học"],
-      avatar: null
-    },
-    {
-      id: 2,
-      name: "Cô Trần Thị B",
-      subject: "Tiếng Anh",
-      experience: "8 năm kinh nghiệm",
-      students: 600,
-      courses: 15,
-      rating: 4.8,
-      achievements: ["IELTS 8.5", "Cambridge Certified Teacher"],
-      avatar: null
-    },
-    {
-      id: 3,
-      name: "Thầy Lê Văn C",
-      subject: "Vật lý",
-      experience: "12 năm kinh nghiệm",
-      students: 450,
-      courses: 10,
-      rating: 4.9,
-      achievements: ["Giảng viên đại học", "Tiến sĩ Vật lý"],
-      avatar: null
-    },
-    {
-      id: 4,
-      name: "Cô Phạm Thị D",
-      subject: "Hóa học",
-      experience: "7 năm kinh nghiệm",
-      students: 380,
-      courses: 8,
-      rating: 4.7,
-      achievements: ["Thạc sĩ Hóa học", "Giáo viên ưu tú"],
-      avatar: null
-    }
-  ];
+  // Fetch teachers from API
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      try {
+        const data = await teacherService.list();
+        // Merge real data with mock data for missing fields
+        const enrichedTeachers = (data || []).map((teacher) => ({
+          id: teacher.id,
+          name: teacher.fullName || teacher.username,
+          subject: teacher.subjectNames?.join(", ") || teacher.subjectName || "Chưa xác định",
+          experience: teacher.degree || "Giáo viên giàu kinh nghiệm",
+          students: null, // Not available in backend
+          courses: teacher.classCount || 0,
+          rating: 4.8, // Mock rating
+          achievements: [
+            teacher.degree,
+            teacher.specialization
+          ].filter(Boolean),
+          avatar: null // Not available in backend
+        }));
+        setTeachers(enrichedTeachers.slice(0, 4)); // Show first 4 teachers
+      } catch (error) {
+        console.error("Failed to fetch teachers:", error);
+      } finally {
+        setTeachersLoading(false);
+      }
+    };
+    fetchTeachers();
+  }, []);
 
   const features = [
     {
@@ -267,58 +254,76 @@ export default function Home() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredClasses.map((cls) => {
                 const gradients = [
-                  'from-blue-500 to-blue-600',
-                  'from-purple-500 to-purple-600',
-                  'from-green-500 to-green-600',
-                  'from-orange-500 to-orange-600',
-                  'from-red-500 to-red-600',
-                  'from-pink-500 to-pink-600'
+                  'from-blue-500 via-blue-600 to-indigo-600',
+                  'from-purple-500 via-purple-600 to-pink-600',
+                  'from-green-500 via-emerald-600 to-teal-600',
+                  'from-orange-500 via-amber-600 to-yellow-600',
+                  'from-red-500 via-rose-600 to-pink-600',
+                  'from-cyan-500 via-blue-600 to-indigo-600'
                 ];
                 const gradient = gradients[cls.id % gradients.length];
                 const currentStudents = cls.currentStudents || 0;
                 const maxStudents = cls.maxStudents || 30;
                 const enrollmentPercentage = (currentStudents / maxStudents) * 100;
+                const teacherInitial = (cls.teacherFullName || "G").charAt(0).toUpperCase();
 
                 return (
                   <Card 
                     key={cls.id}
-                    className="group hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer"
+                    className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-blue-200"
                     onClick={() => onNavigate({ type: "class", classId: cls.id })}
                   >
-                    {/* Image Header with Gradient */}
-                    <div className={`h-32 bg-gradient-to-br ${gradient} relative`}>
-                      <div className="absolute top-4 left-4 flex gap-2">
-                        <Badge className="bg-white/90 text-gray-900 backdrop-blur-sm">
-                          {cls.subjectName || "Môn học"}
-                        </Badge>
-                        <Badge className={cls.online ? "bg-green-500" : "bg-blue-500"}>
-                          {cls.online ? "Online" : "Offline"}
-                        </Badge>
+                    {/* Image Header with Gradient & Overlay */}
+                    <div className={`h-40 bg-gradient-to-br ${gradient} relative`}>
+                      <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-all"></div>
+                      <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
+                        <div className="flex flex-col gap-2">
+                          <Badge className="bg-white/95 text-gray-900 backdrop-blur-sm shadow-lg w-fit">
+                            {cls.subjectName || "Môn học"}
+                          </Badge>
+                          <Badge className={cls.online ? "bg-green-500/90 backdrop-blur-sm shadow-lg w-fit" : "bg-blue-500/90 backdrop-blur-sm shadow-lg w-fit"}>
+                            {cls.online ? "🌐 Online" : "📍 Offline"}
+                          </Badge>
+                        </div>
+                        <div className="bg-white/20 backdrop-blur-md rounded-full p-2 shadow-lg">
+                          <BookOpen className="w-5 h-5 text-white" />
+                        </div>
                       </div>
                     </div>
 
-                    <CardContent className="p-5">
+                    <CardContent className="p-5 relative">
+                      {/* Teacher Avatar - Overlapping */}
+                      <div className="absolute -top-8 right-4">
+                        <div className="w-16 h-16 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center">
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                            <span className="text-xl font-bold text-blue-600">{teacherInitial}</span>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Title */}
-                      <h3 className="text-lg font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                      <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors pr-20">
                         {cls.name || "Tên lớp học"}
                       </h3>
 
+                      {/* Teacher Name */}
+                      <p className="text-sm text-gray-600 mb-4 flex items-center gap-2">
+                        <UserCheck className="w-4 h-4 text-blue-600" />
+                        <span className="font-medium">{cls.teacherFullName || "Đang cập nhật"}</span>
+                      </p>
+
                       {/* Info */}
                       <div className="space-y-2 mb-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <UserCheck className="w-4 h-4" />
-                          <span>Giảng viên: {cls.teacherFullName || "Đang cập nhật"}</span>
-                        </div>
                         
                         {Array.isArray(cls.schedule) && cls.schedule.length > 0 ? (
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Clock className="w-4 h-4" />
-                            <span>Thứ {cls.schedule[0].dayOfWeek}, {cls.schedule[0].startTime?.slice(0,5)} - {cls.schedule[0].endTime?.slice(0,5)}</span>
+                            <span>{dayLabelVi(cls.schedule[0].dayOfWeek)}, {cls.schedule[0].startTime?.slice(0,5)} - {cls.schedule[0].endTime?.slice(0,5)}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Clock className="w-4 h-4" />
-                            <span>Thứ 2,4,6 • 19:00 - 21:00</span>
+                            <span>Thứ Hai, Tư, Sáu • 19:00 - 21:00</span>
                           </div>
                         )}
 
@@ -328,38 +333,36 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Progress */}
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-gray-600">Đã đăng ký</span>
-                          <span className="font-medium text-blue-600">{currentStudents}/{maxStudents}</span>
+                      {/* Enrollment Progress */}
+                      <div className="mb-4 bg-gray-50 rounded-lg p-3">
+                        <div className="flex items-center justify-between text-xs mb-2">
+                          <span className="text-gray-600 font-medium">Tình trạng đăng ký</span>
+                          <span className="font-bold text-blue-600">{currentStudents}/{maxStudents} học viên</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
                           <div 
-                            className="bg-blue-600 h-1.5 rounded-full transition-all"
+                            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
                             style={{ width: `${enrollmentPercentage}%` }}
-                          ></div>
+                          />
+                        </div>
+                        <div className="mt-2 text-xs">
+                          {enrollmentPercentage >= 80 ? (
+                            <span className="text-red-600 font-medium">⚡ Sắp đầy chỗ!</span>
+                          ) : enrollmentPercentage >= 50 ? (
+                            <span className="text-orange-600 font-medium">🔥 Đang hot</span>
+                          ) : (
+                            <span className="text-green-600 font-medium">✨ Còn nhiều chỗ</span>
+                          )}
                         </div>
                       </div>
 
-                      {/* Footer */}
-                      <div className="flex items-center justify-between pt-4 border-t">
-                        <div>
-                          <p className="text-xs text-gray-500">Học phí</p>
-                          <p className="text-lg font-bold text-blue-600">
-                            {cls.fee ? `${cls.fee.toLocaleString()}đ` : "2.500.000đ"}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          disabled={currentStudents >= maxStudents}
-                          onClick={(e) => { e.stopPropagation(); onNavigate({ type: "class", classId: cls.id }); }}
-                          className="group-hover:bg-blue-700 transition-colors"
-                        >
-                          {currentStudents >= maxStudents ? "Hết chỗ" : "Đăng ký"}
-                          <ArrowRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      </div>
+                      {/* CTA Button */}
+                      <Button 
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all"
+                      >
+                        <span className="font-medium">Xem chi tiết lớp học</span>
+                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </Button>
                     </CardContent>
                   </Card>
                 );
@@ -401,18 +404,47 @@ export default function Home() {
 
           {/* Teachers Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {teachers.map((teacher) => {
+            {teachersLoading ? (
+              // Loading skeleton
+              Array.from({ length: 4 }).map((_, idx) => (
+                <Card key={idx} className="animate-pulse overflow-hidden">
+                  <div className="h-32 bg-gradient-to-br from-gray-200 to-gray-300"></div>
+                  <CardContent className="p-6">
+                    <div className="w-20 h-20 rounded-full bg-gray-200 mx-auto -mt-14 mb-4 border-4 border-white"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded mb-4"></div>
+                    <div className="h-3 bg-gray-200 rounded"></div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : teachers.length === 0 ? (
+              <div className="col-span-full text-center py-12 text-gray-500">
+                Chưa có giáo viên nào
+              </div>
+            ) : (
+              teachers.map((teacher) => {
               const nameParts = (teacher.name || "").trim().split(" ");
               const lastInitial = nameParts.length ? nameParts[nameParts.length - 1].charAt(0) : "?";
               return (
               <Card 
                 key={teacher.id}
-                className="group hover:shadow-2xl transition-all duration-300 overflow-hidden"
+                className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-purple-200"
+                onClick={() => onNavigate({ type: "teacher", teacherId: teacher.id })}
               >
-                <CardContent className="p-6 text-center">
-                  {/* Avatar */}
-                  <div className="relative mx-auto mb-4">
-                    <div className="w-24 h-24 aspect-square rounded-full ring-2 ring-blue-100 overflow-hidden mx-auto bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center shrink-0">
+                {/* Header Background with Gradient */}
+                <div className="h-32 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 relative">
+                  <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  {/* Rating Badge */}
+                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <span className="text-sm font-bold text-gray-900">{teacher.rating}</span>
+                  </div>
+                </div>
+
+                <CardContent className="p-6 text-center relative">
+                  {/* Avatar - Overlapping the header */}
+                  <div className="relative mx-auto -mt-14 mb-4">
+                    <div className="w-24 h-24 rounded-full ring-4 ring-white shadow-xl overflow-hidden mx-auto bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                       {teacher.avatar ? (
                         <ImageWithFallback
                           src={teacher.avatar}
@@ -421,57 +453,64 @@ export default function Home() {
                           fallbackSrc="/assets/images/logo.jpg"
                         />
                       ) : (
-                        <span className="text-2xl font-bold text-blue-700">{lastInitial}</span>
+                        <span className="text-3xl font-bold text-purple-600">{lastInitial}</span>
                       )}
-                    </div>
-                    <div className="absolute top-0 right-0 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-gray-900">{teacher.rating}</span>
                     </div>
                   </div>
 
                   {/* Name & Subject */}
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">
                     {teacher.name}
                   </h3>
-                  <Badge className="mb-3">{teacher.subject}</Badge>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <Badge className="mb-3 bg-purple-100 text-purple-700 border-purple-200">
+                    {teacher.subject}
+                  </Badge>
+                  <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[40px]">
                     {teacher.experience}
                   </p>
 
                   {/* Stats */}
-                  <div className="flex items-center justify-center gap-4 mb-4 pb-4 border-b">
+                  <div className="flex items-center justify-center gap-6 mb-4 pb-4 border-b border-gray-100">
                     <div className="text-center">
-                      <p className="text-xl font-bold text-blue-600">{teacher.students}</p>
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <Users className="w-4 h-4 text-purple-600" />
+                        <p className="text-lg font-bold text-gray-900">{teacher.students || "N/A"}</p>
+                      </div>
                       <p className="text-xs text-gray-500">Học viên</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xl font-bold text-blue-600">{teacher.courses}</p>
-                      <p className="text-xs text-gray-500">Khóa học</p>
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <BookOpen className="w-4 h-4 text-purple-600" />
+                        <p className="text-lg font-bold text-gray-900">{teacher.courses}</p>
+                      </div>
+                      <p className="text-xs text-gray-500">Lớp học</p>
                     </div>
                   </div>
 
                   {/* Achievements */}
-                  <div className="space-y-2 mb-4">
-                    {teacher.achievements.map((achievement, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-xs text-gray-600">
-                        <Award className="w-3 h-3 text-yellow-500" />
-                        <span className="line-clamp-1">{achievement}</span>
+                  <div className="space-y-2 mb-4 min-h-[60px]">
+                    {teacher.achievements.slice(0, 2).map((achievement, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+                        <Award className="w-3 h-3 text-yellow-500 shrink-0" />
+                        <span className="line-clamp-1 text-left">{achievement}</span>
                       </div>
                     ))}
                   </div>
 
-                  {/* View Profile Button (navigate to teacher detail) */}
+                  {/* View Profile Button */}
                   <Button
                     size="sm"
                     variant="outline"
-                    className="w-full"
-                    onClick={() => onNavigate({ type: "teacher", teacherId: teacher.id })}
+                    className="w-full group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 transition-all"
                   >
+                    <GraduationCap className="w-4 h-4 mr-2" />
                     Xem hồ sơ
                   </Button>
                 </CardContent>
               </Card>
-            );})}
+            );
+            })
+            )}
           </div>
 
           {/* View All Teachers Button */}
@@ -491,7 +530,7 @@ export default function Home() {
       
       {/* News Section - Tin tức & Sự kiện */}
       <section className="py-16 bg-white">
-        <div className="max-w-screen-2xl mx-auto px-6 md:px-8">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-pink-100 rounded-full mb-4">
@@ -542,10 +581,11 @@ export default function Home() {
                   return (
                     <Card 
                       key={item.id}
-                      className="group hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer"
+                      className="group hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer flex flex-col h-full"
+                      onClick={() => navigate(`/home/news/${item.id}`)}
                     >
                       {/* Image/Gradient Header */}
-                      <div className={`h-48 bg-gradient-to-br ${gradient} relative overflow-hidden`}>
+                      <div className="h-180 relative overflow-hidden bg-gray-100">
                         {item.imageUrl ? (
                           <img 
                             src={item.imageUrl} 
@@ -553,7 +593,7 @@ export default function Home() {
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
+                          <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
                             <BookOpen className="w-16 h-16 text-white opacity-50" />
                           </div>
                         )}
@@ -566,58 +606,50 @@ export default function Home() {
                         )}
                       </div>
 
-                      <CardContent className="p-6">
-                        {/* Date and Reading Time */}
-                        <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            <span>{formatDate(item.createdDate)}</span>
-                          </div>
-                          {item.readTime && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              <span>{item.readTime} phút</span>
-                            </div>
-                          )}
+                      <CardContent className="p-6 flex-1 flex flex-col">
+                        {/* Date */}
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                          <Calendar className="w-3 h-3" />
+                          <span>{formatDate(item.createdAt)}</span>
                         </div>
 
-                        {/* Title */}
-                        <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-pink-600 transition-colors">
-                          {item.title}
-                        </h3>
+                          {/* Title */}
+                          <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-pink-600 transition-colors">
+                            {item.title}
+                          </h3>
 
-                        {/* Excerpt */}
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                          {item.excerpt || item.content?.substring(0, 150) + '...' || 'Mô tả ngắn về tin tức này...'}
-                        </p>
+                          {/* Excerpt */}
+                          <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-1">
+                            {item.excerpt || item.content?.substring(0, 150) + '...' || 'Mô tả ngắn về tin tức này...'}
+                          </p>
 
-                        {/* Read More Link */}
-                        <button 
-                          className="text-pink-600 hover:text-pink-700 font-medium text-sm flex items-center gap-1"
-                          onClick={() => onNavigate({ type: "news", id: item.id })}
-                        >
-                          Đọc thêm
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+                          {/* Read More Link */}
+                          <button 
+                            className="text-pink-600 hover:text-pink-700 font-medium text-sm flex items-center gap-1 mt-auto"
+                          >
+                            Đọc thêm
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
 
-              {/* View All News Button */}
-              <div className="text-center mt-12">
-                <Button 
-                  onClick={() => onNavigate({ type: "news" })}
-                  size="lg"
-                  variant="outline"
-                  className="border-2 border-pink-600 text-pink-600 hover:bg-pink-600 hover:text-white"
-                >
-                  Xem tất cả tin tức
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </div>
-            </>
+                {/* View All News Button */}
+                <div className="text-center mt-12">
+                  <Button 
+                    onClick={() => navigate('/home/news')}
+                    size="lg"
+                    variant="outline"
+                    className="border-2 border-pink-600 text-pink-600 hover:bg-pink-600 hover:text-white"
+                  >
+                    Xem tất cả tin tức
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </div>
+              </>
+            
           ) : (
             <div className="text-center py-12 text-gray-500">
               Chưa có tin tức nào

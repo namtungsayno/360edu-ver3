@@ -1,8 +1,46 @@
 //src/pages/guest/TeacherList.jsx
 import { useOutletContext } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { teacherService } from "../../../services/teacher/teacher.service";
+import { Card, CardContent } from "../../../components/ui/Card";
+import { Badge } from "../../../components/ui/Badge";
+import { Button } from "../../../components/ui/Button";
+import { Award } from "lucide-react";
 
 export default function TeacherList() {
   const { onNavigate } = useOutletContext();
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch teachers from API
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      try {
+        const data = await teacherService.list();
+        // Merge real data with mock data for missing fields
+        const enrichedTeachers = (data || []).map((teacher) => ({
+          id: teacher.id,
+          name: teacher.fullName || teacher.username,
+          subject: teacher.subjectNames?.join(", ") || teacher.subjectName || "Chưa xác định",
+          experience: teacher.degree || "Giáo viên giàu kinh nghiệm",
+          students: null, // Not available in backend
+          courses: teacher.classCount || 0,
+          rating: 4.8, // Mock rating
+          achievements: [
+            teacher.degree,
+            teacher.specialization
+          ].filter(Boolean),
+          avatar: null // Not available in backend
+        }));
+        setTeachers(enrichedTeachers);
+      } catch (error) {
+        console.error("Failed to fetch teachers:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTeachers();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -12,25 +50,95 @@ export default function TeacherList() {
           <p className="text-gray-600">Gặp gỡ đội ngũ giáo viên chuyên nghiệp và giàu kinh nghiệm</p>
         </div>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Sample teacher cards */}
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((teacher) => (
-            <div key={teacher} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="h-48 bg-gradient-to-br from-purple-400 to-pink-500"></div>
-              <div className="p-4">
-                <h3 className="text-lg font-semibold mb-1">Thầy/Cô Teacher {teacher}</h3>
-                <p className="text-gray-600 text-sm mb-2">Chuyên môn: Toán học</p>
-                <p className="text-gray-600 text-sm mb-3">Kinh nghiệm: 5+ năm</p>
-                <button 
-                  onClick={() => onNavigate({ type: "teacher", teacherId: teacher })}
-                  className="w-full bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
+        {loading ? (
+          // Loading skeleton
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <Card key={idx} className="animate-pulse">
+                <div className="h-48 bg-gray-200"></div>
+                <CardContent className="p-4">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-8 bg-gray-200 rounded"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : teachers.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            Chưa có giáo viên nào
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {teachers.map((teacher) => {
+              const nameParts = (teacher.name || "").trim().split(" ");
+              const lastInitial = nameParts.length ? nameParts[nameParts.length - 1].charAt(0) : "?";
+              
+              return (
+                <Card 
+                  key={teacher.id}
+                  className="group hover:shadow-lg transition-shadow overflow-hidden"
                 >
-                  Xem hồ sơ
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+                  {/* Avatar Background */}
+                  <div className="h-48 bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center relative">
+                    {teacher.avatar ? (
+                      <img 
+                        src={teacher.avatar} 
+                        alt={teacher.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-6xl font-bold text-white">{lastInitial}</span>
+                    )}
+                    {/* Rating badge */}
+                    <div className="absolute top-2 right-2 bg-yellow-400 text-gray-900 px-2 py-1 rounded-full text-xs font-bold">
+                      ⭐ {teacher.rating}
+                    </div>
+                  </div>
+                  
+                  <CardContent className="p-4">
+                    <h3 className="text-lg font-semibold mb-1">{teacher.name}</h3>
+                    <Badge className="mb-2">{teacher.subject}</Badge>
+                    <p className="text-gray-600 text-sm mb-3">{teacher.experience}</p>
+                    
+                    {/* Stats */}
+                    <div className="flex items-center justify-between mb-3 pb-3 border-b">
+                      <div className="text-center">
+                        <p className="text-lg font-bold text-blue-600">{teacher.students || "-"}</p>
+                        <p className="text-xs text-gray-500">Học viên</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold text-blue-600">{teacher.courses}</p>
+                        <p className="text-xs text-gray-500">Lớp học</p>
+                      </div>
+                    </div>
+                    
+                    {/* Achievements */}
+                    {teacher.achievements.length > 0 && (
+                      <div className="space-y-1 mb-3">
+                        {teacher.achievements.slice(0, 2).map((achievement, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs text-gray-600">
+                            <Award className="w-3 h-3 text-yellow-500 shrink-0" />
+                            <span className="line-clamp-1">{achievement}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <Button 
+                      onClick={() => onNavigate({ type: "teacher", teacherId: teacher.id })}
+                      className="w-full bg-purple-600 text-white hover:bg-purple-700 transition-colors text-sm"
+                      size="sm"
+                    >
+                      Xem hồ sơ
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
