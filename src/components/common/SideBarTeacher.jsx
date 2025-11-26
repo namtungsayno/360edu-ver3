@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/use-toast";
-import { Calendar, User as UserIcon, CheckSquare, LogOut } from "lucide-react";
+import { Calendar, User as UserIcon, CheckSquare, LogOut, Settings } from "lucide-react";
 
 const SidebarTeacher = () => {
   const location = useLocation();
@@ -26,10 +26,10 @@ const SidebarTeacher = () => {
       section: "Tài khoản",
       items: [
         {
-          id: "profile",
-          label: "Thông tin cá nhân",
-          icon: UserIcon,
-          href: "/home/teacher/profile",
+          id: "management",
+          label: "Quản lý hồ sơ",
+          icon: Settings,
+          href: "/home/teacher/management",
         },
       ],
     },

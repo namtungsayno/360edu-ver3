@@ -78,8 +78,8 @@ import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagem
 import SubjectDetail from "../pages/admin/subject/SubjectDetail.jsx";
 import CreateTeacherPage from "../pages/admin/user/CreateTeacherPage.jsx";
 
-//TEACHER - Các trang danh cho Teacher
-import TeacherProfile from "../pages/teacher/TeacherManagement.jsx";
+// Teacher pages
+import TeacherManagement from "../pages/teacher/TeacherManagement.jsx";
 import TeacherSchedule from "../pages/teacher/TeacherSchedule.jsx";
 import TeacherClassDetail from "../pages/teacher/ClassDetail.jsx";
 
@@ -151,8 +151,7 @@ function AppRouter() {
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}
         <Route path="/home/teacher" element={<TeacherLayout />}>
-          <Route path="management" element={<TeacherProfile />} />
-          <Route path="profile" element={<TeacherProfile />} />
+          <Route path="management" element={<TeacherManagement />} />
           <Route path="schedule" element={<TeacherSchedule />} />
           <Route path="class/:classId" element={<TeacherClassDetail />} />
           {/* <Route path="attendance" element={<TeacherAttendance />} /> */}

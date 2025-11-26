@@ -1,7 +1,7 @@
 import { attendanceApi } from "./attendance.api";
 
 export const attendanceService = {
-  async saveAttendance(classId, date, attendanceRecords) {
+  async saveAttendance(classId, date, attendanceRecords, slotId) {
     // Transform data to match backend format
     const items = attendanceRecords.map((record) => ({
       studentId: record.studentId ?? record.id,
@@ -9,11 +9,11 @@ export const attendanceService = {
       note: record.note || null,
     }));
 
-    return attendanceApi.saveByClass(classId, date, { items });
+    return attendanceApi.saveByClass(classId, date, { items }, slotId);
   },
 
-  async getByClass(classId, date) {
-    const data = await attendanceApi.getByClass(classId, date);
+  async getByClass(classId, date, slotId) {
+    const data = await attendanceApi.getByClass(classId, date, slotId);
     // Map backend response to UI format used by ClassDetail.jsx
     // Expecting data.students: [{studentId, studentName, status}]
     const mapStatus = (s) => {

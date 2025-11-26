@@ -16,7 +16,7 @@
 
 import { useOutletContext } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Video, Users, Calendar, Book, Award, TrendingUp, BookOpen, Clock, MapPin, UserCheck, ArrowRight, GraduationCap, Star, TrendingUpIcon } from "lucide-react";
+import { Video, Users, Calendar, Book, Award, TrendingUp, BookOpen, Clock, MapPin, UserCheck, ArrowRight, GraduationCap, Star, TrendingUpIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import Banner from "../../../components/common/Banner";
 import { Footer } from "../../../components/common/Footer";
 import { Card, CardContent } from "../../../components/ui/Card";
@@ -37,7 +37,11 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [newsLoading, setNewsLoading] = useState(true);
   const [teachersLoading, setTeachersLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState("Tất cả");
+  
+  // Carousel states
+  const [classesIndex, setClassesIndex] = useState(0);
+  const [teachersIndex, setTeachersIndex] = useState(0);
+  const [newsIndex, setNewsIndex] = useState(0);
 
   // Fetch classes from API
   useEffect(() => {
@@ -75,13 +79,47 @@ export default function Home() {
     fetchNews();
   }, []);
 
-  // Get unique subjects for filters
-  const subjects = ["Tất cả", ...new Set(classes.map(cls => cls.subjectName).filter(Boolean))];
+  // Carousel navigation functions
+  const handleClassesNext = () => {
+    if (classesIndex + 4 < classes.length) {
+      setClassesIndex(classesIndex + 1);
+    }
+  };
+  
+  const handleClassesPrev = () => {
+    if (classesIndex > 0) {
+      setClassesIndex(classesIndex - 1);
+    }
+  };
+  
+  const handleTeachersNext = () => {
+    if (teachersIndex + 4 < teachers.length) {
+      setTeachersIndex(teachersIndex + 1);
+    }
+  };
+  
+  const handleTeachersPrev = () => {
+    if (teachersIndex > 0) {
+      setTeachersIndex(teachersIndex - 1);
+    }
+  };
+  
+  const handleNewsNext = () => {
+    if (newsIndex + 4 < news.length) {
+      setNewsIndex(newsIndex + 1);
+    }
+  };
+  
+  const handleNewsPrev = () => {
+    if (newsIndex > 0) {
+      setNewsIndex(newsIndex - 1);
+    }
+  };
 
-  // Filter classes
-  const filteredClasses = activeFilter === "Tất cả" 
-    ? classes.slice(0, 6) 
-    : classes.filter(cls => cls.subjectName === activeFilter).slice(0, 6);
+  // Get items for carousel display (4 items for all sections)
+  const displayedClasses = classes.slice(classesIndex, classesIndex + 4);
+  const displayedTeachers = teachers.slice(teachersIndex, teachersIndex + 4);
+  const displayedNews = news.slice(newsIndex, newsIndex + 4);
 
   // Fetch teachers from API
   useEffect(() => {
@@ -91,19 +129,21 @@ export default function Home() {
         // Merge real data with mock data for missing fields
         const enrichedTeachers = (data || []).map((teacher) => ({
           id: teacher.id,
+          userId: teacher.userId,
           name: teacher.fullName || teacher.username,
           subject: teacher.subjectNames?.join(", ") || teacher.subjectName || "Chưa xác định",
-          experience: teacher.degree || "Giáo viên giàu kinh nghiệm",
-          students: null, // Not available in backend
+          experience: teacher.yearsOfExperience ? `${teacher.yearsOfExperience} năm kinh nghiệm` : (teacher.degree || "Giáo viên"),
           courses: teacher.classCount || 0,
-          rating: 4.8, // Mock rating
+          rating: teacher.rating || 0,
           achievements: [
             teacher.degree,
             teacher.specialization
           ].filter(Boolean),
-          avatar: null // Not available in backend
+          avatar: teacher.avatarUrl,
+          bio: teacher.bio,
+          workplace: teacher.workplace
         }));
-        setTeachers(enrichedTeachers.slice(0, 4)); // Show first 4 teachers
+        setTeachers(enrichedTeachers.slice(0, 10)); // Show first 10 teachers for carousel
       } catch (error) {
         console.error("Failed to fetch teachers:", error);
       } finally {
@@ -215,44 +255,48 @@ export default function Home() {
                 <span className="text-blue-600 font-medium">Lớp học trực tuyến</span>
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-                Tìm lớp học theo môn học
+                Lớp học nổi bật
               </h2>
               <p className="text-gray-600">
-                Chọn môn học yêu thích và tham gia các lớp học phù hợp với trình độ của bạn
+                Tham gia các lớp học phù hợp với trình độ của bạn
               </p>
             </div>
           </div>
 
-          {/* Subject Filters */}
-          <div className="flex flex-wrap gap-3 mb-8">
-            {subjects.map((subject) => (
-              <button
-                key={subject}
-                onClick={() => setActiveFilter(subject)}
-                className={`px-6 py-2.5 rounded-full font-medium transition-all ${
-                  activeFilter === subject
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {subject}
-              </button>
-            ))}
-          </div>
+          {/* Carousel Container */}
+          <div className="relative">
+            {/* Navigation Arrows */}
+            {classes.length > 4 && (
+              <>
+                <button
+                  onClick={handleClassesPrev}
+                  disabled={classesIndex === 0}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-700" />
+                </button>
+                <button
+                  onClick={handleClassesNext}
+                  disabled={classesIndex + 4 >= classes.length}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-700" />
+                </button>
+              </>
+            )}
 
-          {/* Classes Grid */}
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <p className="mt-4 text-gray-600">Đang tải...</p>
-            </div>
-          ) : filteredClasses.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">Không có lớp học nào</p>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredClasses.map((cls) => {
+            {/* Classes Grid */}
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <p className="mt-4 text-gray-600">Đang tải...</p>
+              </div>
+            ) : displayedClasses.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600">Không có lớp học nào</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">{displayedClasses.map((cls) => {
                 const gradients = [
                   'from-blue-500 via-blue-600 to-indigo-600',
                   'from-purple-500 via-purple-600 to-pink-600',
@@ -293,11 +337,19 @@ export default function Home() {
 
                     <CardContent className="p-5 relative">
                       {/* Teacher Avatar - Overlapping */}
-                      <div className="absolute -top-8 right-4">
-                        <div className="w-16 h-16 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center">
-                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                            <span className="text-xl font-bold text-blue-600">{teacherInitial}</span>
-                          </div>
+                      <div className="absolute -top-10 right-4">
+                        <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
+                          {cls.teacherAvatarUrl ? (
+                            <img 
+                              src={cls.teacherAvatarUrl} 
+                              alt={cls.teacherFullName}
+                              className="w-full h-full object-cover rounded-full"
+                            />
+                          ) : (
+                            <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                              <span className="text-xl font-bold text-blue-600">{teacherInitial}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -368,7 +420,8 @@ export default function Home() {
                 );
               })}
             </div>
-          )}
+            )}
+          </div>
 
           {/* View All Button */}
           <div className="text-center mt-12">
@@ -402,9 +455,30 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Teachers Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {teachersLoading ? (
+          {/* Carousel Container */}
+          <div className="relative">
+            {/* Navigation Arrows */}
+            {teachers.length > 4 && (
+              <>
+                <button
+                  onClick={handleTeachersPrev}
+                  disabled={teachersIndex === 0}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-700" />
+                </button>
+                <button
+                  onClick={handleTeachersNext}
+                  disabled={teachersIndex + 4 >= teachers.length}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-700" />
+                </button>
+              </>
+            )}
+
+            {/* Teachers Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">{teachersLoading ? (
               // Loading skeleton
               Array.from({ length: 4 }).map((_, idx) => (
                 <Card key={idx} className="animate-pulse overflow-hidden">
@@ -417,19 +491,19 @@ export default function Home() {
                   </CardContent>
                 </Card>
               ))
-            ) : teachers.length === 0 ? (
+            ) : displayedTeachers.length === 0 ? (
               <div className="col-span-full text-center py-12 text-gray-500">
                 Chưa có giáo viên nào
               </div>
             ) : (
-              teachers.map((teacher) => {
+              displayedTeachers.map((teacher) => {
               const nameParts = (teacher.name || "").trim().split(" ");
               const lastInitial = nameParts.length ? nameParts[nameParts.length - 1].charAt(0) : "?";
               return (
               <Card 
                 key={teacher.id}
                 className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-purple-200"
-                onClick={() => onNavigate({ type: "teacher", teacherId: teacher.id })}
+                onClick={() => onNavigate({ type: "teacher", teacherId: teacher.userId })}
               >
                 {/* Header Background with Gradient */}
                 <div className="h-32 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 relative">
@@ -441,54 +515,53 @@ export default function Home() {
                   </div>
                 </div>
 
-                <CardContent className="p-6 text-center relative">
+                <CardContent className="p-5 text-center relative">
                   {/* Avatar - Overlapping the header */}
-                  <div className="relative mx-auto -mt-14 mb-4">
-                    <div className="w-24 h-24 rounded-full ring-4 ring-white shadow-xl overflow-hidden mx-auto bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                  <div className="relative mx-auto -mt-16 mb-4">
+                    <div className="w-28 h-28 rounded-full ring-4 ring-white shadow-xl overflow-hidden mx-auto bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
                       {teacher.avatar ? (
-                        <ImageWithFallback
+                        <img
                           src={teacher.avatar}
                           alt={teacher.name}
-                          className="w-full h-full object-cover object-center select-none"
-                          fallbackSrc="/assets/images/logo.jpg"
+                          className="w-full h-full object-cover rounded-full"
                         />
                       ) : (
-                        <span className="text-3xl font-bold text-purple-600">{lastInitial}</span>
+                        <span className="text-3xl font-bold text-white">{lastInitial}</span>
                       )}
                     </div>
                   </div>
 
                   {/* Name & Subject */}
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">
+                  <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-1">
                     {teacher.name}
                   </h3>
-                  <Badge className="mb-3 bg-purple-100 text-purple-700 border-purple-200">
+                  <Badge className="mb-2 bg-purple-100 text-purple-700 border-purple-200 text-xs">
                     {teacher.subject}
                   </Badge>
-                  <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[40px]">
+                  <p className="text-xs text-gray-600 mb-3 line-clamp-2 min-h-[32px]">
                     {teacher.experience}
                   </p>
 
                   {/* Stats */}
-                  <div className="flex items-center justify-center gap-6 mb-4 pb-4 border-b border-gray-100">
+                  <div className="flex items-center justify-center gap-4 mb-3 pb-3 border-b border-gray-100">
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <Users className="w-4 h-4 text-purple-600" />
-                        <p className="text-lg font-bold text-gray-900">{teacher.students || "N/A"}</p>
+                        <BookOpen className="w-3 h-3 text-purple-600" />
+                        <p className="text-base font-bold text-gray-900">{teacher.courses}</p>
                       </div>
-                      <p className="text-xs text-gray-500">Học viên</p>
+                      <p className="text-xs text-gray-500">Lớp học</p>
                     </div>
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
-                        <BookOpen className="w-4 h-4 text-purple-600" />
-                        <p className="text-lg font-bold text-gray-900">{teacher.courses}</p>
+                        <Star className="w-3 h-3 text-yellow-500" />
+                        <p className="text-base font-bold text-gray-900">{teacher.rating > 0 ? teacher.rating.toFixed(1) : 'N/A'}</p>
                       </div>
-                      <p className="text-xs text-gray-500">Lớp học</p>
+                      <p className="text-xs text-gray-500">Đánh giá</p>
                     </div>
                   </div>
 
                   {/* Achievements */}
-                  <div className="space-y-2 mb-4 min-h-[60px]">
+                  <div className="space-y-1.5 mb-3 min-h-[50px]">
                     {teacher.achievements.slice(0, 2).map((achievement, idx) => (
                       <div key={idx} className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
                         <Award className="w-3 h-3 text-yellow-500 shrink-0" />
@@ -511,6 +584,7 @@ export default function Home() {
             );
             })
             )}
+          </div>
           </div>
 
           {/* View All Teachers Button */}
@@ -545,15 +619,36 @@ export default function Home() {
             </p>
           </div>
 
-          {/* News Grid */}
-          {newsLoading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
-            </div>
-          ) : news.length > 0 ? (
-            <>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {news.map((item, index) => {
+          {/* Carousel Container */}
+          <div className="relative">
+            {/* Navigation Arrows */}
+            {news.length > 4 && (
+              <>
+                <button
+                  onClick={handleNewsPrev}
+                  disabled={newsIndex === 0}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-700" />
+                </button>
+                <button
+                  onClick={handleNewsNext}
+                  disabled={newsIndex + 4 >= news.length}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-700" />
+                </button>
+              </>
+            )}
+
+            {/* News Grid */}
+            {newsLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
+              </div>
+            ) : displayedNews.length > 0 ? (
+              <>
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">{displayedNews.map((item, index) => {
                   // Gradient colors for news cards
                   const gradients = [
                     "from-orange-400 to-red-500",
@@ -649,12 +744,12 @@ export default function Home() {
                   </Button>
                 </div>
               </>
-            
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              Chưa có tin tức nào
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                Chưa có tin tức nào
+              </div>
+            )}
+          </div>
         </div>
       </section>
       

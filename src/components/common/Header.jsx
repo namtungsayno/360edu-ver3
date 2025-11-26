@@ -86,11 +86,11 @@ export default function Header({ onNavigate, currentPage }) {
           </div>
 
           {/* MENU ĐIỀU HƯỚNG DESKTOP - Chỉ hiển thị trên màn hình lớn */}
-          <nav className="hidden lg:flex items-center gap-2">
+          <nav className="hidden lg:flex items-center gap-1">
             {/* Nút Trang chủ */}
             <button 
               onClick={() => onNavigate({ type: "home" })}
-              className={`px-4 py-2 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
                 isActive("home") 
                   ? "bg-white/20 text-white" 
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
@@ -102,20 +102,20 @@ export default function Header({ onNavigate, currentPage }) {
             {/* Nút Lớp học với icon */}
             <button 
               onClick={() => onNavigate({ type: "classes" })}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-sm ${
                 isActive("classes") 
                   ? "bg-white/20 text-white" 
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
               }`}
             >
-              <GraduationCap className="w-4 h-4" />
+              <GraduationCap className="w-3.5 h-3.5" />
               Lớp học
             </button>
 
             {/* Nút Giáo viên */}
             <button 
               onClick={() => onNavigate({ type: "teachers" })}
-              className={`px-4 py-2 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
                 isActive("teachers") 
                   ? "bg-white/20 text-white" 
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
@@ -124,10 +124,10 @@ export default function Header({ onNavigate, currentPage }) {
               Giáo viên
             </button>
             
-            {/* Nút Tin tức - chưa có trang */}
+            {/* Nút Tin tức */}
             <button 
               onClick={() => onNavigate({ type: "news" })}
-              className={`px-4 py-2 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
                 isActive("news") 
                   ? "bg-white/20 text-white" 
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
@@ -139,7 +139,7 @@ export default function Header({ onNavigate, currentPage }) {
             {/* Nút Giới thiệu */}
             <button 
               onClick={() => onNavigate({ type: "about" })}
-              className={`px-4 py-2 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
                 isActive("about") 
                   ? "bg-white/20 text-white" 
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
@@ -219,7 +219,7 @@ export default function Header({ onNavigate, currentPage }) {
                   onNavigate({ type: "home" });
                   setIsMenuOpen(false); // Đóng menu
                 }}
-                className={`text-left px-4 py-2 rounded-lg transition-all ${
+                className={`text-left px-4 py-2 rounded-lg transition-all text-sm ${
                   isActive("home") 
                     ? "bg-white/20 text-white" 
                     : "text-blue-50 hover:bg-white/10"
@@ -233,13 +233,13 @@ export default function Header({ onNavigate, currentPage }) {
                   onNavigate({ type: "classes" });
                   setIsMenuOpen(false);
                 }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm ${
                   isActive("classes") 
                     ? "bg-white/20 text-white" 
                     : "text-blue-50 hover:bg-white/10"
                 }`}
               >
-                <GraduationCap className="w-4 h-4" />
+                <GraduationCap className="w-3.5 h-3.5" />
                 Lớp học
               </button>
 
@@ -248,7 +248,7 @@ export default function Header({ onNavigate, currentPage }) {
                   onNavigate({ type: "teachers" });
                   setIsMenuOpen(false);
                 }}
-                className={`px-4 py-2 rounded-lg transition-all ${
+                className={`px-4 py-2 rounded-lg transition-all text-sm ${
                   isActive("teachers") 
                     ? "bg-white/20 text-white" 
                     : "text-blue-50 hover:bg-white/10"
@@ -262,7 +262,7 @@ export default function Header({ onNavigate, currentPage }) {
                   onNavigate({ type: "news" });
                   setIsMenuOpen(false);
                 }}
-                className={`px-4 py-2 rounded-lg transition-all ${
+                className={`px-4 py-2 rounded-lg transition-all text-sm ${
                   isActive("news") 
                     ? "bg-white/20 text-white" 
                     : "text-blue-50 hover:bg-white/10"
@@ -276,7 +276,7 @@ export default function Header({ onNavigate, currentPage }) {
                   onNavigate({ type: "about" });
                   setIsMenuOpen(false);
                 }}
-                className={`px-4 py-2 rounded-lg transition-all ${
+                className={`px-4 py-2 rounded-lg transition-all text-sm ${
                   isActive("about") 
                     ? "bg-white/20 text-white" 
                     : "text-blue-50 hover:bg-white/10"

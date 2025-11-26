@@ -75,11 +75,11 @@ export const scheduleService = {
    * @returns {Promise<Array>} schedule items formatted for the grid
    */
   async getScheduleBySemester(semesterId) {
-    console.log("🔍 Loading schedule for semester:", semesterId);
+    console.log("🔍 [SCHEDULE_SERVICE] Loading schedule for semester:", semesterId);
 
     // Get all classes from backend - Sử dụng classService.list()
     const classes = await classService.list();
-    console.log("📚 Total classes loaded:", classes.length);
+    console.log("📚 [SCHEDULE_SERVICE] Total classes loaded:", classes.length);
 
     // Get all teachers to create teacherId -> userId mapping
     const teachers = await teacherService.list();
@@ -87,7 +87,7 @@ export const scheduleService = {
     for (const t of teachers) {
       teacherIdToUserIdMap[t.id] = t.userId; // Map teacher.id to user.id
     }
-    console.log("Teacher ID to User ID mapping:", teacherIdToUserIdMap);
+    console.log("👥 [SCHEDULE_SERVICE] Teacher ID mapping created:", Object.keys(teacherIdToUserIdMap).length, "teachers");
 
     // Filter classes by semester if provided
     let filteredClasses = classes;
@@ -123,10 +123,14 @@ export const scheduleService = {
     const scheduleItems = [];
 
     for (const cls of filteredClasses) {
-      console.log(`📋 Processing class ${cls.id}: ${cls.name}`, {
+      const teacherUserId = teacherIdToUserIdMap[cls.teacherId] || cls.teacherId;
+      
+      console.log(`📋 [SCHEDULE_SERVICE] Processing class ${cls.id}: "${cls.name}"`, {
+        teacherFullName: cls.teacherFullName,
+        teacherId: cls.teacherId,
+        teacherUserId: teacherUserId,
         hasSchedule: !!cls.schedule,
         scheduleLength: cls.schedule?.length || 0,
-        schedule: cls.schedule,
       });
 
       // Each class has a schedule array with dayOfWeek and timeSlot info
@@ -184,14 +188,36 @@ export const scheduleService = {
             // Original class data for reference
             originalClass: cls,
           });
+          
+          console.log(`   ✅ Added schedule item: classId=${cls.id}, day=${scheduleItem.dayOfWeek}, slotId=${scheduleItem.timeSlotId}, teacher="${cls.teacherFullName}"`);
         }
       } else {
         console.warn(`⚠️ Class ${cls.id} (${cls.name}) has no schedule data`);
       }
     }
 
-    console.log("✨ Schedule data loaded:", scheduleItems.length, "items");
-    console.log("📊 Schedule items:", scheduleItems);
+    console.log("✨ [SCHEDULE_SERVICE] Schedule data loaded:", scheduleItems.length, "total items");
+    
+    // Group by teacher to show distribution
+    const byTeacher = scheduleItems.reduce((acc, item) => {
+      acc[item.teacherName] = (acc[item.teacherName] || 0) + 1;
+      return acc;
+    }, {});
+    console.log("📊 [SCHEDULE_SERVICE] Distribution by teacher:", byTeacher);
+    
+    // Show class id=4 items specifically
+    const class4Items = scheduleItems.filter(item => item.classId === 4);
+    console.log("🔍 [SCHEDULE_SERVICE] Class id=4 (Hóa Học - Dang Huy) items:", class4Items.length);
+    if (class4Items.length > 0) {
+      console.log("   Sample items:", class4Items.slice(0, 3).map(i => ({
+        day: i.day,
+        dayName: i.dayName,
+        slotId: i.slotId,
+        startDate: i.startDate,
+        endDate: i.endDate
+      })));
+    }
+    
     return scheduleItems;
   },
 

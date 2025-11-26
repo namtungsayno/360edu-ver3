@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "../../hooks/use-toast";
 import { attendanceService } from "../../services/attendance/attendance.service";
 import { Card, CardContent } from "../../components/ui/Card.jsx";
@@ -23,6 +23,8 @@ import { scheduleService } from "../../services/schedule/schedule.service";
 export default function ClassDetail() {
   const navigate = useNavigate();
   const { classId } = useParams();
+  const [searchParams] = useSearchParams();
+  const slotId = searchParams.get('slotId');
   const { success, error } = useToast();
   const [classDetail, setClassDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,9 +38,12 @@ export default function ClassDetail() {
     (async () => {
       try {
         setLoading(true);
-        // Load attendance from backend by class + today
+        // Load attendance from backend by class + today + slotId
         const today = new Date().toISOString().split("T")[0];
-        const attendance = await attendanceService.getByClass(classId, today);
+        const slotIdNum = slotId ? parseInt(slotId, 10) : null;
+        console.log('ClassDetail loading:', { classId, today, slotId, slotIdNum });
+        
+        const attendance = await attendanceService.getByClass(classId, today, slotIdNum);
         setAttendanceDetails(attendance);
         setOriginalDetails(attendance);
         // Auto-enter edit mode if nothing marked yet
@@ -105,13 +110,16 @@ export default function ClassDetail() {
       }
 
       const date = new Date().toISOString().split("T")[0];
-      await attendanceService.saveAttendance(classId, date, attendanceData);
+      const slotIdNum = slotId ? parseInt(slotId, 10) : null;
+      console.log('Saving attendance:', { classId, date, slotId, slotIdNum });
+      
+      await attendanceService.saveAttendance(classId, date, attendanceData, slotIdNum);
 
       setHasChanges(false);
-      success("L\u01b0u \u0111i\u1ec3m danh th\u00e0nh c\u00f4ng!");
+      success("Lưu điểm danh thành công!");
 
       // Reload to reflect persisted statuses
-      const refreshed = await attendanceService.getByClass(classId, date);
+      const refreshed = await attendanceService.getByClass(classId, date, slotIdNum);
       setAttendanceDetails(refreshed);
       setOriginalDetails(refreshed);
       setEditMode(false);
