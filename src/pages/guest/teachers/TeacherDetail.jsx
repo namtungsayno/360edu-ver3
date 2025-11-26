@@ -18,7 +18,7 @@ import { useState, useEffect } from "react";
 import { 
   ArrowLeft, Mail, Phone, Award, BookOpen, Users, Star, 
   Calendar, Clock, GraduationCap, TrendingUp, CheckCircle,
-  Briefcase, FileText
+  Briefcase, FileText, Facebook, Linkedin
 } from "lucide-react";
 import { teacherService } from "../../../services/teacher/teacher.service";
 import { Card, CardContent, CardHeader } from "../../../components/ui/Card";
@@ -35,85 +35,9 @@ export default function TeacherDetail() {
   useEffect(() => {
     const fetchTeacher = async () => {
       try {
-        const data = await teacherService.list();
-        const teacherData = data?.find(t => t.id === Number.parseInt(id, 10));
-        
+        const teacherData = await teacherService.getProfile(Number.parseInt(id, 10));
         if (teacherData) {
-          // Merge real data with mock data for missing fields
-          const enrichedTeacher = {
-            // Real data from DB
-            id: teacherData.id,
-            userId: teacherData.userId,
-            name: teacherData.fullName || teacherData.username,
-            email: teacherData.email,
-            phone: teacherData.phoneNumber,
-            subjects: teacherData.subjectNames || [teacherData.subjectName],
-            mainSubject: teacherData.subjectName,
-            degree: teacherData.degree || "Thạc sĩ",
-            specialization: teacherData.specialization,
-            classCount: teacherData.classCount || 0,
-            active: teacherData.active,
-            
-            // Mock data for fields not in DB
-            avatar: null,
-            rating: 4.8,
-            totalStudents: 450,
-            totalReviews: 89,
-            yearsOfExperience: 8,
-            bio: `${teacherData.fullName || "Giáo viên"} là một giảng viên giàu kinh nghiệm với nhiều năm trong lĩnh vực giáo dục. ${teacherData.specialization ? `Chuyên sâu về ${teacherData.specialization}.` : ""} Cam kết mang đến những bài giảng chất lượng và hỗ trợ học viên đạt được mục tiêu học tập.`,
-            achievements: [
-              teacherData.degree,
-              teacherData.specialization,
-              "Giáo viên xuất sắc năm 2023",
-              "Hơn 500 học viên đã tốt nghiệp"
-            ].filter(Boolean),
-            certifications: [
-              {
-                id: 1,
-                name: teacherData.degree || "Thạc sĩ Giáo dục",
-                issuer: "Đại học Quốc gia",
-                year: "2015",
-                description: "Chứng chỉ giảng dạy chuyên nghiệp"
-              },
-              {
-                id: 2,
-                name: "Chứng chỉ Sư phạm",
-                issuer: "Bộ Giáo dục & Đào tạo",
-                year: "2016",
-                description: "Chứng nhận năng lực giảng dạy"
-              },
-              {
-                id: 3,
-                name: teacherData.specialization || "Chuyên ngành chuyên sâu",
-                issuer: "Trung tâm Đào tạo Quốc tế",
-                year: "2018",
-                description: "Chứng chỉ chuyên môn cao cấp"
-              }
-            ],
-            professionalExperience: [
-              {
-                id: 1,
-                title: "Giảng viên chính",
-                organization: "Trường Đại học FPT",
-                period: "2018 - Hiện tại",
-                description: "Giảng dạy các môn chuyên ngành, hướng dẫn đồ án và luận văn tốt nghiệp"
-              },
-              {
-                id: 2,
-                title: "Giáo viên",
-                organization: "Trung tâm Giáo dục 360edu",
-                period: "2015 - 2018",
-                description: "Giảng dạy các khóa học chuyên sâu và đào tạo học viên"
-              }
-            ],
-            skills: teacherData.subjectNames || [teacherData.subjectName],
-            schedule: [
-              { day: "Thứ 2", slots: ["08:00 - 10:00", "14:00 - 16:00"] },
-              { day: "Thứ 4", slots: ["09:00 - 11:00", "15:00 - 17:00"] },
-              { day: "Thứ 6", slots: ["08:00 - 10:00", "13:00 - 15:00"] }
-            ]
-          };
-          setTeacher(enrichedTeacher);
+          setTeacher(teacherData);
         }
       } catch (error) {
         console.error("Failed to fetch teacher:", error);
@@ -166,8 +90,23 @@ export default function TeacherDetail() {
     );
   }
 
-  const nameParts = (teacher.name || "").trim().split(" ");
+  const nameParts = (teacher.fullName || teacher.username || "").trim().split(" ");
   const lastInitial = nameParts.length ? nameParts[nameParts.length - 1].charAt(0) : "?";
+  
+  // Use real data from API with fallbacks
+  const displayName = teacher.fullName || teacher.username;
+  const displayDegree = teacher.degree || "Giảng viên";
+  const displayRating = teacher.rating || 0;
+  const displayYearsExp = teacher.yearsOfExperience || 0;
+  const displayBio = teacher.bio || `${displayName} là giảng viên tại hệ thống 360edu.`;
+  const displayCertificates = teacher.certificates || [];
+  const displayExperiences = teacher.experiences || [];
+  const displayEducations = teacher.educations || [];
+  const displayAchievements = teacher.achievements ? teacher.achievements.split('\n').filter(Boolean) : [];
+  const displaySubjects = teacher.subjects || (teacher.subjectNames ? teacher.subjectNames : [teacher.subjectName]).filter(Boolean);
+  const displayWorkplace = teacher.workplace || null;
+  const displayLinkedin = teacher.linkedinUrl || null;
+  const displayFacebook = teacher.facebookUrl || null;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -190,10 +129,10 @@ export default function TeacherDetail() {
               <div className="flex-shrink-0">
                 <div className="relative">
                   <div className="w-48 h-48 rounded-full ring-4 ring-purple-100 overflow-hidden bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
-                    {teacher.avatar ? (
+                    {teacher.avatarUrl ? (
                       <img 
-                        src={teacher.avatar} 
-                        alt={teacher.name}
+                        src={teacher.avatarUrl} 
+                        alt={displayName}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -207,10 +146,10 @@ export default function TeacherDetail() {
               <div className="flex-1">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">{teacher.name}</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">{displayName}</h1>
                     <div className="flex items-center gap-2 mb-3">
                       <GraduationCap className="w-5 h-5 text-purple-600" />
-                      <span className="text-lg text-gray-700">{teacher.degree}</span>
+                      <span className="text-lg text-gray-700">{displayDegree}</span>
                       {teacher.specialization && (
                         <>
                           <span className="text-gray-400">•</span>
@@ -223,14 +162,14 @@ export default function TeacherDetail() {
                   <div className="text-center bg-yellow-50 px-4 py-2 rounded-lg">
                     <div className="flex items-center gap-1 mb-1">
                       <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                      <span className="text-2xl font-bold text-gray-900">{teacher.rating}</span>
+                      <span className="text-2xl font-bold text-gray-900">{displayRating.toFixed(1)}</span>
                     </div>
-                    <p className="text-xs text-gray-600">{teacher.totalReviews} đánh giá</p>
+                    <p className="text-xs text-gray-600">Đánh giá</p>
                   </div>
                 </div>
 
                 {/* Bio */}
-                <p className="text-gray-600 mb-4 leading-relaxed">{teacher.bio}</p>
+                <p className="text-gray-600 mb-4 leading-relaxed">{displayBio}</p>
 
                 {/* Contact Info */}
                 <div className="flex flex-wrap gap-4 mb-4">
@@ -240,18 +179,52 @@ export default function TeacherDetail() {
                       <span className="text-sm">{teacher.email}</span>
                     </div>
                   )}
-                  {teacher.phone && (
+                  {teacher.phoneNumber && (
                     <div className="flex items-center gap-2 text-gray-600">
                       <Phone className="w-4 h-4" />
-                      <span className="text-sm">{teacher.phone}</span>
+                      <span className="text-sm">{teacher.phoneNumber}</span>
+                    </div>
+                  )}
+                  {displayWorkplace && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Briefcase className="w-4 h-4" />
+                      <span className="text-sm">{displayWorkplace}</span>
                     </div>
                   )}
                 </div>
 
+                {/* Social Links */}
+                {(displayLinkedin || displayFacebook) && (
+                  <div className="flex gap-3 mb-4">
+                    {displayLinkedin && (
+                      <a 
+                        href={displayLinkedin} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        <Linkedin className="w-4 h-4" />
+                        LinkedIn
+                      </a>
+                    )}
+                    {displayFacebook && (
+                      <a 
+                        href={displayFacebook} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                      >
+                        <Facebook className="w-4 h-4" />
+                        Facebook
+                      </a>
+                    )}
+                  </div>
+                )}
+
                 {/* Subjects */}
                 <div className="flex flex-wrap gap-2">
-                  {teacher.subjects.map((subject, idx) => (
-                    <Badge key={idx} className="bg-purple-100 text-purple-700">
+                  {displaySubjects.map((subject) => (
+                    <Badge key={subject} className="bg-purple-100 text-purple-700">
                       {subject}
                     </Badge>
                   ))}
@@ -268,7 +241,7 @@ export default function TeacherDetail() {
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Users className="w-6 h-6 text-blue-600" />
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{teacher.totalStudents}</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">{teacher.studentCount || 0}</p>
               <p className="text-sm text-gray-600">Học viên</p>
             </CardContent>
           </Card>
@@ -278,7 +251,7 @@ export default function TeacherDetail() {
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <BookOpen className="w-6 h-6 text-green-600" />
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{teacher.classCount}</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">{teacher.classCount || 0}</p>
               <p className="text-sm text-gray-600">Lớp học</p>
             </CardContent>
           </Card>
@@ -288,7 +261,7 @@ export default function TeacherDetail() {
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <TrendingUp className="w-6 h-6 text-purple-600" />
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{teacher.yearsOfExperience}+</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">{displayYearsExp}+</p>
               <p className="text-sm text-gray-600">Năm kinh nghiệm</p>
             </CardContent>
           </Card>
@@ -298,7 +271,7 @@ export default function TeacherDetail() {
               <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Star className="w-6 h-6 text-yellow-600" />
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{teacher.rating}</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">{displayRating.toFixed(1)}</p>
               <p className="text-sm text-gray-600">Đánh giá</p>
             </CardContent>
           </Card>
@@ -309,108 +282,152 @@ export default function TeacherDetail() {
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
             {/* Certifications */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-purple-600" />
-                  <h2 className="text-xl font-bold">Chứng chỉ nghề nghiệp</h2>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {teacher.certifications.map((cert) => (
-                    <div key={cert.id} className="flex gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100">
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-                          <FileText className="w-6 h-6 text-white" />
+            {displayCertificates.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-xl font-bold">Chứng chỉ nghề nghiệp</h2>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {displayCertificates.map((cert, index) => (
+                      <div key={`cert-${cert.id || index}`} className="flex gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100">
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                            <FileText className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 mb-1">{cert.title}</h3>
+                          <p className="text-sm text-gray-600 mb-1">{cert.organization}</p>
+                          {cert.year && (
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-purple-100 text-purple-700 text-xs">
+                                Năm {cert.year}
+                              </Badge>
+                            </div>
+                          )}
+                          {cert.description && (
+                            <p className="text-sm text-gray-500 mt-2">{cert.description}</p>
+                          )}
                         </div>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 mb-1">{cert.name}</h3>
-                        <p className="text-sm text-gray-600 mb-1">{cert.issuer}</p>
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-purple-100 text-purple-700 text-xs">
-                            Năm {cert.year}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-2">{cert.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Professional Experience */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-purple-600" />
-                  <h2 className="text-xl font-bold">Kinh nghiệm làm việc</h2>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {teacher.professionalExperience.map((exp) => (
-                    <div key={exp.id} className="relative pl-6 pb-4 border-l-2 border-purple-200 last:pb-0">
-                      <div className="absolute -left-2 top-0 w-4 h-4 bg-purple-500 rounded-full border-2 border-white"></div>
-                      <h3 className="font-semibold text-gray-900 mb-1">{exp.title}</h3>
-                      <p className="text-sm text-purple-600 font-medium mb-1">{exp.organization}</p>
-                      <p className="text-xs text-gray-500 mb-2">{exp.period}</p>
-                      <p className="text-sm text-gray-600">{exp.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            {displayExperiences.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-xl font-bold">Kinh nghiệm làm việc</h2>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {displayExperiences.map((exp, index) => (
+                      <div key={`exp-${exp.id || index}`} className="relative pl-6 pb-4 border-l-2 border-purple-200 last:pb-0">
+                        <div className="absolute -left-2 top-0 w-4 h-4 bg-purple-500 rounded-full border-2 border-white"></div>
+                        <h3 className="font-semibold text-gray-900 mb-1">{exp.position}</h3>
+                        <p className="text-sm text-purple-600 font-medium mb-1">{exp.company}</p>
+                        <p className="text-xs text-gray-500 mb-2">
+                          {exp.startYear} {exp.endYear ? `- ${exp.endYear}` : '- Hiện tại'}
+                        </p>
+                        {exp.description && (
+                          <p className="text-sm text-gray-600">{exp.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Education */}
+            {displayEducations.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-xl font-bold">Học vấn</h2>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {displayEducations.map((edu, index) => (
+                      <div key={`edu-${edu.id || index}`} className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <h3 className="font-semibold text-gray-900 mb-1">{edu.degree}</h3>
+                        <p className="text-sm text-blue-600 font-medium mb-1">{edu.school}</p>
+                        {edu.year && (
+                          <p className="text-xs text-gray-500">Năm {edu.year}</p>
+                        )}
+                        {edu.description && (
+                          <p className="text-sm text-gray-600 mt-2">{edu.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Achievements */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-purple-600" />
-                  <h2 className="text-xl font-bold">Thành tích nổi bật</h2>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {teacher.achievements.map((achievement, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                      <span className="text-gray-700">{achievement}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            {displayAchievements.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Award className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-xl font-bold">Thành tích nổi bật</h2>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {displayAchievements.map((achievement) => (
+                      <div key={achievement} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                        <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                        <span className="text-gray-700">{achievement}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Right Column */}
           <div className="space-y-6">
-            {/* Teaching Schedule */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-purple-600" />
-                  <h2 className="text-xl font-bold">Lịch dạy</h2>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {teacher.schedule.map((item, idx) => (
-                    <div key={idx} className="border-l-4 border-purple-500 pl-3">
-                      <p className="font-semibold text-gray-900 mb-1">{item.day}</p>
-                      {item.slots.map((slot, slotIdx) => (
-                        <div key={slotIdx} className="flex items-center gap-2 text-sm text-gray-600">
-                          <Clock className="w-3 h-3" />
-                          <span>{slot}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            {/* Teaching Schedule - Optional, hide if no schedule */}
+            {teacher.schedule && teacher.schedule.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-xl font-bold">Lịch dạy</h2>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {teacher.schedule.map((item, idx) => (
+                      <div key={`schedule-${idx}`} className="border-l-4 border-purple-500 pl-3">
+                        <p className="font-semibold text-gray-900 mb-1">{item.day}</p>
+                        {item.slots.map((slot, slotIdx) => (
+                          <div key={`slot-${idx}-${slotIdx}`} className="flex items-center gap-2 text-sm text-gray-600">
+                            <Clock className="w-3 h-3" />
+                            <span>{slot}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

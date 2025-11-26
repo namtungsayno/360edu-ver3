@@ -3,9 +3,9 @@ import { http } from "../http";
 
 export const teacherProfileApi = {
   getMyProfile() {
-    return http.get("/teacher/profile/me").then((r) => r.data);
+    return http.get("/teachers/profile").then((r) => r.data);
   },
-  saveMyProfile(data) {
-    return http.post("/teacher/profile", data).then((r) => r.data);
+  updateMyProfile(data) {
+    return http.put("/teachers/profile", data).then((r) => r.data);
   },
 };

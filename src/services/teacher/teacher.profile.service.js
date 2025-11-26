@@ -4,24 +4,52 @@ import { teacherProfileApi } from "./teacher.profile.api";
 const KEY = "360edu.teacher.profile";
 
 export const teacherProfileService = {
-  async getMyProfile() {
+  async getProfile() {
     try {
-      return await teacherProfileApi.getMyProfile();
-    } catch {
+      const profile = await teacherProfileApi.getMyProfile();
+      // Cache to localStorage
+      localStorage.setItem(KEY, JSON.stringify(profile));
+      return profile;
+    } catch (error) {
+      console.error("Failed to get teacher profile:", error);
+      // Fallback to cached data
       const raw = localStorage.getItem(KEY);
       return raw ? JSON.parse(raw) : null;
     }
   },
 
-  async saveMyProfile(data) {
+  async updateProfile(data) {
     try {
-      const saved = await teacherProfileApi.saveMyProfile(data);
-      // nếu BE trả về thành công, đồng bộ cache local (tuỳ chọn)
-      localStorage.setItem(KEY, JSON.stringify(saved));
-      return saved;
-    } catch {
-      localStorage.setItem(KEY, JSON.stringify(data));
-      return data;
+      const updated = await teacherProfileApi.updateMyProfile(data);
+      // Update cache
+      localStorage.setItem(KEY, JSON.stringify(updated));
+      return updated;
+    } catch (error) {
+      console.error("Failed to update teacher profile:", error);
+      throw error;
     }
   },
+
+  // Alias for updateProfile to match component expectations
+  async saveProfile(data) {
+    return this.updateProfile(data);
+  },
+
+  async uploadAvatar(base64Image) {
+    try {
+      const updated = await teacherProfileApi.updateMyProfile({
+        avatarUrl: base64Image
+      });
+      // Update cache
+      localStorage.setItem(KEY, JSON.stringify(updated));
+      return updated;
+    } catch (error) {
+      console.error("Failed to upload avatar:", error);
+      throw error;
+    }
+  },
+
+  clearCache() {
+    localStorage.removeItem(KEY);
+  }
 };

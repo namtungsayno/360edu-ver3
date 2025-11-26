@@ -20,6 +20,7 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Header from "../components/common/Header";
+import { Footer } from "../components/common/Footer";
 
 export default function GuestLayout() {
   const navigate = useNavigate();
@@ -35,6 +36,8 @@ export default function GuestLayout() {
       setCurrentPage({ type: "home" });
     } else if (path === "/home/profile") {
       setCurrentPage({ type: "profile" });
+    } else if (path === "/home/my-classes" || path.startsWith("/home/my-classes/")) {
+      setCurrentPage({ type: "my-classes" });
     } else if (path === "/home/classes" || path.startsWith("/home/classes/")) {
       setCurrentPage({ type: "classes" });
     } else if (path === "/home/teachers") {
@@ -100,20 +103,39 @@ export default function GuestLayout() {
           navigate("/home/teachers");
         }
         break;
+      case "student-classes":
+        navigate("/home/my-classes");
+        break;
+      case "student-profile":
+        navigate("/student/profile");
+        break;
+      case "my-classes":
+        navigate("/home/my-classes");
+        break;
+      case "my-class":
+        if (page.classId) {
+          navigate(`/home/my-classes/${page.classId}`);
+        } else {
+          navigate("/home/my-classes");
+        }
+        break;
       default:
         console.log("Unknown navigation:", page);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className="min-h-screen bg-white text-gray-900 flex flex-col">
       {/* Header cố định cho tất cả guest pages */}
       <Header onNavigate={onNavigate} currentPage={currentPage} />
       
       {/* Main content - render các page components thông qua Outlet */}
-      <main>
+      <main className="flex-1">
         <Outlet context={{ onNavigate }} />
       </main>
+
+      {/* Footer chung */}
+      <Footer />
     </div>
   );
 }

@@ -20,17 +20,19 @@ export default function TeacherList() {
         // Merge real data with mock data for missing fields
         const enrichedTeachers = (data || []).map((teacher) => ({
           id: teacher.id,
+          userId: teacher.userId,
           name: teacher.fullName || teacher.username,
           subject: teacher.subjectNames?.join(", ") || teacher.subjectName || "Chưa xác định",
-          experience: teacher.degree || "Giáo viên giàu kinh nghiệm",
-          students: null, // Not available in backend
+          experience: teacher.yearsOfExperience ? `${teacher.yearsOfExperience} năm kinh nghiệm` : (teacher.degree || "Giáo viên"),
           courses: teacher.classCount || 0,
-          rating: 4.8, // Mock rating
+          rating: teacher.rating || 0,
           achievements: [
             teacher.degree,
             teacher.specialization
           ].filter(Boolean),
-          avatar: null // Not available in backend
+          avatar: teacher.avatarUrl,
+          bio: teacher.bio,
+          workplace: teacher.workplace
         }));
         setTeachers(enrichedTeachers);
       } catch (error) {
@@ -81,15 +83,19 @@ export default function TeacherList() {
                   className="group hover:shadow-lg transition-shadow overflow-hidden"
                 >
                   {/* Avatar Background */}
-                  <div className="h-48 bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center relative">
+                  <div className="h-56 bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center relative">
                     {teacher.avatar ? (
-                      <img 
-                        src={teacher.avatar} 
-                        alt={teacher.name}
-                        className="w-full h-full object-cover"
-                      />
+                      <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
+                        <img 
+                          src={teacher.avatar} 
+                          alt={teacher.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     ) : (
-                      <span className="text-6xl font-bold text-white">{lastInitial}</span>
+                      <div className="w-32 h-32 rounded-full bg-white/20 border-4 border-white shadow-lg flex items-center justify-center">
+                        <span className="text-6xl font-bold text-white">{lastInitial}</span>
+                      </div>
                     )}
                     {/* Rating badge */}
                     <div className="absolute top-2 right-2 bg-yellow-400 text-gray-900 px-2 py-1 rounded-full text-xs font-bold">
@@ -97,38 +103,41 @@ export default function TeacherList() {
                     </div>
                   </div>
                   
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 flex flex-col">
                     <h3 className="text-lg font-semibold mb-1">{teacher.name}</h3>
                     <Badge className="mb-2">{teacher.subject}</Badge>
                     <p className="text-gray-600 text-sm mb-3">{teacher.experience}</p>
                     
                     {/* Stats */}
-                    <div className="flex items-center justify-between mb-3 pb-3 border-b">
-                      <div className="text-center">
-                        <p className="text-lg font-bold text-blue-600">{teacher.students || "-"}</p>
-                        <p className="text-xs text-gray-500">Học viên</p>
-                      </div>
+                    <div className="flex items-center justify-center gap-6 mb-3 pb-3 border-b">
                       <div className="text-center">
                         <p className="text-lg font-bold text-blue-600">{teacher.courses}</p>
                         <p className="text-xs text-gray-500">Lớp học</p>
                       </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold text-yellow-600">{teacher.rating > 0 ? teacher.rating.toFixed(1) : 'N/A'}</p>
+                        <p className="text-xs text-gray-500">Đánh giá</p>
+                      </div>
                     </div>
                     
-                    {/* Achievements */}
-                    {teacher.achievements.length > 0 && (
-                      <div className="space-y-1 mb-3">
-                        {teacher.achievements.slice(0, 2).map((achievement, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs text-gray-600">
-                            <Award className="w-3 h-3 text-yellow-500 shrink-0" />
-                            <span className="line-clamp-1">{achievement}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {/* Achievements - Fixed height container */}
+                    <div className="h-12 mb-3 overflow-hidden">
+                      {teacher.achievements.length > 0 && (
+                        <div className="space-y-1">
+                          {teacher.achievements.slice(0, 2).map((achievement, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-xs text-gray-600">
+                              <Award className="w-3 h-3 text-yellow-500 shrink-0" />
+                              <span className="line-clamp-1">{achievement}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     
+                    {/* Button always at bottom */}
                     <Button 
-                      onClick={() => onNavigate({ type: "teacher", teacherId: teacher.id })}
-                      className="w-full bg-purple-600 text-white hover:bg-purple-700 transition-colors text-sm"
+                      onClick={() => onNavigate({ type: "teacher", teacherId: teacher.userId })}
+                      className="w-full bg-purple-600 text-white hover:bg-purple-700 transition-colors text-sm mt-auto"
                       size="sm"
                     >
                       Xem hồ sơ

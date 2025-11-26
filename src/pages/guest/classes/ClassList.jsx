@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Users, BookOpen, TrendingUp, SlidersHorizontal, ChevronDown, ArrowUpDown, X } from "lucide-react";
+import { Search, Users, BookOpen, SlidersHorizontal, ChevronDown, ArrowUpDown, X } from "lucide-react";
 import { classService } from "../../../services/class/class.service";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
@@ -16,31 +16,48 @@ export default function ClassList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState("");
-  const [selectedDays, setSelectedDays] = useState([]); // T2-CN
+  const [selectedSlots, setSelectedSlots] = useState([]); // Slot 1, 2, 3
+  const [priceRange, setPriceRange] = useState([2000000, 10000000]); // Min 2 triệu, Max 10 triệu
   const [priceSort, setPriceSort] = useState(""); // "asc" hoặc "desc"
   const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
+      console.log(" Starting to load classes...");
       setLoading(true);
       setError("");
       try {
         const data = await classService.list();
+        console.log(" Raw data from API:", data);
         const classList = Array.isArray(data) ? data : [];
+        console.log(" Classes array:", classList);
+        console.log(" Total classes loaded:", classList.length);
         setClasses(classList);
         setFilteredClasses(classList);
       } catch (e) {
-        console.error("Failed to load classes", e);
+        console.error("❌ Failed to load classes", e);
         setError("Không tải được danh sách lớp. Vui lòng thử lại.");
       } finally {
         setLoading(false);
+        console.log("✔️ Loading complete");
       }
     })();
   }, []);
 
   // Filter và search nâng cao
   useEffect(() => {
+    console.log(" Filter effect triggered");
+    console.log(" Classes to filter:", classes.length);
+    console.log(" Selected filters:", {
+      subject: selectedSubject,
+      teacher: selectedTeacher,
+      slots: selectedSlots,
+      priceRange,
+      searchQuery
+    });
+    
     let result = [...classes];
+    console.log("Initial result count:", result.length);
     
     // Apply search
     if (searchQuery) {
@@ -61,23 +78,39 @@ export default function ClassList() {
       result = result.filter(c => c.teacherFullName === selectedTeacher);
     }
 
-    // Filter by days of week
-    if (selectedDays.length > 0) {
+    // Filter by time slots
+    if (selectedSlots.length > 0) {
       result = result.filter(c => {
-        const scheduleText = c.schedule || "";
-        return selectedDays.some(day => scheduleText.includes(day));
+        if (!Array.isArray(c.schedule) || c.schedule.length === 0) return false;
+        
+        return c.schedule.some(sch => {
+          const startTime = sch.startTime?.slice(0, 5); // "HH:MM"
+          if (!startTime) return false;
+          
+          const hour = Number.parseInt(startTime.split(':')[0], 10);
+          
+          return selectedSlots.some(slot => {
+            if (slot === "slot1") return hour >= 16 && hour < 18; // 16h-18h
+            if (slot === "slot2") return hour >= 18 && hour < 20; // 18h-20h
+            if (slot === "slot3") return hour >= 20 && hour < 22; // 20h-22h
+            return false;
+          });
+        });
       });
     }
 
-    // Sort by price
-    if (priceSort === "asc") {
-      result.sort((a, b) => (a.price || 0) - (b.price || 0));
-    } else if (priceSort === "desc") {
-      result.sort((a, b) => (b.price || 0) - (a.price || 0));
-    }
+    // Filter by price range - Only filter if class has price data
+    result = result.filter(c => {
+      const price = c.price || 0;
+      // If price is 0 (not set), still show it
+      if (price === 0) return true;
+      return price >= priceRange[0] && price <= priceRange[1];
+    });
+    console.log("After price filter:", result.length);
 
+    console.log(" Final filtered results:", result.length);
     setFilteredClasses(result);
-  }, [searchQuery, selectedSubject, selectedTeacher, selectedDays, priceSort, classes]);
+  }, [searchQuery, selectedSubject, selectedTeacher, selectedSlots, priceRange, classes]);
 
   const goDetail = (id) => navigate(`/home/classes/${id}`);
 
@@ -85,35 +118,42 @@ export default function ClassList() {
   const subjects = [...new Set(classes.map(c => c.subjectName).filter(Boolean))];
   const teachers = [...new Set(classes.map(c => c.teacherFullName).filter(Boolean))];
   
-  // Danh sách các ngày trong tuần
-  const daysOfWeek = [
-    { label: "Thứ 2", value: "T2" },
-    { label: "Thứ 3", value: "T3" },
-    { label: "Thứ 4", value: "T4" },
-    { label: "Thứ 5", value: "T5" },
-    { label: "Thứ 6", value: "T6" },
-    { label: "Thứ 7", value: "T7" },
-    { label: "Chủ nhật", value: "CN" }
+  // Danh sách các time slots
+  const timeSlots = [
+    { label: "Slot 1 (16h-18h)", value: "slot1", time: "16:00 - 18:00" },
+    { label: "Slot 2 (18h-20h)", value: "slot2", time: "18:00 - 20:00" },
+    { label: "Slot 3 (20h-22h)", value: "slot3", time: "20:00 - 22:00" }
   ];
 
-  // Toggle day selection
-  const toggleDay = (day) => {
-    setSelectedDays(prev => 
-      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+  // Toggle slot selection
+  const toggleSlot = (slot) => {
+    setSelectedSlots(prev => 
+      prev.includes(slot) ? prev.filter(s => s !== slot) : [...prev, slot]
     );
+  };
+
+  // Format price to VND
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
 
   // Clear all filters
   const clearFilters = () => {
     setSelectedSubject("");
     setSelectedTeacher("");
-    setSelectedDays([]);
-    setPriceSort("");
+    setSelectedSlots([]);
+    setPriceRange([2000000, 10000000]);
     setSearchQuery("");
   };
 
   // Count active filters
-  const activeFiltersCount = [selectedSubject, selectedTeacher, selectedDays.length > 0, priceSort, searchQuery].filter(Boolean).length;
+  const activeFiltersCount = [
+    selectedSubject, 
+    selectedTeacher, 
+    selectedSlots.length > 0, 
+    priceRange[0] !== 2000000 || priceRange[1] !== 10000000,
+    searchQuery
+  ].filter(Boolean).length;
 
   // Gradient backgrounds cho các cards
   const gradients = [
@@ -125,7 +165,70 @@ export default function ClassList() {
     "from-cyan-500 via-blue-600 to-indigo-600"
   ];
 
+  console.log(" RENDER - Component state:", {
+    loading,
+    error,
+    totalClasses: classes.length,
+    filteredClasses: filteredClasses.length,
+    subjects: subjects.length,
+    teachers: teachers.length
+  });
+
   return (
+    <>
+      <style>{`
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #2563eb, #7c3aed);
+        }
+
+        /* Custom Range Slider */
+        input[type="range"].slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+        }
+        input[type="range"].slider-thumb::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          transition: all 0.2s;
+        }
+        input[type="range"].slider-thumb::-webkit-slider-thumb:hover {
+          transform: scale(1.2);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        input[type="range"].slider-thumb::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          border: none;
+          transition: all 0.2s;
+        }
+        input[type="range"].slider-thumb::-moz-range-thumb:hover {
+          transform: scale(1.2);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+      `}</style>
+      
     <div className="min-h-screen bg-gray-50">
       {/* Improved Hero Banner - Compact & Informative */}
       <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 text-white relative overflow-hidden">
@@ -136,46 +239,46 @@ export default function ClassList() {
         </div>
         
         <div className="max-w-[1920px] mx-auto px-6 py-8 relative z-10">
-          <div className="flex items-center justify-between flex-wrap gap-6">
-            {/* Left: Title & Description */}
-            <div className="flex-1 min-w-[300px]">
-              <div className="flex items-center gap-3 mb-3">
+          <div className="flex flex-col items-center gap-6">
+            {/* Title & Description */}
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-3 mb-3">
                 <BookOpen className="w-8 h-8" />
                 <h1 className="text-3xl font-bold">Khám phá Lớp học</h1>
               </div>
-              <p className="text-blue-100 text-base max-w-2xl">
+              <p className="text-blue-100 text-base max-w-2xl mx-auto">
                 Tìm lớp học phù hợp với mục tiêu của bạn. Giáo viên giàu kinh nghiệm, lịch học linh hoạt, học phí hợp lý.
               </p>
             </div>
 
-            {/* Right: Quick Stats Cards */}
-            <div className="flex gap-4">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 min-w-[120px] border border-white/20">
+            {/* Quick Stats Cards - Same width as search */}
+            <div className="w-full max-w-2xl flex gap-4 justify-center">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20">
                 <div className="text-2xl font-bold mb-1">{filteredClasses.length}</div>
                 <div className="text-xs text-blue-100">Lớp học</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 min-w-[120px] border border-white/20">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20">
                 <div className="text-2xl font-bold mb-1">{subjects.length}</div>
                 <div className="text-xs text-blue-100">Môn học</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 min-w-[120px] border border-white/20">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20">
                 <div className="text-2xl font-bold mb-1">{teachers.length}</div>
                 <div className="text-xs text-blue-100">Giáo viên</div>
               </div>
             </div>
-          </div>
 
-          {/* Quick Search Bar in Banner */}
-          <div className="mt-6 max-w-2xl">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Tìm kiếm nhanh lớp học, môn học, giáo viên..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-12 text-base text-gray-900 bg-white/95 backdrop-blur-sm border-0 shadow-lg focus:ring-2 focus:ring-white/50 placeholder:text-gray-500"
-              />
+            {/* Quick Search Bar in Banner */}
+            <div className="w-full max-w-2xl">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Tìm kiếm nhanh lớp học, môn học, giáo viên..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-12 h-12 text-base text-gray-900 bg-white/95 backdrop-blur-sm border-0 shadow-lg focus:ring-2 focus:ring-white/50 placeholder:text-gray-500"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -184,37 +287,37 @@ export default function ClassList() {
       {/* Main Content with Sidebar */}
       <div className="max-w-[1920px] mx-auto px-6 py-8">
         <div className="flex gap-6">
-          {/* Left Sidebar - Fixed Filter Panel */}
-          <aside className="w-64 flex-shrink-0">
+          {/* Left Sidebar - Scrollable Filter Panel */}
+          <aside className="w-80 flex-shrink-0">
             <div className="sticky top-4">
               <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                 {/* Sidebar Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3">
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <SlidersHorizontal className="w-4 h-4" />
-                      <h3 className="font-bold text-base">Bộ lọc</h3>
+                      <SlidersHorizontal className="w-5 h-5" />
+                      <h3 className="font-bold text-lg">Bộ lọc</h3>
                     </div>
                     {activeFiltersCount > 0 && (
-                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
                         {activeFiltersCount}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Filters Content */}
-                <div className="p-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+                {/* Filters Content - Scrollable */}
+                <div className="p-4 max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
                   {/* Subject Filter */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                      📚 Môn học
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Môn học
                     </label>
                     <div className="relative">
                       <select
                         value={selectedSubject}
                         onChange={(e) => setSelectedSubject(e.target.value)}
-                        className="w-full h-9 pl-2.5 pr-8 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition text-xs"
+                        className="w-full h-10 pl-3 pr-10 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition text-sm"
                       >
                         <option value="">Tất cả môn học</option>
                         {subjects.map((subject) => (
@@ -223,20 +326,20 @@ export default function ClassList() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
 
                   {/* Teacher Filter */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                      👨‍🏫 Giáo viên
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Giáo viên
                     </label>
                     <div className="relative">
                       <select
                         value={selectedTeacher}
                         onChange={(e) => setSelectedTeacher(e.target.value)}
-                        className="w-full h-9 pl-2.5 pr-8 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition text-xs"
+                        className="w-full h-10 pl-3 pr-10 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition text-sm"
                       >
                         <option value="">Tất cả giáo viên</option>
                         {teachers.map((teacher) => (
@@ -245,80 +348,127 @@ export default function ClassList() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
 
-                  {/* Days of Week Filter */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                      📅 Ngày trong tuần
+                  {/* Time Slots Filter */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Khung giờ học
                     </label>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {daysOfWeek.map((day) => (
+                    <div className="space-y-2">
+                      {timeSlots.map((slot) => (
                         <button
-                          key={day.value}
-                          onClick={() => toggleDay(day.value)}
-                          className={`px-2 py-1.5 rounded-md text-xs font-medium transition-all ${
-                            selectedDays.includes(day.value)
-                              ? "bg-blue-600 text-white shadow-md"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          key={slot.value}
+                          onClick={() => toggleSlot(slot.value)}
+                          className={`w-full px-4 py-3 rounded-lg text-sm font-medium transition-all text-left ${
+                            selectedSlots.includes(slot.value)
+                              ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-300"
+                              : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
                           }`}
                         >
-                          {day.label}
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">{slot.label}</span>
+                            {selectedSlots.includes(slot.value) && (
+                              <span className="text-xs">✓</span>
+                            )}
+                          </div>
+                          <div className="text-xs mt-1 opacity-90">{slot.time}</div>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Price Sort */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                      💰 Học phí
+                  {/* Price Range Filter - Slider */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Khoảng giá (học phí/khóa)
                     </label>
-                    <div className="relative">
-                      <select
-                        value={priceSort}
-                        onChange={(e) => setPriceSort(e.target.value)}
-                        className="w-full h-9 pl-2.5 pr-8 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition text-xs"
-                      >
-                        <option value="">Mặc định</option>
-                        <option value="asc">Thấp đến cao</option>
-                        <option value="desc">Cao đến thấp</option>
-                      </select>
-                      <ArrowUpDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                    <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-100">
+                      {/* Display Selected Range */}
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-sm font-bold text-blue-700">
+                          {formatPrice(priceRange[0])}
+                        </span>
+                        <span className="text-xs text-gray-500">→</span>
+                        <span className="text-sm font-bold text-purple-700">
+                          {formatPrice(priceRange[1])}
+                        </span>
+                      </div>
+                      
+                      {/* Min Price Slider */}
+                      <div className="mb-4">
+                        <label className="text-xs text-gray-600 mb-1 block">Giá tối thiểu</label>
+                        <input
+                          type="range"
+                          min="2000000"
+                          max="10000000"
+                          step="500000"
+                          value={priceRange[0]}
+                          onChange={(e) => {
+                            const newMin = Number.parseInt(e.target.value, 10);
+                            if (newMin <= priceRange[1]) {
+                              setPriceRange([newMin, priceRange[1]]);
+                            }
+                          }}
+                          className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                        />
+                      </div>
+                      
+                      {/* Max Price Slider */}
+                      <div>
+                        <label className="text-xs text-gray-600 mb-1 block">Giá tối đa</label>
+                        <input
+                          type="range"
+                          min="2000000"
+                          max="10000000"
+                          step="500000"
+                          value={priceRange[1]}
+                          onChange={(e) => {
+                            const newMax = Number.parseInt(e.target.value, 10);
+                            if (newMax >= priceRange[0]) {
+                              setPriceRange([priceRange[0], newMax]);
+                            }
+                          }}
+                          className="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                        />
+                      </div>
                     </div>
                   </div>
 
                   {/* Active Filters */}
                   {activeFiltersCount > 0 && (
-                    <div className="mb-3">
-                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                        🏷️ Đang áp dụng
+                    <div className="mb-4">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Đang áp dụng
                       </label>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-2">
                         {selectedSubject && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                             {selectedSubject}
-                            <X className="w-3 h-3 cursor-pointer hover:text-blue-900" onClick={() => setSelectedSubject("")} />
+                            <X className="w-3.5 h-3.5 cursor-pointer hover:text-blue-900" onClick={() => setSelectedSubject("")} />
                           </span>
                         )}
                         {selectedTeacher && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
                             {selectedTeacher}
-                            <X className="w-3 h-3 cursor-pointer hover:text-purple-900" onClick={() => setSelectedTeacher("")} />
+                            <X className="w-3.5 h-3.5 cursor-pointer hover:text-purple-900" onClick={() => setSelectedTeacher("")} />
                           </span>
                         )}
-                        {selectedDays.map((day) => (
-                          <span key={day} className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
-                            {day}
-                            <X className="w-3 h-3 cursor-pointer hover:text-green-900" onClick={() => toggleDay(day)} />
-                          </span>
-                        ))}
-                        {priceSort && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">
-                            {priceSort === "asc" ? "Giá ↑" : "Giá ↓"}
-                            <X className="w-3 h-3 cursor-pointer hover:text-orange-900" onClick={() => setPriceSort("")} />
+                        {selectedSlots.map((slot) => {
+                          const slotInfo = timeSlots.find(s => s.value === slot);
+                          return (
+                            <span key={slot} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                              {slotInfo?.label}
+                              <X className="w-3.5 h-3.5 cursor-pointer hover:text-green-900" onClick={() => toggleSlot(slot)} />
+                            </span>
+                          );
+                        })}
+                        {(priceRange[0] !== 2000000 || priceRange[1] !== 10000000) && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                            {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
+                            <X className="w-3.5 h-3.5 cursor-pointer hover:text-orange-900" onClick={() => setPriceRange([2000000, 10000000])} />
                           </span>
                         )}
                       </div>
@@ -329,17 +479,18 @@ export default function ClassList() {
                   {activeFiltersCount > 0 && (
                     <Button
                       onClick={clearFilters}
-                      className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 h-8 text-xs"
+                      className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 h-10 text-sm font-medium"
                     >
+                      <X className="w-4 h-4 mr-2" />
                       Xóa tất cả bộ lọc
                     </Button>
                   )}
                 </div>
 
-                {/* Results Count */}
-                <div className="px-3 py-2 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-gray-200">
-                  <p className="text-xs text-gray-600 text-center">
-                    <span className="font-bold text-blue-600">{filteredClasses.length}</span> lớp học
+                {/* Results Count - Fixed at Bottom */}
+                <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-gray-200">
+                  <p className="text-sm text-gray-700 text-center">
+                    Tìm thấy <span className="font-bold text-blue-600">{filteredClasses.length}</span> lớp học
                     {activeFiltersCount > 0 && ` / ${classes.length} tổng`}
                   </p>
                 </div>
@@ -385,7 +536,7 @@ export default function ClassList() {
                         {c.subjectName || "Môn học"}
                       </Badge>
                       <Badge className={c.online ? "bg-green-500/90 backdrop-blur-sm shadow-lg w-fit" : "bg-blue-500/90 backdrop-blur-sm shadow-lg w-fit"}>
-                        {c.online ? "🌐 Online" : "📍 Offline"}
+                        {c.online ? " Online" : " Offline"}
                       </Badge>
                     </div>
                     <div className="bg-white/20 backdrop-blur-md rounded-full p-2.5 shadow-lg">
@@ -397,10 +548,18 @@ export default function ClassList() {
                 <CardContent className="p-5 relative">
                   {/* Teacher Avatar - Overlapping */}
                   <div className="absolute -top-10 right-4">
-                    <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center">
-                      <div className="w-18 h-18 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-blue-600">{teacherInitial}</span>
-                      </div>
+                    <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
+                      {c.teacherAvatarUrl ? (
+                        <img 
+                          src={c.teacherAvatarUrl} 
+                          alt={c.teacherFullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                          <span className="text-2xl font-bold text-blue-600">{teacherInitial}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -471,5 +630,6 @@ export default function ClassList() {
         </div>
       </div>
     </div>
+    </>
   );
 }

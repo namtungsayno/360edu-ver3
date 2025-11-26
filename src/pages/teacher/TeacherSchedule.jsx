@@ -97,7 +97,8 @@ function TeacherSchedule() {
           const dateStr = fmt(classDate, "yyyy-MM-dd");
           const attendance = await attendanceService.getByClass(
             item.classId,
-            dateStr
+            dateStr,
+            item.slotId
           );
 
           // Count statistics
@@ -157,14 +158,36 @@ function TeacherSchedule() {
   }, [user, weekStart]);
 
   const scheduleLookup = useMemo(() => {
+    // Filter schedule items by date range (same logic as admin)
+    const weekStartDate = weekStart;
+    const filteredSchedule = weekSchedule.filter((s) => {
+      // Nếu thiếu dữ liệu ngày hoặc day, loại bỏ khỏi lịch
+      if (!s.startDate || !s.endDate || !s.day || isNaN(Number(s.day))) {
+        console.warn(
+          "[TeacherSchedule] Bỏ qua lớp do thiếu startDate/endDate/day:",
+          s
+        );
+        return false;
+      }
+      // Lấy ngày slot thực tế trong tuần này
+      const slotDate = addDays(weekStartDate, Number(s.day) - 1); // day: 1-7 (Mon-Sun)
+      if (isNaN(slotDate.getTime())) {
+        console.warn("[TeacherSchedule] Bỏ qua lớp do slotDate không hợp lệ:", s);
+        return false;
+      }
+      const slotDateStr = fmt(slotDate, "yyyy-MM-dd");
+      // So sánh ngày dạng chuỗi yyyy-MM-dd
+      return slotDateStr >= s.startDate && slotDateStr <= s.endDate;
+    });
+
     const map = {};
-    for (const item of weekSchedule) {
+    for (const item of filteredSchedule) {
       if (!map[item.day]) map[item.day] = {};
       if (!map[item.day][item.slotId]) map[item.day][item.slotId] = [];
       map[item.day][item.slotId].push(item);
     }
     return map;
-  }, [weekSchedule]);
+  }, [weekSchedule, weekStart]);
 
   const getClassesForSlot = (dayId, slotId) => {
     return scheduleLookup?.[dayId]?.[slotId] || [];
@@ -204,8 +227,8 @@ function TeacherSchedule() {
       return;
     }
 
-    // Navigate to class detail page for attendance
-    navigate(`/home/teacher/class/${classData.classId}`);
+    // Navigate to class detail page for attendance with slotId
+    navigate(`/home/teacher/class/${classData.classId}?slotId=${classData.slotId}`);
   };
 
   // Calculate statistics

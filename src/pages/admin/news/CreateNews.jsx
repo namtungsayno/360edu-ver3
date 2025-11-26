@@ -19,7 +19,10 @@ export default function CreateNews() {
 	const [tags, setTags] = useState([]);
 	const [tagInput, setTagInput] = useState("");
 	const [loading, setLoading] = useState(false);
+
 	const [imagePreview, setImagePreview] = useState(null);
+	const [imageMode, setImageMode] = useState("upload"); // "upload" | "url"
+	const [imageUrlInput, setImageUrlInput] = useState("");
 	const [formData, setFormData] = useState({
 		title: "",
 		excerpt: "",
@@ -46,6 +49,7 @@ export default function CreateNews() {
 			setTags(draft.tags || []);
 			if (draft.imageUrl) {
 				setImagePreview(draft.imageUrl);
+				setImageUrlInput(draft.imageUrl);
 			}
 		}
 	}, [draft]);
@@ -81,13 +85,24 @@ export default function CreateNews() {
 				showError('Kích thước ảnh tối đa 5MB', 'Lỗi');
 				return;
 			}
-			// Create preview
-			const reader = new FileReader();
-			reader.onloadend = () => {
-				setImagePreview(reader.result);
-				setFormData({...formData, imageUrl: reader.result});
-			};
-			reader.readAsDataURL(file);
+			// Upload file to server
+			setLoading(true);
+			newsService.uploadImage(file)
+				.then((response) => {
+					const imageUrl = response.url;
+					setImagePreview(imageUrl);
+					setImageUrlInput(imageUrl);
+					setFormData({...formData, imageUrl: imageUrl});
+					success('Upload ảnh thành công!', 'Thành công');
+				})
+				.catch((error) => {
+					console.error('Failed to upload image:', error);
+					const errorMsg = error.response?.data?.error || error.message || 'Upload ảnh thất bại';
+					showError(errorMsg, 'Lỗi');
+				})
+				.finally(() => {
+					setLoading(false);
+				});
 		}
 	};
 
@@ -108,28 +123,30 @@ export default function CreateNews() {
 
 		try {
 			setLoading(true);
-			
+			// Chỉ lấy imageUrl từ lựa chọn hiện tại
+			let imageUrlFinal = "";
+			if (imageMode === "upload") {
+				imageUrlFinal = imageUrlInput || "";
+			} else {
+				imageUrlFinal = imageUrlInput.trim();
+			}
 			const newsData = {
 				title: formData.title.trim(),
 				excerpt: formData.excerpt.trim(),
 				content: formData.content.trim(),
-				imageUrl: formData.imageUrl || null,
+				imageUrl: imageUrlFinal || null,
 				status,
 				author: formData.author,
 				tags: tags // Backend expects array, not comma-separated string
 			};
 
 			if (isEditing && draft?.id) {
-				// Cập nhật tin tức hiện có
 				await newsService.updateNews(draft.id, newsData);
 				success("Cập nhật tin tức thành công!", "Thành công");
 			} else {
-				// Tạo tin tức mới
 				await newsService.createNews(newsData);
 				success("Tạo tin tức thành công!", "Thành công");
 			}
-
-			// Quay về danh sách sau 1s
 			setTimeout(() => {
 				navigate("/home/admin/news");
 			}, 1000);
@@ -200,43 +217,78 @@ export default function CreateNews() {
 							</div>
 
 							<div className="space-y-2">
-								<Label htmlFor="newsImage">Ảnh đại diện</Label>
-								<div className="space-y-3">
-									{imagePreview ? (
-										<div className="relative border-2 border-dashed rounded-lg p-4 hover:border-blue-400 transition-colors">
-											<img 
-												src={imagePreview} 
-												alt="Preview" 
-												className="w-full h-48 object-cover rounded-lg"
-											/>
-											<Button
-												type="button"
-												variant="destructive"
-												size="sm"
-												className="absolute top-2 right-2"
-												onClick={() => {
-													setImagePreview(null);
-													setFormData({...formData, imageUrl: ''});
-												}}
-											>
-												<X className="h-4 w-4" />
-											</Button>
-										</div>
-									) : (
-										<label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 cursor-pointer hover:border-blue-400 transition-colors">
-											<Upload className="h-12 w-12 text-gray-400 mb-3" />
-											<span className="text-sm text-gray-600 mb-1">Click để tải ảnh lên</span>
-											<span className="text-xs text-gray-400">PNG, JPG, GIF (tối đa 5MB)</span>
-											<input
-												id="newsImage"
-												type="file"
-												accept="image/*"
-												className="hidden"
-												onChange={handleImageChange}
-											/>
-										</label>
-									)}
+								<Label>Ảnh đại diện</Label>
+								<div className="flex gap-4 mb-2">
+									<Button type="button" variant={imageMode === "upload" ? "default" : "outline"} size="sm" onClick={() => setImageMode("upload")}>Upload ảnh</Button>
+									<Button type="button" variant={imageMode === "url" ? "default" : "outline"} size="sm" onClick={() => setImageMode("url")}>Nhập URL ảnh</Button>
 								</div>
+								{imageMode === "upload" ? (
+									<div className="space-y-3">
+										{imagePreview ? (
+											<div className="relative border-2 border-dashed rounded-lg p-4 hover:border-blue-400 transition-colors">
+												<img 
+													src={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}${imagePreview}`}
+													alt="Preview" 
+													className="w-full h-48 object-cover rounded-lg"
+													onError={(e) => {
+														e.target.src = '/placeholder-image.png';
+														console.error('Failed to load image:', imagePreview);
+													}}
+												/>
+												<Button
+													type="button"
+													variant="destructive"
+													size="sm"
+													className="absolute top-2 right-2"
+													onClick={() => {
+														setImagePreview(null);
+														setImageUrlInput("");
+													}}
+													disabled={loading}
+												>
+													<X className="h-4 w-4" />
+												</Button>
+											</div>
+										) : (
+											<label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 cursor-pointer hover:border-blue-400 transition-colors">
+												<Upload className="h-12 w-12 text-gray-400 mb-3" />
+												<span className="text-sm text-gray-600 mb-1">Click để tải ảnh lên</span>
+												<span className="text-xs text-gray-400">PNG, JPG, JPEG, GIF, WebP (tối đa 5MB)</span>
+												<input
+													id="newsImage"
+													type="file"
+													accept="image/*"
+													className="hidden"
+													onChange={handleImageChange}
+													disabled={loading}
+												/>
+											</label>
+										)}
+									</div>
+								) : (
+									<div className="space-y-2">
+										<Input
+											type="text"
+											placeholder="Nhập URL ảnh (http...)"
+											value={imageUrlInput}
+											onChange={e => {
+												setImageUrlInput(e.target.value);
+												setImagePreview(e.target.value);
+											}}
+											disabled={loading}
+										/>
+										{imageUrlInput && (
+											<div className="mt-2">
+												<img
+													src={imageUrlInput}
+													alt="Preview"
+													className="w-full h-48 object-cover rounded-lg"
+													onError={e => { e.target.src = '/placeholder-image.png'; }}
+												/>
+											</div>
+										)}
+									</div>
+								)}
 							</div>
 						</CardContent>
 					</Card>

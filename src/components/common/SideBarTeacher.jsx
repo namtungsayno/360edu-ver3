@@ -39,10 +39,10 @@ const SidebarTeacher = () => {
       section: "Tài khoản",
       items: [
         {
-          id: "profile",
-          label: "Thông tin cá nhân",
-          icon: UserIcon,
-          href: "/home/teacher/profile",
+          id: "management",
+          label: "Quản lý hồ sơ",
+          icon: BookOpen,
+          href: "/home/teacher/management",
         },
       ],
     },

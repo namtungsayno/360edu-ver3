@@ -11,12 +11,12 @@
  * - /home/profile → Profile.jsx
  * - /home/classes → ClassList.jsx
  * - /home/classes/:id → ClassDetail.jsx
- * - /home/courses → CourseList.jsx
- * - /home/subjects → SubjectList.jsx
  * - /home/teachers → TeacherList.jsx
  * - /home/teachers/:id → TeacherDetail.jsx
  * - /home/news → NewsList.jsx
  * - /home/about → About.jsx
+ * - /home/my-classes → StudentClasses.jsx (lớp đã đăng ký)
+ * - /home/my-classes/:id → StudentClassDetail.jsx
  *
  * ADMIN ROUTES (AdminLayout):
  * - /home/admin/dashboard → Dashboard.jsx
@@ -39,12 +39,12 @@ import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import GuestLayout from "../layouts/GuestLayout";
 import TeacherLayout from "../layouts/TeacherLayout.jsx";
+import StudentClasses from "../pages/student/Classes.jsx";
+import StudentClassDetail from "../pages/student/ClassDetail.jsx";
 
 // GUEST PAGES - Các trang dành cho user chưa đăng nhập
 import Home from "../pages/guest/home/Home";
 import Profile from "../pages/guest/profile/Profile";
-import CourseList from "../pages/guest/courses/CourseList";
-import SubjectList from "../pages/guest/subjects/SubjectList";
 import TeacherList from "../pages/guest/teachers/TeacherList";
 import TeacherDetail from "../pages/guest/teachers/TeacherDetail";
 // Guest - Classes
@@ -59,6 +59,7 @@ import About from "../pages/guest/about/About";
 import Dashboard from "../pages/admin/Dashboard";
 import User from "../pages/admin/User";
 import NewsList from "../pages/admin/news/NewsList";
+import AdminNewsDetail from "../pages/admin/news/AdminNewsDetail.jsx";
 import CreateNews from "../pages/admin/news/CreateNews";
 import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 
@@ -80,8 +81,8 @@ import CreateTeacherPage from "../pages/admin/user/CreateTeacherPage.jsx";
 import AdminCourseList from "../pages/admin/course/CourseList.jsx";
 import AdminCourseDetail from "../pages/admin/course/CourseDetail.jsx";
 
-//TEACHER - Các trang danh cho Teacher
-import TeacherProfile from "../pages/teacher/TeacherManagement.jsx";
+// Teacher pages
+import TeacherManagement from "../pages/teacher/TeacherManagement.jsx";
 import TeacherSchedule from "../pages/teacher/TeacherSchedule.jsx";
 import TeacherClassDetail from "../pages/teacher/ClassDetail.jsx";
 import TeacherCourseList from "../pages/teacher/TeacherCourseList.jsx";
@@ -116,6 +117,10 @@ function AppRouter() {
           <Route path="/home/news/:id" element={<NewsDetail />} />{" "}
           {/* Chi tiết tin tức */}
           <Route path="/home/about" element={<About />} /> {/* Giới thiệu */}
+          
+          {/* STUDENT ROUTES - Lớp đã đăng ký (cần đăng nhập) - Dùng chung GuestLayout */}
+          <Route path="/home/my-classes" element={<StudentClasses />} /> {/* Lớp đã đăng ký */}
+          <Route path="/home/my-classes/:id" element={<StudentClassDetail />} /> {/* Chi tiết lớp đã đăng ký */}
         </Route>
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
         <Route element={<RequireRole allow={["admin"]} />}>
@@ -128,6 +133,7 @@ function AppRouter() {
               element={<CreateTeacherPage />}
             />
             <Route path="news" element={<NewsList />} />
+                        <Route path="news/:id" element={<AdminNewsDetail />} />
             <Route path="news/create" element={<CreateNews />} />
             <Route path="classrooms" element={<ClassroomList />} />
             {/* Tuấn test */}
@@ -159,8 +165,7 @@ function AppRouter() {
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}
         <Route path="/home/teacher" element={<TeacherLayout />}>
-          <Route path="management" element={<TeacherProfile />} />
-          <Route path="profile" element={<TeacherProfile />} />
+          <Route path="management" element={<TeacherManagement />} />
           <Route path="schedule" element={<TeacherSchedule />} />
           <Route path="class/:classId" element={<TeacherClassDetail />} />
           <Route path="courses" element={<TeacherCourseList />} />

@@ -38,6 +38,9 @@ export const API_ENDPOINTS = {
     
     // Tăng lượt xem
     INCREMENT_VIEW: (id) => `/news/${id}/view`,
+    
+    // Upload ảnh
+    UPLOAD_IMAGE: "/news/upload-image",
   },
 
   // ============ USER MANAGEMENT ============
@@ -65,5 +68,15 @@ export const API_ENDPOINTS = {
     CREATE: "/subjects",
     UPDATE: (id) => `/subjects/${id}`,
     DELETE: (id) => `/subjects/${id}`,
+  },
+
+  // ============ TEACHER MANAGEMENT ============
+  TEACHER: {
+    LIST: "/teachers",
+    DETAIL: (id) => `/teachers/${id}`,
+    PROFILE: "/teachers/profile",
+    UPDATE_PROFILE: "/teachers/profile",
+    BY_USER: (userId) => `/teachers/by-user/${userId}`,
+    FREE_BUSY: (userId) => `/teachers/${userId}/free-busy`,
   },
 };
