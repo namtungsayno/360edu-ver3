@@ -483,11 +483,21 @@ function TeacherSchedule() {
                                       {/* Class Info */}
                                       <div className="space-y-1">
                                         <div className="font-bold text-sm text-gray-800">
-                                          {classData.classCode}
+                                          {classData.className ||
+                                            classData.classCode}
                                         </div>
                                         <div className="text-xs text-gray-600">
                                           {classData.subjectName}
                                         </div>
+                                        {/* Course Info */}
+                                        {classData.courseTitle && (
+                                          <div className="flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded mt-1">
+                                            <BookOpen className="h-3 w-3" />
+                                            <span className="font-medium">
+                                              {classData.courseTitle}
+                                            </span>
+                                          </div>
+                                        )}
                                         <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
                                           <span>
                                             📍 Phòng:{" "}

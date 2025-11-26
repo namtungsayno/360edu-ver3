@@ -2,10 +2,19 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "../../hooks/use-toast";
 import { attendanceService } from "../../services/attendance/attendance.service";
+import sessionService from "../../services/class/session.service";
 import { Card, CardContent } from "../../components/ui/Card.jsx";
 import { Button } from "../../components/ui/Button.jsx";
 import { Badge } from "../../components/ui/Badge.jsx";
 import { Input } from "../../components/ui/Input.jsx";
+import { Textarea } from "../../components/ui/Textarea.jsx";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "../../components/ui/Select.jsx";
 import {
   ArrowLeft,
   Save,
@@ -17,8 +26,12 @@ import {
   MapPin,
   BookOpen,
   User as UserIcon,
+  FileText,
+  Layers,
+  Plus,
 } from "lucide-react";
 import { scheduleService } from "../../services/schedule/schedule.service";
+import { courseService } from "../../services/course/course.service";
 
 export default function ClassDetail() {
   const navigate = useNavigate();
@@ -30,6 +43,13 @@ export default function ClassDetail() {
   const [hasChanges, setHasChanges] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [originalDetails, setOriginalDetails] = useState([]);
+
+  // Lesson content states
+  const [courseData, setCourseData] = useState(null);
+  const [selectedChapterId, setSelectedChapterId] = useState("");
+  const [selectedLessonId, setSelectedLessonId] = useState("");
+  const [lessonContent, setLessonContent] = useState("");
+  const [savingContent, setSavingContent] = useState(false);
   useEffect(() => {
     if (!classId) return;
 
@@ -54,10 +74,53 @@ export default function ClassDetail() {
         );
 
         if (classInfo) {
+          console.log("📚 Class Info Loaded:", classInfo);
           setClassDetail({
             ...classInfo,
             studentCount: attendance.length,
           });
+
+          // Load course data if courseId exists
+          if (classInfo.courseId) {
+            try {
+              const course = await courseService.getCourseDetail(
+                classInfo.courseId
+              );
+              console.log("📖 Course Data Loaded:", course);
+              setCourseData(course);
+            } catch (err) {
+              console.error("Failed to load course:", err);
+            }
+          }
+
+          // Load saved lesson content if exists
+          try {
+            const savedContent =
+              await sessionService.getSessionContentByClassDate(classId, today);
+
+            if (savedContent) {
+              console.log("📝 Saved Content Loaded:", savedContent);
+
+              // Set selected chapter if exists
+              if (savedContent.chapters && savedContent.chapters.length > 0) {
+                const firstChapter = savedContent.chapters[0];
+                setSelectedChapterId(String(firstChapter.id));
+
+                // Set selected lesson if exists
+                if (firstChapter.lessons && firstChapter.lessons.length > 0) {
+                  setSelectedLessonId(String(firstChapter.lessons[0].id));
+                }
+              }
+
+              // Set lesson content text
+              if (savedContent.content) {
+                setLessonContent(savedContent.content);
+              }
+            }
+          } catch (err) {
+            // Ignore error if no session content found yet
+            console.log("No saved content for today:", err.message);
+          }
         }
       } catch (e) {
         console.error("Failed to load class details:", e);
@@ -122,12 +185,49 @@ export default function ClassDetail() {
         err.response?.data?.message ||
         err.response?.data?.error ||
         err.message;
-      error(
-        backendMsg ||
-          "C\u00f3 l\u1ed7i x\u1ea3y ra khi l\u01b0u \u0111i\u1ec3m danh"
-      );
+      error(backendMsg || "Có lỗi xảy ra khi lưu điểm danh");
     }
   };
+
+  const handleSaveLessonContent = async () => {
+    try {
+      // Validate
+      if (!selectedChapterId) {
+        error("Vui lòng chọn chương học");
+        return;
+      }
+      if (!selectedLessonId) {
+        error("Vui lòng chọn bài học");
+        return;
+      }
+      if (!lessonContent.trim()) {
+        error("Vui lòng nhập nội dung buổi học");
+        return;
+      }
+
+      setSavingContent(true);
+
+      // Call API to save lesson content
+      await sessionService.saveSessionContent({
+        classId,
+        date: new Date().toISOString().split("T")[0],
+        chapterIds: [parseInt(selectedChapterId)],
+        lessonIds: [parseInt(selectedLessonId)],
+        content: lessonContent.trim(),
+      });
+
+      success("Đã lưu nội dung buổi học thành công!");
+    } catch (err) {
+      console.error("Error saving lesson content:", err);
+      error("Có lỗi xảy ra khi lưu nội dung buổi học");
+    } finally {
+      setSavingContent(false);
+    }
+  };
+
+  const selectedChapter = courseData?.chapters?.find(
+    (ch) => String(ch.id) === String(selectedChapterId)
+  );
 
   if (loading) {
     return (
@@ -226,6 +326,14 @@ export default function ClassDetail() {
                   <p className="text-[14px] text-neutral-950 font-semibold mt-1">
                     {classDetail.subjectName}
                   </p>
+                  {/* Course Info */}
+                  {classDetail.courseTitle && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <Badge className="text-xs bg-purple-100 text-purple-700 border-purple-300">
+                        📚 {classDetail.courseTitle}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -604,6 +712,195 @@ export default function ClassDetail() {
             </div>
           </div>
         </div>
+
+        {/* Lesson Content Section */}
+        {courseData ? (
+          <Card className="border border-gray-200 rounded-[14px] bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-neutral-950 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    Ghi nội dung buổi học
+                  </h2>
+                  <p className="text-[12px] text-[#62748e] mt-1">
+                    Chọn chương và bài học đang giảng dạy, sau đó ghi rõ nội
+                    dung
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {/* Course Info */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-[12px] text-purple-700 font-medium">
+                        Chương trình học
+                      </p>
+                      <p className="text-[14px] text-purple-900 font-semibold mt-0.5">
+                        {courseData.title}
+                      </p>
+                      <p className="text-[11px] text-purple-600 mt-0.5">
+                        {courseData.chapters?.length || 0} chương ·{" "}
+                        {courseData.chapters?.reduce(
+                          (sum, ch) => sum + (ch.lessons?.length || 0),
+                          0
+                        ) || 0}{" "}
+                        bài học
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chapter Selection */}
+                <div className="space-y-2">
+                  <label className="text-[13px] font-medium text-neutral-950 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-blue-600" />
+                    Chương học <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={selectedChapterId}
+                    onValueChange={(value) => {
+                      setSelectedChapterId(value);
+                      setSelectedLessonId(""); // Reset lesson when chapter changes
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-11 text-[13px]">
+                      <SelectValue placeholder="Chọn chương đang học..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courseData.chapters && courseData.chapters.length > 0 ? (
+                        courseData.chapters.map((chapter, index) => (
+                          <SelectItem
+                            key={chapter.id}
+                            value={String(chapter.id)}
+                            className="text-[13px]"
+                          >
+                            Chương {index + 1}: {chapter.title}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          Không có chương học
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Lesson Selection */}
+                {selectedChapterId && selectedChapter && (
+                  <div className="space-y-2">
+                    <label className="text-[13px] font-medium text-neutral-950 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-green-600" />
+                      Bài học <span className="text-red-500">*</span>
+                    </label>
+                    <Select
+                      value={selectedLessonId}
+                      onValueChange={setSelectedLessonId}
+                    >
+                      <SelectTrigger className="w-full h-11 text-[13px]">
+                        <SelectValue placeholder="Chọn bài học đang dạy..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedChapter.lessons &&
+                        selectedChapter.lessons.length > 0 ? (
+                          selectedChapter.lessons.map((lesson, index) => (
+                            <SelectItem
+                              key={lesson.id}
+                              value={String(lesson.id)}
+                              className="text-[13px]"
+                            >
+                              Bài {index + 1}: {lesson.title}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            Chương này chưa có bài học
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Lesson Content Input */}
+                {selectedLessonId && (
+                  <div className="space-y-2">
+                    <label className="text-[13px] font-medium text-neutral-950 flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-purple-600" />
+                      Nội dung buổi học <span className="text-red-500">*</span>
+                    </label>
+                    <Textarea
+                      value={lessonContent}
+                      onChange={(e) => setLessonContent(e.target.value)}
+                      placeholder="Ví dụ: Giảng lý thuyết về cú pháp if-else, thực hành bài tập 1-5, hướng dẫn làm bài tập về nhà..."
+                      rows={6}
+                      className="text-[13px] resize-none"
+                    />
+                    <p className="text-[11px] text-[#62748e]">
+                      Mô tả ngắn gọn về nội dung đã giảng dạy trong buổi học này
+                    </p>
+                  </div>
+                )}
+
+                {/* Save Button */}
+                {selectedLessonId && (
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      onClick={handleSaveLessonContent}
+                      disabled={savingContent}
+                      className="h-11 px-6 bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      {savingContent ? (
+                        <>
+                          <Clock className="w-4 h-4 mr-2 animate-spin" />
+                          Đang lưu...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Lưu nội dung buổi học
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ) : classDetail?.courseId ? (
+          <Card className="border border-gray-200 rounded-[14px] bg-white">
+            <CardContent className="p-6 text-center">
+              <div className="text-gray-500">
+                <Clock className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                <p>Đang tải chương trình học...</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border border-orange-200 rounded-[14px] bg-orange-50">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-[14px] font-semibold text-orange-900">
+                    Lớp học chưa có chương trình học
+                  </p>
+                  <p className="text-[12px] text-orange-700 mt-1">
+                    Vui lòng liên hệ Admin để gán chương trình học cho lớp này
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

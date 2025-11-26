@@ -77,11 +77,17 @@ import SubjectManagement from "../pages/admin/subject/SubjectManagement.jsx";
 import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagement.jsx";
 import SubjectDetail from "../pages/admin/subject/SubjectDetail.jsx";
 import CreateTeacherPage from "../pages/admin/user/CreateTeacherPage.jsx";
+import AdminCourseList from "../pages/admin/course/CourseList.jsx";
+import AdminCourseDetail from "../pages/admin/course/CourseDetail.jsx";
 
 //TEACHER - Các trang danh cho Teacher
 import TeacherProfile from "../pages/teacher/TeacherManagement.jsx";
 import TeacherSchedule from "../pages/teacher/TeacherSchedule.jsx";
 import TeacherClassDetail from "../pages/teacher/ClassDetail.jsx";
+import TeacherCourseList from "../pages/teacher/TeacherCourseList.jsx";
+import TeacherCourseCreate from "../pages/teacher/TeacherCourseCreate.jsx";
+import TeacherCourseDetail from "../pages/teacher/TeacherCourseDetail.jsx";
+import TeacherCourseEdit from "../pages/teacher/TeacherCourseEdit.jsx";
 
 function AppRouter() {
   return (
@@ -147,6 +153,8 @@ function AppRouter() {
               element={<CreateSubjectManagement />}
             />
             <Route path="subject/:id" element={<SubjectDetail />} />
+            <Route path="courses" element={<AdminCourseList />} />
+            <Route path="courses/:id" element={<AdminCourseDetail />} />
           </Route>
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}
@@ -155,6 +163,14 @@ function AppRouter() {
           <Route path="profile" element={<TeacherProfile />} />
           <Route path="schedule" element={<TeacherSchedule />} />
           <Route path="class/:classId" element={<TeacherClassDetail />} />
+          <Route path="courses" element={<TeacherCourseList />} />
+          {/* ✅ khớp với navigate("/home/teacher/courses/create") trong TeacherCourseList */}
+          <Route path="courses/create" element={<TeacherCourseCreate />} />
+          {/* ✅ khớp với navigate(`/home/teacher/courses/${id}/edit`) - chỉnh sửa khóa học */}
+          <Route path="courses/:id/edit" element={<TeacherCourseEdit />} />
+          {/* ✅ khớp với navigate(`/home/teacher/courses/${id}`) - xem chi tiết khóa học */}
+          <Route path="courses/:id" element={<TeacherCourseDetail />} />
+          {/* <Route path="attendance" element={<TeacherAttendance />} /> */}
           {/* <Route path="attendance" element={<TeacherAttendance />} /> */}
         </Route>
       </Routes>

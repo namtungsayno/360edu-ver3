@@ -33,6 +33,7 @@ import { subjectService } from "../../../services/subject/subject.service";
 import { teacherService } from "../../../services/teacher/teacher.service";
 import { classroomService } from "../../../services/classrooms/classroom.service";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
+import { courseApi } from "../../../services/course/course.api";
 import { useToast } from "../../../hooks/use-toast";
 
 export default function CreateOfflineClassPage() {
@@ -41,6 +42,7 @@ export default function CreateOfflineClassPage() {
 
   // Form states
   const [subjectId, setSubjectId] = useState("");
+  const [courseId, setCourseId] = useState(""); // Khóa học của môn
   const [desc, setDesc] = useState("");
   const [capacity, setCapacity] = useState("");
   const [teacherId, setTeacherId] = useState("");
@@ -51,6 +53,7 @@ export default function CreateOfflineClassPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [subjects, setSubjects] = useState([]);
+  const [courses, setCourses] = useState([]); // Danh sách khóa học theo môn
   const [teachers, setTeachers] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
@@ -77,9 +80,16 @@ export default function CreateOfflineClassPage() {
 
   useEffect(() => {
     if (subjectId) {
-      loadTeachers();
+      loadCourses();
+      loadTeachers(); // Load giáo viên ngay khi chọn môn
+      setCourseId("");
       setTeacherId("");
       setTeacherBusy([]);
+    } else {
+      setCourses([]);
+      setCourseId("");
+      setTeachers([]);
+      setTeacherId("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subjectId]);
@@ -93,11 +103,31 @@ export default function CreateOfflineClassPage() {
     }
   }
 
+  async function loadCourses() {
+    try {
+      // Lấy các khóa học APPROVED của môn này
+      const data = await courseApi.list({
+        subjectId: parseInt(subjectId),
+        status: "APPROVED",
+      });
+      setCourses(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setCourses([]);
+    }
+  }
+
   async function loadTeachers() {
     try {
-      const subjectIdParam = subjectId ? parseInt(subjectId) : null;
-      const teacherList = await teacherService.list(subjectIdParam);
-      setTeachers(Array.isArray(teacherList) ? teacherList : []);
+      if (subjectId) {
+        // Load tất cả giáo viên dạy môn này
+        // (1 GV dạy môn nào thì dạy được tất cả course của môn đó)
+        const subjectIdParam = parseInt(subjectId);
+        const teacherList = await teacherService.list(subjectIdParam);
+        setTeachers(Array.isArray(teacherList) ? teacherList : []);
+      } else {
+        setTeachers([]);
+      }
     } catch (e) {
       console.error(e);
       setTeachers([]);
@@ -391,6 +421,7 @@ export default function CreateOfflineClassPage() {
       const payload = {
         name: className,
         subjectId: parseInt(subjectId),
+        courseId: courseId ? parseInt(courseId) : null, // Thêm courseId (optional)
         teacherId: parseInt(teacherId),
         roomId: parseInt(roomId),
         maxStudents: parseInt(capacity),
@@ -546,51 +577,85 @@ export default function CreateOfflineClassPage() {
                   </div>
                 </div>
 
-                {/* Môn học + Giáo viên trên cùng một hàng */}
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Môn học */}
+                {/* Môn học */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Môn học <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={String(subjectId)}
+                    onValueChange={setSubjectId}
+                  >
+                    <SelectTrigger className="h-10 text-sm">
+                      <SelectValue placeholder="Chọn môn" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjects.map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Khóa học của môn (tùy chọn) */}
+                {subjectId && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Môn học <span className="text-red-500">*</span>
+                      Khóa học của môn
+                      <span className="ml-1 text-xs text-gray-500">
+                        (Tùy chọn)
+                      </span>
                     </label>
                     <Select
-                      value={String(subjectId)}
-                      onValueChange={setSubjectId}
+                      value={String(courseId)}
+                      onValueChange={setCourseId}
                     >
                       <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Chọn môn" />
+                        <SelectValue placeholder="Chọn khóa học (không bắt buộc)" />
                       </SelectTrigger>
                       <SelectContent>
-                        {subjects.map((s) => (
-                          <SelectItem key={s.id} value={String(s.id)}>
-                            {s.name}
+                        <SelectItem value="">-- Không chọn --</SelectItem>
+                        {courses.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.title}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Khóa học này sẽ được liên kết với lớp học
+                    </p>
                   </div>
+                )}
 
-                  {/* Giáo viên */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Giáo viên <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      value={String(teacherId)}
-                      onValueChange={setTeacherId}
-                    >
-                      <SelectTrigger className="w-full h-10 text-sm">
-                        <SelectValue placeholder="Chọn GV" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teachers.map((t) => (
-                          <SelectItem key={t.userId} value={String(t.userId)}>
-                            {t.fullName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                {/* Giáo viên */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Giáo viên <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={String(teacherId)}
+                    onValueChange={setTeacherId}
+                    disabled={!subjectId}
+                  >
+                    <SelectTrigger className="w-full h-10 text-sm">
+                      <SelectValue placeholder="Chọn GV" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.map((t) => (
+                        <SelectItem key={t.userId} value={String(t.userId)}>
+                          {t.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {subjectId && teachers.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Không có giáo viên dạy môn này
+                    </p>
+                  )}
                 </div>
 
                 {/* Số buổi */}

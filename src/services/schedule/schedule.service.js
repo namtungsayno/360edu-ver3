@@ -175,6 +175,9 @@ export const scheduleService = {
             subjectName: cls.subjectName || "Unknown Subject",
             roomId: cls.roomId,
             room: cls.roomName || null,
+            // Course information
+            courseId: cls.courseId || null,
+            courseTitle: cls.courseTitle || null,
             // Additional info
             studentCount: cls.currentStudents || 0,
             maxStudents: cls.maxStudents || 0,
