@@ -4,6 +4,7 @@ import { Calendar, User, Eye, ArrowLeft, Tag } from "lucide-react";
 import { newsService } from "../../../services/news/news.service";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
+import { getImageUrl, PLACEHOLDER_IMAGE } from "../../../utils/image";
 
 export default function NewsDetail() {
   const { id } = useParams();

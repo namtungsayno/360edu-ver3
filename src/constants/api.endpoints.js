@@ -38,6 +38,9 @@ export const API_ENDPOINTS = {
     
     // Tăng lượt xem
     INCREMENT_VIEW: (id) => `/news/${id}/view`,
+    
+    // Upload ảnh
+    UPLOAD_IMAGE: "/news/upload-image",
   },
 
   // ============ USER MANAGEMENT ============

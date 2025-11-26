@@ -7,4 +7,12 @@ export const enrollmentService = {
   async listStudentsByClass(classId) {
     return enrollmentApi.listStudents(classId);
   },
+  async listMyClasses() {
+    try {
+      return await enrollmentApi.listMyClasses();
+    } catch (err) {
+      console.error("❌ [EnrollmentService] listMyClasses error:", err);
+      throw err;
+    }
+  },
 };

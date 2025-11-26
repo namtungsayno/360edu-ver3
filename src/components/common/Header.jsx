@@ -46,7 +46,8 @@ export default function Header({ onNavigate, currentPage }) {
   const isActive = (pageType) => {
     return currentPage.type === pageType || 
            (pageType === "classes" && (currentPage.type === "class" || currentPage.type === "classes")) ||
-           (pageType === "teachers" && currentPage.type === "teacher");
+           (pageType === "teachers" && currentPage.type === "teacher") ||
+           (pageType === "my-classes" && (currentPage.type === "my-classes" || currentPage.type === "student-classes"));
   };
 
   return (
@@ -147,6 +148,20 @@ export default function Header({ onNavigate, currentPage }) {
             >
               Giới thiệu
             </button>
+
+            {/* Nếu đã đăng nhập với role student, hiển thị mục Lớp đã đăng ký */}
+            {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
+              <button 
+                onClick={() => onNavigate({ type: "student-classes" })}
+                className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
+                  isActive("my-classes")
+                    ? "bg-white/20 text-white" 
+                    : "text-blue-50 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                Lớp đã đăng ký
+              </button>
+            )}
           </nav>
 
           {/* NÚT ĐĂNG NHẬP / PROFILE DESKTOP */}
@@ -227,6 +242,23 @@ export default function Header({ onNavigate, currentPage }) {
               >
                 Trang chủ
               </button>
+
+              {/* Mobile: Link Lớp đã đăng ký cho student */}
+              {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
+                <button 
+                  onClick={() => {
+                    onNavigate({ type: "student-classes" });
+                    setIsMenuOpen(false);
+                  }}
+                  className={`text-left px-4 py-2 rounded-lg transition-all text-sm ${
+                    isActive("my-classes")
+                      ? "bg-white/20 text-white" 
+                      : "text-blue-50 hover:bg-white/10"
+                  }`}
+                >
+                  Lớp đã đăng ký
+                </button>
+              )}
               
               <button 
                 onClick={() => {

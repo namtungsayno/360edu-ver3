@@ -143,4 +143,26 @@ export const newsService = {
       throw error;
     }
   },
+
+  /**
+   * Upload ảnh cho tin tức
+   * @param {File} file - File ảnh cần upload
+   * @returns {Promise} Response chứa { url: string }
+   */
+  async uploadImage(file) {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const response = await http.post(API_ENDPOINTS.NEWS.UPLOAD_IMAGE, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error uploading news image:", error);
+      throw error;
+    }
+  },
 };

@@ -113,28 +113,16 @@ export default function NewsList() {
 
   const handleToggleStatus = async (id) => {
     try {
-      // TODO: Uncomment khi backend sẵn sàng
-      // await newsService.toggleStatus(id);
-
-      // Giả lập delay API (để test UX)
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Tạm thời chỉ cập nhật UI (mock behavior)
+      const currentStatus = news.find((n) => n.id === id)?.status;
+      const newStatus = currentStatus === "published" ? "hidden" : "published";
+      await newsService.updateStatus(id, newStatus);
       setNews((prev) =>
         prev.map((n) =>
           n.id === id
-            ? {
-                ...n,
-                status: n.status === "published" ? "hidden" : "published",
-              }
+            ? { ...n, status: newStatus }
             : n
         )
       );
-
-      // Thông báo thành công
-      const currentStatus = news.find((n) => n.id === id)?.status;
-      const action = currentStatus === "published" ? "ẩn" : "hiện";
-      console.log(`Toggle status success: ${action} tin tức ID ${id}`);
     } catch (err) {
       console.error("Failed to toggle status:", err);
       alert(err.displayMessage || "Không thể cập nhật trạng thái");
@@ -223,7 +211,8 @@ export default function NewsList() {
                 {filteredNews.map((item) => (
                   <Card
                     key={item.id}
-                    className="hover:shadow-md transition-shadow"
+                    className="hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => navigate(`/home/admin/news/${item.id}`)}
                   >
                     <CardContent className="p-6">
                       <div className="flex gap-6">
@@ -231,30 +220,22 @@ export default function NewsList() {
                           <img
                             src={item.imageUrl}
                             alt={item.title}
-                            className="h-24 w-24 rounded-lg object-cover flex-shrink-0 self-center"
+                            className="h-64 w-64 rounded-lg object-cover flex-shrink-0 self-center"
                           />
                         ) : (
-                          <div className="flex items-center justify-center h-24 w-24 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white flex-shrink-0 self-center">
-                            <Newspaper className="h-10 w-10" />
+                          <div className="flex items-center justify-center h-64 w-64 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white flex-shrink-0 self-center">
+                            <Newspaper className="h-24 w-24" />
                           </div>
                         )}
 
                         <div className="flex-1 space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className="text-lg font-semibold mb-2">
-                                {item.title}
-                              </h3>
-                              <p className="text-sm text-slate-600">
-                                {item.excerpt}
-                              </p>
-                            </div>
-                            <div className="ml-4 mt-7">
-                              {getStatusBadge(item.status)}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
+                          <h3 className="text-lg font-semibold mb-2">
+                            {item.title}
+                          </h3>
+                          <p className="text-sm text-slate-600">
+                            {item.excerpt}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-2">
                             {(typeof item.tags === 'string' 
                               ? item.tags.split(',').map(tag => tag.trim()).filter(Boolean)
                               : item.tags || []
@@ -268,60 +249,35 @@ export default function NewsList() {
                               </Badge>
                             ))}
                           </div>
-
-                          <div className="flex items-center justify-between pt-2 border-t">
-                            <div className="flex items-center gap-4 text-sm text-slate-600">
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                <span>{item.date}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Eye className="h-4 w-4" />
-                                <span>{item.views} lượt xem</span>
-                              </div>
-                              <span>Bởi: {item.author}</span>
-                            </div>
-                            <div className="flex gap-2">
+                          <div className="flex items-center gap-4 text-sm text-slate-600 mt-2">
+                            <span>{item.date}</span>
+                            <span>{item.views} lượt xem</span>
+                            <span>Bởi: {item.author}</span>
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            {item.status === "published" ? (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleView(item)}
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleToggleStatus(item.id);
+                                }}
                               >
-                                <Eye className="h-4 w-4 mr-2" />
-                                Xem
+                                Ẩn
                               </Button>
+                            ) : (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() =>
-                                  navigate("/home/admin/news/create", {
-                                    state: { draft: item },
-                                  })
-                                }
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleToggleStatus(item.id);
+                                }}
                               >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Sửa
+                                Hiện
                               </Button>
-                              {item.status === "published" ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleToggleStatus(item.id)}
-                                >
-                                  <EyeOff className="h-4 w-4 mr-2" />
-                                  Ẩn
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleToggleStatus(item.id)}
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Hiện
-                                </Button>
-                              )}
-                            </div>
+                            )}
                           </div>
                         </div>
                       </div>

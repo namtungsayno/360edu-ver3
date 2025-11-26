@@ -4,6 +4,7 @@ import { Calendar, Clock, ArrowRight, Eye, Tag } from "lucide-react";
 import { newsService } from "../../../services/news/news.service";
 import { Card, CardContent } from "../../../components/ui/Card";
 import { Badge } from "../../../components/ui/Badge";
+import { getImageUrl, PLACEHOLDER_IMAGE } from "../../../utils/image";
 
 export default function NewsList() {
   const navigate = useNavigate();
@@ -83,9 +84,12 @@ export default function NewsList() {
                   <div className="relative h-96 md:h-auto overflow-hidden">
                     {featuredNews.imageUrl ? (
                       <img 
-                        src={featuredNews.imageUrl} 
+                        src={getImageUrl(featuredNews.imageUrl)} 
                         alt={featuredNews.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.src = PLACEHOLDER_IMAGE;
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-orange-400 to-red-500" />
@@ -157,9 +161,12 @@ export default function NewsList() {
                   <div className="h-64 relative overflow-hidden">
                     {item.imageUrl ? (
                       <img 
-                        src={item.imageUrl} 
+                        src={getImageUrl(item.imageUrl)} 
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.src = PLACEHOLDER_IMAGE;
+                        }}
                       />
                     ) : (
                       <div className={`w-full h-full bg-gradient-to-br ${gradient}`} />

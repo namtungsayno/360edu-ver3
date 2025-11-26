@@ -39,6 +39,134 @@ export default function Home() {
   const [teachersLoading, setTeachersLoading] = useState(true);
   
   // Carousel states
+      // Tự động chuyển slide (slideshow)
+      useEffect(() => {
+        if (classes.length <= 4) return;
+        const interval = setInterval(() => {
+          setClassesIndex((prev) => {
+            if (prev + 4 >= classes.length) return 0;
+            return prev + 1;
+          });
+        }, 3000); // 3 giây
+        return () => clearInterval(interval);
+      }, [classes.length]);
+    // Render grid cho carousel với hiệu ứng
+    const gradients = [
+      'from-blue-500 via-blue-600 to-indigo-600',
+      'from-purple-500 via-purple-600 to-pink-600',
+      'from-green-500 via-emerald-600 to-teal-600',
+      'from-orange-500 via-amber-600 to-yellow-600',
+      'from-red-500 via-rose-600 to-pink-600',
+      'from-cyan-500 via-blue-600 to-indigo-600'
+    ];
+    function renderClassGrid(classesArr) {
+      return classesArr.map((cls) => {
+        const gradient = gradients[cls.id % gradients.length];
+        const currentStudents = cls.currentStudents || 0;
+        const maxStudents = cls.maxStudents || 30;
+        const enrollmentPercentage = (currentStudents / maxStudents) * 100;
+        const teacherInitial = (cls.teacherFullName || "G").charAt(0).toUpperCase();
+        return (
+          <Card 
+            key={cls.id}
+            className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-blue-200"
+            onClick={() => onNavigate({ type: "class", classId: cls.id })}
+          >
+            {/* Image Header with Gradient & Overlay */}
+            <div className={`h-40 bg-gradient-to-br ${gradient} relative`}>
+              <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-all"></div>
+              <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
+                <div className="flex flex-col gap-2">
+                  <Badge className="bg-white/95 text-gray-900 backdrop-blur-sm shadow-lg w-fit">
+                    {cls.subjectName || "Môn học"}
+                  </Badge>
+                  <Badge className={cls.online ? "bg-green-500/90 backdrop-blur-sm shadow-lg w-fit" : "bg-blue-500/90 backdrop-blur-sm shadow-lg w-fit"}>
+                    {cls.online ? "🌐 Online" : "📍 Offline"}
+                  </Badge>
+                </div>
+                <div className="bg-white/20 backdrop-blur-md rounded-full p-2 shadow-lg">
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+              </div>
+            </div>
+            <CardContent className="p-5 relative">
+              {/* Teacher Avatar - Overlapping */}
+              <div className="absolute -top-10 right-4">
+                <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
+                  {cls.teacherAvatarUrl ? (
+                    <img 
+                      src={cls.teacherAvatarUrl} 
+                      alt={cls.teacherFullName}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                      <span className="text-xl font-bold text-blue-600">{teacherInitial}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Title */}
+              <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors pr-20">
+                {cls.name || "Tên lớp học"}
+              </h3>
+              {/* Teacher Name */}
+              <p className="text-sm text-gray-600 mb-4 flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-blue-600" />
+                <span className="font-medium">{cls.teacherFullName || "Đang cập nhật"}</span>
+              </p>
+              {/* Info */}
+              <div className="space-y-2 mb-4">
+                {Array.isArray(cls.schedule) && cls.schedule.length > 0 ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Clock className="w-4 h-4" />
+                    <span>{dayLabelVi(cls.schedule[0].dayOfWeek)}, {cls.schedule[0].startTime?.slice(0,5)} - {cls.schedule[0].endTime?.slice(0,5)}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Clock className="w-4 h-4" />
+                    <span>Thứ Hai, Tư, Sáu • 19:00 - 21:00</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Calendar className="w-4 h-4" />
+                  <span>Khai giảng: {cls.startDate || "01/11/2024"}</span>
+                </div>
+              </div>
+              {/* Enrollment Progress */}
+              <div className="mb-4 bg-gray-50 rounded-lg p-3">
+                <div className="flex items-center justify-between text-xs mb-2">
+                  <span className="text-gray-600 font-medium">Tình trạng đăng ký</span>
+                  <span className="font-bold text-blue-600">{currentStudents}/{maxStudents} học viên</span>
+                </div>
+                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                    style={{ width: `${enrollmentPercentage}%` }}
+                  />
+                </div>
+                <div className="mt-2 text-xs">
+                  {enrollmentPercentage >= 80 ? (
+                    <span className="text-red-600 font-medium">⚡ Sắp đầy chỗ!</span>
+                  ) : enrollmentPercentage >= 50 ? (
+                    <span className="text-orange-600 font-medium">🔥 Đang hot</span>
+                  ) : (
+                    <span className="text-green-600 font-medium">✨ Còn nhiều chỗ</span>
+                  )}
+                </div>
+              </div>
+              {/* CTA Button */}
+              <Button 
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all"
+              >
+                <span className="font-medium">Xem chi tiết lớp học</span>
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      });
+    }
   const [classesIndex, setClassesIndex] = useState(0);
   const [teachersIndex, setTeachersIndex] = useState(0);
   const [newsIndex, setNewsIndex] = useState(0);
@@ -81,13 +209,19 @@ export default function Home() {
 
   // Carousel navigation functions
   const handleClassesNext = () => {
-    if (classesIndex + 4 < classes.length) {
+    if (classes.length <= 4) return;
+    if (classesIndex + 4 >= classes.length) {
+      setClassesIndex(0);
+    } else {
       setClassesIndex(classesIndex + 1);
     }
   };
   
   const handleClassesPrev = () => {
-    if (classesIndex > 0) {
+    if (classes.length <= 4) return;
+    if (classesIndex === 0) {
+      setClassesIndex(classes.length - 4);
+    } else {
       setClassesIndex(classesIndex - 1);
     }
   };
@@ -284,6 +418,25 @@ export default function Home() {
                 </button>
               </>
             )}
+            {/* Navigation Arrows */}
+            {classes.length > 4 && (
+              <>
+                <button
+                  onClick={handleClassesPrev}
+                  disabled={classesIndex === 0}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-700" />
+                </button>
+                <button
+                  onClick={handleClassesNext}
+                  disabled={classesIndex + 4 >= classes.length}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-700" />
+                </button>
+              </>
+            )}
 
             {/* Classes Grid */}
             {loading ? (
@@ -296,130 +449,9 @@ export default function Home() {
                 <p className="text-gray-600">Không có lớp học nào</p>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">{displayedClasses.map((cls) => {
-                const gradients = [
-                  'from-blue-500 via-blue-600 to-indigo-600',
-                  'from-purple-500 via-purple-600 to-pink-600',
-                  'from-green-500 via-emerald-600 to-teal-600',
-                  'from-orange-500 via-amber-600 to-yellow-600',
-                  'from-red-500 via-rose-600 to-pink-600',
-                  'from-cyan-500 via-blue-600 to-indigo-600'
-                ];
-                const gradient = gradients[cls.id % gradients.length];
-                const currentStudents = cls.currentStudents || 0;
-                const maxStudents = cls.maxStudents || 30;
-                const enrollmentPercentage = (currentStudents / maxStudents) * 100;
-                const teacherInitial = (cls.teacherFullName || "G").charAt(0).toUpperCase();
-
-                return (
-                  <Card 
-                    key={cls.id}
-                    className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-blue-200"
-                    onClick={() => onNavigate({ type: "class", classId: cls.id })}
-                  >
-                    {/* Image Header with Gradient & Overlay */}
-                    <div className={`h-40 bg-gradient-to-br ${gradient} relative`}>
-                      <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-all"></div>
-                      <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
-                        <div className="flex flex-col gap-2">
-                          <Badge className="bg-white/95 text-gray-900 backdrop-blur-sm shadow-lg w-fit">
-                            {cls.subjectName || "Môn học"}
-                          </Badge>
-                          <Badge className={cls.online ? "bg-green-500/90 backdrop-blur-sm shadow-lg w-fit" : "bg-blue-500/90 backdrop-blur-sm shadow-lg w-fit"}>
-                            {cls.online ? "🌐 Online" : "📍 Offline"}
-                          </Badge>
-                        </div>
-                        <div className="bg-white/20 backdrop-blur-md rounded-full p-2 shadow-lg">
-                          <BookOpen className="w-5 h-5 text-white" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <CardContent className="p-5 relative">
-                      {/* Teacher Avatar - Overlapping */}
-                      <div className="absolute -top-10 right-4">
-                        <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
-                          {cls.teacherAvatarUrl ? (
-                            <img 
-                              src={cls.teacherAvatarUrl} 
-                              alt={cls.teacherFullName}
-                              className="w-full h-full object-cover rounded-full"
-                            />
-                          ) : (
-                            <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                              <span className="text-xl font-bold text-blue-600">{teacherInitial}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Title */}
-                      <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-blue-600 transition-colors pr-20">
-                        {cls.name || "Tên lớp học"}
-                      </h3>
-
-                      {/* Teacher Name */}
-                      <p className="text-sm text-gray-600 mb-4 flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-blue-600" />
-                        <span className="font-medium">{cls.teacherFullName || "Đang cập nhật"}</span>
-                      </p>
-
-                      {/* Info */}
-                      <div className="space-y-2 mb-4">
-                        
-                        {Array.isArray(cls.schedule) && cls.schedule.length > 0 ? (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Clock className="w-4 h-4" />
-                            <span>{dayLabelVi(cls.schedule[0].dayOfWeek)}, {cls.schedule[0].startTime?.slice(0,5)} - {cls.schedule[0].endTime?.slice(0,5)}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Clock className="w-4 h-4" />
-                            <span>Thứ Hai, Tư, Sáu • 19:00 - 21:00</span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Calendar className="w-4 h-4" />
-                          <span>Khai giảng: {cls.startDate || "01/11/2024"}</span>
-                        </div>
-                      </div>
-
-                      {/* Enrollment Progress */}
-                      <div className="mb-4 bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between text-xs mb-2">
-                          <span className="text-gray-600 font-medium">Tình trạng đăng ký</span>
-                          <span className="font-bold text-blue-600">{currentStudents}/{maxStudents} học viên</span>
-                        </div>
-                        <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
-                            style={{ width: `${enrollmentPercentage}%` }}
-                          />
-                        </div>
-                        <div className="mt-2 text-xs">
-                          {enrollmentPercentage >= 80 ? (
-                            <span className="text-red-600 font-medium">⚡ Sắp đầy chỗ!</span>
-                          ) : enrollmentPercentage >= 50 ? (
-                            <span className="text-orange-600 font-medium">🔥 Đang hot</span>
-                          ) : (
-                            <span className="text-green-600 font-medium">✨ Còn nhiều chỗ</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* CTA Button */}
-                      <Button 
-                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all"
-                      >
-                        <span className="font-medium">Xem chi tiết lớp học</span>
-                        <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {renderClassGrid(displayedClasses)}
+              </div>
             )}
           </div>
 
