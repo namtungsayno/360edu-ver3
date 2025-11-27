@@ -37,7 +37,7 @@ export default function ClassDetail() {
   const navigate = useNavigate();
   const { classId } = useParams();
   const [searchParams] = useSearchParams();
-  const slotId = searchParams.get('slotId');
+  const slotId = searchParams.get("slotId");
   const { success, error } = useToast();
   const [classDetail, setClassDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +52,8 @@ export default function ClassDetail() {
   const [selectedLessonId, setSelectedLessonId] = useState("");
   const [lessonContent, setLessonContent] = useState("");
   const [savingContent, setSavingContent] = useState(false);
+  const [contentEditMode, setContentEditMode] = useState(false); // false = view/locked, true = edit
+  const [hasExistingContent, setHasExistingContent] = useState(false);
   useEffect(() => {
     if (!classId) return;
 
@@ -61,9 +63,18 @@ export default function ClassDetail() {
         // Load attendance from backend by class + today + slotId
         const today = new Date().toISOString().split("T")[0];
         const slotIdNum = slotId ? parseInt(slotId, 10) : null;
-        console.log('ClassDetail loading:', { classId, today, slotId, slotIdNum });
-        
-        const attendance = await attendanceService.getByClass(classId, today, slotIdNum);
+        console.log("ClassDetail loading:", {
+          classId,
+          today,
+          slotId,
+          slotIdNum,
+        });
+
+        const attendance = await attendanceService.getByClass(
+          classId,
+          today,
+          slotIdNum
+        );
         setAttendanceDetails(attendance);
         setOriginalDetails(attendance);
         // Auto-enter edit mode if nothing marked yet
@@ -120,11 +131,16 @@ export default function ClassDetail() {
               // Set lesson content text
               if (savedContent.content) {
                 setLessonContent(savedContent.content);
+                setHasExistingContent(true);
+                setContentEditMode(false); // Locked by default when content exists
               }
+            } else {
+              setContentEditMode(true); // Edit mode if no content
             }
           } catch (err) {
-            // Ignore error if no session content found yet
+            // No saved content found yet - allow editing
             console.log("No saved content for today:", err.message);
+            setContentEditMode(true);
           }
         }
       } catch (e) {
@@ -174,15 +190,24 @@ export default function ClassDetail() {
 
       const date = new Date().toISOString().split("T")[0];
       const slotIdNum = slotId ? parseInt(slotId, 10) : null;
-      console.log('Saving attendance:', { classId, date, slotId, slotIdNum });
-      
-      await attendanceService.saveAttendance(classId, date, attendanceData, slotIdNum);
+      console.log("Saving attendance:", { classId, date, slotId, slotIdNum });
+
+      await attendanceService.saveAttendance(
+        classId,
+        date,
+        attendanceData,
+        slotIdNum
+      );
 
       setHasChanges(false);
       success("Lưu điểm danh thành công!");
 
       // Reload to reflect persisted statuses
-      const refreshed = await attendanceService.getByClass(classId, date, slotIdNum);
+      const refreshed = await attendanceService.getByClass(
+        classId,
+        date,
+        slotIdNum
+      );
       setAttendanceDetails(refreshed);
       setOriginalDetails(refreshed);
       setEditMode(false);
@@ -225,6 +250,8 @@ export default function ClassDetail() {
       });
 
       success("Đã lưu nội dung buổi học thành công!");
+      setHasExistingContent(true);
+      setContentEditMode(false); // Lock after save
     } catch (err) {
       console.error("Error saving lesson content:", err);
       error("Có lỗi xảy ra khi lưu nội dung buổi học");
@@ -776,6 +803,7 @@ export default function ClassDetail() {
                       setSelectedChapterId(value);
                       setSelectedLessonId(""); // Reset lesson when chapter changes
                     }}
+                    disabled={!contentEditMode}
                   >
                     <SelectTrigger className="w-full h-11 text-[13px]">
                       <SelectValue placeholder="Chọn chương đang học..." />
@@ -810,6 +838,7 @@ export default function ClassDetail() {
                     <Select
                       value={selectedLessonId}
                       onValueChange={setSelectedLessonId}
+                      disabled={!contentEditMode}
                     >
                       <SelectTrigger className="w-full h-11 text-[13px]">
                         <SelectValue placeholder="Chọn bài học đang dạy..." />
@@ -849,6 +878,7 @@ export default function ClassDetail() {
                       placeholder="Ví dụ: Giảng lý thuyết về cú pháp if-else, thực hành bài tập 1-5, hướng dẫn làm bài tập về nhà..."
                       rows={6}
                       className="text-[13px] resize-none"
+                      disabled={!contentEditMode}
                     />
                     <p className="text-[11px] text-[#62748e]">
                       Mô tả ngắn gọn về nội dung đã giảng dạy trong buổi học này
@@ -856,26 +886,53 @@ export default function ClassDetail() {
                   </div>
                 )}
 
-                {/* Save Button */}
+                {/* Action Buttons */}
                 {selectedLessonId && (
-                  <div className="flex justify-end pt-2">
-                    <Button
-                      onClick={handleSaveLessonContent}
-                      disabled={savingContent}
-                      className="h-11 px-6 bg-purple-600 hover:bg-purple-700 text-white"
-                    >
-                      {savingContent ? (
-                        <>
-                          <Clock className="w-4 h-4 mr-2 animate-spin" />
-                          Đang lưu...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4 mr-2" />
-                          Lưu nội dung buổi học
-                        </>
-                      )}
-                    </Button>
+                  <div className="flex justify-end gap-3 pt-2">
+                    {hasExistingContent && !contentEditMode ? (
+                      // View mode - show Edit button
+                      <Button
+                        onClick={() => setContentEditMode(true)}
+                        className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Sửa nội dung buổi học
+                      </Button>
+                    ) : (
+                      // Edit mode - show Save and Cancel buttons
+                      <>
+                        {hasExistingContent && (
+                          <Button
+                            onClick={() => {
+                              setContentEditMode(false);
+                              // Optionally reload original content here
+                            }}
+                            variant="outline"
+                            className="h-11 px-6"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Hủy
+                          </Button>
+                        )}
+                        <Button
+                          onClick={handleSaveLessonContent}
+                          disabled={savingContent}
+                          className="h-11 px-6 bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                          {savingContent ? (
+                            <>
+                              <Clock className="w-4 h-4 mr-2 animate-spin" />
+                              Đang lưu...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Lưu nội dung buổi học
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

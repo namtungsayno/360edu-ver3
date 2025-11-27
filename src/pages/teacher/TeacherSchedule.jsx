@@ -17,6 +17,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/use-toast";
 
 // Lightweight date helpers
+// tính toán hiển thị lịch
 function startOfWeek(d) {
   const date = new Date(d);
   const day = date.getDay();
@@ -66,7 +67,7 @@ function TeacherSchedule() {
   const [weekSchedule, setWeekSchedule] = useState([]);
   const [attendanceMap, setAttendanceMap] = useState({});
 
-  // Calculate week dates based on currentWeek
+  // render header bảng lịch (hiển thị ngày cho 7 cột)
   const weekStart = useMemo(() => {
     return startOfWeek(currentWeek);
   }, [currentWeek]);
@@ -76,7 +77,7 @@ function TeacherSchedule() {
     [weekStart]
   );
 
-  // Get the actual date for a class based on day of week
+  // so sánh với ngày hôm nay, kiểu như biết ngày kia là thứ mấy...
   const getDateForClass = (dayOfWeek) => {
     // dayOfWeek: 1=Mon, 2=Tue, ..., 7=Sun
     const date = new Date(weekStart);
@@ -84,7 +85,7 @@ function TeacherSchedule() {
     return date;
   };
 
-  // Load attendance status for all classes
+  // Load điểm danh
   const loadAttendanceStatuses = async (scheduleData) => {
     const map = {};
     const today = new Date();
@@ -172,7 +173,10 @@ function TeacherSchedule() {
       // Lấy ngày slot thực tế trong tuần này
       const slotDate = addDays(weekStartDate, Number(s.day) - 1); // day: 1-7 (Mon-Sun)
       if (isNaN(slotDate.getTime())) {
-        console.warn("[TeacherSchedule] Bỏ qua lớp do slotDate không hợp lệ:", s);
+        console.warn(
+          "[TeacherSchedule] Bỏ qua lớp do slotDate không hợp lệ:",
+          s
+        );
         return false;
       }
       const slotDateStr = fmt(slotDate, "yyyy-MM-dd");
@@ -228,7 +232,9 @@ function TeacherSchedule() {
     }
 
     // Navigate to class detail page for attendance with slotId
-    navigate(`/home/teacher/class/${classData.classId}?slotId=${classData.slotId}`);
+    navigate(
+      `/home/teacher/class/${classData.classId}?slotId=${classData.slotId}`
+    );
   };
 
   // Calculate statistics
