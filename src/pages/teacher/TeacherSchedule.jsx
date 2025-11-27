@@ -454,12 +454,14 @@ function TeacherSchedule() {
                                   const attendance = attendanceMap[key];
                                   const isMarked =
                                     attendance?.isMarked || false;
+
                                   const classDate = getDateForClass(
                                     classData.day
                                   );
                                   const today = new Date();
                                   today.setHours(0, 0, 0, 0);
                                   classDate.setHours(0, 0, 0, 0);
+
                                   const isFuture = classDate > today;
                                   const isPast = classDate < today;
 
@@ -479,8 +481,6 @@ function TeacherSchedule() {
                                           ? "bg-gray-100 border-gray-300 cursor-not-allowed opacity-60"
                                           : isPast && isMarked
                                           ? "bg-green-50 border-green-300 opacity-75 cursor-default"
-                                          : isPast
-                                          ? "bg-gray-100 border-gray-300 opacity-60 cursor-default"
                                           : isMarked
                                           ? "bg-green-50 border-green-400 hover:shadow-md hover:border-green-500 cursor-pointer"
                                           : "bg-orange-50 border-orange-400 hover:shadow-md hover:border-orange-500 cursor-pointer"

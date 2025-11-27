@@ -39,6 +39,7 @@ export default function CreateClassPage() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [actionMsg, setActionMsg] = useState("");
   const { error } = useToast();
 
   useEffect(() => {
@@ -100,12 +101,55 @@ export default function CreateClassPage() {
     return result;
   }, [classes, query, classType]);
 
+  // Derived status by date: Sắp mở / Đang diễn ra
+  function getDerivedStatus(cls) {
+    const today = new Date();
+    const sd = cls?.startDate ? new Date(cls.startDate) : null;
+    const ed = cls?.endDate ? new Date(cls.endDate) : null;
+    if (sd && sd > today)
+      return { label: "Sắp mở", style: "bg-sky-100 text-sky-700" };
+    if (sd && ed && sd <= today && today <= ed)
+      return { label: "Đang diễn ra", style: "bg-violet-100 text-violet-700" };
+    return null;
+  }
+
   // Statistics
   const stats = useMemo(() => {
     const online = classes.filter((c) => c.online === true).length;
     const offline = classes.filter((c) => c.online === false).length;
     return { online, offline, total: classes.length };
   }, [classes]);
+
+  // Publish / Revert handlers
+  async function handlePublish(cls) {
+    try {
+      await classService.publish(cls.id);
+      setSelected((prev) =>
+        prev && prev.id === cls.id ? { ...prev, status: "PUBLIC" } : prev
+      );
+      setActionMsg("Bạn đã công khai lớp học.");
+      await loadClasses();
+    } catch (e) {
+      error("Publish failed");
+      console.error(e);
+    }
+  }
+
+  async function handleRevertDraft(cls) {
+    try {
+      await classService.revertDraft(cls.id);
+      setSelected((prev) =>
+        prev && prev.id === cls.id ? { ...prev, status: "DRAFT" } : prev
+      );
+      setActionMsg("Bạn đã xếp lớp này dưới dạng Draft.");
+      await loadClasses();
+    } catch (e) {
+      // Show backend message for 400 (business rule) or fallback
+      const msg = e?.response?.data?.message || e?.message || "Revert failed";
+      error(msg);
+      console.error(e);
+    }
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -248,15 +292,47 @@ export default function CreateClassPage() {
                   </h3>
                   <p className="text-gray-600 text-sm">{c.subjectName}</p>
                 </div>
-                <span
-                  className={`px-2 py-1 text-xs rounded-full ${
-                    c.online
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-green-100 text-green-700"
-                  }`}
-                >
-                  {c.online ? "Online" : "Offline"}
-                </span>
+                <div className="flex items-center gap-2">
+                  {/* Status badge */}
+                  {c.status && (
+                    <span
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
+                        c.status === "DRAFT"
+                          ? "bg-amber-200 text-amber-900"
+                          : c.status === "PUBLIC"
+                          ? "bg-emerald-200 text-emerald-900"
+                          : "bg-gray-200 text-gray-800"
+                      }`}
+                    >
+                      {c.status === "DRAFT"
+                        ? "Draft"
+                        : c.status === "PUBLIC"
+                        ? "Public"
+                        : "Archived"}
+                    </span>
+                  )}
+                  {/* Derived runtime badge */}
+                  {(() => {
+                    const d = getDerivedStatus(c);
+                    return d ? (
+                      <span
+                        className={`px-2 py-1 text-xs rounded-full ${d.style}`}
+                      >
+                        {d.label}
+                      </span>
+                    ) : null;
+                  })()}
+                  {/* Type badge */}
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      c.online
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-green-100 text-green-700"
+                    }`}
+                  >
+                    {c.online ? "Online" : "Offline"}
+                  </span>
+                </div>
               </div>
               <div className="mt-4 space-y-2 text-sm text-gray-700">
                 <div>👨‍🏫 {c.teacherFullName}</div>
@@ -316,14 +392,51 @@ export default function CreateClassPage() {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>
-              {selected
-                ? selected.name || "Thông tin lớp học"
-                : "Thông tin lớp học"}
+            <DialogTitle className="flex items-center gap-2">
+              <span>
+                {selected
+                  ? selected.name || "Thông tin lớp học"
+                  : "Thông tin lớp học"}
+              </span>
+              {selected?.status && (
+                <span
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
+                    selected.status === "DRAFT"
+                      ? "bg-amber-200 text-amber-900"
+                      : selected.status === "PUBLIC"
+                      ? "bg-emerald-200 text-emerald-900"
+                      : "bg-gray-200 text-gray-800"
+                  }`}
+                >
+                  {selected.status === "DRAFT"
+                    ? "Draft"
+                    : selected.status === "PUBLIC"
+                    ? "Public"
+                    : "Archived"}
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
           {selected && (
             <div className="space-y-4 text-sm">
+              {actionMsg && (
+                <div className="inline-flex items-center gap-2 px-3 py-2 rounded border text-xs bg-green-50 border-green-200 text-green-700">
+                  ✅ {actionMsg}
+                </div>
+              )}
+              {(() => {
+                const today = new Date();
+                const hasPastSessions =
+                  selected?.startDate && new Date(selected.startDate) <= today;
+                return hasPastSessions ? (
+                  <div className="inline-flex items-center gap-2 px-2 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="text-xs font-medium">Đã bắt đầu</span>
+                    <span className="text-xs">
+                      Không thể trả về Draft khi lớp đã có buổi học diễn ra.
+                    </span>
+                  </div>
+                ) : null;
+              })()}
               <div>
                 <h4 className="text-base font-semibold text-gray-900">
                   Môn học
@@ -419,11 +532,43 @@ export default function CreateClassPage() {
               <div className="flex gap-2 pt-2">
                 <Button
                   size="sm"
-                  className="bg-indigo-600 hover:bg-indigo-700"
+                  className={`hover:bg-indigo-700 ${
+                    selected?.status === "PUBLIC"
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-indigo-600 text-white"
+                  }`}
+                  disabled={selected?.status === "PUBLIC"}
                   onClick={() => error("Chức năng sửa lớp chưa được hỗ trợ")}
                 >
-                  Sửa
+                  {selected?.status === "PUBLIC"
+                    ? "Đã công khai (khóa sửa)"
+                    : "Sửa"}
                 </Button>
+                {/* Status actions */}
+                {selected?.status === "DRAFT" ? (
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => handlePublish(selected)}
+                  >
+                    Công khai
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleRevertDraft(selected)}
+                    disabled={(() => {
+                      const today = new Date();
+                      return (
+                        selected?.startDate &&
+                        new Date(selected.startDate) <= today
+                      );
+                    })()}
+                  >
+                    Trả về Draft
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="destructive"

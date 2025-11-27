@@ -41,7 +41,7 @@ export default function CreateOnlineClassPage() {
 
   // Form states
   const [subjectId, setSubjectId] = useState("");
-  const [courseId, setCourseId] = useState(""); // Khóa học của môn
+  const [courseId, setCourseId] = useState(""); // Khóa học của môn (bắt buộc)
   const [desc, setDesc] = useState("");
   const [capacity, setCapacity] = useState("");
   const [teacherId, setTeacherId] = useState("");
@@ -270,6 +270,7 @@ export default function CreateOnlineClassPage() {
   const step1Valid = useMemo(() => {
     return (
       subjectId &&
+      courseId &&
       capacity &&
       parseInt(capacity) > 0 &&
       parseInt(capacity) <= 30 &&
@@ -285,6 +286,7 @@ export default function CreateOnlineClassPage() {
     );
   }, [
     subjectId,
+    courseId,
     capacity,
     teacherId,
     className,
@@ -385,7 +387,7 @@ export default function CreateOnlineClassPage() {
       const payload = {
         name: className,
         subjectId: parseInt(subjectId),
-        courseId: courseId ? parseInt(courseId) : null, // Thêm courseId (optional)
+        courseId: parseInt(courseId),
         teacherId: parseInt(teacherId),
         roomId: null,
         maxStudents: parseInt(capacity),
@@ -558,24 +560,20 @@ export default function CreateOnlineClassPage() {
                   </Select>
                 </div>
 
-                {/* Khóa học của môn (tùy chọn) */}
+                {/* Khóa học của môn (bắt buộc) */}
                 {subjectId && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Khóa học của môn
-                      <span className="ml-1 text-xs text-gray-500">
-                        (Tùy chọn)
-                      </span>
+                      Khóa học của môn <span className="text-red-500">*</span>
                     </label>
                     <Select
                       value={String(courseId)}
                       onValueChange={setCourseId}
                     >
                       <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Chọn khóa học (không bắt buộc)" />
+                        <SelectValue placeholder="Chọn khóa học" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">-- Không chọn --</SelectItem>
                         {courses.map((c) => (
                           <SelectItem key={c.id} value={String(c.id)}>
                             {c.title}
