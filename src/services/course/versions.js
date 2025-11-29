@@ -1,7 +1,7 @@
 // Service: teacher personal course versions mapping
-// Filters: baseCourseId (required), status=APPROVED; teacherId derived from auth on backend
+// Filters: baseCourseId (required); teacherId derived từ auth cookie/backend
 
-import { axiosInstance } from "../../config/axios.config";
+import { http } from "../http";
 
 /**
  * List approved personal course versions of the logged-in teacher
@@ -12,14 +12,25 @@ import { axiosInstance } from "../../config/axios.config";
  */
 export async function listTeacherCourseVersions(baseCourseId) {
   try {
-    const { data } = await axiosInstance.get("/api/course-versions", {
-      // Only filter by baseCourseId; teacherId derived from auth principal on backend.
+    const { data } = await http.get("/course-versions", {
+      // Lọc theo baseCourseId; teacherId lấy từ principal nhờ cookie JWT (withCredentials)
       params: { baseCourseId: String(baseCourseId) },
     });
-    // Ensure array shape
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.items)) return data.items;
-    return [];
+    // Ensure array shape (backend returns array of TeacherCourseVersionResponse)
+    const raw = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.items)
+      ? data.items
+      : [];
+    // Normalize shape for UI dropdown
+    return raw.map((v) => ({
+      id: v.teacherCourseId, // use teacher course id for selection
+      title: v.teacherCourseTitle || `Course ${v.teacherCourseId}`,
+      teacherCourseId: v.teacherCourseId,
+      baseCourseId: v.baseCourseId,
+      mapped: !!v.id, // true if explicit mapping exists, false for fallback suggestion
+      status: v.id ? "APPROVED" : "SUGGESTED",
+    }));
   } catch {
     return [];
   }
@@ -30,7 +41,7 @@ export async function listTeacherCourseVersions(baseCourseId) {
  * @param {{ baseCourseId: string|number, teacherCourseId: string|number }} payload
  */
 export async function createTeacherCourseVersionMapping(payload) {
-  const { data } = await axiosInstance.post("/api/course-versions", {
+  const { data } = await http.post("/course-versions", {
     baseCourseId: String(payload.baseCourseId),
     teacherCourseId: String(payload.teacherCourseId),
   });

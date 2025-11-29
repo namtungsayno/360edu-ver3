@@ -75,15 +75,21 @@ export default function ClassDetail() {
   const [savingContent, setSavingContent] = useState(false);
   const [contentEditMode, setContentEditMode] = useState(true); // always editable
   const [hasExistingContent, setHasExistingContent] = useState(false);
+  // Fields to hydrate from backend
+  const [baseCourseIdState, setBaseCourseIdState] = useState(null);
+  // Track explicit source type for saving
+  const sourceType = usingPersonalCourse ? "PERSONAL" : "ADMIN";
   // Load approved personal course versions when toggling to personal source
   useEffect(() => {
     const fetchPersonalVersions = async () => {
       try {
         if (!usingPersonalCourse) return;
         const baseCourseId =
-          classDetail?.courseId ||
-          classDetail?.course?.id ||
-          classDetail?.baseCourseId;
+          baseCourseIdState != null
+            ? baseCourseIdState
+            : classDetail?.courseId ||
+              classDetail?.course?.id ||
+              classDetail?.baseCourseId;
         if (!baseCourseId) return;
         console.log("🔍 Fetch personal versions", { baseCourseId });
         const versions = await listTeacherCourseVersions(baseCourseId);
@@ -120,7 +126,13 @@ export default function ClassDetail() {
       }
     };
     fetchPersonalVersions();
-  }, [usingPersonalCourse, classDetail, selectedPersonalCourseId, error]);
+  }, [
+    usingPersonalCourse,
+    classDetail,
+    selectedPersonalCourseId,
+    baseCourseIdState,
+    error,
+  ]);
   useEffect(() => {
     if (!classId) return;
 
@@ -190,7 +202,7 @@ export default function ClassDetail() {
             }
           }
 
-          // Load saved lesson content if exists
+          // Load saved lesson content if exists (and hydrate UI state)
           try {
             const savedContent =
               await sessionService.getSessionContentByClassDate(
@@ -200,18 +212,71 @@ export default function ClassDetail() {
 
             if (savedContent) {
               console.log("📝 Saved Content Loaded:", savedContent);
-
-              // Set selected chapter if exists
-              if (savedContent.chapters && savedContent.chapters.length > 0) {
-                const firstChapter = savedContent.chapters[0];
-                setSelectedChapterId(String(firstChapter.id));
-
-                // Set selected lesson if exists
-                if (firstChapter.lessons && firstChapter.lessons.length > 0) {
-                  setSelectedLessonId(String(firstChapter.lessons[0].id));
+              // Base course id
+              if (savedContent.baseCourseId) {
+                setBaseCourseIdState(savedContent.baseCourseId);
+              }
+              // Source toggle
+              if (savedContent.sourceType === "PERSONAL") {
+                setUsingPersonalCourse(true);
+              } else {
+                setUsingPersonalCourse(false);
+              }
+              // Pick course accordingly with fallback when personal course missing
+              const selectedCourseId =
+                savedContent.selectedCourseId || savedContent.baseCourseId;
+              const teacherCourseId = savedContent.teacherCourseId;
+              if (selectedCourseId) {
+                try {
+                  const detail = await courseService.getCourseDetail(
+                    selectedCourseId
+                  );
+                  setCourseData(detail);
+                  if (savedContent.sourceType === "PERSONAL") {
+                    setPersonalCourseData(detail);
+                    const personalId = teacherCourseId || selectedCourseId;
+                    if (personalId)
+                      setSelectedPersonalCourseId(String(personalId));
+                  }
+                } catch (e) {
+                  console.error("Failed to load selected course detail:", e);
+                  if (savedContent.sourceType === "PERSONAL") {
+                    error(
+                      "Phiên bản khóa học cá nhân đã bị xóa hoặc không khả dụng. Chuyển về khóa học gốc."
+                    );
+                    setUsingPersonalCourse(false);
+                    setSelectedPersonalCourseId("");
+                    const baseId =
+                      savedContent.baseCourseId || classDetail?.courseId;
+                    if (baseId) {
+                      try {
+                        const adminDetail = await courseService.getCourseDetail(
+                          baseId
+                        );
+                        setCourseData(adminDetail);
+                        setPersonalCourseData(null);
+                        setSelectedChapterId("");
+                        setSelectedLessonId("");
+                      } catch (err) {
+                        console.error("Fallback load base course failed:", err);
+                      }
+                    }
+                  }
                 }
               }
-
+              // Restore chapter/lesson selections from linked IDs
+              if (
+                Array.isArray(savedContent.linkedChapterIds) &&
+                savedContent.linkedChapterIds.length > 0
+              ) {
+                setSelectedChapterId(String(savedContent.linkedChapterIds[0]));
+              }
+              if (
+                Array.isArray(savedContent.linkedLessonIds) &&
+                savedContent.linkedLessonIds.length > 0
+              ) {
+                setSelectedLessonId(String(savedContent.linkedLessonIds[0]));
+              }
               // Set lesson content text
               if (savedContent.content) {
                 setLessonContent(savedContent.content);
@@ -327,15 +392,27 @@ export default function ClassDetail() {
       }
 
       setSavingContent(true);
-
-      // Call API to save lesson content
-      await sessionService.saveSessionContent({
+      const payload = {
         classId,
         date: sessionDateStr,
-        chapterIds: [parseInt(selectedChapterId)],
-        lessonIds: [parseInt(selectedLessonId)],
+        chapterIds: [parseInt(selectedChapterId, 10)],
+        lessonIds: [parseInt(selectedLessonId, 10)],
         content: lessonContent.trim(),
-      });
+        // Explicit configuration for BE persistence
+        sourceType,
+        courseId:
+          sourceType === "ADMIN"
+            ? baseCourseIdState || classDetail?.courseId
+            : undefined,
+        teacherCourseId:
+          sourceType === "PERSONAL" && selectedPersonalCourseId
+            ? parseInt(selectedPersonalCourseId, 10)
+            : undefined,
+        chapterId: parseInt(selectedChapterId, 10),
+        lessonId: parseInt(selectedLessonId, 10),
+      };
+
+      await sessionService.saveSessionContent(payload);
 
       success("Đã lưu nội dung buổi học thành công!");
       setHasExistingContent(true);
@@ -360,10 +437,14 @@ export default function ClassDetail() {
         (v) => String(v.id) === String(selectedPersonalCourseId)
       );
       if (!selected) return;
-      // Assume backend returns course object with chapters/lessons or fetch details if needed
-      // If only metadata present, you might need another API call here to get full course details
-      setCourseData(selected);
-      setPersonalCourseData(selected);
+      // Luôn lấy chi tiết course để có đầy đủ chapters/lessons
+      try {
+        const detail = await courseService.getCourseDetail(selected.id);
+        setCourseData(detail);
+        setPersonalCourseData(detail);
+      } catch (e) {
+        console.error("Load personal course detail failed:", e);
+      }
       setSelectedChapterId("");
       setSelectedLessonId("");
     };
@@ -929,9 +1010,23 @@ export default function ClassDetail() {
                               : ""
                           }`}
                           onClick={() => {
+                            // Switch to ADMIN source: always load base course chapters/lessons
                             setUsingPersonalCourse(false);
-                            // Trả về nguồn admin: khôi phục courseData là course gốc
-                            // courseData đã là course gốc từ trước khi người dùng chọn cá nhân
+                            setSelectedPersonalCourseId("");
+                            if (classDetail?.courseId) {
+                              courseService
+                                .getCourseDetail(classDetail.courseId)
+                                .then((adminCourse) => {
+                                  setCourseData(adminCourse);
+                                  setPersonalCourseData(null);
+                                  // Reset selections; will be hydrated from saved config on reload
+                                  setSelectedChapterId("");
+                                  setSelectedLessonId("");
+                                })
+                                .catch((e) =>
+                                  console.error("Load base course failed:", e)
+                                );
+                            }
                           }}
                         >
                           Upload tài liệu từ Admin đã cung cấp
@@ -967,6 +1062,9 @@ export default function ClassDetail() {
                                 console.error(
                                   "Load selected personal course failed:",
                                   e
+                                );
+                                error(
+                                  "Không tải được phiên bản khóa học cá nhân. Vui lòng chọn lại hoặc sử dụng khóa học gốc."
                                 );
                               }
                             }}
