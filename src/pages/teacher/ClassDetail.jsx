@@ -32,11 +32,14 @@ import {
 } from "lucide-react";
 import { scheduleService } from "../../services/schedule/schedule.service";
 import { courseService } from "../../services/course/course.service";
+import { listTeacherCourseVersions } from "../../services/course/versions";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function ClassDetail() {
   const navigate = useNavigate();
   const { classId } = useParams();
   const [searchParams] = useSearchParams();
+  useAuth();
   const slotId = searchParams.get("slotId");
   const sessionDateStr =
     searchParams.get("date") || new Date().toISOString().split("T")[0];
@@ -61,13 +64,63 @@ export default function ClassDetail() {
   const [originalDetails, setOriginalDetails] = useState([]);
 
   // Lesson content states
-  const [courseData, setCourseData] = useState(null);
+  const [courseData, setCourseData] = useState(null); // always the class's assigned (admin) course used for chapter/lesson selection
+  const [personalCourseData, setPersonalCourseData] = useState(null); // optional personal version for content reference only
+  const [usingPersonalCourse, setUsingPersonalCourse] = useState(false);
+  const [personalCandidates, setPersonalCandidates] = useState([]);
+  const [selectedPersonalCourseId, setSelectedPersonalCourseId] = useState("");
   const [selectedChapterId, setSelectedChapterId] = useState("");
   const [selectedLessonId, setSelectedLessonId] = useState("");
   const [lessonContent, setLessonContent] = useState("");
   const [savingContent, setSavingContent] = useState(false);
-  const [contentEditMode, setContentEditMode] = useState(false); // false = view/locked, true = edit
+  const [contentEditMode, setContentEditMode] = useState(true); // always editable
   const [hasExistingContent, setHasExistingContent] = useState(false);
+  // Load approved personal course versions when toggling to personal source
+  useEffect(() => {
+    const fetchPersonalVersions = async () => {
+      try {
+        if (!usingPersonalCourse) return;
+        const baseCourseId =
+          classDetail?.courseId ||
+          classDetail?.course?.id ||
+          classDetail?.baseCourseId;
+        if (!baseCourseId) return;
+        console.log("🔍 Fetch personal versions", { baseCourseId });
+        const versions = await listTeacherCourseVersions(baseCourseId);
+        console.log("✅ Personal versions response", versions);
+        // Transform backend mapping response to dropdown items
+        const safeRaw = Array.isArray(versions) ? versions : [];
+        const safe = safeRaw.map((v) => ({
+          id: v.teacherCourseId || v.id,
+          // fallback if API later returns direct course id
+          title:
+            v.teacherCourseTitle ||
+            v.title ||
+            `Course ${v.teacherCourseId || v.id}`,
+          status: "APPROVED", // backend only returns approved mappings per spec
+        }));
+        setPersonalCandidates(safe);
+        if (
+          !safe.find((v) => String(v.id) === String(selectedPersonalCourseId))
+        ) {
+          setSelectedPersonalCourseId("");
+        }
+        if (safe.length > 0) {
+          console.log(`✔ Loaded ${safe.length} personal course versions`);
+        } else {
+          console.log(
+            "ℹ No personal versions found for baseCourseId",
+            baseCourseId
+          );
+        }
+      } catch (e) {
+        console.error("❌ Failed to fetch personal versions", e);
+        error(e?.normalizedMessage || "Không tải được phiên bản cá nhân");
+        setPersonalCandidates([]);
+      }
+    };
+    fetchPersonalVersions();
+  }, [usingPersonalCourse, classDetail, selectedPersonalCourseId, error]);
   useEffect(() => {
     if (!classId) return;
 
@@ -112,16 +165,28 @@ export default function ClassDetail() {
             studentCount: attendance.length,
           });
 
-          // Load course data if courseId exists
+          // Chuẩn bị nguồn course: danh sách cá nhân liên quan & course gốc admin làm mặc định
           if (classInfo.courseId) {
             try {
-              const course = await courseService.getCourseDetail(
+              // Lấy danh sách phiên bản cá nhân hợp lệ từ backend (đã filter theo baseCourseId)
+              const mappings = await listTeacherCourseVersions(
                 classInfo.courseId
               );
-              console.log("📖 Course Data Loaded:", course);
-              setCourseData(course);
+              const safeMappings = Array.isArray(mappings) ? mappings : [];
+              const relatedPersonal = safeMappings.map((m) => ({
+                id: m.teacherCourseId,
+                title: m.teacherCourseTitle,
+                status: "APPROVED",
+              }));
+              setPersonalCandidates(relatedPersonal);
+
+              const adminCourse = await courseService.getCourseDetail(
+                classInfo.courseId
+              );
+              setCourseData(adminCourse);
+              setUsingPersonalCourse(false);
             } catch (err) {
-              console.error("Failed to load course:", err);
+              console.error("Prepare course sources failed:", err);
             }
           }
 
@@ -151,7 +216,7 @@ export default function ClassDetail() {
               if (savedContent.content) {
                 setLessonContent(savedContent.content);
                 setHasExistingContent(true);
-                setContentEditMode(false); // Locked by default when content exists
+                setContentEditMode(true); // keep editable even when content exists
               }
             } else {
               setContentEditMode(true); // Edit mode if no content
@@ -286,6 +351,24 @@ export default function ClassDetail() {
   const selectedChapter = courseData?.chapters?.find(
     (ch) => String(ch.id) === String(selectedChapterId)
   );
+
+  // When selecting a personal version, swap courseData and reset selections
+  useEffect(() => {
+    const applyPersonalSelection = async () => {
+      if (!usingPersonalCourse) return;
+      const selected = personalCandidates.find(
+        (v) => String(v.id) === String(selectedPersonalCourseId)
+      );
+      if (!selected) return;
+      // Assume backend returns course object with chapters/lessons or fetch details if needed
+      // If only metadata present, you might need another API call here to get full course details
+      setCourseData(selected);
+      setPersonalCourseData(selected);
+      setSelectedChapterId("");
+      setSelectedLessonId("");
+    };
+    applyPersonalSelection();
+  }, [usingPersonalCourse, selectedPersonalCourseId, personalCandidates]);
 
   if (loading) {
     return (
@@ -807,14 +890,126 @@ export default function ClassDetail() {
                       <p className="text-[14px] text-purple-900 font-semibold mt-0.5">
                         {courseData.title}
                       </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant={usingPersonalCourse ? "default" : "outline"}
+                          className={`h-9 ${
+                            usingPersonalCourse
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : ""
+                          }`}
+                          onClick={async () => {
+                            // Luôn cho phép bấm để chuyển nguồn sang cá nhân, không khóa vì thiếu dữ liệu
+                            setUsingPersonalCourse(true);
+                            try {
+                              // Nếu đã chọn sẵn một phiên bản, load chi tiết để hiển thị chương/bài
+                              const targetId = selectedPersonalCourseId;
+                              if (targetId) {
+                                const detail =
+                                  await courseService.getCourseDetail(targetId);
+                                // Sử dụng course cá nhân làm nguồn chính cho selector chương/bài
+                                setCourseData(detail);
+                                setPersonalCourseData(detail);
+                              }
+                              // Nếu chưa chọn, hiển thị dropdown để người dùng chọn phiên bản
+                            } catch (e) {
+                              console.error("Load personal course failed:", e);
+                            }
+                          }}
+                        >
+                          Upload tài liệu từ khóa học cá nhân
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={!usingPersonalCourse ? "default" : "outline"}
+                          className={`h-9 ${
+                            !usingPersonalCourse
+                              ? "bg-blue-600 hover:bg-blue-700 text-white"
+                              : ""
+                          }`}
+                          onClick={() => {
+                            setUsingPersonalCourse(false);
+                            // Trả về nguồn admin: khôi phục courseData là course gốc
+                            // courseData đã là course gốc từ trước khi người dùng chọn cá nhân
+                          }}
+                        >
+                          Upload tài liệu từ Admin đã cung cấp
+                        </Button>
+                      </div>
+                      {usingPersonalCourse && (
+                        <div className="mt-2">
+                          <label className="text-[11px] text-[#62748e] mb-1 block">
+                            Chọn phiên bản khóa học cá nhân
+                          </label>
+                          <Select
+                            value={selectedPersonalCourseId}
+                            onValueChange={async (value) => {
+                              const val = value == null ? "" : String(value);
+                              // Guard invalid placeholder values
+                              if (!val || val === "none") {
+                                setSelectedPersonalCourseId("");
+                                setPersonalCourseData(null);
+                                setSelectedChapterId("");
+                                setSelectedLessonId("");
+                                return; // do NOT call API
+                              }
+                              setSelectedPersonalCourseId(val);
+                              try {
+                                const detail =
+                                  await courseService.getCourseDetail(val);
+                                // Use personal course source for chapter/lesson selectors
+                                setCourseData(detail);
+                                setPersonalCourseData(detail);
+                                setSelectedChapterId("");
+                                setSelectedLessonId("");
+                              } catch (e) {
+                                console.error(
+                                  "Load selected personal course failed:",
+                                  e
+                                );
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-full h-10">
+                              <SelectValue placeholder="Chọn phiên bản cá nhân" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {personalCandidates.length > 0 ? (
+                                personalCandidates.map((c) => (
+                                  <SelectItem key={c.id} value={String(c.id)}>
+                                    #{c.id} – {c.title} (
+                                    {String(c.status).toUpperCase()})
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="none" disabled>
+                                  Chưa có phiên bản cá nhân khả dụng
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       <p className="text-[11px] text-purple-600 mt-0.5">
                         {courseData.chapters?.length || 0} chương ·{" "}
                         {courseData.chapters?.reduce(
                           (sum, ch) => sum + (ch.lessons?.length || 0),
                           0
                         ) || 0}{" "}
-                        bài học
+                        bài học (nguồn chính)
                       </p>
+                      {usingPersonalCourse && personalCourseData && (
+                        <p className="text-[11px] text-green-700 mt-0.5">
+                          Phiên bản cá nhân:{" "}
+                          {personalCourseData.chapters?.length || 0} chương ·{" "}
+                          {personalCourseData.chapters?.reduce(
+                            (sum, ch) => sum + (ch.lessons?.length || 0),
+                            0
+                          ) || 0}{" "}
+                          bài học (chỉ tham khảo nội dung)
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -831,7 +1026,6 @@ export default function ClassDetail() {
                       setSelectedChapterId(value);
                       setSelectedLessonId(""); // Reset lesson when chapter changes
                     }}
-                    disabled={!contentEditMode}
                   >
                     <SelectTrigger className="w-full h-11 text-[13px]">
                       <SelectValue placeholder="Chọn chương đang học..." />
@@ -866,7 +1060,6 @@ export default function ClassDetail() {
                     <Select
                       value={selectedLessonId}
                       onValueChange={setSelectedLessonId}
-                      disabled={!contentEditMode}
                     >
                       <SelectTrigger className="w-full h-11 text-[13px]">
                         <SelectValue placeholder="Chọn bài học đang dạy..." />
@@ -906,7 +1099,6 @@ export default function ClassDetail() {
                       placeholder="Ví dụ: Giảng lý thuyết về cú pháp if-else, thực hành bài tập 1-5, hướng dẫn làm bài tập về nhà..."
                       rows={6}
                       className="text-[13px] resize-none"
-                      disabled={!contentEditMode}
                     />
                     <p className="text-[11px] text-[#62748e]">
                       Mô tả ngắn gọn về nội dung đã giảng dạy trong buổi học này
@@ -932,7 +1124,7 @@ export default function ClassDetail() {
                         {hasExistingContent && (
                           <Button
                             onClick={() => {
-                              setContentEditMode(false);
+                              setContentEditMode(true);
                               // Optionally reload original content here
                             }}
                             variant="outline"
