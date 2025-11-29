@@ -28,6 +28,12 @@ const SidebarTeacher = () => {
           href: "/home/teacher/schedule",
         },
         {
+          id: "teaching-content",
+          label: "Nội dung giảng dạy",
+          icon: BookOpen,
+          href: "/home/teacher/content",
+        },
+        {
           id: "my-courses",
           label: "Quản lý khóa học cá nhân",
           icon: BookOpen,

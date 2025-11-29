@@ -38,6 +38,20 @@ export default function ClassDetail() {
   const { classId } = useParams();
   const [searchParams] = useSearchParams();
   const slotId = searchParams.get("slotId");
+  const sessionDateStr =
+    searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isFutureSession = (() => {
+    try {
+      const s = new Date(sessionDateStr);
+      const t = new Date(todayStr);
+      s.setHours(0, 0, 0, 0);
+      t.setHours(0, 0, 0, 0);
+      return s > t;
+    } catch {
+      return false;
+    }
+  })();
   const { success, error } = useToast();
   const [classDetail, setClassDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,25 +74,27 @@ export default function ClassDetail() {
     (async () => {
       try {
         setLoading(true);
-        // Load attendance from backend by class + today + slotId
-        const today = new Date().toISOString().split("T")[0];
+        // Load attendance theo ngày phiên học (từ URL) + slotId
         const slotIdNum = slotId ? parseInt(slotId, 10) : null;
         console.log("ClassDetail loading:", {
           classId,
-          today,
+          date: sessionDateStr,
           slotId,
           slotIdNum,
         });
 
         const attendance = await attendanceService.getByClass(
           classId,
-          today,
+          sessionDateStr,
           slotIdNum
         );
         setAttendanceDetails(attendance);
         setOriginalDetails(attendance);
         // Auto-enter edit mode if nothing marked yet
-        if (attendance.every((a) => !a.status || a.status === "-")) {
+        if (
+          attendance.every((a) => !a.status || a.status === "-") &&
+          !isFutureSession
+        ) {
           setEditMode(true);
         }
 
@@ -112,7 +128,10 @@ export default function ClassDetail() {
           // Load saved lesson content if exists
           try {
             const savedContent =
-              await sessionService.getSessionContentByClassDate(classId, today);
+              await sessionService.getSessionContentByClassDate(
+                classId,
+                sessionDateStr
+              );
 
             if (savedContent) {
               console.log("📝 Saved Content Loaded:", savedContent);
@@ -139,7 +158,7 @@ export default function ClassDetail() {
             }
           } catch (err) {
             // No saved content found yet - allow editing
-            console.log("No saved content for today:", err.message);
+            console.log("No saved content for date:", err.message);
             setContentEditMode(true);
           }
         }
@@ -150,7 +169,7 @@ export default function ClassDetail() {
         setLoading(false);
       }
     })();
-  }, [classId, error]);
+  }, [classId, error, sessionDateStr, slotId, isFutureSession]);
 
   const handleAttendanceChange = (studentId, status) => {
     setAttendanceDetails((prev) =>
@@ -172,6 +191,10 @@ export default function ClassDetail() {
 
   const handleSaveAttendance = async () => {
     try {
+      if (isFutureSession) {
+        error("Chưa đến ngày diễn ra buổi học, không thể điểm danh.");
+        return;
+      }
       // Filter students that have attendance marked (status not "-")
       const attendanceData = attendanceDetails
         .filter((record) => record.status && record.status !== "-")
@@ -188,7 +211,7 @@ export default function ClassDetail() {
         return;
       }
 
-      const date = new Date().toISOString().split("T")[0];
+      const date = sessionDateStr;
       const slotIdNum = slotId ? parseInt(slotId, 10) : null;
       console.log("Saving attendance:", { classId, date, slotId, slotIdNum });
 
@@ -243,7 +266,7 @@ export default function ClassDetail() {
       // Call API to save lesson content
       await sessionService.saveSessionContent({
         classId,
-        date: new Date().toISOString().split("T")[0],
+        date: sessionDateStr,
         chapterIds: [parseInt(selectedChapterId)],
         lessonIds: [parseInt(selectedLessonId)],
         content: lessonContent.trim(),
@@ -602,10 +625,15 @@ export default function ClassDetail() {
                 </div>
               ) : (
                 <Button
-                  onClick={() => setEditMode(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => !isFutureSession && setEditMode(true)}
+                  disabled={isFutureSession}
+                  className={`text-white ${
+                    isFutureSession
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
                 >
-                  Sửa điểm danh
+                  {isFutureSession ? "Chưa đến ngày học" : "Sửa điểm danh"}
                 </Button>
               )}
             </div>

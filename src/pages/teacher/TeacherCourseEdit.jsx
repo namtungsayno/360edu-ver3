@@ -1,6 +1,6 @@
 // src/pages/teacher/TeacherCourseEdit.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import {
   Card,
@@ -42,12 +42,15 @@ function createLocalId() {
 export default function TeacherCourseEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isContentEdit = location.pathname.includes("/home/teacher/content/");
   const { success, error } = useToast();
   const { user } = useAuth();
 
   // ====== LOADING STATE ======
   const [loading, setLoading] = useState(true);
   const [originalCourse, setOriginalCourse] = useState(null);
+  const [sourceTagInOriginal, setSourceTagInOriginal] = useState("");
 
   // ====== BASIC FORM STATE ======
   const [title, setTitle] = useState("");
@@ -84,7 +87,14 @@ export default function TeacherCourseEdit() {
       // Populate form
       setTitle(course.title || "");
       setSubjectId(String(course.subjectId || ""));
-      setDescription(course.description || "");
+      // Strip internal clone source tag if present to avoid showing it in UI
+      const rawDesc = course.description || "";
+      const sourceMatch = rawDesc.match(/\[\[SOURCE:[^\]]+\]\]/);
+      setSourceTagInOriginal(sourceMatch ? sourceMatch[0] : "");
+      const cleanedDescription = rawDesc
+        .replace(/\n?\[\[SOURCE:[^\]]+\]\]/, "")
+        .trim();
+      setDescription(cleanedDescription);
 
       // Convert chapters/lessons to local format
       if (course.chapters && course.chapters.length > 0) {
@@ -286,51 +296,99 @@ export default function TeacherCourseEdit() {
 
     setSubmitting(true);
     try {
-      // 1) Gọi updateCourse để RESET STATUS về PENDING (để admin phê duyệt lại)
-      // Giữ nguyên title, description và subjectId (vì không cho phép sửa)
-      await courseService.updateCourse(id, {
-        subjectId: Number(subjectId),
-        title: title.trim(),
-        description: description.trim(),
-      });
-
-      // 2) Xóa toàn bộ chapters cũ (backend cascade delete lessons)
-      if (originalCourse?.chapters && originalCourse.chapters.length > 0) {
-        for (const ch of originalCourse.chapters) {
-          try {
-            await courseService.removeChapter(ch.id);
-          } catch (chapterErr) {
-            console.warn(`Failed to remove chapter ${ch.id}:`, chapterErr);
-            // Continue với chapters khác
-          }
-        }
-      }
-
-      // 3) Tạo lại chapters + lessons mới
-      for (const ch of chapters) {
-        const createdChapter = await courseService.addChapter(id, {
-          title: ch.title.trim(),
-          description: ch.description.trim(),
-          orderIndex: ch.orderIndex,
+      if (isContentEdit) {
+        // PERSONALIZE from Admin content: create a new personal course and submit for approval
+        const sourceTag = `[[SOURCE:${originalCourse?.id || id}]]`;
+        const ownerTag = `[[OWNER:${user?.id}]]`;
+        const created = await courseService.createCourse({
+          subjectId: Number(subjectId),
+          title: title.trim(),
+          description: `${description.trim()}\n${sourceTag}\n${ownerTag}`,
+          status: "PENDING",
         });
 
-        const chapterId = createdChapter?.id;
-        if (!chapterId) continue;
-
-        for (const ls of ch.lessons) {
-          await courseService.addLesson(chapterId, {
-            title: ls.title.trim(),
-            description: ls.description.trim(),
-            orderIndex: ls.orderIndex,
+        // Create chapters & lessons for new course using current edited structure
+        for (const ch of chapters) {
+          const newCh = await courseService.addChapter(created.id, {
+            title: ch.title.trim(),
+            description: ch.description.trim(),
+            orderIndex: ch.orderIndex,
           });
+          for (const ls of ch.lessons) {
+            await courseService.addLesson(newCh.id, {
+              title: ls.title.trim(),
+              description: ls.description.trim(),
+              orderIndex: ls.orderIndex,
+            });
+          }
         }
-      }
 
-      success(
-        "Đã cập nhật khóa học thành công! Trạng thái đã chuyển về 'Chờ phê duyệt' - Admin sẽ xem xét lại.",
-        "Thành công"
-      );
-      navigate(`/home/teacher/courses/${id}`);
+        success(
+          "Đã gửi yêu cầu phê duyệt. Bạn có thể xem trong 'Quản lý khóa học cá nhân'.",
+          "Thành công"
+        );
+        // Ở luồng Nội dung giảng dạy: không điều hướng tự động sang danh sách cá nhân
+      } else {
+        // EDIT existing personal course: update and re-create content
+        const latest = await courseService.getCourseDetail(id);
+        // Ensure OWNER tag exists for legacy items, và giữ lại SOURCE tag nếu khóa học gốc là bản cá nhân hóa
+        const ownerTag = `[[OWNER:${user?.id}]]`;
+        let nextDescription = description.trim();
+        if (!nextDescription.includes(ownerTag)) {
+          nextDescription += `\n${ownerTag}`;
+        }
+        if (
+          sourceTagInOriginal &&
+          !nextDescription.includes(sourceTagInOriginal)
+        ) {
+          nextDescription += `\n${sourceTagInOriginal}`;
+        }
+
+        await courseService.updateCourse(id, {
+          subjectId: Number(subjectId),
+          title: title.trim(),
+          description: nextDescription,
+        });
+
+        if (latest?.chapters && latest.chapters.length > 0) {
+          for (const ch of latest.chapters) {
+            if (ch.lessons && ch.lessons.length > 0) {
+              for (const ls of ch.lessons) {
+                try {
+                  await courseService.removeLesson(ls.id);
+                } catch (lessonErr) {
+                  console.warn(`Failed to remove lesson ${ls.id}:`, lessonErr);
+                }
+              }
+            }
+            try {
+              await courseService.removeChapter(ch.id);
+            } catch (chapterErr) {
+              console.warn(`Failed to remove chapter ${ch.id}:`, chapterErr);
+            }
+          }
+        }
+
+        for (const ch of chapters) {
+          const createdChapter = await courseService.addChapter(id, {
+            title: ch.title.trim(),
+            description: ch.description.trim(),
+            orderIndex: ch.orderIndex,
+          });
+          const chapterId = createdChapter?.id;
+          if (!chapterId) continue;
+          for (const ls of ch.lessons) {
+            await courseService.addLesson(chapterId, {
+              title: ls.title.trim(),
+              description: ls.description.trim(),
+              orderIndex: ls.orderIndex,
+            });
+          }
+        }
+
+        success("Đã cập nhật khóa học thành công!", "Thành công");
+        navigate(`/home/teacher/courses/${id}`);
+      }
     } catch (err) {
       console.error("Update course failed:", err);
       const errorMsg =
@@ -342,6 +400,11 @@ export default function TeacherCourseEdit() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Cancel edit without sending for approval
+  const handleCancel = () => {
+    navigate(-1);
   };
 
   // ====== RENDER ======
@@ -363,7 +426,13 @@ export default function TeacherCourseEdit() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate(`/home/teacher/courses/${id}`)}
+            onClick={() =>
+              navigate(
+                isContentEdit
+                  ? `/home/teacher/content/${id}`
+                  : `/home/teacher/courses/${id}`
+              )
+            }
             className="inline-flex items-center gap-2 text-sm text-[#62748e] hover:text-neutral-950"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -374,25 +443,35 @@ export default function TeacherCourseEdit() {
               Chỉnh sửa nội dung khóa học
             </h1>
             <p className="text-[12px] text-[#62748e] mt-1">
-              Chỉ được sửa chương học và bài học (cần Admin phê duyệt lại)
+              Chỉ được sửa chương học và bài học. Thay đổi sẽ được áp dụng ngay.
             </p>
           </div>
         </div>
-
-        <Button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="inline-flex items-center gap-2 bg-[#155dfc] hover:bg-[#0f4ad1]"
-        >
-          {submitting ? (
-            <span className="text-sm">Đang lưu...</span>
-          ) : (
-            <>
-              <Save className="w-4 h-4" />
-              <span>Lưu thay đổi</span>
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="inline-flex items-center gap-2 bg-[#155dfc] hover:bg-[#0f4ad1]"
+          >
+            {submitting ? (
+              <span className="text-sm">Đang lưu...</span>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Lưu thay đổi</span>
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={submitting}
+            className="inline-flex items-center gap-2"
+          >
+            Hủy
+          </Button>
+        </div>
       </div>
 
       {/* GRID LAYOUT */}
@@ -687,7 +766,10 @@ export default function TeacherCourseEdit() {
               <ul className="list-disc list-inside text-[12px] text-[#45556c] space-y-1">
                 <li>CHỈ được sửa nội dung chương học và bài học.</li>
                 <li>KHÔNG được đổi: tên khóa học, môn học, mô tả.</li>
-                <li>Sau khi lưu, khóa học cần Admin phê duyệt lại.</li>
+                <li>
+                  Sau khi lưu, khóa học được cập nhật ngay (không cần Admin phê
+                  duyệt lại).
+                </li>
                 <li>Mọi thay đổi sẽ thay thế hoàn toàn nội dung cũ.</li>
                 <li>Mỗi chương cần có ít nhất 1 bài học.</li>
               </ul>

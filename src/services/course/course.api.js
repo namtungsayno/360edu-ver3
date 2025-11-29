@@ -12,6 +12,7 @@ export const courseApi = {
    *  - scope="mine" dùng cho teacher: chỉ lấy khóa học cá nhân (nếu BE hỗ trợ)
    */
   list: (params = {}) => http.get("/courses", { params }).then((r) => r.data),
+  listMine: () => http.get("/courses/mine").then((r) => r.data),
 
   /**
    * Lấy chi tiết 1 khóa học (kèm chapters + lessons nếu BE trả về)

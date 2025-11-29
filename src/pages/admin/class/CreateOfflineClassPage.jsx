@@ -105,12 +105,17 @@ export default function CreateOfflineClassPage() {
 
   async function loadCourses() {
     try {
-      // Lấy các khóa học APPROVED của môn này
+      // Chỉ lấy các khóa học hợp lệ do admin tạo (APPROVED), loại bỏ khóa cá nhân/đã chỉnh sửa
       const data = await courseApi.list({
         subjectId: parseInt(subjectId),
         status: "APPROVED",
       });
-      setCourses(Array.isArray(data) ? data : []);
+      const filtered = (Array.isArray(data) ? data : []).filter((c) => {
+        const hasSourceTag = String(c.description || "").includes("[[SOURCE:");
+        const isPersonal = c && c.ownerTeacherId != null;
+        return !hasSourceTag && !isPersonal;
+      });
+      setCourses(filtered);
     } catch (e) {
       console.error(e);
       setCourses([]);

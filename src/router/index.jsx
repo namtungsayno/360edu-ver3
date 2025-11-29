@@ -66,6 +66,8 @@ import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 // tuấn test
 // FIXED: Import các component cho Class Management (Quản lý lớp học)
 import CreateClass from "../pages/admin/class/ClassManagement.jsx";
+import ClassDetailPage from "../pages/admin/class/ClassDetailPage.jsx";
+import ClassEditPage from "../pages/admin/class/ClassEditPage.jsx";
 import CreateOfflineClassPage from "../pages/admin/class/CreateOfflineClassPage.jsx";
 import CreateOnlineClassPage from "../pages/admin/class/CreateOnlineClassPage.jsx";
 import ScheduleManagement from "../pages/admin/schedule/ScheduleManagement.jsx";
@@ -77,9 +79,12 @@ import Register from "../pages/auth/Register";
 import SubjectManagement from "../pages/admin/subject/SubjectManagement.jsx";
 import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagement.jsx";
 import SubjectDetail from "../pages/admin/subject/SubjectDetail.jsx";
+import CourseOfSubjectDetail from "../pages/admin/subject/CourseOfSubjectDetail.jsx";
+import CourseOfSubjectCreate from "../pages/admin/subject/CourseOfSubjectCreate.jsx";
 import CreateTeacherPage from "../pages/admin/user/CreateTeacherPage.jsx";
 import AdminCourseList from "../pages/admin/course/CourseList.jsx";
 import AdminCourseDetail from "../pages/admin/course/CourseDetail.jsx";
+import AdminCourseCreate from "../pages/admin/course/AdminCourseCreate.jsx";
 
 // Teacher pages
 import TeacherManagement from "../pages/teacher/TeacherManagement.jsx";
@@ -89,6 +94,8 @@ import TeacherCourseList from "../pages/teacher/TeacherCourseList.jsx";
 import TeacherCourseCreate from "../pages/teacher/TeacherCourseCreate.jsx";
 import TeacherCourseDetail from "../pages/teacher/TeacherCourseDetail.jsx";
 import TeacherCourseEdit from "../pages/teacher/TeacherCourseEdit.jsx";
+import TeachingContent from "../pages/teacher/TeachingContent.jsx";
+import TeachingContentDetail from "../pages/teacher/TeachingContentDetail.jsx";
 
 function AppRouter() {
   return (
@@ -117,10 +124,14 @@ function AppRouter() {
           <Route path="/home/news/:id" element={<NewsDetail />} />{" "}
           {/* Chi tiết tin tức */}
           <Route path="/home/about" element={<About />} /> {/* Giới thiệu */}
-          
           {/* STUDENT ROUTES - Lớp đã đăng ký (cần đăng nhập) - Dùng chung GuestLayout */}
-          <Route path="/home/my-classes" element={<StudentClasses />} /> {/* Lớp đã đăng ký */}
-          <Route path="/home/my-classes/:id" element={<StudentClassDetail />} /> {/* Chi tiết lớp đã đăng ký */}
+          <Route path="/home/my-classes" element={<StudentClasses />} />{" "}
+          {/* Lớp đã đăng ký */}
+          <Route
+            path="/home/my-classes/:id"
+            element={<StudentClassDetail />}
+          />{" "}
+          {/* Chi tiết lớp đã đăng ký */}
         </Route>
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
         <Route element={<RequireRole allow={["admin"]} />}>
@@ -133,12 +144,14 @@ function AppRouter() {
               element={<CreateTeacherPage />}
             />
             <Route path="news" element={<NewsList />} />
-                        <Route path="news/:id" element={<AdminNewsDetail />} />
+            <Route path="news/:id" element={<AdminNewsDetail />} />
             <Route path="news/create" element={<CreateNews />} />
             <Route path="classrooms" element={<ClassroomList />} />
             {/* Tuấn test */}
             {/* FIXED: Thêm route cho Class Management - Quản lý lớp học */}
             <Route path="class" element={<CreateClass />} />
+            <Route path="class/:id" element={<ClassDetailPage />} />
+            <Route path="class/:id/edit" element={<ClassEditPage />} />
             <Route
               path="class/create-offline"
               element={<CreateOfflineClassPage />}
@@ -159,7 +172,16 @@ function AppRouter() {
               element={<CreateSubjectManagement />}
             />
             <Route path="subject/:id" element={<SubjectDetail />} />
+            <Route
+              path="subject/:id/courses/create"
+              element={<CourseOfSubjectCreate />}
+            />
+            <Route
+              path="subject/:id/courses/:courseId"
+              element={<CourseOfSubjectDetail />}
+            />
             <Route path="courses" element={<AdminCourseList />} />
+            <Route path="courses/create" element={<AdminCourseCreate />} />
             <Route path="courses/:id" element={<AdminCourseDetail />} />
           </Route>
         </Route>
@@ -168,6 +190,10 @@ function AppRouter() {
           <Route path="management" element={<TeacherManagement />} />
           <Route path="schedule" element={<TeacherSchedule />} />
           <Route path="class/:classId" element={<TeacherClassDetail />} />
+          <Route path="content" element={<TeachingContent />} />
+          <Route path="content/:id" element={<TeachingContentDetail />} />
+          {/* Cho phép chỉnh sửa dưới nhánh Nội dung giảng dạy */}
+          <Route path="content/:id/edit" element={<TeacherCourseEdit />} />
           <Route path="courses" element={<TeacherCourseList />} />
           {/* ✅ khớp với navigate("/home/teacher/courses/create") trong TeacherCourseList */}
           <Route path="courses/create" element={<TeacherCourseCreate />} />

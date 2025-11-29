@@ -33,6 +33,7 @@ import {
 
 import { courseService } from "../../services/course/course.service.js";
 import { useToast } from "../../hooks/use-toast.js";
+import { useAuth } from "../../hooks/useAuth.js";
 
 const STATUS_OPTIONS = [
   { value: "ALL", label: "Tất cả trạng thái" },
@@ -82,6 +83,7 @@ function getStatusConfig(status) {
 export default function TeacherCourseList() {
   const navigate = useNavigate();
   const { error } = useToast();
+  const { user } = useAuth();
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,9 @@ export default function TeacherCourseList() {
           status: statusFilter === "ALL" ? undefined : statusFilter,
         });
         if (!ignore) {
-          setCourses(Array.isArray(data) ? data : []);
+          const list = Array.isArray(data) ? data : [];
+          // Hiển thị tất cả khóa học cá nhân (bỏ ràng buộc SOURCE/OWNER)
+          setCourses(list);
         }
       } catch (e) {
         console.error("Failed to load courses:", e);
@@ -166,16 +170,10 @@ export default function TeacherCourseList() {
             Quản lý khóa học cá nhân
           </h1>
           <p className="text-[12px] text-[#62748e] mt-1">
-            Xem, quản lý và tạo mới các khóa học mà bạn trực tiếp biên soạn.
+            Xem và quản lý các khóa học cá nhân mà bạn trực tiếp biên soạn.
           </p>
         </div>
-        <Button
-          className="inline-flex items-center gap-2 bg-[#155dfc] hover:bg-[#0f4ad1]"
-          onClick={() => navigate("/home/teacher/courses/create")}
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tạo khóa học mới</span>
-        </Button>
+        {/* Theo nghiệp vụ mới: bỏ tính năng tạo khóa học tại đây */}
       </div>
 
       {/* STATS CARDS */}
@@ -298,17 +296,8 @@ export default function TeacherCourseList() {
               Chưa có khóa học nào
             </p>
             <p className="text-[12px] text-[#45556c] mb-4 max-w-md">
-              Hãy bắt đầu xây dựng nội dung giảng dạy của riêng bạn bằng cách
-              tạo khóa học đầu tiên.
+              Hiện chưa có khóa học cá nhân nào.
             </p>
-            <Button
-              type="button"
-              className="gap-2 bg-[#155dfc] hover:bg-[#0f4ad1]"
-              onClick={() => navigate("/home/teacher/courses/create")}
-            >
-              <Plus className="w-4 h-4" />
-              Tạo khóa học đầu tiên
-            </Button>
           </Card>
         )}
 
@@ -317,6 +306,14 @@ export default function TeacherCourseList() {
           visibleCourses.map((course) => {
             const statusConfig = getStatusConfig(course.status);
             const StatusIcon = statusConfig.icon;
+
+            const hasSourceTag = String(course.description || "").includes(
+              "[[SOURCE:"
+            );
+            const cleanedDescription = String(course.description || "")
+              .replace(/\n?\[\[SOURCE:[^\]]+\]\]/, "")
+              .replace(/\n?\[\[OWNER:[^\]]+\]\]/, "")
+              .trim();
 
             const chapterCount =
               course.chapterCount ??
@@ -353,9 +350,9 @@ export default function TeacherCourseList() {
                           </p>
                         </div>
                       </div>
-                      {course.description && (
+                      {cleanedDescription && (
                         <p className="text-[12px] text-[#45556c] line-clamp-2">
-                          {course.description}
+                          {cleanedDescription}
                         </p>
                       )}
                     </div>
@@ -392,6 +389,11 @@ export default function TeacherCourseList() {
 
                     {/* RIGHT: status */}
                     <div className="flex flex-col items-start md:items-end gap-2">
+                      {hasSourceTag && (
+                        <Badge className="text-[11px] px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200">
+                          Nguồn: Nội dung giảng dạy
+                        </Badge>
+                      )}
                       <Badge
                         className={`text-[11px] px-3 py-1 ${statusConfig.className}`}
                       >

@@ -13,4 +13,10 @@ export const classService = {
   async revertDraft(id) {
     return classApi.revertDraft(id);
   },
+  async getById(id) {
+    return classApi.getById(id);
+  },
+  async update(id, payload) {
+    return classApi.update(id, payload);
+  },
 };

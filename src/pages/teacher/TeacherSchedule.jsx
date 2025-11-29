@@ -211,8 +211,8 @@ function TeacherSchedule() {
     today.setHours(0, 0, 0, 0);
     classDate.setHours(0, 0, 0, 0);
 
-    // Check if trying to mark attendance for future date
-    if (classDate > today) {
+    // Chỉ chặn điểm danh trước ngày học; vẫn cho phép xem chi tiết
+    if (classDate > today && action !== "view") {
       toast({
         title: "Chưa đến ngày dạy học lớp này",
         description: `Lớp này sẽ học vào ngày ${fmt(classDate, "dd/MM/yyyy")}`,
@@ -231,9 +231,10 @@ function TeacherSchedule() {
       return;
     }
 
-    // Navigate to class detail page for attendance with slotId
+    // Điều hướng tới chi tiết buổi học, kèm ngày phiên học
+    const dateStr = fmt(classDate, "yyyy-MM-dd");
     navigate(
-      `/home/teacher/class/${classData.classId}?slotId=${classData.slotId}`
+      `/home/teacher/class/${classData.classId}?slotId=${classData.slotId}&date=${dateStr}`
     );
   };
 
@@ -469,18 +470,13 @@ function TeacherSchedule() {
                                     <div
                                       key={classData.id}
                                       onClick={() =>
-                                        !isFuture &&
-                                        !isPast &&
-                                        handleClassClick(
-                                          classData,
-                                          isMarked ? "edit" : "mark"
-                                        )
+                                        handleClassClick(classData, "view")
                                       }
                                       className={`relative rounded-lg p-3 transition-all duration-200 border-2 ${
                                         isFuture
-                                          ? "bg-gray-100 border-gray-300 cursor-not-allowed opacity-60"
+                                          ? "bg-gray-100 border-gray-300 opacity-60 cursor-pointer"
                                           : isPast && isMarked
-                                          ? "bg-green-50 border-green-300 opacity-75 cursor-default"
+                                          ? "bg-green-50 border-green-300 opacity-75 cursor-pointer"
                                           : isMarked
                                           ? "bg-green-50 border-green-400 hover:shadow-md hover:border-green-500 cursor-pointer"
                                           : "bg-orange-50 border-orange-400 hover:shadow-md hover:border-orange-500 cursor-pointer"
@@ -603,19 +599,9 @@ function TeacherSchedule() {
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            if (!isPast && !isFuture) {
-                                              handleClassClick(
-                                                classData,
-                                                "view"
-                                              );
-                                            }
+                                            handleClassClick(classData, "view");
                                           }}
-                                          disabled={isFuture}
-                                          className={`text-xs py-1.5 px-2 rounded font-medium transition-colors ${
-                                            isFuture
-                                              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                              : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                                          }`}
+                                          className={`text-xs py-1.5 px-2 rounded font-medium transition-colors bg-gray-200 hover:bg-gray-300 text-gray-700`}
                                         >
                                           👁 Chi tiết
                                         </button>

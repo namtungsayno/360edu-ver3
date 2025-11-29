@@ -13,11 +13,30 @@ export const courseService = {
    * - Có thể kèm thêm status, subjectId, search...
    */
   async listMyCourses(filters = {}) {
-    const params = {
-      scope: "mine",
-      ...filters,
-    };
-    return courseApi.list(params);
+    // Dùng endpoint riêng /courses/mine để lấy chuẩn xác khóa học cá nhân
+    const all = await courseApi.listMine();
+    // FE filters (search, status)
+    const { search, status } = filters;
+    let list = Array.isArray(all) ? all : [];
+    if (status) {
+      list = list.filter(
+        (c) =>
+          String(c.status || "").toUpperCase() === String(status).toUpperCase()
+      );
+    }
+    if (search) {
+      const kw = String(search).toLowerCase().trim();
+      list = list.filter(
+        (c) =>
+          String(c.title || "")
+            .toLowerCase()
+            .includes(kw) ||
+          String(c.subjectName || "")
+            .toLowerCase()
+            .includes(kw)
+      );
+    }
+    return list;
   },
 
   /**
@@ -37,6 +56,7 @@ export const courseService = {
       subjectId: payload.subjectId,
       title: payload.title,
       description: payload.description ?? payload.intro ?? "",
+      ...(payload.status ? { status: payload.status } : {}),
     };
     return courseApi.create(body);
   },
@@ -72,7 +92,8 @@ export const courseService = {
    */
   async getApprovedCoursesBySubject(subjectId) {
     if (!subjectId) return [];
-    return courseApi.getApprovedBySubject(subjectId);
+    // Fallback to generic list API with filters since dedicated endpoint is absent
+    return courseApi.list({ subjectId, status: "APPROVED" });
   },
 
   // ====== CHAPTER / LESSON EDITOR ======

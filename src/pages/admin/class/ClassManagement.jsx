@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../../components/ui/Dialog";
-import { useToast } from "../../../hooks/use-toast";
+// import { useToast } from "../../../hooks/use-toast";
 
 /**
  * Trang quản lý lớp học
@@ -37,10 +37,8 @@ export default function CreateClassPage() {
   const [timeSlots, setTimeSlots] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [actionMsg, setActionMsg] = useState("");
-  const { error } = useToast();
+  // modal detail removed; no selected/actionMsg needed
+  // const { error } = useToast();
 
   useEffect(() => {
     (async () => {
@@ -120,36 +118,7 @@ export default function CreateClassPage() {
     return { online, offline, total: classes.length };
   }, [classes]);
 
-  // Publish / Revert handlers
-  async function handlePublish(cls) {
-    try {
-      await classService.publish(cls.id);
-      setSelected((prev) =>
-        prev && prev.id === cls.id ? { ...prev, status: "PUBLIC" } : prev
-      );
-      setActionMsg("Bạn đã công khai lớp học.");
-      await loadClasses();
-    } catch (e) {
-      error("Publish failed");
-      console.error(e);
-    }
-  }
-
-  async function handleRevertDraft(cls) {
-    try {
-      await classService.revertDraft(cls.id);
-      setSelected((prev) =>
-        prev && prev.id === cls.id ? { ...prev, status: "DRAFT" } : prev
-      );
-      setActionMsg("Bạn đã xếp lớp này dưới dạng Draft.");
-      await loadClasses();
-    } catch (e) {
-      // Show backend message for 400 (business rule) or fallback
-      const msg = e?.response?.data?.message || e?.message || "Revert failed";
-      error(msg);
-      console.error(e);
-    }
-  }
+  // Publish/Revert actions moved to detail page
 
   return (
     <div className="p-6 space-y-6">
@@ -280,10 +249,7 @@ export default function CreateClassPage() {
             <div
               key={c.id}
               className="rounded-2xl border bg-white p-5 hover:shadow-md transition cursor-pointer"
-              onClick={() => {
-                setSelected(c);
-                setDetailOpen(true);
-              }}
+              onClick={() => navigate(`/home/admin/class/${c.id}`)}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -388,199 +354,7 @@ export default function CreateClassPage() {
           ))}
       </div>
 
-      {/* Modal chi tiết lớp học */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span>
-                {selected
-                  ? selected.name || "Thông tin lớp học"
-                  : "Thông tin lớp học"}
-              </span>
-              {selected?.status && (
-                <span
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
-                    selected.status === "DRAFT"
-                      ? "bg-amber-200 text-amber-900"
-                      : selected.status === "PUBLIC"
-                      ? "bg-emerald-200 text-emerald-900"
-                      : "bg-gray-200 text-gray-800"
-                  }`}
-                >
-                  {selected.status === "DRAFT"
-                    ? "Draft"
-                    : selected.status === "PUBLIC"
-                    ? "Public"
-                    : "Archived"}
-                </span>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          {selected && (
-            <div className="space-y-4 text-sm">
-              {actionMsg && (
-                <div className="inline-flex items-center gap-2 px-3 py-2 rounded border text-xs bg-green-50 border-green-200 text-green-700">
-                  ✅ {actionMsg}
-                </div>
-              )}
-              {(() => {
-                const today = new Date();
-                const hasPastSessions =
-                  selected?.startDate && new Date(selected.startDate) <= today;
-                return hasPastSessions ? (
-                  <div className="inline-flex items-center gap-2 px-2 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                    <span className="text-xs font-medium">Đã bắt đầu</span>
-                    <span className="text-xs">
-                      Không thể trả về Draft khi lớp đã có buổi học diễn ra.
-                    </span>
-                  </div>
-                ) : null;
-              })()}
-              <div>
-                <h4 className="text-base font-semibold text-gray-900">
-                  Môn học
-                </h4>
-                <p className="text-sm text-gray-700">
-                  {selected.subjectName || "—"}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900">
-                    Giáo viên
-                  </h4>
-                  <p className="text-sm text-gray-700">
-                    {selected.teacherFullName || "—"}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900">
-                    Loại lớp
-                  </h4>
-                  <p className="text-sm text-gray-700">
-                    {selected.online ? "Online" : "Offline"}
-                  </p>
-                </div>
-              </div>
-              {(selected.startDate || selected.endDate) && (
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900">
-                    Thời gian
-                  </h4>
-                  <p className="text-sm text-gray-700">
-                    {selected.startDate && selected.endDate
-                      ? `${selected.startDate} → ${selected.endDate}`
-                      : selected.startDate || selected.endDate}
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900">
-                    Phòng / Địa điểm
-                  </h4>
-                  <p className="text-sm text-gray-700">
-                    {selected.online ? "Online" : selected.roomName || "—"}
-                  </p>
-                </div>
-                {typeof selected.maxStudents === "number" && (
-                  <div>
-                    <h4 className="text-base font-semibold text-gray-900">
-                      Sĩ số tối đa
-                    </h4>
-                    <p className="text-sm text-gray-700">
-                      {selected.maxStudents}
-                    </p>
-                  </div>
-                )}
-              </div>
-              {/* Hiển thị Link Meet cho lớp Online */}
-              {selected.online && selected.meetingLink && (
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900">
-                    Link Meeting
-                  </h4>
-                  <a
-                    href={selected.meetingLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline break-all"
-                  >
-                    {selected.meetingLink}
-                  </a>
-                </div>
-              )}
-              <div>
-                <h4 className="text-base font-semibold text-gray-900">
-                  Lịch học
-                </h4>
-                {Array.isArray(selected.schedule) &&
-                selected.schedule.length > 0 ? (
-                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-                    {selected.schedule.map((s, idx) => (
-                      <li key={idx}>
-                        {dayLabelVi(s.dayOfWeek)} • {s.startTime?.slice(0, 5)}-
-                        {s.endTime?.slice(0, 5)}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-600">Chưa có lịch</p>
-                )}
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  className={`hover:bg-indigo-700 ${
-                    selected?.status === "PUBLIC"
-                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      : "bg-indigo-600 text-white"
-                  }`}
-                  disabled={selected?.status === "PUBLIC"}
-                  onClick={() => error("Chức năng sửa lớp chưa được hỗ trợ")}
-                >
-                  {selected?.status === "PUBLIC"
-                    ? "Đã công khai (khóa sửa)"
-                    : "Sửa"}
-                </Button>
-                {/* Status actions */}
-                {selected?.status === "DRAFT" ? (
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => handlePublish(selected)}
-                  >
-                    Công khai
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleRevertDraft(selected)}
-                    disabled={(() => {
-                      const today = new Date();
-                      return (
-                        selected?.startDate &&
-                        new Date(selected.startDate) <= today
-                      );
-                    })()}
-                  >
-                    Trả về Draft
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => error("Chức năng xóa lớp chưa được hỗ trợ")}
-                >
-                  Xóa
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Chi tiết lớp chuyển sang trang riêng: /home/admin/class/:id */}
     </div>
   );
 }

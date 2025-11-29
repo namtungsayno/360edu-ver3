@@ -162,9 +162,15 @@ export default function AdminCourseList() {
   }, [selectedSubjectId, statusFilter, error]);
 
   // ====== TEACHER OPTIONS (từ dữ liệu course hiện có) ======
+  // Chỉ hiển thị khóa học do giáo viên gửi lên (có ownerTeacherId)
+  const teacherCourses = useMemo(
+    () => courses.filter((c) => !!c.ownerTeacherId),
+    [courses]
+  );
+
   const teacherOptions = useMemo(() => {
     const map = new Map();
-    courses.forEach((c) => {
+    teacherCourses.forEach((c) => {
       const id = c.ownerTeacherId ?? c.createdByUserId;
       const name = c.ownerTeacherName ?? c.createdByName ?? "Không rõ";
       if (id && !map.has(id)) {
@@ -172,11 +178,12 @@ export default function AdminCourseList() {
       }
     });
     return Array.from(map.values());
-  }, [courses]);
+  }, [teacherCourses]);
 
   // ====== VISIBLE COURSES (FILTER CLIENT) ======
   const visibleCourses = useMemo(() => {
-    let list = [...courses];
+    // Module "Khóa học" chỉ hiển thị khóa học do giáo viên tạo/gửi lên
+    let list = [...teacherCourses];
 
     // search: title, code, teacher name
     if (search.trim()) {
@@ -213,13 +220,14 @@ export default function AdminCourseList() {
     }
 
     return list;
-  }, [courses, search, selectedTeacherId, statusFilter]);
+  }, [teacherCourses, search, selectedTeacherId, statusFilter]);
 
   // ====== STATS (theo toàn bộ danh sách) ======
   const stats = useMemo(() => {
-    const total = courses.length;
+    const total = teacherCourses.length;
     const countByStatus = (st) =>
-      courses.filter((c) => String(c.status).toUpperCase() === st).length;
+      teacherCourses.filter((c) => String(c.status).toUpperCase() === st)
+        .length;
 
     return {
       total,
@@ -230,7 +238,7 @@ export default function AdminCourseList() {
       archived: countByStatus("ARCHIVED"),
       teacherCount: teacherOptions.length,
     };
-  }, [courses, teacherOptions]);
+  }, [teacherCourses, teacherOptions]);
 
   const hasPending = stats.pending > 0;
 
