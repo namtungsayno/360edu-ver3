@@ -14,6 +14,7 @@ const sessionService = {
     const {
       classId,
       date,
+      slotId,
       chapterIds,
       lessonIds,
       content,
@@ -39,7 +40,7 @@ const sessionService = {
         ...(lessonId ? { lessonId } : {}),
       },
       {
-        params: { classId, date },
+        params: { classId, date, ...(slotId ? { slotId } : {}) },
       }
     );
 
@@ -71,9 +72,9 @@ const sessionService = {
    * @param {number} classId - Class ID
    * @param {string} date - Date in YYYY-MM-DD format
    */
-  getSessionContentByClassDate: async (classId, date) => {
+  getSessionContentByClassDate: async (classId, date, slotId) => {
     const response = await http.get(`/sessions/content/by-class-date`, {
-      params: { classId, date },
+      params: { classId, date, ...(slotId ? { slotId } : {}) },
     });
     return response.data;
   },

@@ -52,12 +52,26 @@ export default function ClassDetail() {
   }, [classId]);
 
   const handleEnroll = async () => {
-    // Block enroll when class has not opened yet
-    if (data?.startDate && new Date(data.startDate) > new Date()) {
-      warning(
-        `Lớp sẽ mở vào ngày ${data.startDate}. Vui lòng liên hệ với chúng tôi để được tư vấn.`
-      );
-      return;
+    // Helper to parse a YYYY-MM-DD as LOCAL date (avoid UTC shift)
+    const parseLocalDate = (dateStr) => {
+      if (!dateStr) return null;
+      const parts = String(dateStr).split("-").map(Number);
+      if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(dateStr);
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d);
+    };
+
+    // Block enroll only if start date is strictly after today (not same-day)
+    if (data?.startDate) {
+      const start = parseLocalDate(data.startDate);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      if (start > todayStart) {
+        warning(
+          `Lớp sẽ mở vào ngày ${data.startDate}. Vui lòng liên hệ với chúng tôi để được tư vấn.`
+        );
+        return;
+      }
     }
     // Check authentication trước
     if (!user) {
@@ -136,9 +150,24 @@ export default function ClassDetail() {
   const maxStudents = data.maxStudents || 30;
   const availableSlots = maxStudents - currentStudents;
   const enrollmentPercentage = (currentStudents / maxStudents) * 100;
-  const notOpened = data?.startDate
-    ? new Date(data.startDate) > new Date()
-    : false;
+  // Helper to parse a YYYY-MM-DD as LOCAL date (avoid UTC shift)
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return null;
+    const parts = String(dateStr).split("-").map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(dateStr);
+    const [y, m, d] = parts;
+    return new Date(y, m - 1, d);
+  };
+
+  // Consider class "not opened" only when start date is after today (strictly future),
+  // so same-day is allowed for registration.
+  const notOpened = (() => {
+    if (!data?.startDate) return false;
+    const start = parseLocalDate(data.startDate);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return start > todayStart;
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">

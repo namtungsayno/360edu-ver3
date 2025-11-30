@@ -42,16 +42,32 @@ export default function ClassDetail() {
   const [searchParams] = useSearchParams();
   useAuth();
   const slotId = searchParams.get("slotId");
+  const slotIdNum = slotId ? parseInt(slotId, 10) : null;
   const sessionIdParam = searchParams.get("sessionId");
-  const sessionDateStr =
-    searchParams.get("date") || new Date().toISOString().split("T")[0];
-  const todayStr = new Date().toISOString().split("T")[0];
+  // Local date helpers to avoid UTC shift
+  const toLocalYmd = (d) => {
+    const dt = new Date(d);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+  const parseLocalDate = (str) => {
+    if (!str) return null;
+    const parts = String(str).split("-").map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(str);
+    const [y, m, d] = parts;
+    return new Date(y, m - 1, d);
+  };
+  const sessionDateStr = searchParams.get("date") || toLocalYmd(new Date());
+  const todayStr = toLocalYmd(new Date());
   const isFutureSession = (() => {
     try {
-      const s = new Date(sessionDateStr);
-      const t = new Date(todayStr);
-      s.setHours(0, 0, 0, 0);
+      const s = parseLocalDate(sessionDateStr);
+      const t = parseLocalDate(todayStr);
+      if (!s || !t) return false;
       t.setHours(0, 0, 0, 0);
+      s.setHours(0, 0, 0, 0);
       return s > t;
     } catch {
       return false;
@@ -88,7 +104,6 @@ export default function ClassDetail() {
       try {
         setLoading(true);
         // Load attendance theo ngày phiên học (từ URL) + slotId
-        const slotIdNum = slotId ? parseInt(slotId, 10) : null;
         console.log("ClassDetail loading:", {
           classId,
           date: sessionDateStr,
@@ -157,7 +172,8 @@ export default function ClassDetail() {
                 )
               : await sessionService.getSessionContentByClassDate(
                   classId,
-                  sessionDateStr
+                  sessionDateStr,
+                  slotIdNum
                 );
 
             if (savedContent) {
@@ -495,6 +511,7 @@ export default function ClassDetail() {
         await sessionService.saveSessionContent({
           classId,
           date: sessionDateStr,
+          slotId: slotIdNum,
           chapterIds: body.chapterIds,
           lessonIds: body.lessonIds,
           content: body.content,
