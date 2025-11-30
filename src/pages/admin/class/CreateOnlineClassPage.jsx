@@ -44,6 +44,7 @@ export default function CreateOnlineClassPage() {
   const [courseId, setCourseId] = useState(""); // Khóa học của môn (tùy chọn)
   const [desc, setDesc] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [pricePerSession, setPricePerSession] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [meetingLink, setMeetingLink] = useState("");
   const [totalSessions, setTotalSessions] = useState("");
@@ -211,7 +212,8 @@ export default function CreateOnlineClassPage() {
     const teacher = teachers.find(
       (t) => String(t.userId || t.id) === String(teacherId)
     );
-    if (subj && teacher) return `${subj.name} - ${teacher.fullName}`;
+    // Yêu cầu: Tên giáo viên + Tên môn học (+ ID lớp do BE gắn sau khi tạo)
+    if (subj && teacher) return `${teacher.fullName} - ${subj.name}`;
     return "";
   }, [subjectId, teacherId, subjects, teachers]);
 
@@ -278,6 +280,8 @@ export default function CreateOnlineClassPage() {
       capacity &&
       parseInt(capacity) > 0 &&
       parseInt(capacity) <= 30 &&
+      pricePerSession !== "" &&
+      parseInt(pricePerSession) >= 0 &&
       teacherId &&
       className &&
       totalSessions &&
@@ -291,6 +295,7 @@ export default function CreateOnlineClassPage() {
   }, [
     subjectId,
     capacity,
+    pricePerSession,
     teacherId,
     className,
     totalSessions,
@@ -388,6 +393,7 @@ export default function CreateOnlineClassPage() {
       }
 
       const payload = {
+        // BE có thể nối thêm ID lớp sau khi tạo
         name: className,
         subjectId: parseInt(subjectId),
         courseId: courseId ? parseInt(courseId) : null,
@@ -395,6 +401,7 @@ export default function CreateOnlineClassPage() {
         roomId: null,
         maxStudents: parseInt(capacity),
         totalSessions: parseInt(totalSessions),
+        pricePerSession: parseInt(pricePerSession),
         description: desc,
         startDate,
         endDate,
@@ -676,6 +683,26 @@ export default function CreateOnlineClassPage() {
                   </div>
                 </div>
 
+                {/* Giá mỗi buổi (VND) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Giá mỗi buổi (VND) <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={pricePerSession}
+                    onChange={(e) => setPricePerSession(e.target.value)}
+                    placeholder="Ví dụ: 150000"
+                    className="h-10 text-sm"
+                  />
+                  {pricePerSession !== "" && parseInt(pricePerSession) < 0 && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Giá mỗi buổi phải lớn hơn hoặc bằng 0
+                    </p>
+                  )}
+                </div>
+
                 {/* Tên lớp */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
@@ -827,6 +854,18 @@ export default function CreateOnlineClassPage() {
                       </label>
                       <p className="text-sm font-semibold text-gray-900">
                         {startDate} đến {endDate}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 block mb-1">
+                        Giá mỗi buổi:
+                      </label>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {pricePerSession
+                          ? `${parseInt(pricePerSession).toLocaleString(
+                              "vi-VN"
+                            )} VND`
+                          : "-"}
                       </p>
                     </div>
                     {desc && (

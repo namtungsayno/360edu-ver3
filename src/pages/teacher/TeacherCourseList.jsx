@@ -313,7 +313,26 @@ export default function TeacherCourseList() {
             const cleanedDescription = String(course.description || "")
               .replace(/\n?\[\[SOURCE:[^\]]+\]\]/, "")
               .replace(/\n?\[\[OWNER:[^\]]+\]\]/, "")
+              .replace(/\n?\[\[CLASS_ID:[^\]]+\]\]/, "")
+              .replace(/\n?\[\[CLASS_NAME:[^\]]+\]\]/, "")
               .trim();
+
+            // Try to identify linked class from known fields or tags
+            const classIdFromField =
+              course.classId || course.clazzId || course.classID;
+            let classIdFromTag = null;
+            const desc = String(course.description || "");
+            const m = desc.match(/\[\[CLASS_ID:([^\]]+)\]\]/);
+            if (m && m[1]) {
+              classIdFromTag = m[1].trim();
+            }
+            const linkedClassId = classIdFromField || classIdFromTag || null;
+
+            let classNameFromTag = null;
+            const mn = desc.match(/\[\[CLASS_NAME:([^\]]+)\]\]/);
+            if (mn && mn[1]) {
+              classNameFromTag = mn[1].trim();
+            }
 
             const chapterCount =
               course.chapterCount ??
@@ -348,6 +367,16 @@ export default function TeacherCourseList() {
                           <p className="text-[11px] text-[#62748e]">
                             {course.subjectName || "Chưa có môn học"}
                           </p>
+                          {linkedClassId && (
+                            <div className="mt-1">
+                              <Badge className="text-[11px] px-2 py-0.5 bg-green-50 text-green-700 border border-green-200">
+                                Thuộc lớp:{" "}
+                                {classNameFromTag
+                                  ? `${classNameFromTag} (ID: ${linkedClassId})`
+                                  : `ID: ${linkedClassId}`}
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       </div>
                       {cleanedDescription && (
@@ -392,6 +421,11 @@ export default function TeacherCourseList() {
                       {hasSourceTag && (
                         <Badge className="text-[11px] px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200">
                           Nguồn: Nội dung giảng dạy
+                        </Badge>
+                      )}
+                      {linkedClassId && (
+                        <Badge className="text-[11px] px-3 py-1 bg-green-50 text-green-700 border border-green-200">
+                          Lớp: {linkedClassId}
                         </Badge>
                       )}
                       <Badge

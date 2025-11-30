@@ -11,7 +11,19 @@ const sessionService = {
    * @param {string} data.content - Lesson content text written by teacher
    */
   saveSessionContent: async (data) => {
-    const { classId, date, chapterIds, lessonIds, content } = data;
+    const {
+      classId,
+      date,
+      chapterIds,
+      lessonIds,
+      content,
+      // optional metadata to help BE persist exact source + mapping
+      sourceType,
+      classCourseId,
+      courseId,
+      chapterId,
+      lessonId,
+    } = data;
 
     const response = await http.post(
       `/sessions/by-class-date`,
@@ -19,6 +31,12 @@ const sessionService = {
         chapterIds: chapterIds || [],
         lessonIds: lessonIds || [],
         content: content || "",
+        // pass-through extra fields if provided (BE can ignore if unsupported)
+        ...(sourceType ? { sourceType } : {}),
+        ...(classCourseId ? { classCourseId } : {}),
+        ...(courseId ? { baseCourseId: courseId } : {}),
+        ...(chapterId ? { chapterId } : {}),
+        ...(lessonId ? { lessonId } : {}),
       },
       {
         params: { classId, date },
@@ -34,6 +52,17 @@ const sessionService = {
    */
   getSessionContent: async (sessionId) => {
     const response = await http.get(`/sessions/${sessionId}/content`);
+    return response.data;
+  },
+
+  /**
+   * Save session content by session ID (preferred long-term)
+   * @param {number} sessionId - Session ID
+   * @param {{chapterIds:number[], lessonIds:number[], content:string}} body
+   */
+  saveSessionContentBySessionId: async (sessionId, body) => {
+    // allow callers to include optional metadata (sourceType, classCourseId, etc.)
+    const response = await http.post(`/sessions/${sessionId}/content`, body);
     return response.data;
   },
 

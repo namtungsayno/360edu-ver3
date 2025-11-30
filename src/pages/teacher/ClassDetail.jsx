@@ -32,7 +32,8 @@ import {
 } from "lucide-react";
 import { scheduleService } from "../../services/schedule/schedule.service";
 import { courseService } from "../../services/course/course.service";
-import { listTeacherCourseVersions } from "../../services/course/versions";
+import { classService } from "../../services/class/class.service";
+// Personal course versions flow removed per new business logic
 import { useAuth } from "../../hooks/useAuth";
 
 export default function ClassDetail() {
@@ -41,6 +42,7 @@ export default function ClassDetail() {
   const [searchParams] = useSearchParams();
   useAuth();
   const slotId = searchParams.get("slotId");
+  const sessionIdParam = searchParams.get("sessionId");
   const sessionDateStr =
     searchParams.get("date") || new Date().toISOString().split("T")[0];
   const todayStr = new Date().toISOString().split("T")[0];
@@ -65,76 +67,20 @@ export default function ClassDetail() {
 
   // Lesson content states
   const [courseData, setCourseData] = useState(null); // always the class's assigned (admin) course used for chapter/lesson selection
-  const [personalCourseData, setPersonalCourseData] = useState(null); // optional personal version for content reference only
   const [usingPersonalCourse, setUsingPersonalCourse] = useState(false);
-  const [personalCandidates, setPersonalCandidates] = useState([]);
-  const [selectedPersonalCourseId, setSelectedPersonalCourseId] = useState("");
   const [selectedChapterId, setSelectedChapterId] = useState("");
   const [selectedLessonId, setSelectedLessonId] = useState("");
   const [lessonContent, setLessonContent] = useState("");
   const [savingContent, setSavingContent] = useState(false);
-  const [contentEditMode, setContentEditMode] = useState(true); // always editable
+  const [contentEditMode, setContentEditMode] = useState(true);
   const [hasExistingContent, setHasExistingContent] = useState(false);
   // Flag to prevent clearing hydrated selections on initial personal course load
   const [hydratedSelections, setHydratedSelections] = useState(false);
   // Fields to hydrate from backend
   const [baseCourseIdState, setBaseCourseIdState] = useState(null);
+  const [classCourseIdState, setClassCourseIdState] = useState(null);
   // Track explicit source type for saving
-  const sourceType = usingPersonalCourse ? "PERSONAL" : "ADMIN";
-  // Load approved personal course versions when toggling to personal source
-  useEffect(() => {
-    const fetchPersonalVersions = async () => {
-      try {
-        if (!usingPersonalCourse) return;
-        const baseCourseId =
-          baseCourseIdState != null
-            ? baseCourseIdState
-            : classDetail?.courseId ||
-              classDetail?.course?.id ||
-              classDetail?.baseCourseId;
-        if (!baseCourseId) return;
-        console.log("🔍 Fetch personal versions", { baseCourseId });
-        const versions = await listTeacherCourseVersions(baseCourseId);
-        console.log("✅ Personal versions response", versions);
-        // Transform backend mapping response to dropdown items
-        const safeRaw = Array.isArray(versions) ? versions : [];
-        const safe = safeRaw.map((v) => ({
-          id: v.teacherCourseId || v.id,
-          // fallback if API later returns direct course id
-          title:
-            v.teacherCourseTitle ||
-            v.title ||
-            `Course ${v.teacherCourseId || v.id}`,
-          status: "APPROVED", // backend only returns approved mappings per spec
-        }));
-        setPersonalCandidates(safe);
-        if (
-          !safe.find((v) => String(v.id) === String(selectedPersonalCourseId))
-        ) {
-          setSelectedPersonalCourseId("");
-        }
-        if (safe.length > 0) {
-          console.log(`✔ Loaded ${safe.length} personal course versions`);
-        } else {
-          console.log(
-            "ℹ No personal versions found for baseCourseId",
-            baseCourseId
-          );
-        }
-      } catch (e) {
-        console.error("❌ Failed to fetch personal versions", e);
-        error(e?.normalizedMessage || "Không tải được phiên bản cá nhân");
-        setPersonalCandidates([]);
-      }
-    };
-    fetchPersonalVersions();
-  }, [
-    usingPersonalCourse,
-    classDetail,
-    selectedPersonalCourseId,
-    baseCourseIdState,
-    error,
-  ]);
+  const sourceType = usingPersonalCourse ? "CLASS_PERSONAL" : "ADMIN";
   useEffect(() => {
     if (!classId) return;
 
@@ -150,11 +96,13 @@ export default function ClassDetail() {
           slotIdNum,
         });
 
-        const attendance = await attendanceService.getByClass(
-          classId,
-          sessionDateStr,
-          slotIdNum
-        );
+        const attendance = sessionIdParam
+          ? await attendanceService.getBySession(parseInt(sessionIdParam, 10))
+          : await attendanceService.getByClass(
+              classId,
+              sessionDateStr,
+              slotIdNum
+            );
         setAttendanceDetails(attendance);
         setOriginalDetails(attendance);
         // Auto-enter edit mode if nothing marked yet
@@ -179,21 +127,18 @@ export default function ClassDetail() {
             studentCount: attendance.length,
           });
 
-          // Chuẩn bị nguồn course: danh sách cá nhân liên quan & course gốc admin làm mặc định
+          // Capture classCourseId from schedule.originalClass if provided
+          const ccIdFromSchedule =
+            classInfo?.originalClass?.classCourseId ||
+            classInfo?.classCourseId ||
+            null;
+          if (ccIdFromSchedule) {
+            setClassCourseIdState(String(ccIdFromSchedule));
+          }
+
+          // Chuẩn bị nguồn course: course gốc admin làm mặc định
           if (classInfo.courseId) {
             try {
-              // Lấy danh sách phiên bản cá nhân hợp lệ từ backend (đã filter theo baseCourseId)
-              const mappings = await listTeacherCourseVersions(
-                classInfo.courseId
-              );
-              const safeMappings = Array.isArray(mappings) ? mappings : [];
-              const relatedPersonal = safeMappings.map((m) => ({
-                id: m.teacherCourseId,
-                title: m.teacherCourseTitle,
-                status: "APPROVED",
-              }));
-              setPersonalCandidates(relatedPersonal);
-
               const adminCourse = await courseService.getCourseDetail(
                 classInfo.courseId
               );
@@ -206,11 +151,14 @@ export default function ClassDetail() {
 
           // Load saved lesson content if exists (and hydrate UI state)
           try {
-            const savedContent =
-              await sessionService.getSessionContentByClassDate(
-                classId,
-                sessionDateStr
-              );
+            const savedContent = sessionIdParam
+              ? await sessionService.getSessionContent(
+                  parseInt(sessionIdParam, 10)
+                )
+              : await sessionService.getSessionContentByClassDate(
+                  classId,
+                  sessionDateStr
+                );
 
             if (savedContent) {
               console.log("📝 Saved Content Loaded:", savedContent);
@@ -219,27 +167,29 @@ export default function ClassDetail() {
                 setBaseCourseIdState(savedContent.baseCourseId);
               }
               // Source toggle
-              if (savedContent.sourceType === "PERSONAL") {
+              if (savedContent.sourceType === "CLASS_PERSONAL") {
                 setUsingPersonalCourse(true);
               } else {
                 setUsingPersonalCourse(false);
               }
-              // Hydration: prefer explicit ids for PERSONAL; else fallback
-              const teacherCourseId = savedContent.teacherCourseId;
+              // Hydration: prefer explicit ids for CLASS_PERSONAL; else fallback
+              const classCourseId = savedContent.classCourseId;
+              setClassCourseIdState(classCourseId || null);
               const selectedCourseId =
                 savedContent.selectedCourseId ||
-                (savedContent.sourceType === "PERSONAL"
-                  ? teacherCourseId
+                (savedContent.sourceType === "CLASS_PERSONAL"
+                  ? classCourseId
                   : savedContent.baseCourseId);
 
-              if (savedContent.sourceType === "PERSONAL" && teacherCourseId) {
+              if (
+                savedContent.sourceType === "CLASS_PERSONAL" &&
+                classCourseId
+              ) {
                 try {
                   const detail = await courseService.getCourseDetail(
-                    teacherCourseId
+                    classCourseId
                   );
                   setCourseData(detail);
-                  setPersonalCourseData(detail);
-                  setSelectedPersonalCourseId(String(teacherCourseId));
                   // After loading chapters/lessons, set explicit selections
                   if (savedContent.chapterId) {
                     setSelectedChapterId(String(savedContent.chapterId));
@@ -262,8 +212,8 @@ export default function ClassDetail() {
                     );
                   }
                   setHydratedSelections(true);
-                  console.log("Hydrated PERSONAL selections", {
-                    teacherCourseId,
+                  console.log("Hydrated CLASS_PERSONAL selections", {
+                    classCourseId,
                     chapterId:
                       savedContent.chapterId ||
                       savedContent.linkedChapterIds?.[0],
@@ -274,10 +224,9 @@ export default function ClassDetail() {
                 } catch (e) {
                   console.error("Failed to load personal course detail:", e);
                   error(
-                    "Phiên bản khóa học cá nhân đã bị xóa hoặc không khả dụng. Chuyển về khóa học gốc."
+                    "Khóa học lớp đã bị xóa hoặc không khả dụng. Chuyển về khóa học gốc."
                   );
                   setUsingPersonalCourse(false);
-                  setSelectedPersonalCourseId("");
                   const baseId =
                     savedContent.baseCourseId || classDetail?.courseId;
                   if (baseId) {
@@ -286,13 +235,73 @@ export default function ClassDetail() {
                         baseId
                       );
                       setCourseData(adminDetail);
-                      setPersonalCourseData(null);
                       setSelectedChapterId("");
                       setSelectedLessonId("");
                     } catch (err) {
                       console.error("Fallback load base course failed:", err);
                     }
                   }
+                }
+              } else if (
+                savedContent.sourceType === "CLASS_PERSONAL" &&
+                !classCourseId
+              ) {
+                // Backend chưa trả classCourseId: tự resolve từ lớp
+                try {
+                  let resolvedCcId =
+                    classInfo?.originalClass?.classCourseId ||
+                    classInfo?.classCourseId ||
+                    null;
+                  if (!resolvedCcId && classId) {
+                    const cls = await classService.getById(classId);
+                    resolvedCcId =
+                      cls?.classCourseId || cls?.classCourse?.id || null;
+                  }
+                  if (resolvedCcId) {
+                    setClassCourseIdState(String(resolvedCcId));
+                    const detail = await courseService.getCourseDetail(
+                      resolvedCcId
+                    );
+                    setCourseData(detail);
+                    if (savedContent.chapterId) {
+                      setSelectedChapterId(String(savedContent.chapterId));
+                    } else if (
+                      Array.isArray(savedContent.linkedChapterIds) &&
+                      savedContent.linkedChapterIds.length > 0
+                    ) {
+                      setSelectedChapterId(
+                        String(savedContent.linkedChapterIds[0])
+                      );
+                    }
+                    if (savedContent.lessonId) {
+                      setSelectedLessonId(String(savedContent.lessonId));
+                    } else if (
+                      Array.isArray(savedContent.linkedLessonIds) &&
+                      savedContent.linkedLessonIds.length > 0
+                    ) {
+                      setSelectedLessonId(
+                        String(savedContent.linkedLessonIds[0])
+                      );
+                    }
+                    setHydratedSelections(true);
+                    console.log(
+                      "Hydrated CLASS_PERSONAL (resolved classCourseId) selections",
+                      {
+                        classCourseId: resolvedCcId,
+                        chapterId:
+                          savedContent.chapterId ||
+                          savedContent.linkedChapterIds?.[0],
+                        lessonId:
+                          savedContent.lessonId ||
+                          savedContent.linkedLessonIds?.[0],
+                      }
+                    );
+                  }
+                } catch (e) {
+                  console.error(
+                    "Resolve/load classCourseId for CLASS_PERSONAL failed:",
+                    e
+                  );
                 }
               } else if (selectedCourseId) {
                 try {
@@ -330,7 +339,8 @@ export default function ClassDetail() {
               if (savedContent.content) {
                 setLessonContent(savedContent.content);
                 setHasExistingContent(true);
-                setContentEditMode(true); // keep editable even when content exists
+                // After reload, default to VIEW mode
+                setContentEditMode(false);
               }
             } else {
               setContentEditMode(true); // Edit mode if no content
@@ -353,6 +363,7 @@ export default function ClassDetail() {
     error,
     sessionDateStr,
     slotId,
+    sessionIdParam,
     isFutureSession,
     classDetail?.courseId,
   ]);
@@ -399,24 +410,35 @@ export default function ClassDetail() {
 
       const date = sessionDateStr;
       const slotIdNum = slotId ? parseInt(slotId, 10) : null;
-      console.log("Saving attendance:", { classId, date, slotId, slotIdNum });
-
-      await attendanceService.saveAttendance(
+      console.log("Saving attendance:", {
         classId,
         date,
-        attendanceData,
-        slotIdNum
-      );
+        slotId,
+        slotIdNum,
+        sessionIdParam,
+      });
+
+      if (sessionIdParam) {
+        await attendanceService.saveBySession(
+          parseInt(sessionIdParam, 10),
+          attendanceData
+        );
+      } else {
+        await attendanceService.saveAttendance(
+          classId,
+          date,
+          attendanceData,
+          slotIdNum
+        );
+      }
 
       setHasChanges(false);
       success("Lưu điểm danh thành công!");
 
       // Reload to reflect persisted statuses
-      const refreshed = await attendanceService.getByClass(
-        classId,
-        date,
-        slotIdNum
-      );
+      const refreshed = sessionIdParam
+        ? await attendanceService.getBySession(parseInt(sessionIdParam, 10))
+        : await attendanceService.getByClass(classId, date, slotIdNum);
       setAttendanceDetails(refreshed);
       setOriginalDetails(refreshed);
       setEditMode(false);
@@ -448,27 +470,47 @@ export default function ClassDetail() {
       }
 
       setSavingContent(true);
-      const payload = {
-        classId,
-        date: sessionDateStr,
+      const body = {
         chapterIds: [parseInt(selectedChapterId, 10)],
         lessonIds: [parseInt(selectedLessonId, 10)],
         content: lessonContent.trim(),
-        // Explicit configuration for BE persistence
+        // include source metadata so BE can persist selection source
         sourceType,
-        courseId:
-          sourceType === "ADMIN"
-            ? baseCourseIdState || classDetail?.courseId
-            : undefined,
-        teacherCourseId:
-          sourceType === "PERSONAL" && selectedPersonalCourseId
-            ? parseInt(selectedPersonalCourseId, 10)
-            : undefined,
+        ...(sourceType === "CLASS_PERSONAL" && classCourseIdState
+          ? { classCourseId: parseInt(classCourseIdState, 10) }
+          : {}),
+        ...(sourceType === "ADMIN"
+          ? { courseId: baseCourseIdState || classDetail?.courseId }
+          : {}),
         chapterId: parseInt(selectedChapterId, 10),
         lessonId: parseInt(selectedLessonId, 10),
       };
 
-      await sessionService.saveSessionContent(payload);
+      if (sessionIdParam) {
+        await sessionService.saveSessionContentBySessionId(
+          parseInt(sessionIdParam, 10),
+          body
+        );
+      } else {
+        await sessionService.saveSessionContent({
+          classId,
+          date: sessionDateStr,
+          chapterIds: body.chapterIds,
+          lessonIds: body.lessonIds,
+          content: body.content,
+          sourceType,
+          classCourseId:
+            sourceType === "CLASS_PERSONAL" && classCourseIdState
+              ? parseInt(classCourseIdState, 10)
+              : undefined,
+          courseId:
+            sourceType === "ADMIN"
+              ? baseCourseIdState || classDetail?.courseId
+              : undefined,
+          chapterId: parseInt(selectedChapterId, 10),
+          lessonId: parseInt(selectedLessonId, 10),
+        });
+      }
 
       success("Đã lưu nội dung buổi học thành công!");
       setHasExistingContent(true);
@@ -485,34 +527,24 @@ export default function ClassDetail() {
     (ch) => String(ch.id) === String(selectedChapterId)
   );
 
-  // When selecting a personal version, swap courseData; avoid clearing hydrated selections
+  // When toggling to CLASS_PERSONAL, try to load class course if known
   useEffect(() => {
-    const applyPersonalSelection = async () => {
+    const loadClassCourse = async () => {
       if (!usingPersonalCourse) return;
-      const selected = personalCandidates.find(
-        (v) => String(v.id) === String(selectedPersonalCourseId)
-      );
-      if (!selected) return;
+      if (!classCourseIdState) return;
       try {
-        const detail = await courseService.getCourseDetail(selected.id);
+        const detail = await courseService.getCourseDetail(classCourseIdState);
         setCourseData(detail);
-        setPersonalCourseData(detail);
-        // Only reset if user actively changed version after hydration
         if (!hydratedSelections) {
           setSelectedChapterId("");
           setSelectedLessonId("");
         }
       } catch (e) {
-        console.error("Load personal course detail failed:", e);
+        console.error("Load class course detail failed:", e);
       }
     };
-    applyPersonalSelection();
-  }, [
-    usingPersonalCourse,
-    selectedPersonalCourseId,
-    personalCandidates,
-    hydratedSelections,
-  ]);
+    loadClassCourse();
+  }, [usingPersonalCourse, classCourseIdState, hydratedSelections]);
 
   if (loading) {
     return (
@@ -1043,22 +1075,63 @@ export default function ClassDetail() {
                               ? "bg-green-600 hover:bg-green-700 text-white"
                               : ""
                           }`}
+                          disabled={!contentEditMode}
+                          title={
+                            !contentEditMode
+                              ? "Nhấn 'Sửa nội dung buổi học' để thay đổi nguồn"
+                              : undefined
+                          }
                           onClick={async () => {
-                            // Luôn cho phép bấm để chuyển nguồn sang cá nhân, không khóa vì thiếu dữ liệu
+                            if (!contentEditMode) return;
+                            // Switching source: ensure fresh selections
+                            setHydratedSelections(false);
                             setUsingPersonalCourse(true);
+                            // If classCourseId is not known yet, resolve from schedule or fetch class detail
+                            let ccId = classCourseIdState;
                             try {
-                              // Nếu đã chọn sẵn một phiên bản, load chi tiết để hiển thị chương/bài
-                              const targetId = selectedPersonalCourseId;
-                              if (targetId) {
-                                const detail =
-                                  await courseService.getCourseDetail(targetId);
-                                // Sử dụng course cá nhân làm nguồn chính cho selector chương/bài
-                                setCourseData(detail);
-                                setPersonalCourseData(detail);
+                              if (!ccId) {
+                                const fromSchedule =
+                                  classDetail?.originalClass?.classCourseId ||
+                                  classDetail?.classCourseId ||
+                                  null;
+                                if (fromSchedule) {
+                                  ccId = String(fromSchedule);
+                                } else if (classId) {
+                                  const cls = await classService.getById(
+                                    classId
+                                  );
+                                  ccId = String(
+                                    cls?.classCourseId ||
+                                      cls?.classCourse?.id ||
+                                      ""
+                                  );
+                                }
                               }
-                              // Nếu chưa chọn, hiển thị dropdown để người dùng chọn phiên bản
                             } catch (e) {
-                              console.error("Load personal course failed:", e);
+                              console.error(
+                                "Failed to resolve classCourseId:",
+                                e
+                              );
+                            }
+
+                            if (ccId) {
+                              setClassCourseIdState(ccId);
+                              try {
+                                const detail =
+                                  await courseService.getCourseDetail(
+                                    parseInt(ccId, 10)
+                                  );
+                                setCourseData(detail);
+                                if (!hydratedSelections) {
+                                  setSelectedChapterId("");
+                                  setSelectedLessonId("");
+                                }
+                              } catch (e) {
+                                console.error(
+                                  "Load class course detail failed:",
+                                  e
+                                );
+                              }
                             }
                           }}
                         >
@@ -1072,16 +1145,25 @@ export default function ClassDetail() {
                               ? "bg-blue-600 hover:bg-blue-700 text-white"
                               : ""
                           }`}
+                          disabled={!contentEditMode}
+                          title={
+                            !contentEditMode
+                              ? "Nhấn 'Sửa nội dung buổi học' để thay đổi nguồn"
+                              : undefined
+                          }
                           onClick={() => {
+                            if (!contentEditMode) return;
+                            // Switching source: ensure fresh selections
+                            setHydratedSelections(false);
                             // Switch to ADMIN source: always load base course chapters/lessons
                             setUsingPersonalCourse(false);
-                            setSelectedPersonalCourseId("");
                             if (classDetail?.courseId) {
                               courseService
-                                .getCourseDetail(classDetail.courseId)
+                                .getCourseDetail(
+                                  parseInt(classDetail.courseId, 10)
+                                )
                                 .then((adminCourse) => {
                                   setCourseData(adminCourse);
-                                  setPersonalCourseData(null);
                                   // Reset selections; will be hydrated from saved config on reload
                                   setSelectedChapterId("");
                                   setSelectedLessonId("");
@@ -1095,63 +1177,7 @@ export default function ClassDetail() {
                           Upload tài liệu từ Admin đã cung cấp
                         </Button>
                       </div>
-                      {usingPersonalCourse && (
-                        <div className="mt-2">
-                          <label className="text-[11px] text-[#62748e] mb-1 block">
-                            Chọn phiên bản khóa học cá nhân
-                          </label>
-                          <Select
-                            value={selectedPersonalCourseId}
-                            onValueChange={async (value) => {
-                              const val = value == null ? "" : String(value);
-                              // Guard invalid placeholder values
-                              if (!val || val === "none") {
-                                setSelectedPersonalCourseId("");
-                                setPersonalCourseData(null);
-                                setSelectedChapterId("");
-                                setSelectedLessonId("");
-                                return; // do NOT call API
-                              }
-                              setSelectedPersonalCourseId(val);
-                              try {
-                                const detail =
-                                  await courseService.getCourseDetail(val);
-                                // Use personal course source for chapter/lesson selectors
-                                setCourseData(detail);
-                                setPersonalCourseData(detail);
-                                setSelectedChapterId("");
-                                setSelectedLessonId("");
-                              } catch (e) {
-                                console.error(
-                                  "Load selected personal course failed:",
-                                  e
-                                );
-                                error(
-                                  "Không tải được phiên bản khóa học cá nhân. Vui lòng chọn lại hoặc sử dụng khóa học gốc."
-                                );
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="w-full h-10">
-                              <SelectValue placeholder="Chọn phiên bản cá nhân" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {personalCandidates.length > 0 ? (
-                                personalCandidates.map((c) => (
-                                  <SelectItem key={c.id} value={String(c.id)}>
-                                    #{c.id} – {c.title} (
-                                    {String(c.status).toUpperCase()})
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="none" disabled>
-                                  Chưa có phiên bản cá nhân khả dụng
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
+                      {/* Personal version selection removed per new flow */}
                       <p className="text-[11px] text-purple-600 mt-0.5">
                         {courseData.chapters?.length || 0} chương ·{" "}
                         {courseData.chapters?.reduce(
@@ -1160,15 +1186,9 @@ export default function ClassDetail() {
                         ) || 0}{" "}
                         bài học (nguồn chính)
                       </p>
-                      {usingPersonalCourse && personalCourseData && (
+                      {usingPersonalCourse && classCourseIdState && (
                         <p className="text-[11px] text-green-700 mt-0.5">
-                          Phiên bản cá nhân:{" "}
-                          {personalCourseData.chapters?.length || 0} chương ·{" "}
-                          {personalCourseData.chapters?.reduce(
-                            (sum, ch) => sum + (ch.lessons?.length || 0),
-                            0
-                          ) || 0}{" "}
-                          bài học (chỉ tham khảo nội dung)
+                          Đang dùng khóa học lớp (ID: {classCourseIdState})
                         </p>
                       )}
                     </div>
@@ -1184,11 +1204,17 @@ export default function ClassDetail() {
                   <Select
                     value={selectedChapterId}
                     onValueChange={(value) => {
+                      if (!contentEditMode) return;
                       setSelectedChapterId(value);
                       setSelectedLessonId(""); // Reset lesson when chapter changes
                     }}
+                    disabled={!contentEditMode}
                   >
-                    <SelectTrigger className="w-full h-11 text-[13px]">
+                    <SelectTrigger
+                      className={`w-full h-11 text-[13px] ${
+                        !contentEditMode ? "pointer-events-none opacity-60" : ""
+                      }`}
+                    >
                       <SelectValue placeholder="Chọn chương đang học..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -1220,9 +1246,18 @@ export default function ClassDetail() {
                     </label>
                     <Select
                       value={selectedLessonId}
-                      onValueChange={setSelectedLessonId}
+                      onValueChange={(v) =>
+                        contentEditMode && setSelectedLessonId(v)
+                      }
+                      disabled={!contentEditMode}
                     >
-                      <SelectTrigger className="w-full h-11 text-[13px]">
+                      <SelectTrigger
+                        className={`w-full h-11 text-[13px] ${
+                          !contentEditMode
+                            ? "pointer-events-none opacity-60"
+                            : ""
+                        }`}
+                      >
                         <SelectValue placeholder="Chọn bài học đang dạy..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -1256,14 +1291,25 @@ export default function ClassDetail() {
                     </label>
                     <Textarea
                       value={lessonContent}
-                      onChange={(e) => setLessonContent(e.target.value)}
+                      onChange={(e) =>
+                        contentEditMode && setLessonContent(e.target.value)
+                      }
+                      readOnly={!contentEditMode}
                       placeholder="Ví dụ: Giảng lý thuyết về cú pháp if-else, thực hành bài tập 1-5, hướng dẫn làm bài tập về nhà..."
                       rows={6}
-                      className="text-[13px] resize-none"
+                      className={`text-[13px] resize-none ${
+                        !contentEditMode ? "bg-gray-50" : ""
+                      }`}
                     />
                     <p className="text-[11px] text-[#62748e]">
                       Mô tả ngắn gọn về nội dung đã giảng dạy trong buổi học này
                     </p>
+                    {!contentEditMode && (
+                      <p className="text-[11px] text-[#62748e]">
+                        Đang ở chế độ xem. Nhấn "Sửa nội dung buổi học" để thay
+                        đổi.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -1285,7 +1331,7 @@ export default function ClassDetail() {
                         {hasExistingContent && (
                           <Button
                             onClick={() => {
-                              setContentEditMode(true);
+                              setContentEditMode(false);
                               // Optionally reload original content here
                             }}
                             variant="outline"

@@ -45,6 +45,7 @@ export default function CreateOfflineClassPage() {
   const [courseId, setCourseId] = useState(""); // Khóa học của môn
   const [desc, setDesc] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [pricePerSession, setPricePerSession] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [totalSessions, setTotalSessions] = useState("");
@@ -231,7 +232,8 @@ export default function CreateOfflineClassPage() {
     const teacher = teachers.find(
       (t) => String(t.userId || t.id) === String(teacherId)
     );
-    if (subj && teacher) return `${subj.name} - ${teacher.fullName}`;
+    // Yêu cầu: Tên giáo viên + Tên môn học (+ ID lớp do BE gắn sau khi tạo)
+    if (subj && teacher) return `${teacher.fullName} - ${subj.name}`;
     return "";
   }, [subjectId, teacherId, subjects, teachers]);
 
@@ -303,6 +305,8 @@ export default function CreateOfflineClassPage() {
       capacity &&
       parseInt(capacity) > 0 &&
       (!roomCapacity || parseInt(capacity) <= roomCapacity) &&
+      pricePerSession !== "" &&
+      parseInt(pricePerSession) >= 0 &&
       teacherId &&
       className &&
       roomId &&
@@ -317,6 +321,7 @@ export default function CreateOfflineClassPage() {
     subjectId,
     capacity,
     roomCapacity,
+    pricePerSession,
     teacherId,
     className,
     roomId,
@@ -424,6 +429,7 @@ export default function CreateOfflineClassPage() {
       }
 
       const payload = {
+        // BE có thể nối thêm ID lớp sau khi tạo
         name: className,
         subjectId: parseInt(subjectId),
         courseId: courseId ? parseInt(courseId) : null, // Thêm courseId (optional)
@@ -431,6 +437,7 @@ export default function CreateOfflineClassPage() {
         roomId: parseInt(roomId),
         maxStudents: parseInt(capacity),
         totalSessions: parseInt(totalSessions),
+        pricePerSession: parseInt(pricePerSession),
         description: desc,
         startDate,
         endDate,
@@ -722,6 +729,26 @@ export default function CreateOfflineClassPage() {
                   </div>
                 </div>
 
+                {/* Giá mỗi buổi (VND) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Giá mỗi buổi (VND) <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={pricePerSession}
+                    onChange={(e) => setPricePerSession(e.target.value)}
+                    placeholder="Ví dụ: 150000"
+                    className="h-10 text-sm"
+                  />
+                  {pricePerSession !== "" && parseInt(pricePerSession) < 0 && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Giá mỗi buổi phải lớn hơn hoặc bằng 0
+                    </p>
+                  )}
+                </div>
+
                 {/* Tên lớp */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
@@ -869,6 +896,18 @@ export default function CreateOfflineClassPage() {
                   </div>
                   <div className="text-sm font-semibold text-gray-900">
                     {totalSessions || 0} buổi
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
+                  <div className="text-xs font-semibold text-gray-500 mb-1">
+                    Giá mỗi buổi
+                  </div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {pricePerSession
+                      ? `${parseInt(pricePerSession).toLocaleString(
+                          "vi-VN"
+                        )} VND`
+                      : "-"}
                   </div>
                 </div>
                 {desc && (
