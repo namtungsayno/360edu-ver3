@@ -5,7 +5,7 @@
 
 // src/context/AuthContext.jsx
 // src/context/AuthContext.jsx
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useMemo } from "react";
 import { authService } from "../services/auth/auth.service";
 
 const AuthContext = createContext(null);
@@ -28,13 +28,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await authService.logout();
-    setUser(null);
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      
+      // Clear all state
+      sessionStorage.clear();
+      
+      // Force reload to clear any cached state
+      window.location.href = '/home/login';
+    }
   };
+
+  const value = useMemo(() => ({ user, loading, login, logout }), [user, loading]);
 
   return (
     //
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

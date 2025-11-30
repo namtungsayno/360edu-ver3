@@ -35,11 +35,13 @@ export function Select({ value, defaultValue, onValueChange, children }) {
   const isCtrl = value !== undefined;
   const [internal, setInternal] = useState(defaultValue ?? "");
   const [open, setOpen] = useState(false);
+  const [, setRefreshTick] = useState(0); // internal tick to force context identity change
   const rootRef = useRef(null);
   const registryRef = useRef(new Map()); // value -> label
   const lastLabelRef = useRef(""); // immediate feedback label
 
-  const val = isCtrl ? value : internal;
+  const rawVal = isCtrl ? value : internal;
+  const val = rawVal == null ? "" : String(rawVal);
 
   // close on outside click
   useEffect(() => {
@@ -57,28 +59,33 @@ export function Select({ value, defaultValue, onValueChange, children }) {
       open,
       setOpen,
       setValue: (v) => {
-        if (!isCtrl) setInternal(v);
-        onValueChange?.(v);
+        const next = v == null ? "" : String(v);
+        if (!isCtrl) setInternal(next);
+        onValueChange?.(next);
         setOpen(false);
       },
       setValueWithLabel: (v, label) => {
         lastLabelRef.current = String(label ?? "");
-        if (!isCtrl) setInternal(v);
-        onValueChange?.(v);
+        const next = v == null ? "" : String(v);
+        if (!isCtrl) setInternal(next);
+        onValueChange?.(next);
         setOpen(false);
       },
       rootRef,
-      // label registry helpers
       register: (v, label) => {
-        registryRef.current.set(String(v), String(label ?? ""));
+        const key = String(v);
+        if (!registryRef.current.has(key)) {
+          registryRef.current.set(key, String(label ?? ""));
+        }
       },
       unregister: (v) => {
         registryRef.current.delete(String(v));
       },
       getLabel: (v) => registryRef.current.get(String(v)),
       getImmediateLabel: () => lastLabelRef.current,
+      forceRefresh: () => setRefreshTick((n) => n + 1),
     }),
-    [val, open, isCtrl, onValueChange]
+    [val, open, isCtrl, onValueChange, setRefreshTick]
   );
 
   return (
@@ -87,6 +94,12 @@ export function Select({ value, defaultValue, onValueChange, children }) {
     </div>
   );
 }
+
+// Fallback: if controlled value was set before its item registered, ensure we re-bump after mount
+// This handles edge case hydration where value arrives, options async register slightly later.
+// The item registration already calls bump(), but we add a safety net to re-bump if label still missing.
+// (Non-invasive: only triggers when a value exists but no label stored yet while some items are present.)
+// Note: Keeping this outside Select component would require refactoring; simplest is an inline helper hook.
 
 export function SelectTrigger({
   className = "",
@@ -121,7 +134,9 @@ export function SelectTrigger({
 
 export function SelectValue({ placeholder }) {
   const { value, getLabel, getImmediateLabel } = useContext(Ctx);
-  const label = value ? getLabel?.(value) || getImmediateLabel?.() : undefined;
+  const label = value
+    ? getLabel?.(String(value)) || getImmediateLabel?.()
+    : undefined;
   return (
     <span className={cn("block truncate", value ? "" : "text-gray-400")}>
       {label || placeholder}
@@ -131,7 +146,6 @@ export function SelectValue({ placeholder }) {
 
 export function SelectContent({ className = "", children }) {
   const { open } = useContext(Ctx);
-  if (!open) return null;
   return (
     <div
       className={cn(
@@ -139,6 +153,7 @@ export function SelectContent({ className = "", children }) {
         className
       )}
       role="listbox"
+      style={{ display: open ? "block" : "none" }}
     >
       <div className="p-1 max-h-60 overflow-auto">{children}</div>
     </div>
@@ -147,7 +162,7 @@ export function SelectContent({ className = "", children }) {
 
 export function SelectItem({ value, children, className = "", ...props }) {
   const ctx = useContext(Ctx);
-  const selected = ctx.value === value;
+  const selected = String(ctx.value) === String(value);
   // try to extract a string label from children for the trigger display
   const textLabel = useMemo(() => {
     const walk = (node) => {
@@ -162,9 +177,13 @@ export function SelectItem({ value, children, className = "", ...props }) {
   }, [children]);
 
   useEffect(() => {
-    ctx.register?.(value, textLabel);
-    return () => ctx.unregister?.(value);
-  }, [ctx, value, textLabel]);
+    ctx.register?.(String(value), textLabel);
+    // One-time refresh if this item is selected and label wasn't ready when SelectValue first rendered
+    if (selected && !ctx.getLabel?.(String(value))) {
+      ctx.forceRefresh?.();
+    }
+    return () => ctx.unregister?.(String(value));
+  }, [ctx, value, textLabel, selected]);
   return (
     <div
       role="option"

@@ -36,4 +36,13 @@ export const teacherApi = {
   getByUserId(userId) {
     return http.get(`/teachers/by-user/${userId}`).then((r) => r.data);
   },
+
+  /**
+   * Get teacher profile by teacher ID
+   * @param {number} userId - User ID of the teacher
+   * @returns {Promise<Object>} Teacher profile with full details
+   */
+  getProfile(userId) {
+    return http.get(`/teachers/by-user/${userId}/profile`).then((r) => r.data);
+  },
 };

@@ -1,6 +1,16 @@
 import { useEffect, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Clock, Calendar, MapPin, Users, Star, CheckCircle, Video, Award } from "lucide-react";
+import {
+  ArrowLeft,
+  Clock,
+  Calendar,
+  MapPin,
+  Users,
+  Star,
+  CheckCircle,
+  Video,
+  Award,
+} from "lucide-react";
 import { classService } from "../../../services/class/class.service";
 import { enrollmentService } from "../../../services/enrollment/enrollment.service";
 import { Badge } from "../../../components/ui/Badge.jsx";
@@ -18,7 +28,7 @@ export default function ClassDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [enrolling, setEnrolling] = useState(false);
-  
+
   const classId = Number(id);
 
   useEffect(() => {
@@ -27,7 +37,9 @@ export default function ClassDetail() {
       setError("");
       try {
         const list = await classService.list();
-        const cls = Array.isArray(list) ? list.find((c) => c.id === classId) : null;
+        const cls = Array.isArray(list)
+          ? list.find((c) => c.id === classId)
+          : null;
         setData(cls || null);
         if (!cls) setError("Không tìm thấy lớp.");
       } catch (e) {
@@ -40,31 +52,49 @@ export default function ClassDetail() {
   }, [classId]);
 
   const handleEnroll = async () => {
+    // Block enroll when class has not opened yet
+    if (data?.startDate && new Date(data.startDate) > new Date()) {
+      warning(
+        `Lớp sẽ mở vào ngày ${data.startDate}. Vui lòng liên hệ với chúng tôi để được tư vấn.`
+      );
+      return;
+    }
     // Check authentication trước
     if (!user) {
       // Chưa đăng nhập -> redirect về login
       warning("Vui lòng đăng nhập để đăng ký lớp học!", "Yêu cầu đăng nhập");
       setTimeout(() => {
-        navigate("/home/login", { state: { from: `/home/classes/${classId}` } });
+        navigate("/home/login", {
+          state: { from: `/home/classes/${classId}` },
+        });
       }, 1500);
       return;
     }
 
     if (!data) return;
-    
+
     setEnrolling(true);
     try {
       await enrollmentService.selfEnroll(classId);
-      success("Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.", "Thành công");
+      success(
+        "Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.",
+        "Thành công"
+      );
     } catch (e) {
       console.error(e);
       const status = e?.response?.status;
-      const msg = e?.response?.data?.message || e?.message || "Đăng ký thất bại";
-      
+      const msg =
+        e?.response?.data?.message || e?.message || "Đăng ký thất bại";
+
       if (status === 403) {
-        showError("Chỉ học sinh mới có thể đăng ký lớp học. Vui lòng đăng nhập bằng tài khoản học sinh hoặc đăng ký tài khoản mới.", "Không có quyền");
+        showError(
+          "Chỉ học sinh mới có thể đăng ký lớp học. Vui lòng đăng nhập bằng tài khoản học sinh hoặc đăng ký tài khoản mới.",
+          "Không có quyền"
+        );
         setTimeout(() => {
-          navigate("/home/login", { state: { from: `/home/classes/${classId}` } });
+          navigate("/home/login", {
+            state: { from: `/home/classes/${classId}` },
+          });
         }, 2000);
       } else if (msg.includes("already enrolled")) {
         warning("Bạn đã đăng ký lớp học này", "Thông báo");
@@ -86,24 +116,29 @@ export default function ClassDetail() {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 text-lg">{error}</p>
-          <Button onClick={() => navigate(-1)} className="mt-4">Quay lại</Button>
+          <Button onClick={() => navigate(-1)} className="mt-4">
+            Quay lại
+          </Button>
         </div>
       </div>
     );
   }
-  
+
   if (!data) return null;
 
   const currentStudents = data.currentStudents || 0;
   const maxStudents = data.maxStudents || 30;
   const availableSlots = maxStudents - currentStudents;
   const enrollmentPercentage = (currentStudents / maxStudents) * 100;
+  const notOpened = data?.startDate
+    ? new Date(data.startDate) > new Date()
+    : false;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -127,7 +162,9 @@ export default function ClassDetail() {
             {/* Class Header */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Badge className="bg-green-100 text-green-800">Online - Offline</Badge>
+                <Badge className="bg-green-100 text-green-800">
+                  Online - Offline
+                </Badge>
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-3">
                 {data.subjectName || "Toán học"} - {data.name || "Học kỳ 1"}
@@ -139,11 +176,24 @@ export default function ClassDetail() {
               </div>
             </div>
 
+            {/* Opening notice */}
+            {notOpened && (
+              <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-3 py-2">
+                <Calendar className="w-4 h-4" />
+                <span>
+                  Lớp sẽ mở vào ngày{" "}
+                  <span className="font-semibold">{data.startDate}</span>. Hiện
+                  chưa thể đăng ký.
+                </span>
+              </div>
+            )}
+
             {/* Description */}
             <Card>
               <CardContent className="p-6">
                 <p className="text-gray-700 leading-relaxed">
-                  {data.description || "Khóa học Toán 10 học kỳ 1 bao gồm toán bổ trợ kiến thức cơ bản từ Đại số, Hình học phẳng và Lượng giác. Phương pháp giảng dạy kết hợp lý thuyết với thực hành; giúp học sinh nắm vững kiến thức và phát triển tư duy toán học."}
+                  {data.description ||
+                    "Khóa học Toán 10 học kỳ 1 bao gồm toán bổ trợ kiến thức cơ bản từ Đại số, Hình học phẳng và Lượng giác. Phương pháp giảng dạy kết hợp lý thuyết với thực hành; giúp học sinh nắm vững kiến thức và phát triển tư duy toán học."}
                 </p>
               </CardContent>
             </Card>
@@ -158,10 +208,12 @@ export default function ClassDetail() {
                       <span className="font-medium">Thời gian học</span>
                     </div>
                     <div className="ml-7 text-gray-600">
-                      {Array.isArray(data.schedule) && data.schedule.length > 0 ? (
+                      {Array.isArray(data.schedule) &&
+                      data.schedule.length > 0 ? (
                         data.schedule.map((s, idx) => (
                           <div key={idx}>
-                            Thứ {s.dayOfWeek}, {s.startTime?.slice(0,5)} - {s.endTime?.slice(0,5)}
+                            Thứ {s.dayOfWeek}, {s.startTime?.slice(0, 5)} -{" "}
+                            {s.endTime?.slice(0, 5)}
                           </div>
                         ))
                       ) : (
@@ -187,9 +239,7 @@ export default function ClassDetail() {
                         <Video className="w-5 h-5 text-green-600" />
                         <span className="font-medium">Học Online</span>
                       </div>
-                      <div className="ml-7 text-gray-600">
-                        Qua Google Meet
-                      </div>
+                      <div className="ml-7 text-gray-600">Qua Google Meet</div>
                     </div>
                   )}
 
@@ -197,7 +247,9 @@ export default function ClassDetail() {
                     <div>
                       <div className="flex items-center gap-2 text-gray-700 mb-2">
                         <MapPin className="w-5 h-5 text-blue-600" />
-                        <span className="font-medium">Phòng {data.roomName || "301 - Tòa A"}</span>
+                        <span className="font-medium">
+                          Phòng {data.roomName || "301 - Tòa A"}
+                        </span>
                       </div>
                       <div className="ml-7 text-gray-600">
                         Học tại trung tâm
@@ -219,7 +271,9 @@ export default function ClassDetail() {
                       <div>
                         <div className="flex items-center gap-2 text-gray-700 mb-2">
                           <MapPin className="w-5 h-5 text-blue-600" />
-                          <span className="font-medium">Phòng {data.roomName || "301 - Tòa A"}</span>
+                          <span className="font-medium">
+                            Phòng {data.roomName || "301 - Tòa A"}
+                          </span>
                         </div>
                         <div className="ml-7 text-gray-600">
                           Học tại trung tâm
@@ -234,7 +288,9 @@ export default function ClassDetail() {
             {/* Teacher Info */}
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Giáo viên giảng dạy</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  Giáo viên giảng dạy
+                </h2>
                 <div className="flex items-start gap-4">
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
                     {(data.teacherFullName || "Nguyễn Văn A").charAt(0)}
@@ -245,10 +301,13 @@ export default function ClassDetail() {
                     </h3>
                     <div className="flex items-center gap-1 text-yellow-500 mb-2">
                       <Star className="w-4 h-4 fill-current" />
-                      <span className="text-gray-700 text-sm font-medium">4.9</span>
+                      <span className="text-gray-700 text-sm font-medium">
+                        4.9
+                      </span>
                     </div>
                     <p className="text-gray-600 text-sm mb-3">
-                      15 năm kinh nghiệm<br />
+                      15 năm kinh nghiệm
+                      <br />
                       Trực tổ Toán học - Đại học phạm HN
                     </p>
                     <div className="space-y-1 text-sm">
@@ -270,7 +329,9 @@ export default function ClassDetail() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-gray-900">Chương trình học</h2>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Chương trình học
+                  </h2>
                   <button className="text-blue-600 text-sm font-medium hover:underline">
                     Lời ích
                   </button>
@@ -319,7 +380,9 @@ export default function ClassDetail() {
                   <div className="border-l-4 border-gray-300 pl-4">
                     <h3 className="font-bold text-gray-900 mb-2">Tuần 13-18</h3>
                     <ul className="space-y-2 text-sm text-gray-700">
-                      <li className="text-gray-500">Nội dung sẽ được cập nhật</li>
+                      <li className="text-gray-500">
+                        Nội dung sẽ được cập nhật
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -332,16 +395,30 @@ export default function ClassDetail() {
             <div className="sticky top-4">
               <Card className="shadow-xl">
                 <CardContent className="p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">Đăng ký học</h2>
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">
+                    Đăng ký học
+                  </h2>
+
+                  {notOpened && (
+                    <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 p-3 text-sm">
+                      Lớp sẽ mở vào ngày{" "}
+                      <span className="font-semibold">{data.startDate}</span>.
+                      Hiện chưa thể đăng ký trực tuyến.
+                    </div>
+                  )}
 
                   {/* Enrollment Progress */}
                   <div className="mb-6">
                     <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-gray-600">Còn {availableSlots} chỗ</span>
-                      <span className="font-bold text-blue-600">{currentStudents}/{maxStudents}</span>
+                      <span className="text-gray-600">
+                        Còn {availableSlots} chỗ
+                      </span>
+                      <span className="font-bold text-blue-600">
+                        {currentStudents}/{maxStudents}
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className="bg-blue-600 h-2 rounded-full transition-all"
                         style={{ width: `${enrollmentPercentage}%` }}
                       ></div>
@@ -364,8 +441,12 @@ export default function ClassDetail() {
                         <div className="flex items-center gap-2">
                           <Video className="w-5 h-5 text-green-600" />
                           <div>
-                            <div className="font-medium text-sm text-gray-900">Online</div>
-                            <div className="text-xs text-gray-600">Học qua Google Meet</div>
+                            <div className="font-medium text-sm text-gray-900">
+                              Online
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              Học qua Google Meet
+                            </div>
                           </div>
                         </div>
                       )}
@@ -373,8 +454,12 @@ export default function ClassDetail() {
                         <div className="flex items-center gap-2">
                           <MapPin className="w-5 h-5 text-blue-600" />
                           <div>
-                            <div className="font-medium text-sm text-gray-900">Offline</div>
-                            <div className="text-xs text-gray-600">Phòng {data.roomName || "301 - Tòa A"}</div>
+                            <div className="font-medium text-sm text-gray-900">
+                              Offline
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              Phòng {data.roomName || "301 - Tòa A"}
+                            </div>
                           </div>
                         </div>
                       )}
@@ -382,8 +467,12 @@ export default function ClassDetail() {
                         <div className="flex items-center gap-2">
                           <CheckCircle className="w-5 h-5 text-purple-600" />
                           <div>
-                            <div className="font-medium text-sm text-gray-900">Cả hai</div>
-                            <div className="text-xs text-gray-600">Linh hoạt online & offline</div>
+                            <div className="font-medium text-sm text-gray-900">
+                              Cả hai
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              Linh hoạt online & offline
+                            </div>
                           </div>
                         </div>
                       )}
@@ -398,17 +487,36 @@ export default function ClassDetail() {
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-gray-700">Tổng học phí:</span>
                       <span className="text-2xl font-bold text-blue-600">
-                        {data.fee ? `${data.fee.toLocaleString()}đ` : "2.500.000đ"}
+                        {data.fee
+                          ? `${data.fee.toLocaleString()}đ`
+                          : "2.500.000đ"}
                       </span>
                     </div>
 
                     <Button
                       onClick={handleEnroll}
                       disabled={enrolling}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-6"
+                      className={`w-full text-lg py-6 ${
+                        notOpened
+                          ? "bg-gray-300 text-gray-700 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                      }`}
                     >
-                      {enrolling ? "Đang xử lý..." : user ? "Đăng ký ngay" : "Đăng nhập để đăng ký"}
+                      {enrolling
+                        ? "Đang xử lý..."
+                        : notOpened
+                        ? "Chưa mở - Liên hệ tư vấn"
+                        : user
+                        ? "Đăng ký ngay"
+                        : "Đăng nhập để đăng ký"}
                     </Button>
+
+                    <a
+                      href="tel:0123456789"
+                      className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 h-11 text-sm font-medium"
+                    >
+                      Liên hệ với chúng tôi
+                    </a>
 
                     <p className="text-xs text-gray-500 text-center mt-3">
                       Hoặc liên hệ: 0123 456 789

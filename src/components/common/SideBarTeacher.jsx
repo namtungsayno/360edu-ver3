@@ -1,8 +1,15 @@
+// src/components/common/SideBarTeacher.jsx
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/use-toast";
-import { Calendar, User as UserIcon, CheckSquare, LogOut } from "lucide-react";
+import {
+  Calendar,
+  User as UserIcon,
+  CheckSquare,
+  LogOut,
+  BookOpen,
+} from "lucide-react";
 
 const SidebarTeacher = () => {
   const location = useLocation();
@@ -20,16 +27,28 @@ const SidebarTeacher = () => {
           icon: Calendar,
           href: "/home/teacher/schedule",
         },
+        {
+          id: "teaching-content",
+          label: "Nội dung giảng dạy",
+          icon: BookOpen,
+          href: "/home/teacher/content",
+        },
+        {
+          id: "my-courses",
+          label: "Quản lý khóa học cá nhân",
+          icon: BookOpen,
+          href: "/home/teacher/courses",
+        },
       ],
     },
     {
       section: "Tài khoản",
       items: [
         {
-          id: "profile",
-          label: "Thông tin cá nhân",
-          icon: UserIcon,
-          href: "/home/teacher/profile",
+          id: "management",
+          label: "Quản lý hồ sơ",
+          icon: BookOpen,
+          href: "/home/teacher/management",
         },
       ],
     },
@@ -50,7 +69,7 @@ const SidebarTeacher = () => {
     location.pathname === href || location.pathname.startsWith(href + "/");
 
   return (
-    <div className="w-64 bg-white text-black h-screen flex flex-col border-r border-gray-200">
+    <div className="w-72 bg-white text-black h-full flex flex-col border-r border-gray-200">
       {/* Logo */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-3">

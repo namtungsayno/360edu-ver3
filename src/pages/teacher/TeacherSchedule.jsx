@@ -17,6 +17,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/use-toast";
 
 // Lightweight date helpers
+// tính toán hiển thị lịch
 function startOfWeek(d) {
   const date = new Date(d);
   const day = date.getDay();
@@ -66,7 +67,7 @@ function TeacherSchedule() {
   const [weekSchedule, setWeekSchedule] = useState([]);
   const [attendanceMap, setAttendanceMap] = useState({});
 
-  // Calculate week dates based on currentWeek
+  // render header bảng lịch (hiển thị ngày cho 7 cột)
   const weekStart = useMemo(() => {
     return startOfWeek(currentWeek);
   }, [currentWeek]);
@@ -76,7 +77,7 @@ function TeacherSchedule() {
     [weekStart]
   );
 
-  // Get the actual date for a class based on day of week
+  // so sánh với ngày hôm nay, kiểu như biết ngày kia là thứ mấy...
   const getDateForClass = (dayOfWeek) => {
     // dayOfWeek: 1=Mon, 2=Tue, ..., 7=Sun
     const date = new Date(weekStart);
@@ -84,7 +85,7 @@ function TeacherSchedule() {
     return date;
   };
 
-  // Load attendance status for all classes
+  // Load điểm danh
   const loadAttendanceStatuses = async (scheduleData) => {
     const map = {};
     const today = new Date();
@@ -97,7 +98,8 @@ function TeacherSchedule() {
           const dateStr = fmt(classDate, "yyyy-MM-dd");
           const attendance = await attendanceService.getByClass(
             item.classId,
-            dateStr
+            dateStr,
+            item.slotId
           );
 
           // Count statistics
@@ -157,14 +159,39 @@ function TeacherSchedule() {
   }, [user, weekStart]);
 
   const scheduleLookup = useMemo(() => {
+    // Filter schedule items by date range (same logic as admin)
+    const weekStartDate = weekStart;
+    const filteredSchedule = weekSchedule.filter((s) => {
+      // Nếu thiếu dữ liệu ngày hoặc day, loại bỏ khỏi lịch
+      if (!s.startDate || !s.endDate || !s.day || isNaN(Number(s.day))) {
+        console.warn(
+          "[TeacherSchedule] Bỏ qua lớp do thiếu startDate/endDate/day:",
+          s
+        );
+        return false;
+      }
+      // Lấy ngày slot thực tế trong tuần này
+      const slotDate = addDays(weekStartDate, Number(s.day) - 1); // day: 1-7 (Mon-Sun)
+      if (isNaN(slotDate.getTime())) {
+        console.warn(
+          "[TeacherSchedule] Bỏ qua lớp do slotDate không hợp lệ:",
+          s
+        );
+        return false;
+      }
+      const slotDateStr = fmt(slotDate, "yyyy-MM-dd");
+      // So sánh ngày dạng chuỗi yyyy-MM-dd
+      return slotDateStr >= s.startDate && slotDateStr <= s.endDate;
+    });
+
     const map = {};
-    for (const item of weekSchedule) {
+    for (const item of filteredSchedule) {
       if (!map[item.day]) map[item.day] = {};
       if (!map[item.day][item.slotId]) map[item.day][item.slotId] = [];
       map[item.day][item.slotId].push(item);
     }
     return map;
-  }, [weekSchedule]);
+  }, [weekSchedule, weekStart]);
 
   const getClassesForSlot = (dayId, slotId) => {
     return scheduleLookup?.[dayId]?.[slotId] || [];
@@ -184,8 +211,8 @@ function TeacherSchedule() {
     today.setHours(0, 0, 0, 0);
     classDate.setHours(0, 0, 0, 0);
 
-    // Check if trying to mark attendance for future date
-    if (classDate > today) {
+    // Chỉ chặn điểm danh trước ngày học; vẫn cho phép xem chi tiết
+    if (classDate > today && action !== "view") {
       toast({
         title: "Chưa đến ngày dạy học lớp này",
         description: `Lớp này sẽ học vào ngày ${fmt(classDate, "dd/MM/yyyy")}`,
@@ -204,8 +231,11 @@ function TeacherSchedule() {
       return;
     }
 
-    // Navigate to class detail page for attendance
-    navigate(`/home/teacher/class/${classData.classId}`);
+    // Điều hướng tới chi tiết buổi học, kèm ngày phiên học
+    const dateStr = fmt(classDate, "yyyy-MM-dd");
+    navigate(
+      `/home/teacher/class/${classData.classId}?slotId=${classData.slotId}&date=${dateStr}`
+    );
   };
 
   // Calculate statistics
@@ -425,12 +455,14 @@ function TeacherSchedule() {
                                   const attendance = attendanceMap[key];
                                   const isMarked =
                                     attendance?.isMarked || false;
+
                                   const classDate = getDateForClass(
                                     classData.day
                                   );
                                   const today = new Date();
                                   today.setHours(0, 0, 0, 0);
                                   classDate.setHours(0, 0, 0, 0);
+
                                   const isFuture = classDate > today;
                                   const isPast = classDate < today;
 
@@ -438,20 +470,13 @@ function TeacherSchedule() {
                                     <div
                                       key={classData.id}
                                       onClick={() =>
-                                        !isFuture &&
-                                        !isPast &&
-                                        handleClassClick(
-                                          classData,
-                                          isMarked ? "edit" : "mark"
-                                        )
+                                        handleClassClick(classData, "view")
                                       }
                                       className={`relative rounded-lg p-3 transition-all duration-200 border-2 ${
                                         isFuture
-                                          ? "bg-gray-100 border-gray-300 cursor-not-allowed opacity-60"
+                                          ? "bg-gray-100 border-gray-300 opacity-60 cursor-pointer"
                                           : isPast && isMarked
-                                          ? "bg-green-50 border-green-300 opacity-75 cursor-default"
-                                          : isPast
-                                          ? "bg-gray-100 border-gray-300 opacity-60 cursor-default"
+                                          ? "bg-green-50 border-green-300 opacity-75 cursor-pointer"
                                           : isMarked
                                           ? "bg-green-50 border-green-400 hover:shadow-md hover:border-green-500 cursor-pointer"
                                           : "bg-orange-50 border-orange-400 hover:shadow-md hover:border-orange-500 cursor-pointer"
@@ -483,11 +508,21 @@ function TeacherSchedule() {
                                       {/* Class Info */}
                                       <div className="space-y-1">
                                         <div className="font-bold text-sm text-gray-800">
-                                          {classData.classCode}
+                                          {classData.className ||
+                                            classData.classCode}
                                         </div>
                                         <div className="text-xs text-gray-600">
                                           {classData.subjectName}
                                         </div>
+                                        {/* Course Info */}
+                                        {classData.courseTitle && (
+                                          <div className="flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded mt-1">
+                                            <BookOpen className="h-3 w-3" />
+                                            <span className="font-medium">
+                                              {classData.courseTitle}
+                                            </span>
+                                          </div>
+                                        )}
                                         <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
                                           <span>
                                             📍 Phòng:{" "}
@@ -564,19 +599,9 @@ function TeacherSchedule() {
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            if (!isPast && !isFuture) {
-                                              handleClassClick(
-                                                classData,
-                                                "view"
-                                              );
-                                            }
+                                            handleClassClick(classData, "view");
                                           }}
-                                          disabled={isFuture}
-                                          className={`text-xs py-1.5 px-2 rounded font-medium transition-colors ${
-                                            isFuture
-                                              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                              : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                                          }`}
+                                          className={`text-xs py-1.5 px-2 rounded font-medium transition-colors bg-gray-200 hover:bg-gray-300 text-gray-700`}
                                         >
                                           👁 Chi tiết
                                         </button>

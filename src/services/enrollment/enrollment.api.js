@@ -6,4 +6,13 @@ export const enrollmentApi = {
   // Admin/Teacher: list students enrolled in a class
   listStudents: (classId) =>
     http.get(`/classes/${classId}/enrollments`).then((r) => r.data),
+  // Student: list classes the current student enrolled
+  listMyClasses: () =>
+    http
+      .get(`/enrollments/me/classes`)
+      .then((r) => r.data)
+      .catch((err) => {
+        console.error("❌ [EnrollmentAPI] GET /enrollments/me/classes failed:", err);
+        throw err;
+      }),
 };

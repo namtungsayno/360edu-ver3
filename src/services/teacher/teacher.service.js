@@ -31,4 +31,13 @@ export const teacherService = {
   async getByUserId(userId) {
     return await teacherApi.getByUserId(userId);
   },
+
+  /**
+   * Get teacher profile by user ID
+   * @param {number} userId - User ID of the teacher
+   * @returns {Promise<Object>} Teacher profile with full details
+   */
+  async getProfile(userId) {
+    return await teacherApi.getProfile(userId);
+  },
 };

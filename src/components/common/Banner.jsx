@@ -108,16 +108,16 @@ export default function Banner({ onNavigate }) {
               />
             </div>
             
-            {/* FLOATING CARD - Video miễn phí (góc dưới trái) */}
+            {/* FLOATING CARD - Lớp học (góc dưới trái) */}
             <div className="absolute bottom-4 left-2 bg-white p-4 rounded-xl shadow-2xl border border-gray-100 hover:shadow-3xl transition-all duration-300 animate-float">
               <div className="flex items-center gap-3">
-                {/* Icon video với gradient background */}
-                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <PlayCircle className="w-6 h-6 text-white" />
+                {/* Icon lớp học với gradient background */}
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <GraduationCap className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-gray-900 text-sm">Video miễn phí</p>
-                  <p className="text-gray-600 text-xs">Xem trước khóa học</p>
+                  <p className="text-gray-900 text-sm">360EDU</p>
+                  <p className="text-gray-600 text-xs">Trung tâm uy tín cho nền giáo dục con trẻ</p>
                 </div>
               </div>
             </div>

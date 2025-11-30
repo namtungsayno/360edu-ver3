@@ -41,15 +41,18 @@ function AdminClassDetail() {
         // Lấy date từ location state, nếu không có thì dùng hôm nay
         const date =
           location.state?.date || new Date().toISOString().split("T")[0];
+        const slotId = location.state?.slotId;
+        const passedClassData = location.state?.classData;
 
         console.log("🔍 Loading class detail:", {
           classId,
           date,
+          slotId,
+          passedClassData,
           type: typeof classId,
         });
 
         // Load attendance from backend by class + date (admin endpoint)
-        const slotId = location.state?.slotId;
         const attendance = await attendanceService.getByClassForAdmin(
           classId,
           date,

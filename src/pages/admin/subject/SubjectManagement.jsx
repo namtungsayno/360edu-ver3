@@ -11,16 +11,13 @@ import {
   disableSubject,
 } from "../../../services/subject/subject.api";
 import SubjectTable from "./SubjectTable";
-import SubjectViewDialog from "./SubjectViewDialog";
+// Modal view removed; use full page detail instead
+// import SubjectViewDialog from "./SubjectViewDialog";
 // SidePanel removed theo yêu cầu -> chuyển sang Dialog popup
 // import SidePanel from "../../../components/ui/SidePanel";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/Dialog";
+// import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/Dialog";
 import SubjectPagination from "./SubjectPagination";
+// Modal creation removed: navigate to create page instead
 
 const STATUS_FILTERS = ["ALL", "ACTIVE", "INACTIVE"];
 
@@ -52,8 +49,9 @@ export default function SubjectManagement() {
   const [loading, setLoading] = useState(false);
 
   // Dialogs
-  const [selected, setSelected] = useState(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  // const [selected, setSelected] = useState(null);
+  // const [detailOpen, setDetailOpen] = useState(false);
+  // const [courseOpen, setCourseOpen] = useState(false); // no longer used
   // panelMode removed (chỉ dùng view hiện tại). Nếu cần edit inline sau này có thể thêm lại.
 
   // Load data once
@@ -261,10 +259,9 @@ export default function SubjectManagement() {
           items={pageItems}
           loading={loading}
           onToggleStatus={handleToggleStatus}
-          onRowClick={(s) => {
-            setSelected(s);
-            setDetailOpen(true);
-          }}
+          onRowClick={(s) =>
+            navigate(`/home/admin/subject/${s.id}`, { state: { subject: s } })
+          }
         />
 
         {/* Pagination */}
@@ -277,40 +274,9 @@ export default function SubjectManagement() {
         />
       </div>
 
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
-              {selected
-                ? selected.name || "Thông tin môn học"
-                : "Thông tin môn học"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <SubjectViewDialog subject={selected} />
-            {selected && (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    navigate(`/home/admin/subject/${selected.id}/edit`)
-                  }
-                  className="bg-indigo-600 hover:bg-indigo-700"
-                >
-                  Sửa
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => error("Xóa môn học chưa được hỗ trợ")}
-                >
-                  Xóa
-                </Button>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Row click now navigates to full Subject Detail page */}
+
+      {/* Create Course moved to full page at /home/admin/courses/create */}
     </div>
   );
 }
