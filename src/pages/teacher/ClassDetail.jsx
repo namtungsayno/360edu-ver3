@@ -75,6 +75,8 @@ export default function ClassDetail() {
   const [savingContent, setSavingContent] = useState(false);
   const [contentEditMode, setContentEditMode] = useState(true); // always editable
   const [hasExistingContent, setHasExistingContent] = useState(false);
+  // Flag to prevent clearing hydrated selections on initial personal course load
+  const [hydratedSelections, setHydratedSelections] = useState(false);
   // Fields to hydrate from backend
   const [baseCourseIdState, setBaseCourseIdState] = useState(null);
   // Track explicit source type for saving
@@ -222,60 +224,107 @@ export default function ClassDetail() {
               } else {
                 setUsingPersonalCourse(false);
               }
-              // Pick course accordingly with fallback when personal course missing
-              const selectedCourseId =
-                savedContent.selectedCourseId || savedContent.baseCourseId;
+              // Hydration: prefer explicit ids for PERSONAL; else fallback
               const teacherCourseId = savedContent.teacherCourseId;
-              if (selectedCourseId) {
+              const selectedCourseId =
+                savedContent.selectedCourseId ||
+                (savedContent.sourceType === "PERSONAL"
+                  ? teacherCourseId
+                  : savedContent.baseCourseId);
+
+              if (savedContent.sourceType === "PERSONAL" && teacherCourseId) {
+                try {
+                  const detail = await courseService.getCourseDetail(
+                    teacherCourseId
+                  );
+                  setCourseData(detail);
+                  setPersonalCourseData(detail);
+                  setSelectedPersonalCourseId(String(teacherCourseId));
+                  // After loading chapters/lessons, set explicit selections
+                  if (savedContent.chapterId) {
+                    setSelectedChapterId(String(savedContent.chapterId));
+                  } else if (
+                    Array.isArray(savedContent.linkedChapterIds) &&
+                    savedContent.linkedChapterIds.length > 0
+                  ) {
+                    setSelectedChapterId(
+                      String(savedContent.linkedChapterIds[0])
+                    );
+                  }
+                  if (savedContent.lessonId) {
+                    setSelectedLessonId(String(savedContent.lessonId));
+                  } else if (
+                    Array.isArray(savedContent.linkedLessonIds) &&
+                    savedContent.linkedLessonIds.length > 0
+                  ) {
+                    setSelectedLessonId(
+                      String(savedContent.linkedLessonIds[0])
+                    );
+                  }
+                  setHydratedSelections(true);
+                  console.log("Hydrated PERSONAL selections", {
+                    teacherCourseId,
+                    chapterId:
+                      savedContent.chapterId ||
+                      savedContent.linkedChapterIds?.[0],
+                    lessonId:
+                      savedContent.lessonId ||
+                      savedContent.linkedLessonIds?.[0],
+                  });
+                } catch (e) {
+                  console.error("Failed to load personal course detail:", e);
+                  error(
+                    "Phiên bản khóa học cá nhân đã bị xóa hoặc không khả dụng. Chuyển về khóa học gốc."
+                  );
+                  setUsingPersonalCourse(false);
+                  setSelectedPersonalCourseId("");
+                  const baseId =
+                    savedContent.baseCourseId || classDetail?.courseId;
+                  if (baseId) {
+                    try {
+                      const adminDetail = await courseService.getCourseDetail(
+                        baseId
+                      );
+                      setCourseData(adminDetail);
+                      setPersonalCourseData(null);
+                      setSelectedChapterId("");
+                      setSelectedLessonId("");
+                    } catch (err) {
+                      console.error("Fallback load base course failed:", err);
+                    }
+                  }
+                }
+              } else if (selectedCourseId) {
                 try {
                   const detail = await courseService.getCourseDetail(
                     selectedCourseId
                   );
                   setCourseData(detail);
-                  if (savedContent.sourceType === "PERSONAL") {
-                    setPersonalCourseData(detail);
-                    const personalId = teacherCourseId || selectedCourseId;
-                    if (personalId)
-                      setSelectedPersonalCourseId(String(personalId));
+                  // Restore chapter/lesson selections from admin-linked IDs
+                  if (
+                    Array.isArray(savedContent.linkedChapterIds) &&
+                    savedContent.linkedChapterIds.length > 0
+                  ) {
+                    setSelectedChapterId(
+                      String(savedContent.linkedChapterIds[0])
+                    );
                   }
+                  if (
+                    Array.isArray(savedContent.linkedLessonIds) &&
+                    savedContent.linkedLessonIds.length > 0
+                  ) {
+                    setSelectedLessonId(
+                      String(savedContent.linkedLessonIds[0])
+                    );
+                  }
+                  setHydratedSelections(true);
+                  console.log("Hydrated ADMIN selections", {
+                    chapterId: savedContent.linkedChapterIds?.[0],
+                    lessonId: savedContent.linkedLessonIds?.[0],
+                  });
                 } catch (e) {
                   console.error("Failed to load selected course detail:", e);
-                  if (savedContent.sourceType === "PERSONAL") {
-                    error(
-                      "Phiên bản khóa học cá nhân đã bị xóa hoặc không khả dụng. Chuyển về khóa học gốc."
-                    );
-                    setUsingPersonalCourse(false);
-                    setSelectedPersonalCourseId("");
-                    const baseId =
-                      savedContent.baseCourseId || classDetail?.courseId;
-                    if (baseId) {
-                      try {
-                        const adminDetail = await courseService.getCourseDetail(
-                          baseId
-                        );
-                        setCourseData(adminDetail);
-                        setPersonalCourseData(null);
-                        setSelectedChapterId("");
-                        setSelectedLessonId("");
-                      } catch (err) {
-                        console.error("Fallback load base course failed:", err);
-                      }
-                    }
-                  }
                 }
-              }
-              // Restore chapter/lesson selections from linked IDs
-              if (
-                Array.isArray(savedContent.linkedChapterIds) &&
-                savedContent.linkedChapterIds.length > 0
-              ) {
-                setSelectedChapterId(String(savedContent.linkedChapterIds[0]));
-              }
-              if (
-                Array.isArray(savedContent.linkedLessonIds) &&
-                savedContent.linkedLessonIds.length > 0
-              ) {
-                setSelectedLessonId(String(savedContent.linkedLessonIds[0]));
               }
               // Set lesson content text
               if (savedContent.content) {
@@ -299,7 +348,14 @@ export default function ClassDetail() {
         setLoading(false);
       }
     })();
-  }, [classId, error, sessionDateStr, slotId, isFutureSession]);
+  }, [
+    classId,
+    error,
+    sessionDateStr,
+    slotId,
+    isFutureSession,
+    classDetail?.courseId,
+  ]);
 
   const handleAttendanceChange = (studentId, status) => {
     setAttendanceDetails((prev) =>
@@ -429,7 +485,7 @@ export default function ClassDetail() {
     (ch) => String(ch.id) === String(selectedChapterId)
   );
 
-  // When selecting a personal version, swap courseData and reset selections
+  // When selecting a personal version, swap courseData; avoid clearing hydrated selections
   useEffect(() => {
     const applyPersonalSelection = async () => {
       if (!usingPersonalCourse) return;
@@ -437,19 +493,26 @@ export default function ClassDetail() {
         (v) => String(v.id) === String(selectedPersonalCourseId)
       );
       if (!selected) return;
-      // Luôn lấy chi tiết course để có đầy đủ chapters/lessons
       try {
         const detail = await courseService.getCourseDetail(selected.id);
         setCourseData(detail);
         setPersonalCourseData(detail);
+        // Only reset if user actively changed version after hydration
+        if (!hydratedSelections) {
+          setSelectedChapterId("");
+          setSelectedLessonId("");
+        }
       } catch (e) {
         console.error("Load personal course detail failed:", e);
       }
-      setSelectedChapterId("");
-      setSelectedLessonId("");
     };
     applyPersonalSelection();
-  }, [usingPersonalCourse, selectedPersonalCourseId, personalCandidates]);
+  }, [
+    usingPersonalCourse,
+    selectedPersonalCourseId,
+    personalCandidates,
+    hydratedSelections,
+  ]);
 
   if (loading) {
     return (
