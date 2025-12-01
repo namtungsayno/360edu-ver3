@@ -94,10 +94,11 @@ export default function Home() {
               <div className="absolute -top-10 right-4">
                 <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
                   {cls.teacherAvatarUrl ? (
-                    <img 
-                      src={cls.teacherAvatarUrl} 
+                    <ImageWithFallback
+                      src={cls.teacherAvatarUrl}
                       alt={cls.teacherFullName}
                       className="w-full h-full object-cover rounded-full"
+                      fallbackSrc="/assets/images/banner.jpg"
                     />
                   ) : (
                     <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
@@ -554,10 +555,11 @@ export default function Home() {
                   <div className="relative mx-auto -mt-16 mb-4">
                     <div className="w-28 h-28 rounded-full ring-4 ring-white shadow-xl overflow-hidden mx-auto bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
                       {teacher.avatar ? (
-                        <img
+                        <ImageWithFallback
                           src={teacher.avatar}
                           alt={teacher.name}
                           className="w-full h-full object-cover rounded-full"
+                          fallbackSrc="/assets/images/banner.jpg"
                         />
                       ) : (
                         <span className="text-3xl font-bold text-white">{lastInitial}</span>

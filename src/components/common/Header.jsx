@@ -16,10 +16,11 @@
  * - Highlight trang hiện tại
  */
 
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect, useRef } from "react";
 import { Menu, X, User, GraduationCap, Search, LogOut } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { ImageWithFallback } from "../ui/ImageWithFallback.jsx";
 import Logo from "./Logo";
 import AuthContext from "../../context/AuthContext";
 
@@ -31,6 +32,8 @@ export default function Header({ onNavigate, currentPage }) {
   const [searchQuery, setSearchQuery] = useState("");
   // State quản lý dropdown profile
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  // Ref để track dropdown container
+  const profileMenuRef = useRef(null);
 
   const handleLogout = async () => {
     try {
@@ -41,6 +44,25 @@ export default function Header({ onNavigate, currentPage }) {
       console.error("Logout failed:", error);
     }
   };
+
+  // Hook để tự động đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    // Thêm event listener khi dropdown mở
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup event listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu]);
 
   // Hàm kiểm tra trang hiện tại để highlight navigation item
   const isActive = (pageType) => {
@@ -167,13 +189,24 @@ export default function Header({ onNavigate, currentPage }) {
           {/* NÚT ĐĂNG NHẬP / PROFILE DESKTOP */}
           <div className="hidden lg:flex items-center">
             {user ? (
-              <div className="relative">
+              <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                    {user.username?.charAt(0).toUpperCase() || user.fullName?.charAt(0).toUpperCase() || "U"}
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                    {user?.avatarUrl ? (
+                      <ImageWithFallback
+                        key={user.avatarUrl} // Add key to force rerender when URL changes
+                        src={user.avatarUrl}
+                        alt={user.fullName || user.username || "Avatar"}
+                        className="w-8 h-8 object-cover"
+                      />
+                    ) : (
+                      <span>
+                        {user.username?.charAt(0).toUpperCase() || user.fullName?.charAt(0).toUpperCase() || "U"}
+                      </span>
+                    )}
                   </div>
                   <span className="text-white text-sm font-medium max-w-[120px] truncate">
                     {user.fullName || user.username}
@@ -188,6 +221,19 @@ export default function Header({ onNavigate, currentPage }) {
                       </p>
                       <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
+                    {/* Link to Student Profile if user is a student */}
+                    {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          onNavigate({ type: "student-profile" });
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <User className="w-4 h-4" />
+                        Thông tin cá nhân
+                      </button>
+                    )}
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
@@ -321,17 +367,39 @@ export default function Header({ onNavigate, currentPage }) {
               <div className="pt-4 border-t border-blue-500/30">
                 {user ? (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-3 px-4 py-2 bg-white/10 rounded-lg">
+                    <button 
+                      onClick={() => {
+                        if (user?.roles?.some(r => String(r).toLowerCase() === "student")) {
+                          onNavigate({ type: "student-profile" });
+                          setIsMenuOpen(false);
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                    >
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold">
                         {user.username?.charAt(0).toUpperCase() || user.fullName?.charAt(0).toUpperCase() || "U"}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 text-left">
                         <p className="text-white text-sm font-medium truncate">
                           {user.fullName || user.username}
                         </p>
                         <p className="text-blue-100 text-xs truncate">{user.email}</p>
                       </div>
-                    </div>
+                    </button>
+                    {/* Student Profile Link for mobile */}
+                    {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
+                      <Button 
+                        onClick={() => {
+                          onNavigate({ type: "student-profile" });
+                          setIsMenuOpen(false);
+                        }}
+                        variant="ghost"
+                        className="w-full bg-blue-500/10 border border-blue-400/20 text-blue-100 hover:bg-blue-500/20 gap-2 transition-all"
+                      >
+                        <User className="w-4 h-4" />
+                        Thông tin cá nhân
+                      </Button>
+                    )}
                     <Button 
                       onClick={() => {
                         handleLogout();

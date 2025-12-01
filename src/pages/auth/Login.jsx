@@ -24,6 +24,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { landingPathByRoles } from "../../utils/auth-landing";
 import { authService } from "../../services/auth/auth.service";
 import { useToast } from "../../hooks/use-toast";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const { onNavigate } = useOutletContext();
@@ -44,6 +45,8 @@ export default function Login() {
     remember: true,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Xử lý thay đổi input
   const handleInputChange = (e) => {
@@ -52,10 +55,40 @@ export default function Login() {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  // Validate form
+  const validate = () => {
+    const next = {};
+    
+    if (!formData.username.trim()) {
+      next.username = "Vui lòng nhập tên đăng nhập.";
+    } else if (formData.username.length < 3) {
+      next.username = "Tên đăng nhập phải có ít nhất 3 ký tự.";
+    }
+    
+    if (!formData.password) {
+      next.password = "Vui lòng nhập mật khẩu.";
+    } else if (formData.password.length < 6) {
+      next.password = "Mật khẩu phải có ít nhất 6 ký tự.";
+    }
+    
+    setErrors(next);
+    return Object.keys(next).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate form before submitting
+    if (!validate()) {
+      error("Vui lòng kiểm tra lại thông tin đăng nhập");
+      return;
+    }
+    
     setSubmitting(true);
 
     try {
@@ -70,7 +103,17 @@ export default function Login() {
         nav(to, { replace: true });
       }, 500);
     } catch (ex) {
-      error(ex.displayMessage || "Tên đăng nhập hoặc mật khẩu không chính xác");
+      const errorMsg = ex.displayMessage || ex?.response?.data?.message || "Tên đăng nhập hoặc mật khẩu không chính xác";
+      error(errorMsg);
+      
+      // Highlight fields on error
+      if (errorMsg.includes("mật khẩu")) {
+        setErrors({ password: "Mật khẩu không chính xác" });
+      } else if (errorMsg.includes("tên đăng nhập")) {
+        setErrors({ username: "Tên đăng nhập không tồn tại" });
+      } else {
+        setErrors({ username: "", password: "" });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -120,8 +163,11 @@ export default function Login() {
                 value={formData.username}
                 onChange={handleInputChange}
                 placeholder="Nhập tên đăng nhập"
-                className="w-full"
+                className={`w-full ${errors.username ? "border-red-500" : ""}`}
               />
+              {errors.username && (
+                <p className="mt-1 text-xs text-red-600">{errors.username}</p>
+              )}
             </div>
 
             {/* Password Input */}
@@ -132,16 +178,32 @@ export default function Login() {
               >
                 Mật khẩu
               </label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="Nhập mật khẩu"
-                className="w-full"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="Nhập mật khẩu"
+                  className={`w-full pr-10 ${errors.password ? "border-red-500" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1 text-xs text-red-600">{errors.password}</p>
+              )}
             </div>
 
             {/* Remember Me & Forgot Password */}
