@@ -62,7 +62,7 @@ export default function CourseOfSubjectCreate() {
       const ch = { ...arr[chapterIdx] };
       ch.lessons = [
         ...(ch.lessons || []),
-        { title: "", description: "", orderIndex: ch.lessons.length },
+        { title: "", orderIndex: ch.lessons.length },
       ];
       arr[chapterIdx] = ch;
       return arr;
@@ -260,177 +260,166 @@ export default function CourseOfSubjectCreate() {
               </CardContent>
             </Card>
 
-            {/* Program (chapters & lessons) */}
+            {/* Program (Chương & Bài học) - UI giống "Chỉnh sửa nội dung" */}
             <Card className="rounded-[14px]">
-              <CardHeader className="px-6 pt-5 pb-4 flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base text-neutral-950">
-                    Chương trình học
-                  </CardTitle>
-                  <p className="text-[12px] text-[#62748e] mt-1">
-                    Tổ chức nội dung khóa học theo chương và bài học
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                  onClick={addChapter}
-                >
-                  <Plus className="w-4 h-4" /> Thêm chương
-                </Button>
+              <CardHeader className="px-6 pt-5 pb-4 flex items-center justify-between">
+                <CardTitle className="text-base text-neutral-950">
+                  Chương & Bài học
+                </CardTitle>
               </CardHeader>
               <CardContent className="px-6 pb-6 space-y-4">
-                {chapters.length === 0 && (
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 py-10 flex flex-col items-center justify-center text-center">
-                    <div className="w-14 h-14 rounded-full border border-gray-200 flex items-center justify-center mb-4">
-                      <Plus className="w-6 h-6 text-[#62748e]" />
+                {/* Danh sách Chương */}
+                {chapters.map((ch, chapterIndex) => (
+                  <div key={chapterIndex} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-neutral-950">
+                        Tiêu đề chương #{chapterIndex + 1}
+                      </p>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => removeChapter(chapterIndex)}
+                        className="text-red-500 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <p className="text-sm font-medium text-neutral-950 mb-1">
-                      Chưa có chương học nào
+                    <Input
+                      placeholder="Nhập tiêu đề chương"
+                      value={ch.title}
+                      onChange={(e) =>
+                        changeChapterField(
+                          chapterIndex,
+                          "title",
+                          e.target.value
+                        )
+                      }
+                    />
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-neutral-950 mb-2">
+                        Mô tả chương
+                      </p>
+                      <Textarea
+                        rows={3}
+                        placeholder="Nhập mô tả cho chương (không bắt buộc)"
+                        value={ch.description}
+                        onChange={(e) =>
+                          changeChapterField(
+                            chapterIndex,
+                            "description",
+                            e.target.value
+                          )
+                        }
+                      />
+                    </div>
+
+                    {/* Bài học */}
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium text-neutral-950">
+                          Bài học
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => addLesson(chapterIndex)}
+                        >
+                          <Plus className="w-4 h-4" /> Thêm bài
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {(ch.lessons || []).map((ls, lessonIndex) => (
+                          <div
+                            key={lessonIndex}
+                            className="flex items-center gap-2"
+                          >
+                            <Input
+                              placeholder={`Bài ${lessonIndex + 1}`}
+                              value={ls.title}
+                              onChange={(e) =>
+                                changeLessonField(
+                                  chapterIndex,
+                                  lessonIndex,
+                                  "title",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() =>
+                                removeLesson(chapterIndex, lessonIndex)
+                              }
+                              className="text-red-500 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Trạng thái trống + nút Thêm chương ở cuối */}
+                {chapters.length === 0 && (
+                  <div className="border rounded-lg p-4">
+                    <p className="text-sm font-medium text-neutral-950 mb-2 text-center">
+                      Chưa có chương nào
                     </p>
-                    <p className="text-[12px] text-[#45556c] mb-4">
-                      Hãy thêm chương đầu tiên để bắt đầu xây dựng khóa học.
+                    <p className="text-[12px] text-[#62748e] mb-3 text-center">
+                      Hãy bắt đầu bằng việc thêm chương đầu tiên.
                     </p>
+                    <div className="flex justify-center">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={addChapter}
+                      >
+                        <Plus className="w-4 h-4" /> Thêm chương
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nút Thêm chương luôn ở cuối danh sách khi đã có chương */}
+                {chapters.length > 0 && (
+                  <div className="pt-2 flex justify-center">
                     <Button
                       type="button"
+                      size="sm"
                       variant="outline"
                       className="gap-2"
                       onClick={addChapter}
                     >
-                      <Plus className="w-4 h-4" /> Thêm chương đầu tiên
+                      <Plus className="w-4 h-4" /> Thêm chương
                     </Button>
                   </div>
                 )}
-
-                {/* Chapters list */}
-                <div className="space-y-4">
-                  {chapters.map((ch, chapterIndex) => (
-                    <Card
-                      key={chapterIndex}
-                      className="border-2 border-gray-200 rounded-xl hover:border-blue-300 transition-colors"
-                    >
-                      <CardContent className="p-5 space-y-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3 flex-1">
-                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mt-1">
-                              <Layers className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <div className="flex-1 space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="text-[12px] text-[#62748e]">
-                                  Chương {chapterIndex + 1}
-                                </p>
-                              </div>
-                              <Input
-                                placeholder="Tiêu đề chương"
-                                value={ch.title}
-                                onChange={(e) =>
-                                  changeChapterField(
-                                    chapterIndex,
-                                    "title",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                              <Textarea
-                                rows={2}
-                                placeholder="Mô tả ngắn về nội dung chương này..."
-                                value={ch.description}
-                                onChange={(e) =>
-                                  changeChapterField(
-                                    chapterIndex,
-                                    "description",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => removeChapter(chapterIndex)}
-                            className="text-gray-400 hover:text-red-500 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-
-                        {/* Lessons */}
-                        <div className="space-y-3">
-                          {(ch.lessons || []).map((ls, lessonIndex) => (
-                            <div
-                              key={lessonIndex}
-                              className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-lg p-3"
-                            >
-                              <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center mt-0.5">
-                                <FileText className="w-4 h-4 text-[#62748e]" />
-                              </div>
-                              <div className="flex-1 space-y-2">
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="text-[12px] text-[#62748e]">
-                                    Bài {lessonIndex + 1}
-                                  </p>
-                                </div>
-                                <Input
-                                  placeholder="Tiêu đề bài học"
-                                  value={ls.title}
-                                  onChange={(e) =>
-                                    changeLessonField(
-                                      chapterIndex,
-                                      lessonIndex,
-                                      "title",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                                <Textarea
-                                  rows={2}
-                                  placeholder="Giới thiệu ngắn gọn về bài học..."
-                                  value={ls.description}
-                                  onChange={(e) =>
-                                    changeLessonField(
-                                      chapterIndex,
-                                      lessonIndex,
-                                      "description",
-                                      e.target.value
-                                    )
-                                  }
-                                />
-                              </div>
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                onClick={() =>
-                                  removeLesson(chapterIndex, lessonIndex)
-                                }
-                                className="text-gray-400 hover:text-red-500 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          ))}
-
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="mt-1 gap-2"
-                            onClick={() => addLesson(chapterIndex)}
-                          >
-                            <Plus className="w-4 h-4" /> Thêm bài học
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
               </CardContent>
             </Card>
+
+            {/* Footer hành động: luôn dưới cùng của form chính */}
+            <div className="mt-6 border-t pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+              <Button variant="outline" onClick={handleBack} disabled={saving}>
+                Hủy
+              </Button>
+              <Button
+                onClick={handleSave}
+                className="bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center"
+                disabled={saving}
+              >
+                <Save className="w-4 h-4 mr-2" />{" "}
+                {saving ? "Đang lưu..." : "Tạo khóa học"}
+              </Button>
+            </div>
           </div>
           {/* RIGHT: OVERVIEW + NOTES */}
           <div className="space-y-4">
@@ -482,7 +471,7 @@ export default function CourseOfSubjectCreate() {
               <CardContent className="px-6 pb-5">
                 <ul className="list-disc list-inside text-[12px] text-[#45556c] space-y-1">
                   <li>Các trường có dấu (*) là bắt buộc.</li>
-                  <li>Mỗi chương cần có ít nhất 1 bài học.</li>
+                  <li>Mỗi chương cần có ít nhất 1 bài học (chỉ tiêu đề).</li>
                   <li>
                     Khóa học tạo trong Môn học sẽ không xuất hiện trong mục Khóa
                     học.
@@ -490,20 +479,6 @@ export default function CourseOfSubjectCreate() {
                 </ul>
               </CardContent>
             </Card>
-            {/* Actions */}
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={handleSave}
-                className="bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center"
-                disabled={saving}
-              >
-                <Save className="w-4 h-4 mr-2" />{" "}
-                {saving ? "Đang lưu..." : "Tạo khóa học"}
-              </Button>
-              <Button variant="outline" onClick={handleBack} disabled={saving}>
-                Hủy
-              </Button>
-            </div>
           </div>
         </div>
       </div>

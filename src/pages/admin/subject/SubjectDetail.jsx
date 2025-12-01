@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Badge } from "../../../components/ui/Badge";
+import { Textarea } from "../../../components/ui/Textarea";
+import { Switch } from "../../../components/ui/Switch";
+import { Label } from "../../../components/ui/Label";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import {
   Layers,
@@ -13,7 +16,12 @@ import {
   AlertCircle,
   Eye,
 } from "lucide-react";
-import { getAllSubjects } from "../../../services/subject/subject.api";
+import {
+  getAllSubjects,
+  updateSubject,
+  enableSubject,
+  disableSubject,
+} from "../../../services/subject/subject.api";
 import { courseApi } from "../../../services/course/course.api";
 import { useToast } from "../../../hooks/use-toast";
 
@@ -27,6 +35,9 @@ export default function SubjectDetail() {
   const [error, setError] = useState("");
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [tempStatusActive, setTempStatusActive] = useState(false);
+  const [tempDescription, setTempDescription] = useState("");
   // modal removed; use route navigation to create page
 
   useEffect(() => {
@@ -135,7 +146,60 @@ export default function SubjectDetail() {
   }, [id, showError, location.state]);
 
   const handleEdit = () => {
-    navigate(`/home/admin/subject/${id}/edit`);
+    // Toggle inline edit mode and initialize temp fields
+    if (subject) {
+      setTempStatusActive(subject.status === "active");
+      setTempDescription(subject.description || "");
+    }
+    setEditMode(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditMode(false);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      // Validate: cannot deactivate when there are classes
+      if (!tempStatusActive && (subject?.numClasses ?? 0) > 0) {
+        showError?.("Không thể vô hiệu hóa. Môn này đang có lớp học.");
+        return;
+      }
+
+      // Persist mandatory fields per backend contract (name, enum status)
+      const nextStatusEnum = tempStatusActive ? "AVAILABLE" : "UNAVAILABLE";
+      await updateSubject(subject.id, {
+        name: subject.name,
+        status: nextStatusEnum,
+      });
+      // Optional: also call enable/disable endpoints to keep parity
+      if (tempStatusActive && subject.status !== "active") {
+        await enableSubject(subject.id);
+      } else if (!tempStatusActive && subject.status !== "inactive") {
+        await disableSubject(subject.id);
+      }
+
+      const updated = {
+        ...subject,
+        status: tempStatusActive ? "active" : "inactive",
+        // Description remains client-side until backend supports it
+        description: tempDescription,
+        updatedAt: new Date().toISOString(),
+      };
+      setSubject(updated);
+      setEditMode(false);
+    } catch (e) {
+      console.error("Failed to save subject edits", e);
+      showError?.("Không thể lưu thay đổi. Vui lòng thử lại.");
+    }
+  };
+
+  const handleToggleStatus = (next) => {
+    if (!next && (subject?.numClasses ?? 0) > 0) {
+      showError?.("Không thể vô hiệu hóa. Môn này đang có lớp học.");
+      return;
+    }
+    setTempStatusActive(next);
   };
 
   const handleBack = () => {
@@ -268,7 +332,7 @@ export default function SubjectDetail() {
                     d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                   />
                 </svg>
-                Chỉnh sửa
+                {editMode ? "Đang chỉnh sửa" : "Chỉnh sửa"}
               </Button>
             </div>
           </div>
@@ -277,87 +341,157 @@ export default function SubjectDetail() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Main Content */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Basic Information */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-6">
-                    Thông tin cơ bản
-                  </h2>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Mã môn học
-                      </div>
-                      <p className="text-lg font-semibold text-blue-600">
-                        {subject.code}
-                      </p>
-                    </div>
-
-                    <div>
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Số tín chỉ
-                      </div>
-                      <p className="text-lg font-semibold text-gray-800">
-                        {subject.credits}
-                      </p>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Tên môn học
-                      </div>
-                      <p className="text-lg font-semibold text-gray-800">
-                        {subject.name}
-                      </p>
-                    </div>
-
-                    <div>
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Khoa/Bộ môn
-                      </div>
-                      <p className="text-lg text-gray-800">
-                        {subject.department}
-                      </p>
-                    </div>
-
-                    <div>
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Trạng thái
-                      </div>
+                {/* Subject Information (merged) */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Thông tin môn học
+                    </h2>
+                    {!editMode ? (
                       <Badge
-                        variant={
-                          subject.status === "active"
-                            ? "success"
-                            : "destructive"
-                        }
+                        variant="outline"
+                        className="text-xs px-2 py-1 text-gray-600"
                       >
-                        {subject.status === "active"
-                          ? "Hoạt động"
-                          : "Không hoạt động"}
+                        Cập nhật:{" "}
+                        {new Date(subject.updatedAt).toLocaleDateString(
+                          "vi-VN"
+                        )}
                       </Badge>
-                    </div>
+                    ) : null}
+                  </div>
 
-                    {subject.prerequisite && (
-                      <div className="md:col-span-2">
+                  {!editMode ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
                         <div className="block text-sm font-medium text-gray-500 mb-1">
-                          Môn học tiên quyết
+                          Ngày tạo
                         </div>
-                        <p className="text-lg text-gray-800">
-                          {subject.prerequisite}
+                        <p className="text-lg text-gray-900">
+                          {new Date(subject.createdAt).toLocaleDateString(
+                            "vi-VN"
+                          )}
                         </p>
                       </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Description */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                    Mô tả môn học
-                  </h2>
-                  <p className="text-gray-700 leading-relaxed">
-                    {subject.description || "Chưa có mô tả cho môn học này."}
-                  </p>
+                      <div>
+                        <div className="block text-sm font-medium text-gray-500 mb-1">
+                          Cập nhật lần cuối
+                        </div>
+                        <p className="text-lg text-gray-900">
+                          {new Date(subject.updatedAt).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="block text-sm font-medium text-gray-500 mb-1">
+                          Trạng thái
+                        </div>
+                        <Badge
+                          variant={
+                            subject.status === "active"
+                              ? "success"
+                              : "destructive"
+                          }
+                        >
+                          {subject.status === "active"
+                            ? "Hoạt động"
+                            : "Không hoạt động"}
+                        </Badge>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <div className="block text-sm font-medium text-gray-500 mb-1">
+                          Mô tả môn học
+                        </div>
+                        <p className="text-gray-700 leading-relaxed">
+                          {subject.description ||
+                            "Chưa có mô tả cho môn học này."}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <div className="block text-sm font-medium text-gray-500 mb-1">
+                            Ngày tạo
+                          </div>
+                          <p className="text-lg text-gray-900">
+                            {new Date(subject.createdAt).toLocaleDateString(
+                              "vi-VN"
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <div className="block text-sm font-medium text-gray-500 mb-1">
+                            Cập nhật lần cuối
+                          </div>
+                          <p className="text-lg text-gray-900">
+                            {new Date(subject.updatedAt).toLocaleDateString(
+                              "vi-VN"
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 p-4 bg-gradient-to-br from-gray-50 to-white">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm text-gray-700">
+                            Trạng thái
+                          </Label>
+                          <div className="flex items-center gap-3">
+                            <Badge
+                              variant={
+                                tempStatusActive ? "success" : "destructive"
+                              }
+                            >
+                              {tempStatusActive
+                                ? "Hoạt động"
+                                : "Không hoạt động"}
+                            </Badge>
+                            <Switch
+                              checked={tempStatusActive}
+                              onCheckedChange={handleToggleStatus}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 p-4 bg-gradient-to-br from-gray-50 to-white">
+                        <Label className="text-sm text-gray-700 mb-2 block">
+                          Mô tả môn học
+                        </Label>
+                        <Textarea
+                          value={tempDescription}
+                          onChange={(e) => setTempDescription(e.target.value)}
+                          placeholder="Nhập mô tả chi tiết, rõ ràng và hấp dẫn..."
+                          className="min-h-[120px] resize-y focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="mt-2 text-xs text-gray-500">
+                          Mẹo: Mô tả rõ ràng sẽ giúp sinh viên hiểu môn học tốt
+                          hơn.
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3">
+                        <Button
+                          variant="outline"
+                          className="border-gray-300"
+                          onClick={handleCancelEdit}
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={handleSaveEdit}
+                        >
+                          Lưu thay đổi
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -455,76 +589,7 @@ export default function SubjectDetail() {
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                    Hành động
-                  </h3>
-
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-blue-600 border-blue-200 hover:bg-blue-50"
-                      onClick={handleEdit}
-                    >
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                      Chỉnh sửa môn học
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-green-600 border-green-200 hover:bg-green-50"
-                      onClick={handleOpenCreateCourse}
-                    >
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                        />
-                      </svg>
-                      Tạo khóa học mới
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-purple-600 border-purple-200 hover:bg-purple-50"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                        />
-                      </svg>
-                      Xem báo cáo
-                    </Button>
-                  </div>
-                </div>
+                {/* Actions section removed as requested */}
               </div>
             </div>
           </div>

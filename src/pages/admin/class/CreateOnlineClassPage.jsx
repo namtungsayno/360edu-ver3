@@ -34,6 +34,7 @@ import { teacherService } from "../../../services/teacher/teacher.service";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
 import { courseApi } from "../../../services/course/course.api";
 import { useToast } from "../../../hooks/use-toast";
+import { formatCurrency } from "../../../helper/formatters";
 
 export default function CreateOnlineClassPage() {
   const navigate = useNavigate();
@@ -69,6 +70,11 @@ export default function CreateOnlineClassPage() {
   const [teacherBusy, setTeacherBusy] = useState([]);
   const [pickedSlots, setPickedSlots] = useState([]);
   const { error, success } = useToast();
+
+  // Helpers: giữ state dạng số (digits-only), hiển thị dạng có dấu . theo VN
+  const digitsOnly = (val) => (val || "").replace(/\D/g, "");
+  const formatVNNumber = (digits) =>
+    (digits || "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
   useEffect(() => {
     loadSubjects();
@@ -683,22 +689,25 @@ export default function CreateOnlineClassPage() {
                   </div>
                 </div>
 
-                {/* Giá mỗi buổi (VND) */}
+                {/* Giá tiền mỗi buổi học (VNĐ) */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Giá mỗi buổi (VND) <span className="text-red-500">*</span>
+                    Giá tiền mỗi buổi học (VNĐ){" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <Input
-                    type="number"
-                    min={0}
-                    value={pricePerSession}
-                    onChange={(e) => setPricePerSession(e.target.value)}
-                    placeholder="Ví dụ: 150000"
+                    type="text"
+                    inputMode="numeric"
+                    value={formatVNNumber(pricePerSession)}
+                    onChange={(e) =>
+                      setPricePerSession(digitsOnly(e.target.value))
+                    }
+                    placeholder="Ví dụ: 150.000"
                     className="h-10 text-sm"
                   />
                   {pricePerSession !== "" && parseInt(pricePerSession) < 0 && (
                     <p className="text-xs text-red-600 mt-1">
-                      Giá mỗi buổi phải lớn hơn hoặc bằng 0
+                      Giá tiền mỗi buổi học phải ≥ 0
                     </p>
                   )}
                 </div>
@@ -858,13 +867,24 @@ export default function CreateOnlineClassPage() {
                     </div>
                     <div>
                       <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Giá mỗi buổi:
+                        Giá tiền mỗi buổi học:
                       </label>
                       <p className="text-sm font-semibold text-gray-900">
-                        {pricePerSession
-                          ? `${parseInt(pricePerSession).toLocaleString(
-                              "vi-VN"
-                            )} VND`
+                        {pricePerSession !== ""
+                          ? formatCurrency(parseInt(pricePerSession))
+                          : "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 block mb-1">
+                        Tổng giá tiền của lớp học:
+                      </label>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {pricePerSession !== "" && totalSessions
+                          ? formatCurrency(
+                              parseInt(pricePerSession) *
+                                parseInt(totalSessions)
+                            )
                           : "-"}
                       </p>
                     </div>

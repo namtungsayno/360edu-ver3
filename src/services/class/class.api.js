@@ -25,7 +25,23 @@ export const classApi = {
   publish: (id) => http.post(`/classes/${id}/publish`).then((r) => r.data),
   revertDraft: (id) =>
     http.post(`/classes/${id}/revert-draft`).then((r) => r.data),
-  getById: (id) => http.get(`/classes/${id}`).then((r) => r.data),
+  getById: (id) =>
+    http.get(`/classes/${id}`).then((r) => {
+      try {
+        console.log("📘 [CLASS_API] GET /classes/" + id, r.data);
+        if (r?.data) {
+          const keys = Object.keys(r.data);
+          console.log("   Fields:", keys);
+          console.log(
+            "   pricePerSession=",
+            r.data.pricePerSession,
+            " totalSessions=",
+            r.data.totalSessions
+          );
+        }
+      } catch (_) {}
+      return r.data;
+    }),
   update: (id, payload) =>
     http.put(`/classes/${id}`, payload).then((r) => r.data),
 };
