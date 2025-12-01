@@ -2,12 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "../../components/ui/Card.jsx";
+import { Card, CardContent } from "../../components/ui/Card.jsx";
 import { Button } from "../../components/ui/Button.jsx";
 import { Input } from "../../components/ui/Input.jsx";
 import { Badge } from "../../components/ui/Badge.jsx";
@@ -23,7 +18,6 @@ import {
   BookOpen,
   Search,
   Filter,
-  Plus,
   Layers,
   FileText,
   Clock,
@@ -83,7 +77,7 @@ function getStatusConfig(status) {
 export default function TeacherCourseList() {
   const navigate = useNavigate();
   const { error } = useToast();
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -167,7 +161,7 @@ export default function TeacherCourseList() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-neutral-950">
-            Quản lý khóa học cá nhân
+            Quản lý khóa học theo lớp
           </h1>
           <p className="text-[12px] text-[#62748e] mt-1">
             Xem và quản lý các khóa học cá nhân mà bạn trực tiếp biên soạn.

@@ -35,7 +35,7 @@ const SidebarTeacher = () => {
         },
         {
           id: "my-courses",
-          label: "Quản lý khóa học cá nhân",
+          label: "Quản lý khóa học theo lớp",
           icon: BookOpen,
           href: "/home/teacher/courses",
         },
