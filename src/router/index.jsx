@@ -41,6 +41,7 @@ import GuestLayout from "../layouts/GuestLayout";
 import TeacherLayout from "../layouts/TeacherLayout.jsx";
 import StudentClasses from "../pages/student/Classes.jsx";
 import StudentClassDetail from "../pages/student/ClassDetail.jsx";
+import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
 
 // GUEST PAGES - Các trang dành cho user chưa đăng nhập
 import Home from "../pages/guest/home/Home";
@@ -132,6 +133,11 @@ function AppRouter() {
             element={<StudentClassDetail />}
           />{" "}
           {/* Chi tiết lớp đã đăng ký */}
+          <Route
+            path="/home/courses/:id"
+            element={<StudentCourseDetail />}
+          />{" "}
+          {/* Chi tiết khóa học cho student */}
         </Route>
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
         <Route element={<RequireRole allow={["admin"]} />}>

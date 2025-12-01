@@ -16,6 +16,10 @@ export const classService = {
   async getById(id) {
     return classApi.getById(id);
   },
+  // Public API for guest: get class detail with base course info
+  async getPublicDetail(id) {
+    return classApi.getPublicDetail(id);
+  },
   async update(id, payload) {
     return classApi.update(id, payload);
   },

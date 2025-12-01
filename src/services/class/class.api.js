@@ -26,6 +26,8 @@ export const classApi = {
   revertDraft: (id) =>
     http.post(`/classes/${id}/revert-draft`).then((r) => r.data),
   getById: (id) => http.get(`/classes/${id}`).then((r) => r.data),
+  // Public API for guest: get class detail with base course info
+  getPublicDetail: (id) => http.get(`/classes/${id}/public`).then((r) => r.data),
   update: (id, payload) =>
     http.put(`/classes/${id}`, payload).then((r) => r.data),
 };

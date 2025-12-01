@@ -654,7 +654,7 @@ export default function ClassList() {
                     return (
                       <Card
                         key={c.id}
-                        className={`group overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border-2 ${
+                        className={`group overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border-2 flex flex-col h-full ${
                           c.status === "DRAFT"
                             ? "border-amber-300"
                             : "border-transparent hover:border-blue-200"
@@ -710,7 +710,7 @@ export default function ClassList() {
                           </div>
                         </div>
 
-                        <CardContent className="p-5 relative">
+                        <CardContent className="p-5 relative flex-1 flex flex-col">
                           {/* Teacher Avatar - Overlapping */}
                           <div className="absolute -top-10 right-4">
                             <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
@@ -763,6 +763,9 @@ export default function ClassList() {
                               </div>
                             )}
                           </div>
+
+                          {/* Spacer to push content below to bottom */}
+                          <div className="flex-1"></div>
 
                           {/* Enrollment Progress */}
                           <div className="mb-4 bg-gray-50 rounded-lg p-3">

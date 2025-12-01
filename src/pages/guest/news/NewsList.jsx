@@ -76,8 +76,7 @@ export default function NewsList() {
             {/* Featured News - Large Card */}
             {featuredNews && (
               <Card 
-                className="group hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer"
-                onClick={() => navigate(`/news/${featuredNews.id}`)}
+                className="group hover:shadow-2xl transition-all duration-300 overflow-hidden"
               >
                 <div className="grid md:grid-cols-2 gap-0">
                   {/* Image Section */}
@@ -132,10 +131,7 @@ export default function NewsList() {
                       );
                     })()}
 
-                    <button className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-2">
-                      Đọc thêm
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
+
                   </CardContent>
                 </div>
               </Card>
@@ -154,8 +150,7 @@ export default function NewsList() {
               return (
                 <Card 
                   key={item.id}
-                  className="group hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer flex flex-col h-full"
-                  onClick={() => navigate(`/news/${item.id}`)}
+                  className="group hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col h-full"
                 >
                   {/* Image/Gradient Header - Taller */}
                   <div className="h-64 relative overflow-hidden">

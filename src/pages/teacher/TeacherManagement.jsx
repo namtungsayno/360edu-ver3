@@ -319,18 +319,6 @@ export default function TeacherManagement() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Phụ trách lớp
-                  </label>
-                  <Input
-                    name="homeroom"
-                    value={form.homeroom}
-                    onChange={handleChange}
-                    placeholder="VD: 10A1"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
                     Nơi công tác *
                   </label>
                   <Input

@@ -69,7 +69,7 @@ export default function Home() {
         return (
           <Card 
             key={cls.id}
-            className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-blue-200"
+            className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-blue-200 flex flex-col h-full"
             onClick={() => onNavigate({ type: "class", classId: cls.id })}
           >
             {/* Image Header with Gradient & Overlay */}
@@ -89,7 +89,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <CardContent className="p-5 relative">
+            <CardContent className="p-5 relative flex-1 flex flex-col">
               {/* Teacher Avatar - Overlapping */}
               <div className="absolute -top-10 right-4">
                 <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
@@ -133,6 +133,8 @@ export default function Home() {
                   <span>Khai giảng: {cls.startDate || "01/11/2024"}</span>
                 </div>
               </div>
+              {/* Spacer to push content below to bottom */}
+              <div className="flex-1"></div>
               {/* Enrollment Progress */}
               <div className="mb-4 bg-gray-50 rounded-lg p-3">
                 <div className="flex items-center justify-between text-xs mb-2">
