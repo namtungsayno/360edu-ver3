@@ -17,7 +17,7 @@
  */
 
 import { useState, useContext, useEffect, useRef } from "react";
-import { Menu, X, User, GraduationCap, Search, LogOut } from "lucide-react";
+import { Menu, X, User, GraduationCap, Search, LogOut, Calendar } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { ImageWithFallback } from "../ui/ImageWithFallback.jsx";
@@ -69,7 +69,8 @@ export default function Header({ onNavigate, currentPage }) {
     return currentPage.type === pageType || 
            (pageType === "classes" && (currentPage.type === "class" || currentPage.type === "classes")) ||
            (pageType === "teachers" && currentPage.type === "teacher") ||
-           (pageType === "my-classes" && (currentPage.type === "my-classes" || currentPage.type === "student-classes"));
+           (pageType === "my-classes" && (currentPage.type === "my-classes" || currentPage.type === "student-classes")) ||
+           (pageType === "student-schedule" && currentPage.type === "student-schedule");
   };
 
   return (
@@ -173,16 +174,28 @@ export default function Header({ onNavigate, currentPage }) {
 
             {/* Nếu đã đăng nhập với role student, hiển thị mục Lớp đã đăng ký */}
             {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
-              <button 
-                onClick={() => onNavigate({ type: "student-classes" })}
-                className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
-                  isActive("my-classes")
-                    ? "bg-white/20 text-white" 
-                    : "text-blue-50 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                Lớp đã đăng ký
-              </button>
+              <>
+                <button 
+                  onClick={() => onNavigate({ type: "student-classes" })}
+                  className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
+                    isActive("my-classes")
+                      ? "bg-white/20 text-white" 
+                      : "text-blue-50 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  Lớp đã đăng ký
+                </button>
+                <button 
+                  onClick={() => onNavigate({ type: "student-schedule" })}
+                  className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
+                    isActive("student-schedule")
+                      ? "bg-white/20 text-white" 
+                      : "text-blue-50 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  Lịch học
+                </button>
+              </>
             )}
           </nav>
 
@@ -223,16 +236,38 @@ export default function Header({ onNavigate, currentPage }) {
                     </div>
                     {/* Link to Student Profile if user is a student */}
                     {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
-                      <button
-                        onClick={() => {
-                          setShowProfileMenu(false);
-                          onNavigate({ type: "student-profile" });
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        <User className="w-4 h-4" />
-                        Thông tin cá nhân
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            onNavigate({ type: "student-classes" });
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <GraduationCap className="w-4 h-4" />
+                          Lớp đã đăng ký
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            onNavigate({ type: "student-schedule" });
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          Lịch học
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            onNavigate({ type: "student-profile" });
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <User className="w-4 h-4" />
+                          Thông tin cá nhân
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={handleLogout}
@@ -388,17 +423,41 @@ export default function Header({ onNavigate, currentPage }) {
                     </button>
                     {/* Student Profile Link for mobile */}
                     {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
-                      <Button 
-                        onClick={() => {
-                          onNavigate({ type: "student-profile" });
-                          setIsMenuOpen(false);
-                        }}
-                        variant="ghost"
-                        className="w-full bg-blue-500/10 border border-blue-400/20 text-blue-100 hover:bg-blue-500/20 gap-2 transition-all"
-                      >
-                        <User className="w-4 h-4" />
-                        Thông tin cá nhân
-                      </Button>
+                      <>
+                        <Button 
+                          onClick={() => {
+                            onNavigate({ type: "student-classes" });
+                            setIsMenuOpen(false);
+                          }}
+                          variant="ghost"
+                          className="w-full bg-green-500/10 border border-green-400/20 text-green-100 hover:bg-green-500/20 gap-2 transition-all"
+                        >
+                          <GraduationCap className="w-4 h-4" />
+                          Lớp đã đăng ký
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            onNavigate({ type: "student-schedule" });
+                            setIsMenuOpen(false);
+                          }}
+                          variant="ghost"
+                          className="w-full bg-purple-500/10 border border-purple-400/20 text-purple-100 hover:bg-purple-500/20 gap-2 transition-all"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          Lịch học
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            onNavigate({ type: "student-profile" });
+                            setIsMenuOpen(false);
+                          }}
+                          variant="ghost"
+                          className="w-full bg-blue-500/10 border border-blue-400/20 text-blue-100 hover:bg-blue-500/20 gap-2 transition-all"
+                        >
+                          <User className="w-4 h-4" />
+                          Thông tin cá nhân
+                        </Button>
+                      </>
                     )}
                     <Button 
                       onClick={() => {

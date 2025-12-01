@@ -5,7 +5,6 @@ import {
   Clock,
   Calendar,
   MapPin,
-  Users,
   Star,
   CheckCircle,
   Video,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { classService } from "../../../services/class/class.service";
 import { enrollmentService } from "../../../services/enrollment/enrollment.service";
+import { buildScheduleIndex, hasConflict, buildIndexByFetchingDetails } from "../../../helper/schedule-conflicts";
 import { dayLabelVi } from "../../../helper/formatters";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
@@ -88,13 +88,44 @@ export default function ClassDetail() {
 
     setEnrolling(true);
     try {
-      await enrollmentService.selfEnroll(classId);
+      console.log("🟦 [Enroll] Start enroll flow for class:", classId);
+      // 1. Load current enrolled classes (may not include schedule data)
+      const myClasses = await enrollmentService.listMyClasses();
+      console.log("🟦 [Enroll] My classes count:", Array.isArray(myClasses) ? myClasses.length : 0);
+
+      // 1.1 Already enrolled check
+      const already = (myClasses || []).some((c) => (c.classId || c.id) === classId);
+      if (already) {
+        console.warn("🟧 [Enroll] Already enrolled in this class:", classId);
+        warning("Bạn đã đăng ký lớp học này", "Thông báo");
+        return;
+      }
+
+      // 2. Build index: if schedule missing, fetch details per class
+      let scheduleIndex = buildScheduleIndex(myClasses || []);
+      const hasAnySchedule = scheduleIndex.length > 0;
+      console.log("🟦 [Enroll] Schedule index from list size:", scheduleIndex.length);
+      if (!hasAnySchedule) {
+        console.log("🟨 [Enroll] No schedules on list API. Fetching class details to build index...");
+        scheduleIndex = await buildIndexByFetchingDetails(myClasses || [], classService.getById);
+        console.log("🟦 [Enroll] Schedule index from details size:", scheduleIndex.length);
+      }
+      // 3. Check conflict
+      const conflict = hasConflict(data, scheduleIndex);
+      console.log("🟥 [Enroll] Conflict detected?", conflict);
+      if (conflict) {
+        warning("Lịch học lớp này bị trùng với lớp bạn đã đăng ký.", "Trùng lịch");
+        return;
+      }
+
+      const res = await enrollmentService.selfEnroll(classId);
+      console.log("🟩 [Enroll] Enroll API success:", res);
       success(
         "Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.",
         "Thành công"
       );
     } catch (e) {
-      console.error(e);
+      console.error("🟥 [Enroll] Enroll API error:", e);
       const status = e?.response?.status;
       const msg =
         e?.response?.data?.message || e?.message || "Đăng ký thất bại";
@@ -109,13 +140,14 @@ export default function ClassDetail() {
             state: { from: `/home/classes/${classId}` },
           });
         }, 2000);
-      } else if (msg.includes("already enrolled")) {
+      } else if (String(msg).toLowerCase().includes("already enrolled")) {
         warning("Bạn đã đăng ký lớp học này", "Thông báo");
       } else {
         showError(msg, "Lỗi");
       }
     } finally {
       setEnrolling(false);
+      console.log("🟦 [Enroll] End enroll flow for class:", classId);
     }
   };
 
