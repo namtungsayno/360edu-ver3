@@ -25,6 +25,7 @@ export const classApi = {
   publish: (id) => http.post(`/classes/${id}/publish`).then((r) => r.data),
   revertDraft: (id) =>
     http.post(`/classes/${id}/revert-draft`).then((r) => r.data),
+<<<<<<< HEAD
   getById: (id) =>
     http.get(`/classes/${id}`).then((r) => {
       try {
@@ -42,6 +43,11 @@ export const classApi = {
       } catch (_) {}
       return r.data;
     }),
+=======
+  getById: (id) => http.get(`/classes/${id}`).then((r) => r.data),
+  // Public API for guest: get class detail with base course info
+  getPublicDetail: (id) => http.get(`/classes/${id}/public`).then((r) => r.data),
+>>>>>>> origin/hung-payment
   update: (id, payload) =>
     http.put(`/classes/${id}`, payload).then((r) => r.data),
 };

@@ -84,23 +84,6 @@ const Sidebar = () => {
       ],
     },
     {
-      section: "Theo dõi & Đánh giá",
-      items: [
-        {
-          id: "awards",
-          label: "Khen thưởng",
-          icon: Award,
-          href: "/home/admin/awards",
-        },
-        {
-          id: "feedback",
-          label: "Phản hồi",
-          icon: MessageSquare,
-          href: "/home/admin/feedback",
-        },
-      ],
-    },
-    {
       section: "Tài chính & Báo cáo",
       items: [
         {
@@ -120,12 +103,6 @@ const Sidebar = () => {
     {
       section: "Khác",
       items: [
-        {
-          id: "documents",
-          label: "Tài liệu",
-          icon: FileText,
-          href: "/home/admin/documents",
-        },
         {
           id: "news",
           label: "Tin tức",

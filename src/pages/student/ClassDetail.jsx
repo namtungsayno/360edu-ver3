@@ -35,6 +35,7 @@ export default function StudentClassDetail() {
           setError("Không tìm thấy lớp hoặc bạn chưa đăng ký lớp này.");
         } else {
           console.log("✅ Class found:", cls);
+          console.log("📖 Course info - courseId:", cls.courseId, "courseTitle:", cls.courseTitle);
           setData(cls);
         }
       } catch (e) {
@@ -206,31 +207,31 @@ export default function StudentClassDetail() {
                   <h2 className="text-xl font-bold text-gray-900">Tài liệu học tập</h2>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                {/* Course Info */}
+                {data.courseId && (
+                  <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-white" />
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <BookOpen className="w-6 h-6 text-white" />
                       </div>
-                      <div>
-                        <div className="font-medium text-gray-900">Giáo trình chính</div>
-                        <div className="text-sm text-gray-600">Sẽ được cập nhật bởi giáo viên</div>
+                      <div className="flex-1">
+                        <div className="font-bold text-gray-900">
+                          {data.courseTitle || "Khóa học"}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Nội dung khóa học của lớp
+                        </div>
                       </div>
+                      <Button
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700"
+                        onClick={() => navigate(`/home/courses/${data.courseId}`)}
+                      >
+                        Xem khóa học
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                        <Video className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">Video bài giảng</div>
-                        <div className="text-sm text-gray-600">Sẽ được cập nhật sau mỗi buổi học</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>

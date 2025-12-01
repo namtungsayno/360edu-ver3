@@ -74,14 +74,14 @@ export default function Header({ onNavigate, currentPage }) {
           <div className="hidden lg:block flex-1 max-w-md mx-4">
             <div className="relative">
               {/* Icon tìm kiếm bên trái */}
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
               {/* Input tìm kiếm với styling custom */}
               <Input
                 type="text"
                 placeholder="Tìm kiếm khóa học, lớp học..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 h-10 bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-blue-100 focus:bg-white/20 focus:border-white/30 rounded-lg"
+                className="pl-10 pr-4 h-10 bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/70 focus:bg-white/20 focus:border-white/30 rounded-lg"
               />
             </div>
           </div>
