@@ -191,16 +191,16 @@ function ScheduleManagement() {
     const date = addDays(weekStart, dayIdx);
     const dateStr = fmt(date, "yyyy-MM-dd");
 
-    const url = `/home/admin/schedule/class/${classData.classId}?date=${dateStr}&slotId=${classData.slotId}`;
     console.log("📅 Navigating to:", {
       classId: classData.classId,
       date: dateStr,
-      slotId: classData.slotId,
-      url,
+      url: `/home/admin/schedule/class/${classData.classId}`,
     });
 
-    // Điều hướng bằng query để BE nhận đủ tham số (date, slotId)
-    navigate(url);
+    // Điều hướng đến trang chi tiết lớp, truyền date qua URL state
+    navigate(`/home/admin/schedule/class/${classData.classId}`, {
+      state: { date: dateStr, classData, slotId: classData.slotId },
+    });
   };
 
   return (
