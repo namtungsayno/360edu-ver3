@@ -168,9 +168,10 @@ export default function SubjectDetail() {
 
       // Persist mandatory fields per backend contract (name, enum status)
       const nextStatusEnum = tempStatusActive ? "AVAILABLE" : "UNAVAILABLE";
-      await updateSubject(subject.id, {
+      const resp = await updateSubject(subject.id, {
         name: subject.name,
         status: nextStatusEnum,
+        description: tempDescription,
       });
       // Optional: also call enable/disable endpoints to keep parity
       if (tempStatusActive && subject.status !== "active") {
@@ -179,12 +180,12 @@ export default function SubjectDetail() {
         await disableSubject(subject.id);
       }
 
+      const serverData = resp?.data || resp;
       const updated = {
         ...subject,
         status: tempStatusActive ? "active" : "inactive",
-        // Description remains client-side until backend supports it
-        description: tempDescription,
-        updatedAt: new Date().toISOString(),
+        description: serverData?.description ?? tempDescription,
+        updatedAt: serverData?.updatedAt || new Date().toISOString(),
       };
       setSubject(updated);
       setEditMode(false);
@@ -307,12 +308,9 @@ export default function SubjectDetail() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                  Chi tiết môn học
+                <h1 className="text-3xl font-bold text-gray-800 mb-1">
+                  {subject?.name || "Chi tiết môn học"}
                 </h1>
-                <p className="text-gray-600">
-                  Thông tin chi tiết về môn học trong hệ thống
-                </p>
               </div>
               <Button
                 variant="default"
@@ -401,15 +399,7 @@ export default function SubjectDetail() {
                         </Badge>
                       </div>
 
-                      <div className="md:col-span-2">
-                        <div className="block text-sm font-medium text-gray-500 mb-1">
-                          Mô tả môn học
-                        </div>
-                        <p className="text-gray-700 leading-relaxed">
-                          {subject.description ||
-                            "Chưa có mô tả cho môn học này."}
-                        </p>
-                      </div>
+                      {/* Mô tả môn học removed as requested */}
                     </div>
                   ) : (
                     <div className="space-y-6">
@@ -459,21 +449,7 @@ export default function SubjectDetail() {
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-gray-200 p-4 bg-gradient-to-br from-gray-50 to-white">
-                        <Label className="text-sm text-gray-700 mb-2 block">
-                          Mô tả môn học
-                        </Label>
-                        <Textarea
-                          value={tempDescription}
-                          onChange={(e) => setTempDescription(e.target.value)}
-                          placeholder="Nhập mô tả chi tiết, rõ ràng và hấp dẫn..."
-                          className="min-h-[120px] resize-y focus:ring-2 focus:ring-blue-500"
-                        />
-                        <div className="mt-2 text-xs text-gray-500">
-                          Mẹo: Mô tả rõ ràng sẽ giúp sinh viên hiểu môn học tốt
-                          hơn.
-                        </div>
-                      </div>
+                      {/* Mô tả môn học (edit) removed as requested */}
 
                       <div className="flex items-center justify-end gap-3">
                         <Button
@@ -524,7 +500,7 @@ export default function SubjectDetail() {
                         <div>
                           <p className="text-sm text-gray-600">Khóa học</p>
                           <p className="font-semibold text-gray-800">
-                            {subject.numCourses}
+                            {courses.length}
                           </p>
                         </div>
                       </div>

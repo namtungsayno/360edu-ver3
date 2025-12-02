@@ -5,6 +5,7 @@ import { useToast } from "../../hooks/use-toast";
 import {
   LayoutDashboard,
   Users,
+  UserCog,
   Calendar,
   GraduationCap,
   BookOpen,
@@ -45,6 +46,12 @@ const Sidebar = () => {
           label: "Người dùng",
           icon: Users,
           href: "/home/admin/users",
+        },
+        {
+          id: "teachers",
+          label: "Giáo viên",
+          icon: UserCog,
+          href: "/home/admin/teachers",
         },
       ],
     },

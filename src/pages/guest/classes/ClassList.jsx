@@ -27,7 +27,6 @@ export default function ClassList() {
   const [selectedSlots, setSelectedSlots] = useState([]); // Slot 1, 2, 3
   const [priceRange, setPriceRange] = useState([2000000, 10000000]); // Min 2 triệu, Max 10 triệu
   const [priceSort, setPriceSort] = useState(""); // "asc" hoặc "desc"
-  const [showDraft, setShowDraft] = useState(true); // Hiển thị lớp sắp mở (Draft)
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,7 +62,6 @@ export default function ClassList() {
       slots: selectedSlots,
       priceRange,
       searchQuery,
-      showDraft,
     });
 
     let result = [...classes];
@@ -110,10 +108,8 @@ export default function ClassList() {
       });
     }
 
-    // Hide draft classes if toggled off
-    if (!showDraft) {
-      result = result.filter((c) => c.status !== "DRAFT");
-    }
+    // Always hide DRAFT classes for guests (business rule)
+    result = result.filter((c) => c.status !== "DRAFT");
 
     // Filter by price range - Only filter if class has price data
     result = result.filter((c) => {
@@ -133,7 +129,6 @@ export default function ClassList() {
     selectedSlots,
     priceRange,
     classes,
-    showDraft,
   ]);
 
   const goDetail = (id) => navigate(`/home/classes/${id}`);
@@ -175,7 +170,6 @@ export default function ClassList() {
     setSelectedSlots([]);
     setPriceRange([2000000, 10000000]);
     setSearchQuery("");
-    setShowDraft(true);
   };
 
   // Count active filters
@@ -185,7 +179,6 @@ export default function ClassList() {
     selectedSlots.length > 0,
     priceRange[0] !== 2000000 || priceRange[1] !== 10000000,
     searchQuery,
-    showDraft === false,
   ].filter(Boolean).length;
 
   // Gradient backgrounds cho các cards
@@ -413,23 +406,7 @@ export default function ClassList() {
                       </div>
                     </div>
 
-                    {/* Draft visibility toggle */}
-                    <div className="mb-6">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Hiển thị lớp sắp mở (Draft)
-                      </label>
-                      <label className="inline-flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          checked={showDraft}
-                          onChange={(e) => setShowDraft(e.target.checked)}
-                        />
-                        <span className="text-gray-700">
-                          {showDraft ? "Đang hiển thị" : "Đang ẩn"}
-                        </span>
-                      </label>
-                    </div>
+                    {/* Draft classes are always hidden for guests */}
 
                     {/* Time Slots Filter */}
                     <div className="mb-6">
@@ -585,15 +562,7 @@ export default function ClassList() {
                               />
                             </span>
                           )}
-                          {showDraft === false && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
-                              Ẩn lớp sắp mở (Draft)
-                              <X
-                                className="w-3.5 h-3.5 cursor-pointer hover:text-amber-900"
-                                onClick={() => setShowDraft(true)}
-                              />
-                            </span>
-                          )}
+                          {/* Draft visibility pill removed: guests never see DRAFT */}
                         </div>
                       </div>
                     )}

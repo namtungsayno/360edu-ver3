@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  useLocation,
+} from "react-router-dom";
 import { useToast } from "../../hooks/use-toast";
 import { attendanceService } from "../../services/attendance/attendance.service";
 import sessionService from "../../services/class/session.service";
@@ -38,10 +43,12 @@ import { useAuth } from "../../hooks/useAuth";
 
 export default function ClassDetail() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { classId } = useParams();
   const [searchParams] = useSearchParams();
   useAuth();
-  const slotId = searchParams.get("slotId");
+  // Lấy slotId từ query trước, nếu không có thì lấy từ state (điều hướng từ lịch tuần)
+  const slotId = searchParams.get("slotId") ?? location.state?.slotId ?? null;
   const slotIdNum = slotId ? parseInt(slotId, 10) : null;
   const sessionIdParam = searchParams.get("sessionId");
   // Local date helpers to avoid UTC shift
@@ -59,7 +66,9 @@ export default function ClassDetail() {
     const [y, m, d] = parts;
     return new Date(y, m - 1, d);
   };
-  const sessionDateStr = searchParams.get("date") || toLocalYmd(new Date());
+  // Lấy date từ query trước, nếu không có thì lấy từ state
+  const sessionDateStr =
+    searchParams.get("date") || location.state?.date || toLocalYmd(new Date());
   const todayStr = toLocalYmd(new Date());
   const isFutureSession = (() => {
     try {
@@ -80,6 +89,12 @@ export default function ClassDetail() {
   const [hasChanges, setHasChanges] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [originalDetails, setOriginalDetails] = useState([]);
+  // Hiển thị thứ tự slot trong ngày
+  const [todaySlots, setTodaySlots] = useState([]);
+  const [currentSlotIndex, setCurrentSlotIndex] = useState(null);
+  // Cumulative session numbering
+  const [cumulativeSessionNumber, setCumulativeSessionNumber] = useState(null);
+  const [totalSessions, setTotalSessions] = useState(null);
 
   // Lesson content states
   const [courseData, setCourseData] = useState(null); // always the class's assigned (admin) course used for chapter/lesson selection
@@ -141,6 +156,107 @@ export default function ClassDetail() {
             ...classInfo,
             studentCount: attendance.length,
           });
+
+          // Tính thứ tự slot hôm nay theo cùng ngày (dayName) của buổi đang xem
+          try {
+            const sameDaySlots = allSchedule
+              .filter(
+                (it) =>
+                  String(it.classId) === String(classId) &&
+                  it.dayName === classInfo.dayName
+              )
+              .sort((a, b) =>
+                String(a.startTime).localeCompare(String(b.startTime))
+              );
+            setTodaySlots(sameDaySlots);
+            const idx = sameDaySlots.findIndex(
+              (it) => String(it.startTime) === String(classInfo.startTime)
+            );
+            setCurrentSlotIndex(idx >= 0 ? idx : null);
+          } catch (e) {
+            console.warn("Không tính được thứ tự slot hôm nay:", e);
+            setTodaySlots([]);
+            setCurrentSlotIndex(null);
+          }
+
+          // Tổng số buổi từ lớp nếu có
+          try {
+            const orig = classInfo?.originalClass || {};
+            if (orig.totalSessions) {
+              setTotalSessions(parseInt(orig.totalSessions, 10));
+            }
+          } catch (e) {
+            console.warn("Không có dữ liệu tổng số buổi:", e);
+          }
+
+          // Tính số buổi cộng dồn đến ngày hiện tại
+          try {
+            const startDateStr = classInfo.startDate;
+            const targetDateStr = sessionDateStr;
+            if (startDateStr && targetDateStr) {
+              const parseYmd = (s) => {
+                const [y, m, d] = String(s).slice(0, 10).split("-").map(Number);
+                return new Date(y, m - 1, d);
+              };
+              const start = parseYmd(startDateStr);
+              const target = parseYmd(targetDateStr);
+              start.setHours(0, 0, 0, 0);
+              target.setHours(0, 0, 0, 0);
+              if (
+                !Number.isNaN(start.getTime()) &&
+                !Number.isNaN(target.getTime()) &&
+                start <= target
+              ) {
+                // Lấy toàn bộ slot của lớp, sắp theo thứ trong tuần rồi theo giờ bắt đầu
+                const classSlots = allSchedule
+                  .filter((it) => String(it.classId) === String(classId))
+                  .sort((a, b) => {
+                    if (a.day !== b.day) return a.day - b.day;
+                    return String(a.startTime).localeCompare(
+                      String(b.startTime)
+                    );
+                  });
+                // Bản đồ: weekday(1-7) -> số slot trong ngày
+                const slotsPerWeekday = new Map();
+                for (const it of classSlots) {
+                  slotsPerWeekday.set(
+                    it.day,
+                    (slotsPerWeekday.get(it.day) || 0) + 1
+                  );
+                }
+                // Index của slot trong ngày hiện tại
+                let idxInDay = 0;
+                try {
+                  const sameDay = classSlots.filter(
+                    (it) => it.day === classInfo.day
+                  );
+                  const curIdx = sameDay.findIndex(
+                    (it) => String(it.startTime) === String(classInfo.startTime)
+                  );
+                  idxInDay = curIdx >= 0 ? curIdx : 0;
+                } catch (e) {
+                  console.warn("Không xác định được index slot trong ngày:", e);
+                  idxInDay = 0;
+                }
+                // Duyệt từ start đến target-1 ngày, cộng số slot theo weekday
+                let count = 0;
+                const cur = new Date(start);
+                while (cur < target) {
+                  const weekday = ((cur.getDay() + 6) % 7) + 1; // Convert JS (0=Sun) to 1=Mon..7=Sun
+                  count += slotsPerWeekday.get(weekday) || 0;
+                  cur.setDate(cur.getDate() + 1);
+                }
+                // Ngày target: cộng vị trí slot trong ngày + 1
+                count += idxInDay + 1;
+                setCumulativeSessionNumber(count);
+              } else {
+                setCumulativeSessionNumber(null);
+              }
+            }
+          } catch (e) {
+            console.warn("Không tính được số buổi cộng dồn:", e);
+            setCumulativeSessionNumber(null);
+          }
 
           // Capture classCourseId from schedule.originalClass if provided
           const ccIdFromSchedule =
@@ -379,6 +495,7 @@ export default function ClassDetail() {
     error,
     sessionDateStr,
     slotId,
+    slotIdNum,
     sessionIdParam,
     isFutureSession,
     classDetail?.courseId,
@@ -618,6 +735,40 @@ export default function ClassDetail() {
               Thông tin buổi học
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Slot hôm nay */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Hôm nay
+                  </p>
+                  <p className="text-[14px] text-neutral-950 font-semibold mt-1">
+                    {currentSlotIndex !== null && todaySlots.length > 0
+                      ? `Slot ${currentSlotIndex + 1}/${todaySlots.length}`
+                      : "Không xác định"}
+                  </p>
+                </div>
+              </div>
+              {/* Buổi số (cộng dồn) */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-[12px] text-[#62748e] font-medium">
+                    Buổi số
+                  </p>
+                  <p className="text-[14px] text-neutral-950 font-semibold mt-1">
+                    {cumulativeSessionNumber !== null
+                      ? `Buổi ${cumulativeSessionNumber}${
+                          totalSessions ? "/" + totalSessions : ""
+                        }`
+                      : "Không xác định"}
+                  </p>
+                </div>
+              </div>
               {/* Tên lớp */}
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">

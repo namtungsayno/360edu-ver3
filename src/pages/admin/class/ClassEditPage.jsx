@@ -107,13 +107,10 @@ export default function ClassEditPage() {
   }, []);
 
   // Build a stable comparison key for a slot: dayOfWeek(0..6)-HH:mm
+  // Use exact isoStart+isoEnd equality to align with ScheduleGrid
   const slotKey = useCallback((slot) => {
-    if (!slot || !slot.isoStart) return "";
-    const d = new Date(slot.isoStart);
-    const day = d.getDay();
-    const h = String(d.getHours()).padStart(2, "0");
-    const m = String(d.getMinutes()).padStart(2, "0");
-    return `${day}-${h}:${m}`;
+    if (!slot || !slot.isoStart || !slot.isoEnd) return "";
+    return `${slot.isoStart}|${slot.isoEnd}`;
   }, []);
 
   const uniqByKey = useCallback(
@@ -460,8 +457,9 @@ export default function ClassEditPage() {
       !startDate ||
       startDate < todayStr ||
       !pickedSlots.length ||
-      pricePerSession === "" ||
-      parseInt(pricePerSession) < 0 ||
+      // Yêu cầu giá mỗi buổi chỉ khi DRAFT
+      (cls?.status === "DRAFT" &&
+        (pricePerSession === "" || parseInt(pricePerSession) < 0)) ||
       !name
     )
       return false;
@@ -490,6 +488,7 @@ export default function ClassEditPage() {
     meetingLink,
     capacity,
     roomId,
+    cls?.status,
     selectedRoom,
   ]);
 
@@ -704,6 +703,7 @@ export default function ClassEditPage() {
                         min={todayStr}
                         onChange={(e) => setStartDate(e.target.value)}
                         className="h-10 text-sm"
+                        disabled={isPublic}
                       />
                     </div>
                     <div>
@@ -820,7 +820,13 @@ export default function ClassEditPage() {
                         // endDate sẽ tự động cập nhật
                       }}
                       className="h-10 text-sm"
+                      disabled={isPublic}
                     />
+                    {isPublic && (
+                      <p className="text-[10px] text-amber-600 mt-1">
+                        Số buổi đã bị khóa ở trạng thái Public.
+                      </p>
+                    )}
                   </div>
                   {/* Giá tiền mỗi buổi học */}
                   <div>
@@ -836,6 +842,7 @@ export default function ClassEditPage() {
                         setPricePerSession(digitsOnly(e.target.value))
                       }
                       className="h-10 text-sm"
+                      disabled={isPublic}
                     />
                     {pricePerSession !== "" &&
                       parseInt(pricePerSession) < 0 && (
@@ -843,6 +850,11 @@ export default function ClassEditPage() {
                           Giá tiền mỗi buổi học phải ≥ 0
                         </p>
                       )}
+                    {isPublic && (
+                      <p className="text-[10px] text-amber-600 mt-1">
+                        Giá tiền mỗi buổi bị khóa ở trạng thái Public.
+                      </p>
+                    )}
                   </div>
                   {/* Offline room or online link + Capacity */}
                   <div className="grid grid-cols-2 gap-3">
@@ -935,6 +947,7 @@ export default function ClassEditPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="h-10 text-sm"
+                      disabled={isPublic}
                     />
                   </div>
                   <div>
@@ -946,6 +959,7 @@ export default function ClassEditPage() {
                       value={desc}
                       onChange={(e) => setDesc(e.target.value)}
                       className="resize-none text-sm"
+                      disabled={isPublic}
                     />
                   </div>
                 </div>
@@ -965,6 +979,7 @@ export default function ClassEditPage() {
                       variant="outline"
                       onClick={startEditSchedule}
                       className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
+                      disabled={isPublic}
                     >
                       Chỉnh sửa
                     </Button>
@@ -1044,8 +1059,10 @@ export default function ClassEditPage() {
                       teacherBusy={teacherBusy}
                       roomBusy={isOnline ? [] : roomBusy}
                       selected={pickedSlots}
+                      originalSelected={prevPickedSlots}
                       onToggle={toggleSlot}
                       disabled={
+                        isPublic ||
                         !isEditingSchedule ||
                         !teacherId ||
                         (!isOnline && !roomId)

@@ -38,11 +38,44 @@ export const teacherApi = {
   },
 
   /**
+   * Get subjects taught by a teacher via teacher_id
+   * @param {number} teacherId
+   * @returns {Promise<Array>} subjects array
+   */
+  getSubjects(teacherId) {
+    return http.get(`/teachers/${teacherId}/subjects`).then((r) => r.data);
+  },
+
+  /**
+   * Update primary subject via teacher_id
+   * @param {number} teacherId
+   * @param {number} subjectId
+   * @returns {Promise<Object>} SubjectResponse or error payload
+   */
+  updatePrimarySubject(teacherId, subjectId) {
+    return http
+      .put(`/teachers/${teacherId}/primary-subject`, { subjectId })
+      .then((r) => r.data);
+  },
+
+  /**
    * Get teacher profile by teacher ID
    * @param {number} userId - User ID of the teacher
    * @returns {Promise<Object>} Teacher profile with full details
    */
   getProfile(userId) {
     return http.get(`/teachers/by-user/${userId}/profile`).then((r) => r.data);
+  },
+
+  /**
+   * Update subjects a teacher teaches
+   * @param {number} teacherId
+   * @param {number[]} subjectIds
+   * @returns {Promise<Object>} Updated teacher
+   */
+  updateSubjects(teacherId, subjectIds) {
+    return http
+      .put(`/teachers/${teacherId}/subjects`, { subjectIds })
+      .then((r) => r.data);
   },
 };

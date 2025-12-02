@@ -91,6 +91,7 @@ import AdminCourseCreate from "../pages/admin/course/AdminCourseCreate.jsx";
 
 // Teacher pages
 import TeacherManagement from "../pages/teacher/TeacherManagement.jsx";
+import AdminTeacherManagement from "../pages/admin/teacher/TeacherManagement.jsx";
 import TeacherSchedule from "../pages/teacher/TeacherSchedule.jsx";
 import TeacherClassDetail from "../pages/teacher/ClassDetail.jsx";
 import TeacherCourseList from "../pages/teacher/TeacherCourseList.jsx";
@@ -135,10 +136,7 @@ function AppRouter() {
             element={<StudentClassDetail />}
           />{" "}
           {/* Chi tiết lớp đã đăng ký */}
-          <Route
-            path="/home/my-schedule"
-            element={<StudentSchedule />}
-          />{" "}
+          <Route path="/home/my-schedule" element={<StudentSchedule />} />{" "}
           {/* Lịch học của học sinh */}
           <Route
             path="/home/courses/:id"
@@ -157,6 +155,7 @@ function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<User />} />
+            <Route path="teachers" element={<AdminTeacherManagement />} />
             <Route
               path="users/create-teacher"
               element={<CreateTeacherPage />}
