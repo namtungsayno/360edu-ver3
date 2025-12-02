@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { courseService } from "../../services/course/course.service.js";
+import { classService } from "../../services/class/class.service.js";
 import { useToast } from "../../hooks/use-toast.js";
 import { useAuth } from "../../hooks/useAuth.js";
 
@@ -81,6 +82,9 @@ export default function TeacherCourseList() {
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [classMap, setClassMap] = useState({}); // { [classId]: classDetail }
+  const [sourceCourseMap, setSourceCourseMap] = useState({}); // { [sourceId]: courseDetail }
+  const [courseIdToClass, setCourseIdToClass] = useState({}); // { [courseId]: classDetail }
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -119,6 +123,153 @@ export default function TeacherCourseList() {
       ignore = true;
     };
   }, [search, statusFilter, error]);
+
+  // ====== ENRICH WITH LIVE CLASS NAMES ======
+  useEffect(() => {
+    // Collect unique class IDs from loaded courses
+    const ids = new Set();
+    for (const c of courses) {
+      const classId = c?.classId || c?.clazzId || c?.classID;
+      if (classId != null && classId !== "") ids.add(String(classId));
+    }
+
+    // Determine which IDs we still need to fetch
+    const missing = Array.from(ids).filter((id) => !classMap[id]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missing.map(async (id) => {
+            try {
+              const detail = await classService.getById(id);
+              return { id, detail };
+            } catch (e) {
+              console.warn("Failed to fetch class detail for id=", id, e);
+              return { id, detail: null };
+            }
+          })
+        );
+        if (!cancelled && results.length) {
+          setClassMap((prev) => {
+            const next = { ...prev };
+            for (const { id, detail } of results) next[id] = detail;
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to batch fetch class details:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courses, classMap]);
+
+  // ====== ENRICH WITH ADMIN (SOURCE) COURSE TITLES ======
+  useEffect(() => {
+    // Find unique SOURCE ids from course descriptions
+    const ids = new Set();
+    for (const c of courses) {
+      const desc = String(c?.description || "");
+      const m = desc.match(/\[\[SOURCE:([^\]]+)\]\]/);
+      if (m && m[1]) {
+        const sid = m[1].trim();
+        if (sid) ids.add(sid);
+      }
+    }
+
+    const missing = Array.from(ids).filter((id) => !sourceCourseMap[id]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missing.map(async (id) => {
+            try {
+              const detail = await courseService.getCourseDetail(id);
+              return { id, detail };
+            } catch (e) {
+              console.warn("Failed to fetch source course detail id=", id, e);
+              return { id, detail: null };
+            }
+          })
+        );
+        if (!cancelled && results.length) {
+          setSourceCourseMap((prev) => {
+            const next = { ...prev };
+            for (const { id, detail } of results) next[id] = detail;
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to batch fetch source courses:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courses, sourceCourseMap]);
+
+  // ====== FALLBACK: FIND CLASS BY courseId ======
+  useEffect(() => {
+    // For courses without a linkedClassId, try querying classes by courseId
+    const missingCourseIds = [];
+    for (const c of courses) {
+      const classId = c?.classId || c?.clazzId || c?.classID;
+      if (!classId) {
+        const cid = c?.id;
+        if (cid && !courseIdToClass[String(cid)])
+          missingCourseIds.push(String(cid));
+      }
+    }
+    if (missingCourseIds.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missingCourseIds.map(async (courseId) => {
+            try {
+              const list = await classService.list({ courseId });
+              // Only use fallback when class resolution is unambiguous
+              const detail =
+                Array.isArray(list) && list.length === 1 ? list[0] : null;
+              return { courseId, detail };
+            } catch (e) {
+              console.warn("Failed to list classes by courseId=", courseId, e);
+              return { courseId, detail: null };
+            }
+          })
+        );
+        if (!cancelled && results.length) {
+          setCourseIdToClass((prev) => {
+            const next = { ...prev };
+            for (const { courseId, detail } of results) next[courseId] = detail;
+            return next;
+          });
+          // Also cache classMap by id for display badge consistency
+          setClassMap((prev) => {
+            const next = { ...prev };
+            for (const { detail } of results) {
+              if (detail?.id) next[String(detail.id)] = detail;
+            }
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to fetch classes by courseId:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courses, courseIdToClass]);
 
   // ====== DERIVED STATS ======
   const stats = useMemo(() => {
@@ -320,13 +471,24 @@ export default function TeacherCourseList() {
             if (m && m[1]) {
               classIdFromTag = m[1].trim();
             }
-            const linkedClassId = classIdFromField || classIdFromTag || null;
+            let linkedClassId = classIdFromField || classIdFromTag || null;
+            // Use courseId->class fallback only when it is unambiguous (exactly one match)
+            if (!linkedClassId && course?.id) {
+              const byCourse = courseIdToClass[String(course.id)];
+              if (byCourse?.id) linkedClassId = byCourse.id;
+            }
 
             let classNameFromTag = null;
             const mn = desc.match(/\[\[CLASS_NAME:([^\]]+)\]\]/);
             if (mn && mn[1]) {
               classNameFromTag = mn[1].trim();
             }
+
+            // Prefer live class name from DB if available; fallback to tag
+            const liveClassName = linkedClassId
+              ? classMap[String(linkedClassId)]?.name || null
+              : null;
+            const effectiveClassName = liveClassName || classNameFromTag;
 
             const chapterCount =
               course.chapterCount ??
@@ -339,6 +501,9 @@ export default function TeacherCourseList() {
                     0
                   )
                 : 0);
+
+            // Render DB title directly for consistency with Admin
+            const displayTitle = String(course.title || "");
 
             return (
               <Card
@@ -356,7 +521,7 @@ export default function TeacherCourseList() {
                         </div>
                         <div>
                           <h2 className="text-sm font-semibold text-neutral-950">
-                            {course.title}
+                            {displayTitle}
                           </h2>
                           <p className="text-[11px] text-[#62748e]">
                             {course.subjectName || "Chưa có môn học"}
@@ -365,8 +530,8 @@ export default function TeacherCourseList() {
                             <div className="mt-1">
                               <Badge className="text-[11px] px-2 py-0.5 bg-green-50 text-green-700 border border-green-200">
                                 Thuộc lớp:{" "}
-                                {classNameFromTag
-                                  ? `${classNameFromTag} (ID: ${linkedClassId})`
+                                {effectiveClassName
+                                  ? `${effectiveClassName} (ID: ${linkedClassId})`
                                   : `ID: ${linkedClassId}`}
                               </Badge>
                             </div>

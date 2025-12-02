@@ -39,6 +39,8 @@ import {
 } from "lucide-react";
 
 import { courseApi } from "../../../services/course/course.api.js";
+import { courseService } from "../../../services/course/course.service.js";
+import { classService } from "../../../services/class/class.service.js";
 import { subjectService } from "../../../services/subject/subject.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
 
@@ -104,6 +106,9 @@ export default function AdminCourseList() {
   const [courses, setCourses] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [classMap, setClassMap] = useState({}); // { [classId]: classDetail }
+  const [sourceCourseMap, setSourceCourseMap] = useState({}); // { [sourceId]: courseDetail }
+  const [courseIdToClass, setCourseIdToClass] = useState({}); // { [courseId]: classDetail }
 
   // ====== FILTERS ======
   const [search, setSearch] = useState("");
@@ -160,6 +165,154 @@ export default function AdminCourseList() {
       ignore = true;
     };
   }, [selectedSubjectId, statusFilter, error]);
+
+  // ====== ENRICH: fetch class names by classId across loaded courses ======
+  useEffect(() => {
+    const ids = new Set();
+    for (const c of courses) {
+      const classId = c?.classId || c?.clazzId || c?.classID;
+      if (classId != null && classId !== "") ids.add(String(classId));
+    }
+    const missing = Array.from(ids).filter((id) => !classMap[id]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missing.map(async (id) => {
+            try {
+              const detail = await classService.getById(id);
+              return { id, detail };
+            } catch (e) {
+              console.warn(
+                "[AdminCourseList] fetch class detail failed id=",
+                id,
+                e
+              );
+              return { id, detail: null };
+            }
+          })
+        );
+        if (!cancelled && results.length) {
+          setClassMap((prev) => {
+            const next = { ...prev };
+            for (const { id, detail } of results) next[id] = detail;
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn("[AdminCourseList] batch class fetch error:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courses, classMap]);
+
+  // ====== ENRICH: fetch admin/source course titles via [[SOURCE:id]] ======
+  useEffect(() => {
+    const ids = new Set();
+    for (const c of courses) {
+      const m = String(c?.description || "").match(/\[\[SOURCE:([^\]]+)\]\]/);
+      if (m && m[1]) {
+        const sid = m[1].trim();
+        if (sid) ids.add(sid);
+      }
+    }
+    const missing = Array.from(ids).filter((id) => !sourceCourseMap[id]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missing.map(async (id) => {
+            try {
+              const detail = await courseService.getCourseDetail(id);
+              return { id, detail };
+            } catch (e) {
+              console.warn(
+                "[AdminCourseList] fetch source course failed id=",
+                id,
+                e
+              );
+              return { id, detail: null };
+            }
+          })
+        );
+        if (!cancelled && results.length) {
+          setSourceCourseMap((prev) => {
+            const next = { ...prev };
+            for (const { id, detail } of results) next[id] = detail;
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn("[AdminCourseList] batch source course fetch error:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courses, sourceCourseMap]);
+
+  // ====== FALLBACK: find classes by courseId if classId missing ======
+  useEffect(() => {
+    const missingCourseIds = [];
+    for (const c of courses) {
+      const classId = c?.classId || c?.clazzId || c?.classID;
+      if (!classId && c?.id && !courseIdToClass[String(c.id)]) {
+        missingCourseIds.push(String(c.id));
+      }
+    }
+    if (missingCourseIds.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missingCourseIds.map(async (courseId) => {
+            try {
+              const list = await classService.list({ courseId });
+              const first =
+                Array.isArray(list) && list.length > 0 ? list[0] : null;
+              return { courseId, detail: first };
+            } catch (e) {
+              console.warn(
+                "[AdminCourseList] list classes by courseId failed:",
+                courseId,
+                e
+              );
+              return { courseId, detail: null };
+            }
+          })
+        );
+        if (!cancelled && results.length) {
+          setCourseIdToClass((prev) => {
+            const next = { ...prev };
+            for (const { courseId, detail } of results) next[courseId] = detail;
+            return next;
+          });
+          setClassMap((prev) => {
+            const next = { ...prev };
+            for (const { detail } of results) {
+              if (detail?.id) next[String(detail.id)] = detail;
+            }
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn("[AdminCourseList] batch courseId→class error:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courses, courseIdToClass]);
 
   // ====== TEACHER OPTIONS (từ dữ liệu course hiện có) ======
   // Chỉ hiển thị khóa học do giáo viên gửi lên (có ownerTeacherId)

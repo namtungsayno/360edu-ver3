@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 
 import { courseService } from "../../../services/course/course.service.js";
+import { classService } from "../../../services/class/class.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
 
 // =========================
@@ -85,6 +86,8 @@ export default function AdminCourseDetail() {
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [adminTitle, setAdminTitle] = useState(null);
+  const [className, setClassName] = useState(null);
 
   // reject dialog
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -100,6 +103,37 @@ export default function AdminCourseDetail() {
         const data = await courseService.getCourseDetail(id);
         console.log("📚 Course Detail Loaded:", data);
         if (!ignore) setCourse(data);
+        // Enrich title parts
+        try {
+          const desc = String(data?.description || "");
+          const sm = desc.match(/\[\[SOURCE:([^\]]+)\]\]/);
+          if (sm && sm[1]) {
+            const sid = sm[1].trim();
+            if (sid) {
+              const src = await courseService.getCourseDetail(sid);
+              if (src?.title) setAdminTitle(src.title);
+            }
+          }
+        } catch (e) {
+          console.warn("[AdminCourseDetail] fetch SOURCE title failed:", e);
+        }
+
+        try {
+          const classId = data?.classId || data?.clazzId || data?.classID;
+          if (classId) {
+            const cls = await classService.getById(classId);
+            if (cls?.name) setClassName(cls.name);
+          } else if (id) {
+            // Fallback: find by courseId
+            const list = await classService.list({ courseId: id });
+            if (Array.isArray(list) && list.length > 0) {
+              const first = list[0];
+              if (first?.name) setClassName(first.name);
+            }
+          }
+        } catch (e) {
+          console.warn("[AdminCourseDetail] fetch class name failed:", e);
+        }
       } catch (e) {
         console.error("❌ Error loading course:", e);
         error("Không tải được thông tin khóa học");
@@ -129,6 +163,14 @@ export default function AdminCourseDetail() {
 
   const statusCfg = getStatusConfig(course.status);
   const StatusIcon = statusCfg.icon;
+
+  // Compose display title
+  const rawTitle = String(course.title || "");
+  const idx = rawTitle.indexOf(" - ");
+  const sliced = idx > -1 ? rawTitle.slice(0, idx) : rawTitle;
+  const displayTitle = className
+    ? `${adminTitle || sliced} - ${className}`
+    : adminTitle || sliced;
 
   const handleApprove = async () => {
     try {
@@ -242,7 +284,7 @@ export default function AdminCourseDetail() {
       {/* MAIN INFO */}
       <Card className="rounded-2xl border-2">
         <CardHeader>
-          <CardTitle className="text-2xl">{course.title}</CardTitle>
+          <CardTitle className="text-2xl">{displayTitle}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex gap-6">

@@ -60,6 +60,8 @@ export default function ClassEditPage() {
   const [teachers, setTeachers] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
+  // Random code for new naming (1 letter + 1 digit), generated once per page open
+  const [randomCode, setRandomCode] = useState("");
 
   // Busy & picked slots
   const [teacherBusy, setTeacherBusy] = useState([]);
@@ -105,6 +107,46 @@ export default function ClassEditPage() {
       }
     })();
   }, []);
+
+  // Helpers: alias and random code for class name
+  const makeTeacherAlias = useCallback((fullName) => {
+    const removeDiacritics = (s) =>
+      (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (!fullName) return "";
+    const parts = fullName.trim().split(/\s+/);
+    const last = removeDiacritics(parts[parts.length - 1] || "");
+    if (!last) return "";
+    return "GV" + last.charAt(0).toUpperCase() + last.slice(1).toLowerCase();
+  }, []);
+
+  const generateRandomCode = useCallback(() => {
+    try {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      const arr = new Uint8Array(2);
+      if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(arr);
+      } else {
+        arr[0] = Math.floor(Math.random() * 256);
+        arr[1] = Math.floor(Math.random() * 256);
+      }
+      const ch = letters[arr[0] % letters.length];
+      const dg = nums[arr[1] % nums.length];
+      return `${ch}${dg}`;
+    } catch {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      return (
+        letters[Math.floor(Math.random() * letters.length)] +
+        nums[Math.floor(Math.random() * nums.length)]
+      );
+    }
+  }, []);
+
+  // Generate random code once
+  useEffect(() => {
+    setRandomCode(generateRandomCode());
+  }, [generateRandomCode]);
 
   // Build a stable comparison key for a slot: dayOfWeek(0..6)-HH:mm
   // Use exact isoStart+isoEnd equality to align with ScheduleGrid
@@ -235,6 +277,38 @@ export default function ClassEditPage() {
       }
     })();
   }, [cls]);
+
+  // Build new naming suggestion when data ready
+  const generatedName = useMemo(() => {
+    const subj = subjects.find((s) => String(s.id) === String(subjectId));
+    const teacher = teachers.find(
+      (t) => String(t.userId) === String(teacherId)
+    );
+    if (!subj || !teacher || !randomCode) return "";
+    const alias = makeTeacherAlias(teacher.fullName);
+    if (!alias) return "";
+    return `${subj.name} - ${alias} - ${randomCode}`;
+  }, [subjects, subjectId, teachers, teacherId, randomCode, makeTeacherAlias]);
+
+  // Old naming (legacy): TeacherFullName - SubjectName
+  const legacyName = useMemo(() => {
+    const subj = subjects.find((s) => String(s.id) === String(subjectId));
+    const teacher = teachers.find(
+      (t) => String(t.userId) === String(teacherId)
+    );
+    if (!subj || !teacher) return "";
+    return `${teacher.fullName} - ${subj.name}`;
+  }, [subjects, subjectId, teachers, teacherId]);
+
+  // Prefill name with new format if empty or still using legacy pattern
+  useEffect(() => {
+    if (!generatedName) return;
+    // If current name is empty or exactly matches legacy style, update to new style
+    if (!name || (legacyName && name === legacyName)) {
+      setName(generatedName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generatedName, legacyName]);
 
   // Busy data loads when teacher/room/startDate change
   const loadTeacherBusy = useCallback(async () => {

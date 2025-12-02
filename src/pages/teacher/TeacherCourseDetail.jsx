@@ -72,6 +72,7 @@ export default function TeacherCourseDetail() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedChapters, setExpandedChapters] = useState({});
+  // No longer composing title parts; keep minimal state
 
   useEffect(() => {
     loadCourseDetail();
@@ -92,6 +93,8 @@ export default function TeacherCourseDetail() {
         });
         setExpandedChapters(expanded);
       }
+
+      // Title parts no longer needed; rely on DB 'course.title' directly
     } catch (e) {
       console.error("Load course detail error:", e);
       error("Không thể tải thông tin khóa học");
@@ -138,6 +141,10 @@ export default function TeacherCourseDetail() {
     : 0;
 
   const isPending = String(course.status).toUpperCase() === "PENDING";
+
+  // Compose display title: Admin course title + Class name
+  // Render DB title directly for consistency
+  const displayTitle = String(course.title || "");
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -193,7 +200,7 @@ export default function TeacherCourseDetail() {
               </div>
               <div className="flex-1">
                 <CardTitle className="text-lg font-semibold text-neutral-950 mb-1">
-                  {course.title}
+                  {displayTitle}
                 </CardTitle>
                 <p className="text-[12px] text-[#62748e]">
                   {course.subjectName || "Chưa có môn học"}

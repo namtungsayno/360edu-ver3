@@ -4,7 +4,7 @@
  * - Step 1: Thông tin cơ bản & Chọn lịch học
  * - Step 2: Xem trước & Xác nhận
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
@@ -59,6 +59,8 @@ export default function CreateOfflineClassPage() {
   const [teachers, setTeachers] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
+  // Random code for class name (1 letter + 1 digit)
+  const [randomCode, setRandomCode] = useState("");
 
   const [weekStart] = useState(() => {
     const now = new Date();
@@ -83,6 +85,44 @@ export default function CreateOfflineClassPage() {
     loadSubjects();
     loadRooms();
     loadTimeSlots();
+  }, []);
+
+  // Helpers for alias + random code (FE only)
+  const makeTeacherAlias = useCallback((fullName) => {
+    const removeDiacritics = (s) =>
+      (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (!fullName) return "";
+    const parts = fullName.trim().split(/\s+/);
+    const last = removeDiacritics(parts[parts.length - 1] || "");
+    if (!last) return "";
+    return "GV" + last.charAt(0).toUpperCase() + last.slice(1).toLowerCase();
+  }, []);
+  const generateRandomCode = () => {
+    try {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      const arr = new Uint8Array(2);
+      if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(arr);
+      } else {
+        arr[0] = Math.floor(Math.random() * 256);
+        arr[1] = Math.floor(Math.random() * 256);
+      }
+      const ch = letters[arr[0] % letters.length];
+      const dg = nums[arr[1] % nums.length];
+      return `${ch}${dg}`;
+    } catch {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      return (
+        letters[Math.floor(Math.random() * letters.length)] +
+        nums[Math.floor(Math.random() * nums.length)]
+      );
+    }
+  };
+  // Generate once per page open
+  useEffect(() => {
+    setRandomCode(generateRandomCode());
   }, []);
 
   useEffect(() => {
@@ -238,10 +278,14 @@ export default function CreateOfflineClassPage() {
     const teacher = teachers.find(
       (t) => String(t.userId || t.id) === String(teacherId)
     );
-    // Yêu cầu: Tên giáo viên + Tên môn học (+ ID lớp do BE gắn sau khi tạo)
-    if (subj && teacher) return `${teacher.fullName} - ${subj.name}`;
+    if (subj && teacher && randomCode) {
+      const alias = makeTeacherAlias(teacher.fullName);
+      if (!alias) return "";
+      // Format: <TÊN_MÔN> - <GV_ALIAS> - <RANDOM_CODE>
+      return `${subj.name} - ${alias} - ${randomCode}`;
+    }
     return "";
-  }, [subjectId, teacherId, subjects, teachers]);
+  }, [subjectId, teacherId, subjects, teachers, randomCode, makeTeacherAlias]);
 
   const roomCapacity = useMemo(() => {
     const r = rooms.find((x) => String(x.id) === String(roomId));

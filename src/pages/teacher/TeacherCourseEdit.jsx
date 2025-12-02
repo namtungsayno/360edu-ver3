@@ -64,6 +64,7 @@ export default function TeacherCourseEdit() {
   // ====== CHAPTERS & LESSONS (LOCAL ONLY) ======
   const [chapters, setChapters] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  // Không còn ráp title ở FE; hiển thị trực tiếp từ DB
 
   // Derived counts
   const totalChapters = chapters.length;
@@ -117,6 +118,8 @@ export default function TeacherCourseEdit() {
       }
 
       setLoading(false);
+
+      // Không cần enrich: UI dùng trực tiếp `course.title`
     } catch (err) {
       console.error("Load course detail error:", err);
       error("Không thể tải thông tin khóa học");
@@ -494,7 +497,7 @@ export default function TeacherCourseEdit() {
                   Tên khóa học
                 </label>
                 <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-neutral-950">
-                  {title}
+                  {title || ""}
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1">
                   ℹ️ Không thể thay đổi tên khóa học
