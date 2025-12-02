@@ -17,13 +17,13 @@ export default function StudentClassDetail() {
 
   useEffect(() => {
     (async () => {
-      console.log("📚 Loading student class detail for classId:", classId);
+      console.log(" Loading student class detail for classId:", classId);
       setLoading(true);
       setError("");
       try {
         // Lấy danh sách lớp đã đăng ký
         const enrolledClasses = await enrollmentService.listMyClasses();
-        console.log("✅ Enrolled classes:", enrolledClasses);
+        console.log(" Enrolled classes:", enrolledClasses);
         
         // Tìm lớp có classId tương ứng
         const cls = Array.isArray(enrolledClasses) 
@@ -31,15 +31,15 @@ export default function StudentClassDetail() {
           : null;
         
         if (!cls) {
-          console.error("❌ Class not found in enrolled classes");
+          console.error(" Class not found in enrolled classes");
           setError("Không tìm thấy lớp hoặc bạn chưa đăng ký lớp này.");
         } else {
-          console.log("✅ Class found:", cls);
+          console.log(" Class found:", cls);
           console.log("📖 Course info - courseId:", cls.courseId, "courseTitle:", cls.courseTitle);
           setData(cls);
         }
       } catch (e) {
-        console.error("❌ Failed to load class detail:", e);
+        console.error(" Failed to load class detail:", e);
         setError("Không tải được dữ liệu lớp.");
       } finally {
         setLoading(false);

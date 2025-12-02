@@ -19,16 +19,19 @@ import { Button } from "../../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import AuthContext from "../../../context/AuthContext";
 import { useToast } from "../../../hooks/use-toast";
+import PaymentQRModal from "../../../components/payment/PaymentQRModal";
 
 export default function ClassDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  const { success, error: showError, warning } = useToast();
+  const { success, error: showError, warning, info } = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(false); // Track if already enrolled
 
   const classId = Number(id);
 
@@ -51,6 +54,12 @@ export default function ClassDetail() {
   }, [classId]);
 
   const handleEnroll = async () => {
+    // Nếu đã enrolled trong session này, báo toast
+    if (isEnrolled) {
+      info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
+      return;
+    }
+
     // Helper to parse a YYYY-MM-DD as LOCAL date (avoid UTC shift)
     const parseLocalDate = (dateStr) => {
       if (!dateStr) return null;
@@ -97,7 +106,8 @@ export default function ClassDetail() {
       const already = (myClasses || []).some((c) => (c.classId || c.id) === classId);
       if (already) {
         console.warn("🟧 [Enroll] Already enrolled in this class:", classId);
-        warning("Bạn đã đăng ký lớp học này", "Thông báo");
+        setIsEnrolled(true);
+        info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
         return;
       }
 
@@ -118,8 +128,10 @@ export default function ClassDetail() {
         return;
       }
 
+      // 4. Try enrollment - if needs payment, show QR modal
       const res = await enrollmentService.selfEnroll(classId);
       console.log("🟩 [Enroll] Enroll API success:", res);
+      setIsEnrolled(true);
       success(
         "Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.",
         "Thành công"
@@ -129,6 +141,14 @@ export default function ClassDetail() {
       const status = e?.response?.status;
       const msg =
         e?.response?.data?.message || e?.message || "Đăng ký thất bại";
+
+      // 402 Payment Required -> show QR payment modal
+      if (status === 402 || String(msg).toLowerCase().includes("payment required") || String(msg).toLowerCase().includes("thanh toán")) {
+        console.log("🟦 [Enroll] Payment required, showing QR modal");
+        info("Vui lòng thanh toán để hoàn tất đăng ký", "Yêu cầu thanh toán");
+        setShowPaymentModal(true);
+        return;
+      }
 
       if (status === 403) {
         showError(
@@ -140,8 +160,9 @@ export default function ClassDetail() {
             state: { from: `/home/classes/${classId}` },
           });
         }, 2000);
-      } else if (String(msg).toLowerCase().includes("already enrolled")) {
-        warning("Bạn đã đăng ký lớp học này", "Thông báo");
+      } else if (String(msg).toLowerCase().includes("already enrolled") || String(msg).toLowerCase().includes("đã đăng ký")) {
+        setIsEnrolled(true);
+        info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
       } else {
         showError(msg, "Lỗi");
       }
@@ -149,6 +170,16 @@ export default function ClassDetail() {
       setEnrolling(false);
       console.log("🟦 [Enroll] End enroll flow for class:", classId);
     }
+  };
+
+  // Handler to open payment modal directly (for "Thanh toán ngay" button)
+  const handlePaymentClick = () => {
+    if (!user) {
+      warning("Vui lòng đăng nhập để thanh toán!", "Yêu cầu đăng nhập");
+      navigate("/home/login", { state: { from: `/home/classes/${classId}` } });
+      return;
+    }
+    setShowPaymentModal(true);
   };
 
   if (loading) {
@@ -545,12 +576,34 @@ export default function ClassDetail() {
 
                   {/* Enrollment Section */}
                   <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-gray-700">Tổng học phí:</span>
+                    {/* Giá mỗi buổi */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-gray-600 text-sm">Giá mỗi buổi:</span>
+                      <span className="text-gray-900 font-medium">
+                        {data.pricePerSession
+                          ? `${data.pricePerSession.toLocaleString()}đ`
+                          : "Liên hệ"}
+                      </span>
+                    </div>
+                    
+                    {/* Số buổi học */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-gray-600 text-sm">Số buổi học:</span>
+                      <span className="text-gray-900 font-medium">
+                        {data.totalSessions || data.sessionsGenerated || 0} buổi
+                      </span>
+                    </div>
+                    
+                    {/* Tổng học phí = pricePerSession * totalSessions */}
+                    <div className="flex items-center justify-between mb-4 pt-3 border-t border-dashed">
+                      <span className="text-gray-700 font-medium">Tổng học phí:</span>
                       <span className="text-2xl font-bold text-blue-600">
-                        {data.fee
-                          ? `${data.fee.toLocaleString()}đ`
-                          : "2.500.000đ"}
+                        {(() => {
+                          const price = data.pricePerSession || 0;
+                          const sessions = data.totalSessions || data.sessionsGenerated || 0;
+                          const total = price * sessions;
+                          return total > 0 ? `${total.toLocaleString()}đ` : "Liên hệ";
+                        })()}
                       </span>
                     </div>
 
@@ -589,6 +642,14 @@ export default function ClassDetail() {
           </div>
         </div>
       </div>
+
+      {/* Payment QR Modal */}
+      <PaymentQRModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        classId={classId}
+        className={data?.name}
+      />
     </div>
   );
 }

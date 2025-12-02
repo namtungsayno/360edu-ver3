@@ -90,7 +90,7 @@ const Sidebar = () => {
           id: "payments",
           label: "Thanh toán",
           icon: CreditCard,
-          href: "/home/admin/payments",
+          href: "/home/admin/payment",
         },
         {
           id: "reports",
