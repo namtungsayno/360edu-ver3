@@ -25,6 +25,7 @@ import { landingPathByRoles } from "../../utils/auth-landing";
 import { authService } from "../../services/auth/auth.service";
 import { useToast } from "../../hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
+import { cacheLastPassword } from "../../utils/last-login";
 
 export default function Login() {
   const { onNavigate } = useOutletContext();
@@ -94,6 +95,8 @@ export default function Login() {
     try {
       // await xử lý bất đồng bộ đăng nhập. await đợi đăng nhập xong mới chạy tiếp.
       const me = await login(formData);
+      // Cache last typed password in session for quick prefill of current password (cleared on consume)
+      cacheLastPassword(formData.password);
       success("Đăng nhập thành công! Chào mừng bạn trở lại 👋");
 
       const to = from || landingPathByRoles(me.roles); // me.roles = ["Admin", "..."]

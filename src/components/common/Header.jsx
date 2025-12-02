@@ -22,6 +22,7 @@ import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { ImageWithFallback } from "../ui/ImageWithFallback.jsx";
 import Logo from "./Logo";
+import NotificationBell from "./NotificationBell";
 import AuthContext from "../../context/AuthContext";
 
 export default function Header({ onNavigate, currentPage }) {
@@ -200,7 +201,10 @@ export default function Header({ onNavigate, currentPage }) {
           </nav>
 
           {/* NÚT ĐĂNG NHẬP / PROFILE DESKTOP */}
-          <div className="hidden lg:flex items-center">
+          <div className="hidden lg:flex items-center gap-2">
+            {/* Notification Bell - chỉ hiển thị khi đăng nhập */}
+            {user && <NotificationBell variant="header" />}
+            
             {user ? (
               <div className="relative" ref={profileMenuRef}>
                 <button
