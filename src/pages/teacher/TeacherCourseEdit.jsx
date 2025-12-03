@@ -1,6 +1,6 @@
 // src/pages/teacher/TeacherCourseEdit.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
   Card,
@@ -24,7 +24,6 @@ import {
   Info,
   Plus,
   Trash2,
-  BookOpen,
   Layers,
   FileText,
   Save,
@@ -42,14 +41,11 @@ function createLocalId() {
 export default function TeacherCourseEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const isContentEdit = location.pathname.includes("/home/teacher/content/");
   const { success, error } = useToast();
   const { user } = useAuth();
 
   // ====== LOADING STATE ======
   const [loading, setLoading] = useState(true);
-  const [originalCourse, setOriginalCourse] = useState(null);
   const [sourceTagInOriginal, setSourceTagInOriginal] = useState("");
 
   // ====== BASIC FORM STATE ======
@@ -64,6 +60,7 @@ export default function TeacherCourseEdit() {
   // ====== CHAPTERS & LESSONS (LOCAL ONLY) ======
   const [chapters, setChapters] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  // Không còn ráp title ở FE; hiển thị trực tiếp từ DB
 
   // Derived counts
   const totalChapters = chapters.length;
@@ -82,7 +79,6 @@ export default function TeacherCourseEdit() {
     try {
       setLoading(true);
       const course = await courseService.getCourseDetail(id);
-      setOriginalCourse(course);
 
       // Populate form
       setTitle(course.title || "");
@@ -117,6 +113,8 @@ export default function TeacherCourseEdit() {
       }
 
       setLoading(false);
+
+      // Không cần enrich: UI dùng trực tiếp `course.title`
     } catch (err) {
       console.error("Load course detail error:", err);
       error("Không thể tải thông tin khóa học");
@@ -296,99 +294,65 @@ export default function TeacherCourseEdit() {
 
     setSubmitting(true);
     try {
-      if (isContentEdit) {
-        // PERSONALIZE from Admin content: create a new personal course and submit for approval
-        const sourceTag = `[[SOURCE:${originalCourse?.id || id}]]`;
-        const ownerTag = `[[OWNER:${user?.id}]]`;
-        const created = await courseService.createCourse({
-          subjectId: Number(subjectId),
-          title: title.trim(),
-          description: `${description.trim()}\n${sourceTag}\n${ownerTag}`,
-          status: "PENDING",
-        });
+      // EDIT existing personal course: update and re-create content
+      const latest = await courseService.getCourseDetail(id);
+      // Ensure OWNER tag exists for legacy items, và giữ lại SOURCE tag nếu khóa học gốc là bản cá nhân hóa
+      const ownerTag = `[[OWNER:${user?.id}]]`;
+      let nextDescription = description.trim();
+      if (!nextDescription.includes(ownerTag)) {
+        nextDescription += `\n${ownerTag}`;
+      }
+      if (
+        sourceTagInOriginal &&
+        !nextDescription.includes(sourceTagInOriginal)
+      ) {
+        nextDescription += `\n${sourceTagInOriginal}`;
+      }
 
-        // Create chapters & lessons for new course using current edited structure
-        for (const ch of chapters) {
-          const newCh = await courseService.addChapter(created.id, {
-            title: ch.title.trim(),
-            description: ch.description.trim(),
-            orderIndex: ch.orderIndex,
-          });
-          for (const ls of ch.lessons) {
-            await courseService.addLesson(newCh.id, {
-              title: ls.title.trim(),
-              description: ls.description.trim(),
-              orderIndex: ls.orderIndex,
-            });
-          }
-        }
+      await courseService.updateCourse(id, {
+        subjectId: Number(subjectId),
+        title: title.trim(),
+        description: nextDescription,
+      });
 
-        success(
-          "Đã gửi yêu cầu phê duyệt. Bạn có thể xem trong 'Quản lý khóa học cá nhân'.",
-          "Thành công"
-        );
-        // Ở luồng Nội dung giảng dạy: không điều hướng tự động sang danh sách cá nhân
-      } else {
-        // EDIT existing personal course: update and re-create content
-        const latest = await courseService.getCourseDetail(id);
-        // Ensure OWNER tag exists for legacy items, và giữ lại SOURCE tag nếu khóa học gốc là bản cá nhân hóa
-        const ownerTag = `[[OWNER:${user?.id}]]`;
-        let nextDescription = description.trim();
-        if (!nextDescription.includes(ownerTag)) {
-          nextDescription += `\n${ownerTag}`;
-        }
-        if (
-          sourceTagInOriginal &&
-          !nextDescription.includes(sourceTagInOriginal)
-        ) {
-          nextDescription += `\n${sourceTagInOriginal}`;
-        }
-
-        await courseService.updateCourse(id, {
-          subjectId: Number(subjectId),
-          title: title.trim(),
-          description: nextDescription,
-        });
-
-        if (latest?.chapters && latest.chapters.length > 0) {
-          for (const ch of latest.chapters) {
-            if (ch.lessons && ch.lessons.length > 0) {
-              for (const ls of ch.lessons) {
-                try {
-                  await courseService.removeLesson(ls.id);
-                } catch (lessonErr) {
-                  console.warn(`Failed to remove lesson ${ls.id}:`, lessonErr);
-                }
+      if (latest?.chapters && latest.chapters.length > 0) {
+        for (const ch of latest.chapters) {
+          if (ch.lessons && ch.lessons.length > 0) {
+            for (const ls of ch.lessons) {
+              try {
+                await courseService.removeLesson(ls.id);
+              } catch (lessonErr) {
+                console.warn(`Failed to remove lesson ${ls.id}:`, lessonErr);
               }
             }
-            try {
-              await courseService.removeChapter(ch.id);
-            } catch (chapterErr) {
-              console.warn(`Failed to remove chapter ${ch.id}:`, chapterErr);
-            }
+          }
+          try {
+            await courseService.removeChapter(ch.id);
+          } catch (chapterErr) {
+            console.warn(`Failed to remove chapter ${ch.id}:`, chapterErr);
           }
         }
-
-        for (const ch of chapters) {
-          const createdChapter = await courseService.addChapter(id, {
-            title: ch.title.trim(),
-            description: ch.description.trim(),
-            orderIndex: ch.orderIndex,
-          });
-          const chapterId = createdChapter?.id;
-          if (!chapterId) continue;
-          for (const ls of ch.lessons) {
-            await courseService.addLesson(chapterId, {
-              title: ls.title.trim(),
-              description: ls.description.trim(),
-              orderIndex: ls.orderIndex,
-            });
-          }
-        }
-
-        success("Đã cập nhật khóa học thành công!", "Thành công");
-        navigate(`/home/teacher/courses/${id}`);
       }
+
+      for (const ch of chapters) {
+        const createdChapter = await courseService.addChapter(id, {
+          title: ch.title.trim(),
+          description: ch.description.trim(),
+          orderIndex: ch.orderIndex,
+        });
+        const chapterId = createdChapter?.id;
+        if (!chapterId) continue;
+        for (const ls of ch.lessons) {
+          await courseService.addLesson(chapterId, {
+            title: ls.title.trim(),
+            description: ls.description.trim(),
+            orderIndex: ls.orderIndex,
+          });
+        }
+      }
+
+      success("Đã cập nhật khóa học thành công!", "Thành công");
+      navigate(`/home/teacher/courses/${id}`);
     } catch (err) {
       console.error("Update course failed:", err);
       const errorMsg =
@@ -426,13 +390,7 @@ export default function TeacherCourseEdit() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() =>
-              navigate(
-                isContentEdit
-                  ? `/home/teacher/content/${id}`
-                  : `/home/teacher/courses/${id}`
-              )
-            }
+            onClick={() => navigate(`/home/teacher/courses/${id}`)}
             className="inline-flex items-center gap-2 text-sm text-[#62748e] hover:text-neutral-950"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -494,7 +452,7 @@ export default function TeacherCourseEdit() {
                   Tên khóa học
                 </label>
                 <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-neutral-950">
-                  {title}
+                  {title || ""}
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1">
                   ℹ️ Không thể thay đổi tên khóa học

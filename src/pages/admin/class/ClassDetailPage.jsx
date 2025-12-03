@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { classService } from "../../../services/class/class.service";
-import { dayLabelVi } from "../../../helper/formatters";
+import { dayLabelVi, formatCurrency } from "../../../helper/formatters";
 
 /**
  * Trang chi tiết lớp học (Admin)
@@ -74,6 +74,27 @@ export default function ClassDetailPage() {
       return { label: "Đang diễn ra", style: "bg-violet-100 text-violet-700" };
     return null;
   }
+
+  // Hỗ trợ các tên trường thay thế từ backend (nếu khác biệt)
+  const priceValue = (() => {
+    const v =
+      cls?.pricePerSession ??
+      cls?.price ??
+      cls?.sessionPrice ??
+      cls?.price_per_session ??
+      null;
+    return v;
+  })();
+
+  const totalSessionsValue = (() => {
+    const v =
+      cls?.totalSessions ??
+      cls?.numberOfSessions ??
+      cls?.sessionCount ??
+      cls?.total_sessions ??
+      null;
+    return v;
+  })();
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -252,6 +273,38 @@ export default function ClassDetailPage() {
                   </div>
                 </div>
               )}
+              {/* Giá tiền mỗi buổi học (luôn hiển thị, fallback '-') */}
+              <div className="space-y-1 md:col-span-2">
+                <div className="text-xs text-gray-500 font-medium">
+                  Giá tiền mỗi buổi học
+                </div>
+                <div className="font-semibold text-gray-800">
+                  {priceValue !== undefined &&
+                  priceValue !== null &&
+                  priceValue !== "" &&
+                  !Number.isNaN(Number(priceValue))
+                    ? formatCurrency(priceValue)
+                    : "-"}
+                </div>
+              </div>
+
+              {/* Tổng giá tiền của lớp học (luôn hiển thị, fallback '-') */}
+              <div className="space-y-1 md:col-span-2">
+                <div className="text-xs text-gray-500 font-medium">
+                  Tổng giá tiền của lớp học
+                </div>
+                <div className="font-semibold text-gray-800">
+                  {priceValue !== undefined &&
+                  priceValue !== null &&
+                  priceValue !== "" &&
+                  !Number.isNaN(Number(priceValue)) &&
+                  totalSessionsValue
+                    ? formatCurrency(
+                        Number(priceValue) * Number(totalSessionsValue)
+                      )
+                    : "-"}
+                </div>
+              </div>
               {cls.description && (
                 <div className="space-y-1 md:col-span-2">
                   <div className="text-xs text-gray-500 font-medium">Mô tả</div>

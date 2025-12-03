@@ -1,6 +1,37 @@
 import { attendanceApi } from "./attendance.api";
 
 export const attendanceService = {
+  async saveBySession(sessionId, attendanceRecords) {
+    const items = attendanceRecords.map((record) => ({
+      studentId: record.studentId ?? record.id,
+      status: (record.status || "UNMARKED").toUpperCase(),
+      note: record.note || null,
+    }));
+    return attendanceApi.saveBySession(sessionId, { items });
+  },
+
+  async getBySession(sessionId) {
+    const data = await attendanceApi.getBySession(sessionId);
+    const mapStatus = (s) => {
+      switch (s) {
+        case "PRESENT":
+          return "present";
+        case "ABSENT":
+          return "absent";
+        case "LATE":
+          return "late";
+        case "UNMARKED":
+        default:
+          return "-";
+      }
+    };
+    return (data.students || []).map((it) => ({
+      id: it.studentId,
+      student: it.studentName,
+      status: mapStatus(it.status),
+      note: it.note || "",
+    }));
+  },
   async saveAttendance(classId, date, attendanceRecords, slotId) {
     // Transform data to match backend format
     const items = attendanceRecords.map((record) => ({

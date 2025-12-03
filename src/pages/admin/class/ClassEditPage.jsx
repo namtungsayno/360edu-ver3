@@ -11,13 +11,14 @@ import {
   SelectValue,
 } from "../../../components/ui/Select";
 import ScheduleGrid from "../schedule/ScheduleGrid";
+import ClassPreview from "../../../components/admin/ClassPreview";
 import { classService } from "../../../services/class/class.service";
 import { subjectService } from "../../../services/subject/subject.service";
 import { teacherService } from "../../../services/teacher/teacher.service";
 import { classroomService } from "../../../services/classrooms/classroom.service";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
 import { courseApi } from "../../../services/course/course.api";
-import { Loader2, ArrowLeft, Eye, CalendarCheck2 } from "lucide-react";
+import { Loader2, ArrowLeft, Eye } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 
 /**
@@ -50,6 +51,8 @@ export default function ClassEditPage() {
   const [totalSessions, setTotalSessions] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [pricePerSession, setPricePerSession] = useState("");
+  const [name, setName] = useState("");
 
   // Data sources
   const [subjects, setSubjects] = useState([]);
@@ -57,19 +60,26 @@ export default function ClassEditPage() {
   const [teachers, setTeachers] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
+  // Random code for new naming (1 letter + 1 digit), generated once per page open
+  const [randomCode, setRandomCode] = useState("");
 
   // Busy & picked slots
   const [teacherBusy, setTeacherBusy] = useState([]);
   const [roomBusy, setRoomBusy] = useState([]);
   const [pickedSlots, setPickedSlots] = useState([]); // grid selections
+  // Toggle edit/view for schedule
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+  const [prevPickedSlots, setPrevPickedSlots] = useState([]);
+  // Track previous generated name to detect manual edits
+  const [prevGeneratedName, setPrevGeneratedName] = useState("");
   // Bỏ xác nhận endDate nên không cần giữ prev để hoàn tác
   // const [prevPickedSlots, setPrevPickedSlots] = useState([]); // unused
   // const [prevTotalSessions, setPrevTotalSessions] = useState(""); // unused
   // initialSlotsCount trước đây dùng để chặn giảm slot; đã bỏ chặn cho DRAFT nên không cần nữa
   // Giữ lại nếu sau này muốn tái áp dụng hạn chế cho PUBLIC; hiện PUBLIC không cho sửa lịch
   // const [initialSlotsCount, setInitialSlotsCount] = useState(0);
-  const [originalPickedSlots, setOriginalPickedSlots] = useState([]);
-  const [allowEditSchedule, setAllowEditSchedule] = useState(false); // chỉ dùng cho DRAFT: cần bấm "Sửa lịch" mới cho sửa
+  // originalPickedSlots no longer needed
+  // Schedule luôn cho sửa; không cần toggle
 
   // End date confirmation removed -> no need to track originalEndDate
 
@@ -99,6 +109,69 @@ export default function ClassEditPage() {
       }
     })();
   }, []);
+
+  // Helpers: alias and random code for class name
+  const makeTeacherAlias = useCallback((fullName) => {
+    const removeDiacritics = (s) =>
+      (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (!fullName) return "";
+    const parts = fullName.trim().split(/\s+/);
+    const last = removeDiacritics(parts[parts.length - 1] || "");
+    if (!last) return "";
+    return "GV" + last.charAt(0).toUpperCase() + last.slice(1).toLowerCase();
+  }, []);
+
+  const generateRandomCode = useCallback(() => {
+    try {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      const arr = new Uint8Array(2);
+      if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(arr);
+      } else {
+        arr[0] = Math.floor(Math.random() * 256);
+        arr[1] = Math.floor(Math.random() * 256);
+      }
+      const ch = letters[arr[0] % letters.length];
+      const dg = nums[arr[1] % nums.length];
+      return `${ch}${dg}`;
+    } catch {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      return (
+        letters[Math.floor(Math.random() * letters.length)] +
+        nums[Math.floor(Math.random() * nums.length)]
+      );
+    }
+  }, []);
+
+  // Generate random code once
+  useEffect(() => {
+    setRandomCode(generateRandomCode());
+  }, [generateRandomCode]);
+
+  // Build a stable comparison key for a slot: dayOfWeek(0..6)-HH:mm
+  // Use exact isoStart+isoEnd equality to align with ScheduleGrid
+  const slotKey = useCallback((slot) => {
+    if (!slot || !slot.isoStart || !slot.isoEnd) return "";
+    return `${slot.isoStart}|${slot.isoEnd}`;
+  }, []);
+
+  const uniqByKey = useCallback(
+    (slots) => {
+      const seen = new Set();
+      const out = [];
+      for (const s of slots || []) {
+        const k = slotKey(s);
+        if (!seen.has(k)) {
+          seen.add(k);
+          out.push(s);
+        }
+      }
+      return out;
+    },
+    [slotKey]
+  );
   // Load class details
   useEffect(() => {
     (async () => {
@@ -111,12 +184,15 @@ export default function ClassEditPage() {
           // Prefill
           setSubjectId(String(data.subjectId || ""));
           setCourseId(String(data.courseId || ""));
-          setTeacherId(String(data.teacherId || data.teacherUserId || ""));
+          // Always store teacher's USER ID in state; backend expects userId in teacherId field
+          setTeacherId(String(data.teacherUserId || ""));
           setDesc(data.description || "");
           setCapacity(String(data.maxStudents || ""));
           setTotalSessions(String(data.totalSessions || ""));
           setStartDate(data.startDate || "");
           setEndDate(data.endDate || "");
+          setPricePerSession(String(data.pricePerSession ?? ""));
+          setName(data.name || "");
           // originalEndDate removed
           if (data.online) {
             setMeetingLink(data.meetingLink || "");
@@ -146,9 +222,11 @@ export default function ClassEditPage() {
                   isoEnd: end.toISOString(),
                 };
               });
-            setPickedSlots(mapped);
+            // Deduplicate by (day, HH:mm) to avoid duplicates later
+            const uniq = uniqByKey(mapped);
+            setPickedSlots(uniq);
             // initialSlotsCount logic removed
-            setOriginalPickedSlots(mapped);
+            // originalPickedSlots removed
           }
         } else {
           error("Không tìm thấy lớp học");
@@ -160,7 +238,10 @@ export default function ClassEditPage() {
         setLoading(false);
       }
     })();
-  }, [id, weekStart, error]);
+  }, [id, weekStart, error, uniqByKey]);
+
+  // Track initial subjectId to avoid resetting teacherId on first load
+  const [initialSubjectId, setInitialSubjectId] = useState(null);
 
   // Load dependent lists when subject changes
   useEffect(() => {
@@ -180,13 +261,24 @@ export default function ClassEditPage() {
         ]);
         setCourses(Array.isArray(courseList) ? courseList : []);
         setTeachers(Array.isArray(teacherList) ? teacherList : []);
+
+        // Reset teacherId when subject changes (except on initial load)
+        if (initialSubjectId !== null && subjectId !== initialSubjectId) {
+          setTeacherId("");
+          setCourseId("");
+          setTeacherBusy([]);
+        }
+        // Mark initial subject as loaded
+        if (initialSubjectId === null) {
+          setInitialSubjectId(subjectId);
+        }
       } catch (e) {
         console.error(e);
         setCourses([]);
         setTeachers([]);
       }
     })();
-  }, [subjectId]);
+  }, [subjectId, initialSubjectId]);
 
   // Load rooms (offline)
   useEffect(() => {
@@ -201,6 +293,51 @@ export default function ClassEditPage() {
       }
     })();
   }, [cls]);
+
+  // Build new naming suggestion when data ready
+  const generatedName = useMemo(() => {
+    const subj = subjects.find((s) => String(s.id) === String(subjectId));
+    const teacher = teachers.find(
+      (t) => String(t.userId) === String(teacherId)
+    );
+    if (!subj || !teacher || !randomCode) return "";
+    const alias = makeTeacherAlias(teacher.fullName);
+    if (!alias) return "";
+    return `${subj.name} - ${alias} - ${randomCode}`;
+  }, [subjects, subjectId, teachers, teacherId, randomCode, makeTeacherAlias]);
+
+  // Old naming (legacy): TeacherFullName - SubjectName
+  const legacyName = useMemo(() => {
+    const subj = subjects.find((s) => String(s.id) === String(subjectId));
+    const teacher = teachers.find(
+      (t) => String(t.userId) === String(teacherId)
+    );
+    if (!subj || !teacher) return "";
+    return `${teacher.fullName} - ${subj.name}`;
+  }, [subjects, subjectId, teachers, teacherId]);
+
+  // Prefill name with new format if empty, using legacy pattern, or matching previous auto-generated name
+  useEffect(() => {
+    if (!generatedName) return;
+
+    // Check if current name follows the auto-generated pattern: "SubjectName - GV... - XX"
+    const autoGenPattern = /^.+ - GV\w+ - [A-Z]\d$/;
+    const isAutoGenerated = autoGenPattern.test(name);
+
+    // If current name is empty, exactly matches legacy style, matches the previous auto-generated name,
+    // or follows the auto-generated pattern → update
+    const shouldUpdate =
+      !name ||
+      (legacyName && name === legacyName) ||
+      (prevGeneratedName && name === prevGeneratedName) ||
+      isAutoGenerated;
+    if (shouldUpdate) {
+      setName(generatedName);
+    }
+    // Always track the latest generated name for future comparisons
+    setPrevGeneratedName(generatedName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generatedName, legacyName]);
 
   // Busy data loads when teacher/room/startDate change
   const loadTeacherBusy = useCallback(async () => {
@@ -292,21 +429,27 @@ export default function ClassEditPage() {
   }, [loadRoomBusy]);
 
   function toggleSlot(slot) {
-    const exists = pickedSlots.some(
-      (s) => s.isoStart === slot.isoStart && s.isoEnd === slot.isoEnd
-    );
-    // Cho phép giảm slot đối với lớp DRAFT; chỉ giữ logic chặn nếu muốn áp dụng cho PUBLIC (hiện PUBLIC không cho sửa lịch nên không cần)
-    // if (isPublic && exists && pickedSlots.length - 1 < initialSlotsCount) {
-    //   error("Không được giảm số slot ban đầu của lớp");
-    //   return;
-    // }
-    const next = exists
-      ? pickedSlots.filter(
-          (s) => !(s.isoStart === slot.isoStart && s.isoEnd === slot.isoEnd)
-        )
-      : [...pickedSlots, slot];
+    const targetKey = slotKey(slot);
+    const has = pickedSlots.some((s) => slotKey(s) === targetKey);
+    const next = has
+      ? pickedSlots.filter((s) => slotKey(s) !== targetKey)
+      : uniqByKey([...pickedSlots, slot]);
     setPickedSlots(next);
     // endDate sẽ tự động cập nhật theo lịch phía trên
+  }
+
+  function startEditSchedule() {
+    setPrevPickedSlots(pickedSlots);
+    setIsEditingSchedule(true);
+  }
+
+  function cancelEditSchedule() {
+    setPickedSlots(prevPickedSlots);
+    setIsEditingSchedule(false);
+  }
+
+  function doneEditSchedule() {
+    setIsEditingSchedule(false);
   }
 
   const selectedSubject = subjects.find(
@@ -316,12 +459,10 @@ export default function ClassEditPage() {
     (t) => String(t.userId) === String(teacherId)
   );
   const selectedRoom = rooms.find((r) => String(r.id) === String(roomId));
-
-  const className = useMemo(() => {
-    if (selectedSubject && selectedTeacher)
-      return `${selectedSubject.name} - ${selectedTeacher.fullName}`;
-    return cls?.name || "";
-  }, [selectedSubject, selectedTeacher, cls]);
+  // Helpers for price formatting like create pages
+  const digitsOnly = (val) => (val || "").replace(/\D/g, "");
+  const formatVNNumber = (digits) =>
+    (digits || "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
   // Compute potential endDate and require confirmation if it changes from original
   useEffect(() => {
@@ -381,7 +522,7 @@ export default function ClassEditPage() {
   }
 
   const isOnline = cls?.online === true;
-  const isPublic = cls?.status === "PUBLIC"; // trạng thái PUBLIC
+  const isPublic = cls?.status === "PUBLIC"; // giữ badge hiển thị, không ảnh hưởng chỉnh sửa
   // Centralized accent styles
   const accentGradient = isOnline
     ? "bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600"
@@ -411,22 +552,6 @@ export default function ClassEditPage() {
   }
 
   const step1Valid = useMemo(() => {
-    // Với PUBLIC: chỉ kiểm tra các field được phép chỉnh sửa
-    if (isPublic) {
-      if (isOnline) {
-        if (!meetingLink || !isValidUrl(meetingLink)) return false;
-        return capacity && parseInt(capacity) > 0 && parseInt(capacity) <= 30;
-      } else {
-        if (!roomId) return false;
-        if (!capacity || parseInt(capacity) <= 0) return false;
-        const roomCapacity = selectedRoom
-          ? parseInt(selectedRoom.capacity || 0)
-          : 0;
-        if (roomCapacity && parseInt(capacity) > roomCapacity) return false;
-        return true;
-      }
-    }
-    // Với DRAFT: kiểm tra đầy đủ
     if (
       !subjectId ||
       !teacherId ||
@@ -434,7 +559,11 @@ export default function ClassEditPage() {
       parseInt(totalSessions) <= 0 ||
       !startDate ||
       startDate < todayStr ||
-      !pickedSlots.length
+      !pickedSlots.length ||
+      // Yêu cầu giá mỗi buổi chỉ khi DRAFT
+      (cls?.status === "DRAFT" &&
+        (pricePerSession === "" || parseInt(pricePerSession) < 0)) ||
+      !name
     )
       return false;
     if (isOnline) {
@@ -450,17 +579,19 @@ export default function ClassEditPage() {
     }
     return true;
   }, [
-    isPublic,
     subjectId,
     teacherId,
     totalSessions,
     startDate,
     todayStr,
     pickedSlots,
+    pricePerSession,
+    name,
     isOnline,
     meetingLink,
     capacity,
     roomId,
+    cls?.status,
     selectedRoom,
   ]);
 
@@ -469,61 +600,45 @@ export default function ClassEditPage() {
     setSaving(true);
     try {
       let schedules = mapSlotsToSchedule();
-      // Khi PUBLIC: lịch học không thay đổi -> dùng pickedSlots hiện tại (đã bị disable)
-      if (isPublic && !schedules.length && Array.isArray(cls.schedule)) {
-        // fallback map từ cls.schedule nếu cần
-        schedules = cls.schedule.map((s) => ({
-          dayOfWeek: s.dayOfWeek,
-          timeSlotId: s.timeSlotId,
-        }));
-      }
       if (!schedules.length) {
         error("Không thể xác định lịch học");
         setSaving(false);
         return;
       }
-      let payload;
-      if (isPublic) {
-        // Chỉ gửi các field cho phép chỉnh sửa + cần thiết để backend không mất dữ liệu
-        payload = {
-          // giữ nguyên tên
-          name: cls.name,
-          // giữ nguyên các khóa học / giáo viên / môn
-          subjectId: cls.subjectId,
-          courseId: cls.courseId || null,
-          teacherId: cls.teacherId || cls.teacherUserId,
-          // room / capacity được phép thay đổi
-          roomId: isOnline
-            ? null
-            : roomId
-            ? parseInt(roomId)
-            : cls.roomId || null,
-          maxStudents: parseInt(capacity),
-          // giữ nguyên các thông tin khác
-          totalSessions: cls.totalSessions,
-          description: cls.description,
-          startDate: cls.startDate,
-          endDate: cls.endDate,
-          meetingLink: isOnline ? meetingLink.trim() : null,
-          schedule: schedules,
-        };
-      } else {
-        payload = {
-          name: className || cls.name,
-          subjectId: parseInt(subjectId),
-          courseId: courseId ? parseInt(courseId) : null,
-          teacherId: parseInt(teacherId),
-          roomId: isOnline ? null : roomId ? parseInt(roomId) : null,
-          maxStudents: parseInt(capacity),
-          totalSessions: parseInt(totalSessions),
-          description: desc,
-          startDate,
-          endDate,
-          meetingLink: isOnline ? meetingLink.trim() : null,
-          schedule: schedules,
-        };
+      const payload = {
+        name: name || cls.name,
+        subjectId: parseInt(subjectId),
+        courseId: courseId ? parseInt(courseId) : null,
+        teacherId: teacherId ? parseInt(teacherId) : null,
+        roomId: isOnline ? null : roomId ? parseInt(roomId) : null,
+        maxStudents: parseInt(capacity),
+        totalSessions: parseInt(totalSessions),
+        pricePerSession: parseInt(pricePerSession),
+        description: desc,
+        startDate,
+        endDate,
+        meetingLink: isOnline ? meetingLink.trim() : null,
+        schedule: schedules,
+      };
+      try {
+        await classService.update(cls.id, payload);
+      } catch (e1) {
+        const backendMsg =
+          e1?.response?.data?.message || e1?.response?.data?.error || "";
+        const needConfirm =
+          typeof backendMsg === "string" &&
+          backendMsg.toLowerCase().includes("lớp đang có nội dung");
+        if (needConfirm) {
+          const ok = window.confirm(
+            "Lớp đang có nội dung. Xác nhận xóa toàn bộ nội dung buổi học và khóa học của giáo viên?"
+          );
+          if (!ok) throw e1;
+          const payload2 = { ...payload, forceDeleteContentAndCourse: true };
+          await classService.update(cls.id, payload2);
+        } else {
+          throw e1;
+        }
       }
-      await classService.update(cls.id, payload);
       success("Cập nhật lớp thành công");
       navigate(`/home/admin/class/${cls.id}`);
     } catch (e) {
@@ -710,11 +825,6 @@ export default function ClassEditPage() {
                         className="h-10 text-sm"
                         disabled={isPublic}
                       />
-                      {isPublic && (
-                        <p className="mt-1 text-[10px] text-amber-600">
-                          Ngày bắt đầu đã khóa
-                        </p>
-                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
@@ -750,11 +860,7 @@ export default function ClassEditPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    {isPublic && (
-                      <p className="mt-1 text-[10px] text-amber-600">
-                        Môn học đã khóa
-                      </p>
-                    )}
+                    {/* Cho phép đổi môn khi DRAFT; chỉ khóa khi PUBLIC */}
                   </div>
                   {/* Course optional */}
                   {subjectId && (
@@ -769,7 +875,7 @@ export default function ClassEditPage() {
                         key={`course-${courseId}-${courses.length}`}
                         value={String(courseId)}
                         onValueChange={setCourseId}
-                        disabled={!subjectId || isPublic}
+                        disabled={isPublic}
                       >
                         <SelectTrigger className="h-10 text-sm">
                           <SelectValue placeholder="Chọn khóa học" />
@@ -783,11 +889,7 @@ export default function ClassEditPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {isPublic && (
-                        <p className="mt-1 text-[10px] text-amber-600">
-                          Khóa học đã khóa
-                        </p>
-                      )}
+                      {/* Cho phép đổi khóa học khi DRAFT; chỉ khóa khi PUBLIC */}
                     </div>
                   )}
 
@@ -799,7 +901,7 @@ export default function ClassEditPage() {
                       key={`teacher-${teacherId}-${teachers.length}`}
                       value={String(teacherId)}
                       onValueChange={setTeacherId}
-                      disabled={!subjectId || isPublic}
+                      disabled={isPublic}
                     >
                       <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Chọn GV" />
@@ -812,11 +914,7 @@ export default function ClassEditPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    {isPublic && (
-                      <p className="mt-1 text-[10px] text-amber-600">
-                        Giáo viên đã khóa
-                      </p>
-                    )}
+                    {/* Cho phép đổi giáo viên khi DRAFT; chỉ khóa khi PUBLIC */}
                   </div>
                   {/* Total sessions */}
                   <div>
@@ -836,8 +934,36 @@ export default function ClassEditPage() {
                       disabled={isPublic}
                     />
                     {isPublic && (
-                      <p className="mt-1 text-[10px] text-amber-600">
-                        Số buổi đã khóa
+                      <p className="text-[10px] text-amber-600 mt-1">
+                        Số buổi đã bị khóa ở trạng thái Public.
+                      </p>
+                    )}
+                  </div>
+                  {/* Giá tiền mỗi buổi học */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                      Giá tiền mỗi buổi học (VNĐ){" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={formatVNNumber(pricePerSession)}
+                      onChange={(e) =>
+                        setPricePerSession(digitsOnly(e.target.value))
+                      }
+                      className="h-10 text-sm"
+                      disabled={isPublic}
+                    />
+                    {pricePerSession !== "" &&
+                      parseInt(pricePerSession) < 0 && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Giá tiền mỗi buổi học phải ≥ 0
+                        </p>
+                      )}
+                    {isPublic && (
+                      <p className="text-[10px] text-amber-600 mt-1">
+                        Giá tiền mỗi buổi bị khóa ở trạng thái Public.
                       </p>
                     )}
                   </div>
@@ -890,10 +1016,6 @@ export default function ClassEditPage() {
                             key={`room-${roomId}-${rooms.length}`}
                             value={String(roomId)}
                             onValueChange={setRoomId}
-                            disabled={
-                              isPublic &&
-                              false /* offline vẫn cho phép đổi phòng */
-                            }
                           >
                             <SelectTrigger className="h-10 text-sm">
                               <SelectValue placeholder="Chọn phòng" />
@@ -933,9 +1055,10 @@ export default function ClassEditPage() {
                       Tên lớp
                     </label>
                     <Input
-                      value={className}
-                      readOnly
-                      className="h-10 text-sm bg-gray-50"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-10 text-sm"
+                      disabled={isPublic}
                     />
                   </div>
                   <div>
@@ -949,11 +1072,6 @@ export default function ClassEditPage() {
                       className="resize-none text-sm"
                       disabled={isPublic}
                     />
-                    {isPublic && (
-                      <p className="mt-1 text-[10px] text-amber-600">
-                        Mô tả đã khóa
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -964,200 +1082,129 @@ export default function ClassEditPage() {
                 }`}
               >
                 <div
-                  className={`sticky top-0 z-10 -mx-5 px-5 py-3 rounded-xl text-white ${accentStepGradient} shadow-md`}
+                  className={`sticky top-0 z-10 -mx-5 px-5 py-3 rounded-xl text-white ${accentStepGradient} shadow-md flex items-center justify-between`}
                 >
-                  <h2 className="text-lg font-bold">Chỉnh sửa lịch học</h2>
-                </div>
-                {!isPublic && (
-                  <div className="mt-3 mb-4 p-3 rounded-xl border bg-slate-50 text-xs text-slate-700">
-                    <div className="font-semibold mb-2">
-                      Lịch cũ (đang áp dụng)
-                    </div>
-                    {originalPickedSlots?.length ? (
-                      <div className="flex flex-wrap gap-2">
-                        {originalPickedSlots.map((slot, idx) => {
-                          const d = new Date(slot.isoStart);
-                          const days = [
-                            "CN",
-                            "T2",
-                            "T3",
-                            "T4",
-                            "T5",
-                            "T6",
-                            "T7",
-                          ];
-                          const timeStr = d.toLocaleTimeString("vi-VN", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          });
-                          return (
-                            <div
-                              key={`old-${idx}`}
-                              className="px-3 py-1.5 rounded-lg text-sm font-medium border bg-slate-100 border-slate-200 text-slate-800"
-                            >
-                              {days[d.getDay()]} - {timeStr}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-slate-500">Chưa có lịch cũ.</div>
-                    )}
-                    <div className="mt-3 flex items-center gap-3">
+                  <h2 className="text-lg font-bold">Lịch học</h2>
+                  {!isEditingSchedule ? (
+                    <Button
+                      variant="outline"
+                      onClick={startEditSchedule}
+                      className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
+                      disabled={isPublic}
+                    >
+                      Chỉnh sửa
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
-                        onClick={() => {
-                          // Khi bắt đầu sửa lịch: làm rỗng pickedSlots để chọn lại từ đầu, tránh cộng dồn lịch cũ + mới
-                          // Khi hủy: khôi phục lịch gốc
-                          setAllowEditSchedule((v) => {
-                            const next = !v;
-                            if (next) {
-                              // vào chế độ sửa
-                              setPickedSlots([]);
-                              // bắt đầu sửa lịch: không cần lưu prevPickedSlots nữa
-                              // endDate sẽ tự động cập nhật
-                            } else {
-                              // thoát chế độ sửa -> khôi phục lịch cũ
-                              setPickedSlots(originalPickedSlots);
-                              // endDate sẽ tự động cập nhật
-                            }
-                            return next;
-                          });
-                        }}
-                        className="h-9 px-4"
+                        onClick={cancelEditSchedule}
+                        className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
                       >
-                        {allowEditSchedule ? "Hủy sửa lịch" : "Sửa lịch"}
+                        Hủy
                       </Button>
-                      {!allowEditSchedule && (
-                        <span className="text-slate-500">
-                          Bấm "Sửa lịch" để thay đổi lịch và chọn lại từ đầu.
-                        </span>
-                      )}
+                      <Button
+                        variant="secondary"
+                        onClick={doneEditSchedule}
+                        className="h-8 px-3 text-xs"
+                      >
+                        Xong
+                      </Button>
                     </div>
+                  )}
+                </div>
+
+                {!isEditingSchedule ? (
+                  <div className="mt-4">
+                    {pickedSlots.length === 0 ? (
+                      <p className="text-xs text-gray-500">Chưa có lịch học.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {pickedSlots
+                          .slice()
+                          .sort(
+                            (a, b) =>
+                              new Date(a.isoStart) - new Date(b.isoStart)
+                          )
+                          .map((slot, idx) => {
+                            const d = new Date(slot.isoStart);
+                            const e = new Date(slot.isoEnd);
+                            const days = [
+                              "CN",
+                              "T2",
+                              "T3",
+                              "T4",
+                              "T5",
+                              "T6",
+                              "T7",
+                            ];
+                            const startStr = d.toLocaleTimeString("vi-VN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            });
+                            const endStr = e.toLocaleTimeString("vi-VN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            });
+                            return (
+                              <div
+                                key={idx}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
+                                  isOnline
+                                    ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                                    : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                }`}
+                              >
+                                {days[d.getDay()]} - {startStr}–{endStr}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <ScheduleGrid
+                      timeSlots={timeSlots}
+                      weekStart={weekStart}
+                      teacherBusy={teacherBusy}
+                      roomBusy={isOnline ? [] : roomBusy}
+                      selected={pickedSlots}
+                      originalSelected={prevPickedSlots}
+                      onToggle={toggleSlot}
+                      disabled={
+                        isPublic ||
+                        !isEditingSchedule ||
+                        !teacherId ||
+                        (!isOnline && !roomId)
+                      }
+                    />
                   </div>
                 )}
-                <ScheduleGrid
-                  timeSlots={timeSlots}
-                  weekStart={weekStart}
-                  teacherBusy={teacherBusy}
-                  roomBusy={isOnline ? [] : roomBusy}
-                  selected={pickedSlots}
-                  onToggle={toggleSlot}
-                  disabled={
-                    isPublic ||
-                    !teacherId ||
-                    (!isOnline && !roomId) ||
-                    (!isPublic && !allowEditSchedule)
-                  }
-                />
               </div>
             </div>
           )}
           {currentStep === 2 && (
-            <div className="max-w-5xl mx-auto">
-              <div className="rounded-3xl bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl p-10 space-y-8">
-                <div className="text-center">
-                  <div
-                    className={`mx-auto w-20 h-20 rounded-2xl ${
-                      isOnline
-                        ? "bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600"
-                        : "bg-gradient-to-br from-green-500 via-emerald-600 to-teal-600"
-                    } flex items-center justify-center mb-6 text-3xl text-white`}
-                  >
-                    {isOnline ? "🌐" : "🏫"}
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    {className || cls.name}
-                  </h2>
-                  <div className="flex items-center justify-center gap-3">
-                    <span
-                      className={`px-4 py-1.5 rounded-full text-xs font-semibold ${
-                        isOnline
-                          ? "bg-indigo-600 text-white"
-                          : "bg-emerald-600 text-white"
-                      }`}
-                    >
-                      {isOnline ? "Online" : "Offline"}
-                    </span>
-                    {pickedSlots.length > 0 && (
-                      <span className="text-xs text-gray-500">
-                        {pickedSlots.length} buổi chọn
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <InfoBox
-                    label="Môn học"
-                    value={selectedSubject?.name || "-"}
-                  />
-                  <InfoBox
-                    label="Giáo viên"
-                    value={selectedTeacher?.fullName || "-"}
-                  />
-                  {isOnline ? (
-                    <InfoBox
-                      label="Link Meet"
-                      value={meetingLink ? meetingLink : "-"}
-                      link={meetingLink}
-                      full
-                    />
-                  ) : (
-                    <InfoBox
-                      label="Phòng học"
-                      value={selectedRoom?.name || "-"}
-                    />
-                  )}
-                  <InfoBox
-                    label="Sĩ số"
-                    value={capacity ? `${capacity} học sinh` : "-"}
-                  />
-                  <InfoBox
-                    label="Thời gian"
-                    value={
-                      startDate && endDate
-                        ? `${startDate} → ${endDate}`
-                        : startDate || "-"
-                    }
-                    full
-                  />
-                  <InfoBox label="Tổng số buổi" value={totalSessions || "-"} />
-                  {desc && <InfoBox label="Mô tả" value={desc} full />}
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <CalendarCheck2 className="h-4 w-4" />
-                    Lịch học ({pickedSlots.length} buổi)
-                  </h4>
-                  {pickedSlots.length === 0 ? (
-                    <p className="text-xs text-gray-500">Chưa chọn lịch học.</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {pickedSlots.map((slot, idx) => {
-                        const d = new Date(slot.isoStart);
-                        const days = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-                        const timeStr = d.toLocaleTimeString("vi-VN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-                        return (
-                          <div
-                            key={idx}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
-                              isOnline
-                                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                                : "bg-emerald-50 border-emerald-200 text-emerald-700"
-                            }`}
-                          >
-                            {days[d.getDay()]} - {timeStr}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <ClassPreview
+              name={name || cls.name}
+              description={desc}
+              isOnline={isOnline}
+              subjectName={selectedSubject?.name}
+              courseName={
+                courses.find((c) => String(c.id) === String(courseId))?.title
+              }
+              teacherFullName={selectedTeacher?.fullName}
+              teacherAvatarUrl={selectedTeacher?.avatarUrl}
+              teacherBio={selectedTeacher?.bio}
+              pickedSlots={pickedSlots}
+              startDate={startDate}
+              endDate={endDate}
+              totalSessions={totalSessions}
+              maxStudents={capacity}
+              pricePerSession={pricePerSession}
+              meetingLink={meetingLink}
+              roomName={selectedRoom?.name}
+            />
           )}
           {/* Footer actions */}
           <div className="mt-8 flex items-center justify-between">
@@ -1204,31 +1251,5 @@ export default function ClassEditPage() {
       </div>
       {/* Modal xác nhận ngày kết thúc đã được bỏ. */}
     </>
-  );
-}
-
-function InfoBox({ label, value, full = false, link }) {
-  return (
-    <div
-      className={`${
-        full ? "md:col-span-2" : ""
-      } rounded-2xl bg-slate-50/70 border border-slate-200 p-4`}
-    >
-      <div className="text-xs font-semibold text-gray-500 mb-1">{label}</div>
-      {link ? (
-        <a
-          href={link}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm font-semibold text-blue-600 hover:underline break-all"
-        >
-          {value}
-        </a>
-      ) : (
-        <div className="text-sm font-semibold text-gray-900 whitespace-pre-line">
-          {value}
-        </div>
-      )}
-    </div>
   );
 }

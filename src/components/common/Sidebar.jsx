@@ -5,6 +5,7 @@ import { useToast } from "../../hooks/use-toast";
 import {
   LayoutDashboard,
   Users,
+  UserCog,
   Calendar,
   GraduationCap,
   BookOpen,
@@ -46,6 +47,12 @@ const Sidebar = () => {
           icon: Users,
           href: "/home/admin/users",
         },
+        {
+          id: "teachers",
+          label: "Giáo viên",
+          icon: UserCog,
+          href: "/home/admin/teachers",
+        },
       ],
     },
     {
@@ -84,30 +91,13 @@ const Sidebar = () => {
       ],
     },
     {
-      section: "Theo dõi & Đánh giá",
-      items: [
-        {
-          id: "awards",
-          label: "Khen thưởng",
-          icon: Award,
-          href: "/home/admin/awards",
-        },
-        {
-          id: "feedback",
-          label: "Phản hồi",
-          icon: MessageSquare,
-          href: "/home/admin/feedback",
-        },
-      ],
-    },
-    {
       section: "Tài chính & Báo cáo",
       items: [
         {
           id: "payments",
           label: "Thanh toán",
           icon: CreditCard,
-          href: "/home/admin/payments",
+          href: "/home/admin/payment",
         },
         {
           id: "reports",
@@ -120,12 +110,6 @@ const Sidebar = () => {
     {
       section: "Khác",
       items: [
-        {
-          id: "documents",
-          label: "Tài liệu",
-          icon: FileText,
-          href: "/home/admin/documents",
-        },
         {
           id: "news",
           label: "Tin tức",

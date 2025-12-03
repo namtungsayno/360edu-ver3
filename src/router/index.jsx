@@ -41,6 +41,10 @@ import GuestLayout from "../layouts/GuestLayout";
 import TeacherLayout from "../layouts/TeacherLayout.jsx";
 import StudentClasses from "../pages/student/Classes.jsx";
 import StudentClassDetail from "../pages/student/ClassDetail.jsx";
+import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
+import StudentProfile from "../pages/student/StudentProfile.jsx";
+import StudentSchedule from "../pages/student/StudentSchedule.jsx";
+import AllNotifications from "../pages/student/AllNotifications.jsx";
 
 // GUEST PAGES - Các trang dành cho user chưa đăng nhập
 import Home from "../pages/guest/home/Home";
@@ -85,17 +89,19 @@ import CreateTeacherPage from "../pages/admin/user/CreateTeacherPage.jsx";
 import AdminCourseList from "../pages/admin/course/CourseList.jsx";
 import AdminCourseDetail from "../pages/admin/course/CourseDetail.jsx";
 import AdminCourseCreate from "../pages/admin/course/AdminCourseCreate.jsx";
+import PaymentHistory from "../pages/admin/payment/PaymentHistory.jsx";
 
 // Teacher pages
 import TeacherManagement from "../pages/teacher/TeacherManagement.jsx";
+import AdminTeacherManagement from "../pages/admin/teacher/TeacherManagement.jsx";
 import TeacherSchedule from "../pages/teacher/TeacherSchedule.jsx";
 import TeacherClassDetail from "../pages/teacher/ClassDetail.jsx";
 import TeacherCourseList from "../pages/teacher/TeacherCourseList.jsx";
-import TeacherCourseCreate from "../pages/teacher/TeacherCourseCreate.jsx";
 import TeacherCourseDetail from "../pages/teacher/TeacherCourseDetail.jsx";
 import TeacherCourseEdit from "../pages/teacher/TeacherCourseEdit.jsx";
 import TeachingContent from "../pages/teacher/TeachingContent.jsx";
 import TeachingContentDetail from "../pages/teacher/TeachingContentDetail.jsx";
+import TeacherResetPassword from "../pages/teacher/TeacherResetPassword.jsx";
 
 function AppRouter() {
   return (
@@ -132,6 +138,23 @@ function AppRouter() {
             element={<StudentClassDetail />}
           />{" "}
           {/* Chi tiết lớp đã đăng ký */}
+          <Route path="/home/my-schedule" element={<StudentSchedule />} />{" "}
+          {/* Lịch học của học sinh */}
+          <Route
+            path="/home/courses/:id"
+            element={<StudentCourseDetail />}
+          />{" "}
+          {/* Chi tiết khóa học cho student */}
+          <Route
+            path="/home/profile/student"
+            element={<StudentProfile />}
+          />{" "}
+          {/* Profile học sinh */}
+          <Route
+            path="/home/notifications"
+            element={<AllNotifications />}
+          />{" "}
+          {/* Tất cả thông báo */}
         </Route>
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
         <Route element={<RequireRole allow={["admin"]} />}>
@@ -139,6 +162,7 @@ function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<User />} />
+            <Route path="teachers" element={<AdminTeacherManagement />} />
             <Route
               path="users/create-teacher"
               element={<CreateTeacherPage />}
@@ -183,20 +207,21 @@ function AppRouter() {
             <Route path="courses" element={<AdminCourseList />} />
             <Route path="courses/create" element={<AdminCourseCreate />} />
             <Route path="courses/:id" element={<AdminCourseDetail />} />
+            {/* Payment Management - Quản lý thanh toán */}
+            <Route path="payment" element={<PaymentHistory />} />
           </Route>
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}
         <Route path="/home/teacher" element={<TeacherLayout />}>
           <Route path="management" element={<TeacherManagement />} />
           <Route path="schedule" element={<TeacherSchedule />} />
+          <Route path="security" element={<TeacherResetPassword />} />
           <Route path="class/:classId" element={<TeacherClassDetail />} />
           <Route path="content" element={<TeachingContent />} />
           <Route path="content/:id" element={<TeachingContentDetail />} />
           {/* Cho phép chỉnh sửa dưới nhánh Nội dung giảng dạy */}
           <Route path="content/:id/edit" element={<TeacherCourseEdit />} />
           <Route path="courses" element={<TeacherCourseList />} />
-          {/* ✅ khớp với navigate("/home/teacher/courses/create") trong TeacherCourseList */}
-          <Route path="courses/create" element={<TeacherCourseCreate />} />
           {/* ✅ khớp với navigate(`/home/teacher/courses/${id}/edit`) - chỉnh sửa khóa học */}
           <Route path="courses/:id/edit" element={<TeacherCourseEdit />} />
           {/* ✅ khớp với navigate(`/home/teacher/courses/${id}`) - xem chi tiết khóa học */}

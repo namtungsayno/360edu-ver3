@@ -4,7 +4,7 @@
  * - Step 1: Thông tin cơ bản & Chọn lịch học
  * - Step 2: Xem trước & Xác nhận
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
@@ -16,17 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/Select";
-import {
-  Loader2,
-  CalendarCheck2,
-  Users,
-  Building2,
-  Eye,
-  ArrowLeft,
-  CheckCircle2,
-} from "lucide-react";
+import { Loader2, CalendarCheck2, Eye, ArrowLeft } from "lucide-react";
 
 import ScheduleGrid from "../schedule/ScheduleGrid";
+import ClassPreview from "../../../components/admin/ClassPreview";
 
 import { classService } from "../../../services/class/class.service";
 import { subjectService } from "../../../services/subject/subject.service";
@@ -45,6 +38,7 @@ export default function CreateOfflineClassPage() {
   const [courseId, setCourseId] = useState(""); // Khóa học của môn
   const [desc, setDesc] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [pricePerSession, setPricePerSession] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [totalSessions, setTotalSessions] = useState("");
@@ -57,6 +51,8 @@ export default function CreateOfflineClassPage() {
   const [teachers, setTeachers] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
+  // Random code for class name (1 letter + 1 digit)
+  const [randomCode, setRandomCode] = useState("");
 
   const [weekStart] = useState(() => {
     const now = new Date();
@@ -72,10 +68,53 @@ export default function CreateOfflineClassPage() {
   const [pickedSlots, setPickedSlots] = useState([]);
   const { error, success } = useToast();
 
+  // Helpers: lưu state dạng số (digits-only), hiển thị dạng có dấu chấm ngăn cách nghìn
+  const digitsOnly = (val) => (val || "").replace(/\D/g, "");
+  const formatVNNumber = (digits) =>
+    (digits || "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
   useEffect(() => {
     loadSubjects();
     loadRooms();
     loadTimeSlots();
+  }, []);
+
+  // Helpers for alias + random code (FE only)
+  const makeTeacherAlias = useCallback((fullName) => {
+    const removeDiacritics = (s) =>
+      (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (!fullName) return "";
+    const parts = fullName.trim().split(/\s+/);
+    const last = removeDiacritics(parts[parts.length - 1] || "");
+    if (!last) return "";
+    return "GV" + last.charAt(0).toUpperCase() + last.slice(1).toLowerCase();
+  }, []);
+  const generateRandomCode = () => {
+    try {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      const arr = new Uint8Array(2);
+      if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(arr);
+      } else {
+        arr[0] = Math.floor(Math.random() * 256);
+        arr[1] = Math.floor(Math.random() * 256);
+      }
+      const ch = letters[arr[0] % letters.length];
+      const dg = nums[arr[1] % nums.length];
+      return `${ch}${dg}`;
+    } catch {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      return (
+        letters[Math.floor(Math.random() * letters.length)] +
+        nums[Math.floor(Math.random() * nums.length)]
+      );
+    }
+  };
+  // Generate once per page open
+  useEffect(() => {
+    setRandomCode(generateRandomCode());
   }, []);
 
   useEffect(() => {
@@ -231,9 +270,14 @@ export default function CreateOfflineClassPage() {
     const teacher = teachers.find(
       (t) => String(t.userId || t.id) === String(teacherId)
     );
-    if (subj && teacher) return `${subj.name} - ${teacher.fullName}`;
+    if (subj && teacher && randomCode) {
+      const alias = makeTeacherAlias(teacher.fullName);
+      if (!alias) return "";
+      // Format: <TÊN_MÔN> - <GV_ALIAS> - <RANDOM_CODE>
+      return `${subj.name} - ${alias} - ${randomCode}`;
+    }
     return "";
-  }, [subjectId, teacherId, subjects, teachers]);
+  }, [subjectId, teacherId, subjects, teachers, randomCode, makeTeacherAlias]);
 
   const roomCapacity = useMemo(() => {
     const r = rooms.find((x) => String(x.id) === String(roomId));
@@ -303,6 +347,8 @@ export default function CreateOfflineClassPage() {
       capacity &&
       parseInt(capacity) > 0 &&
       (!roomCapacity || parseInt(capacity) <= roomCapacity) &&
+      pricePerSession !== "" &&
+      parseInt(pricePerSession) >= 0 &&
       teacherId &&
       className &&
       roomId &&
@@ -317,6 +363,7 @@ export default function CreateOfflineClassPage() {
     subjectId,
     capacity,
     roomCapacity,
+    pricePerSession,
     teacherId,
     className,
     roomId,
@@ -424,6 +471,7 @@ export default function CreateOfflineClassPage() {
       }
 
       const payload = {
+        // BE có thể nối thêm ID lớp sau khi tạo
         name: className,
         subjectId: parseInt(subjectId),
         courseId: courseId ? parseInt(courseId) : null, // Thêm courseId (optional)
@@ -431,6 +479,7 @@ export default function CreateOfflineClassPage() {
         roomId: parseInt(roomId),
         maxStudents: parseInt(capacity),
         totalSessions: parseInt(totalSessions),
+        pricePerSession: parseInt(pricePerSession),
         description: desc,
         startDate,
         endDate,
@@ -722,6 +771,29 @@ export default function CreateOfflineClassPage() {
                   </div>
                 </div>
 
+                {/* Giá tiền mỗi buổi học (VNĐ) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Giá tiền mỗi buổi học (VNĐ){" "}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={formatVNNumber(pricePerSession)}
+                    onChange={(e) =>
+                      setPricePerSession(digitsOnly(e.target.value))
+                    }
+                    placeholder="Ví dụ: 150.000"
+                    className="h-10 text-sm"
+                  />
+                  {pricePerSession !== "" && parseInt(pricePerSession) < 0 && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Giá tiền mỗi buổi học phải ≥ 0
+                    </p>
+                  )}
+                </div>
+
                 {/* Tên lớp */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
@@ -791,131 +863,25 @@ export default function CreateOfflineClassPage() {
         )}
 
         {currentStep === 2 && (
-          <div className="max-w-5xl mx-auto">
-            <div className="rounded-3xl bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl shadow-green-500/10 p-12 flex flex-col gap-10 relative overflow-hidden">
-              {/* Decorative gradient aura */}
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute -top-24 -left-24 w-72 h-72 bg-green-400/10 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 -right-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl" />
-              </div>
-              {/* Header / Title */}
-              <div className="text-center relative">
-                <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-green-500 via-emerald-600 to-teal-600 shadow-lg shadow-green-500/30 flex items-center justify-center mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-3xl">
-                    🏫
-                  </div>
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                  {className || "Tên lớp"}
-                </h2>
-                <div className="flex items-center justify-center gap-3">
-                  <span className="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide bg-green-600 text-white shadow shadow-green-500/30">
-                    Offline
-                  </span>
-                  {pickedSlots.length > 0 && (
-                    <span className="text-xs font-medium text-gray-500">
-                      {pickedSlots.length} buổi đã chọn
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Info Grid */}
-              <div className="grid md:grid-cols-2 gap-6 relative">
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Môn học
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {selectedSubject?.name || "-"}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Giáo viên
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {selectedTeacher?.fullName || "-"}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Phòng học
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {selectedRoom?.name || "-"}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Sĩ số
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {capacity || 0} học sinh
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Thời gian
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {startDate || "-"} {startDate && endDate && "→"}{" "}
-                    {endDate || "-"}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Tổng số buổi
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {totalSessions || 0} buổi
-                  </div>
-                </div>
-                {desc && (
-                  <div className="md:col-span-2 rounded-2xl bg-green-50/60 border border-green-100 p-4">
-                    <div className="text-xs font-semibold text-gray-500 mb-1">
-                      Mô tả
-                    </div>
-                    <div className="text-sm font-medium text-gray-800 whitespace-pre-line">
-                      {desc}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Schedule Summary */}
-              <div className="rounded-2xl bg-rose-50/70 border border-rose-100 p-6 relative">
-                <div className="flex items-center gap-2 mb-4">
-                  <CalendarCheck2 className="h-5 w-5 text-rose-600" />
-                  <h4 className="text-sm font-semibold text-gray-900">
-                    Lịch học ({pickedSlots.length} buổi)
-                  </h4>
-                </div>
-                {pickedSlots.length === 0 ? (
-                  <p className="text-xs text-gray-500">Chưa chọn lịch học.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {pickedSlots.map((slot, idx) => {
-                      const d = new Date(slot.isoStart);
-                      const days = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-                      const timeStr = d.toLocaleTimeString("vi-VN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      return (
-                        <div
-                          key={idx}
-                          className="px-3 py-1.5 rounded-xl bg-white/70 backdrop-blur-sm border border-rose-100 text-rose-700 text-sm font-medium shadow-sm"
-                        >
-                          {days[d.getDay()]} - {timeStr}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <ClassPreview
+            name={className}
+            description={desc}
+            isOnline={false}
+            subjectName={selectedSubject?.name}
+            courseName={
+              courses.find((c) => String(c.id) === String(courseId))?.title
+            }
+            teacherFullName={selectedTeacher?.fullName}
+            teacherAvatarUrl={selectedTeacher?.avatarUrl}
+            teacherBio={selectedTeacher?.bio}
+            pickedSlots={pickedSlots}
+            startDate={startDate}
+            endDate={endDate}
+            totalSessions={totalSessions}
+            maxStudents={capacity}
+            pricePerSession={pricePerSession}
+            roomName={selectedRoom?.name}
+          />
         )}
 
         {/* Footer Actions */}

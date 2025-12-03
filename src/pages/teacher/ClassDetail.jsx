@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { scheduleService } from "../../services/schedule/schedule.service";
 import { courseService } from "../../services/course/course.service";
-import { listTeacherCourseVersions } from "../../services/course/versions";
+// Personal course versions flow removed per new business logic
 import { useAuth } from "../../hooks/useAuth";
 
 export default function ClassDetail() {
@@ -41,15 +41,32 @@ export default function ClassDetail() {
   const [searchParams] = useSearchParams();
   useAuth();
   const slotId = searchParams.get("slotId");
-  const sessionDateStr =
-    searchParams.get("date") || new Date().toISOString().split("T")[0];
-  const todayStr = new Date().toISOString().split("T")[0];
+  const slotIdNum = slotId ? parseInt(slotId, 10) : null;
+  const sessionIdParam = searchParams.get("sessionId");
+  // Local date helpers to avoid UTC shift
+  const toLocalYmd = (d) => {
+    const dt = new Date(d);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+  const parseLocalDate = (str) => {
+    if (!str) return null;
+    const parts = String(str).split("-").map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(str);
+    const [y, m, d] = parts;
+    return new Date(y, m - 1, d);
+  };
+  const sessionDateStr = searchParams.get("date") || toLocalYmd(new Date());
+  const todayStr = toLocalYmd(new Date());
   const isFutureSession = (() => {
     try {
-      const s = new Date(sessionDateStr);
-      const t = new Date(todayStr);
-      s.setHours(0, 0, 0, 0);
+      const s = parseLocalDate(sessionDateStr);
+      const t = parseLocalDate(todayStr);
+      if (!s || !t) return false;
       t.setHours(0, 0, 0, 0);
+      s.setHours(0, 0, 0, 0);
       return s > t;
     } catch {
       return false;
@@ -64,77 +81,23 @@ export default function ClassDetail() {
   const [originalDetails, setOriginalDetails] = useState([]);
 
   // Lesson content states
-  const [courseData, setCourseData] = useState(null); // always the class's assigned (admin) course used for chapter/lesson selection
-  const [personalCourseData, setPersonalCourseData] = useState(null); // optional personal version for content reference only
+  const [courseData, setCourseData] = useState(null); // Current displayed course (switches based on tab)
+  const [adminCourseData, setAdminCourseData] = useState(null); // Course gốc từ Admin (trong Môn học)
+  const [personalCourseData, setPersonalCourseData] = useState(null); // Course clone của lớp
   const [usingPersonalCourse, setUsingPersonalCourse] = useState(false);
-  const [personalCandidates, setPersonalCandidates] = useState([]);
-  const [selectedPersonalCourseId, setSelectedPersonalCourseId] = useState("");
   const [selectedChapterId, setSelectedChapterId] = useState("");
   const [selectedLessonId, setSelectedLessonId] = useState("");
   const [lessonContent, setLessonContent] = useState("");
   const [savingContent, setSavingContent] = useState(false);
-  const [contentEditMode, setContentEditMode] = useState(true); // always editable
+  const [contentEditMode, setContentEditMode] = useState(true);
   const [hasExistingContent, setHasExistingContent] = useState(false);
   // Flag to prevent clearing hydrated selections on initial personal course load
-  const [hydratedSelections, setHydratedSelections] = useState(false);
+  const [, setHydratedSelections] = useState(false);
   // Fields to hydrate from backend
-  const [baseCourseIdState, setBaseCourseIdState] = useState(null);
+  const [baseCourseIdState, setBaseCourseIdState] = useState(null); // Course gốc Admin ID
+  const [classCourseIdState, setClassCourseIdState] = useState(null); // Course clone ID
   // Track explicit source type for saving
-  const sourceType = usingPersonalCourse ? "PERSONAL" : "ADMIN";
-  // Load approved personal course versions when toggling to personal source
-  useEffect(() => {
-    const fetchPersonalVersions = async () => {
-      try {
-        if (!usingPersonalCourse) return;
-        const baseCourseId =
-          baseCourseIdState != null
-            ? baseCourseIdState
-            : classDetail?.courseId ||
-              classDetail?.course?.id ||
-              classDetail?.baseCourseId;
-        if (!baseCourseId) return;
-        console.log("🔍 Fetch personal versions", { baseCourseId });
-        const versions = await listTeacherCourseVersions(baseCourseId);
-        console.log("✅ Personal versions response", versions);
-        // Transform backend mapping response to dropdown items
-        const safeRaw = Array.isArray(versions) ? versions : [];
-        const safe = safeRaw.map((v) => ({
-          id: v.teacherCourseId || v.id,
-          // fallback if API later returns direct course id
-          title:
-            v.teacherCourseTitle ||
-            v.title ||
-            `Course ${v.teacherCourseId || v.id}`,
-          status: "APPROVED", // backend only returns approved mappings per spec
-        }));
-        setPersonalCandidates(safe);
-        if (
-          !safe.find((v) => String(v.id) === String(selectedPersonalCourseId))
-        ) {
-          setSelectedPersonalCourseId("");
-        }
-        if (safe.length > 0) {
-          console.log(`✔ Loaded ${safe.length} personal course versions`);
-        } else {
-          console.log(
-            "ℹ No personal versions found for baseCourseId",
-            baseCourseId
-          );
-        }
-      } catch (e) {
-        console.error("❌ Failed to fetch personal versions", e);
-        error(e?.normalizedMessage || "Không tải được phiên bản cá nhân");
-        setPersonalCandidates([]);
-      }
-    };
-    fetchPersonalVersions();
-  }, [
-    usingPersonalCourse,
-    classDetail,
-    selectedPersonalCourseId,
-    baseCourseIdState,
-    error,
-  ]);
+  const sourceType = usingPersonalCourse ? "CLASS_PERSONAL" : "ADMIN";
   useEffect(() => {
     if (!classId) return;
 
@@ -142,7 +105,6 @@ export default function ClassDetail() {
       try {
         setLoading(true);
         // Load attendance theo ngày phiên học (từ URL) + slotId
-        const slotIdNum = slotId ? parseInt(slotId, 10) : null;
         console.log("ClassDetail loading:", {
           classId,
           date: sessionDateStr,
@@ -150,11 +112,13 @@ export default function ClassDetail() {
           slotIdNum,
         });
 
-        const attendance = await attendanceService.getByClass(
-          classId,
-          sessionDateStr,
-          slotIdNum
-        );
+        const attendance = sessionIdParam
+          ? await attendanceService.getBySession(parseInt(sessionIdParam, 10))
+          : await attendanceService.getByClass(
+              classId,
+              sessionDateStr,
+              slotIdNum
+            );
         setAttendanceDetails(attendance);
         setOriginalDetails(attendance);
         // Auto-enter edit mode if nothing marked yet
@@ -179,38 +143,126 @@ export default function ClassDetail() {
             studentCount: attendance.length,
           });
 
-          // Chuẩn bị nguồn course: danh sách cá nhân liên quan & course gốc admin làm mặc định
+          // Capture classCourseId from schedule.originalClass if provided
+          const ccIdFromSchedule =
+            classInfo?.originalClass?.classCourseId ||
+            classInfo?.classCourseId ||
+            null;
+          if (ccIdFromSchedule) {
+            setClassCourseIdState(String(ccIdFromSchedule));
+          }
+
+          // Load BOTH courses: Personal course (clone) và Admin course (gốc)
+          // LƯU Ý: classInfo.courseId hiện tại là classCourseId (course clone) do backend đã ghi đè
+          // Cần tìm baseCourseId từ course clone's description hoặc từ Subject
+
+          let loadedPersonalCourse = null;
+          let loadedAdminCourse = null;
+          let baseCourseId = null;
+
+          // 1. Load Course từ classInfo.courseId (đây là course clone - Personal Course)
           if (classInfo.courseId) {
             try {
-              // Lấy danh sách phiên bản cá nhân hợp lệ từ backend (đã filter theo baseCourseId)
-              const mappings = await listTeacherCourseVersions(
+              loadedPersonalCourse = await courseService.getCourseDetail(
                 classInfo.courseId
               );
-              const safeMappings = Array.isArray(mappings) ? mappings : [];
-              const relatedPersonal = safeMappings.map((m) => ({
-                id: m.teacherCourseId,
-                title: m.teacherCourseTitle,
-                status: "APPROVED",
-              }));
-              setPersonalCandidates(relatedPersonal);
+              setPersonalCourseData(loadedPersonalCourse);
+              setClassCourseIdState(String(classInfo.courseId));
+              console.log(
+                "📝 Personal Course (clone) loaded:",
+                loadedPersonalCourse?.title,
+                "| Chapters:",
+                loadedPersonalCourse?.chapters?.length || 0
+              );
 
-              const adminCourse = await courseService.getCourseDetail(
-                classInfo.courseId
-              );
-              setCourseData(adminCourse);
-              setUsingPersonalCourse(false);
+              // Try to extract baseCourseId from description tag [[SOURCE:xxx]]
+              const sourceMatch =
+                loadedPersonalCourse?.description?.match(
+                  /\[\[SOURCE:(\d+)\]\]/
+                );
+              if (sourceMatch) {
+                baseCourseId = parseInt(sourceMatch[1], 10);
+                console.log(
+                  "🔍 Found baseCourseId from SOURCE tag:",
+                  baseCourseId
+                );
+              }
             } catch (err) {
-              console.error("Prepare course sources failed:", err);
+              console.error("Load personal course failed:", err);
             }
+          }
+
+          // 2. Load Course gốc Admin - từ baseCourseId (nếu tìm được) hoặc từ Subject
+          if (baseCourseId) {
+            try {
+              loadedAdminCourse = await courseService.getCourseDetail(
+                baseCourseId
+              );
+              setAdminCourseData(loadedAdminCourse);
+              setBaseCourseIdState(baseCourseId);
+              console.log(
+                "📚 Admin Course (gốc) loaded from SOURCE:",
+                loadedAdminCourse?.title,
+                "| Chapters:",
+                loadedAdminCourse?.chapters?.length || 0
+              );
+            } catch (err) {
+              console.error("Load admin course from SOURCE failed:", err);
+            }
+          }
+
+          // 3. Fallback: Nếu không tìm được từ SOURCE tag, thử lấy từ Subject's approved courses
+          if (!loadedAdminCourse && classInfo.subjectId) {
+            try {
+              const subjectCourses =
+                await courseService.getApprovedCoursesBySubject(
+                  classInfo.subjectId
+                );
+              // Tìm course KHÔNG phải clone (không chứa " - " theo pattern clone title)
+              const adminCourse = subjectCourses.find((c) => {
+                // Course clone có title format: "BaseCourseTitle - ClassName"
+                // Course gốc không có pattern này
+                const isClone = c.title?.includes(" - ") && c.ownerTeacher;
+                return !isClone;
+              });
+              if (adminCourse) {
+                loadedAdminCourse = await courseService.getCourseDetail(
+                  adminCourse.id
+                );
+                setAdminCourseData(loadedAdminCourse);
+                setBaseCourseIdState(adminCourse.id);
+                console.log(
+                  "📚 Admin Course (gốc) loaded from Subject fallback:",
+                  loadedAdminCourse?.title,
+                  "| Chapters:",
+                  loadedAdminCourse?.chapters?.length || 0
+                );
+              }
+            } catch (err) {
+              console.error("Load admin course from Subject failed:", err);
+            }
+          }
+
+          // Default: hiển thị course gốc Admin (nếu có), hoặc Personal course
+          if (loadedAdminCourse) {
+            setCourseData(loadedAdminCourse);
+            setUsingPersonalCourse(false);
+          } else if (loadedPersonalCourse) {
+            setCourseData(loadedPersonalCourse);
+            setUsingPersonalCourse(true);
           }
 
           // Load saved lesson content if exists (and hydrate UI state)
           try {
-            const savedContent =
-              await sessionService.getSessionContentByClassDate(
-                classId,
-                sessionDateStr
-              );
+            const savedContent = sessionIdParam
+              ? await sessionService.getSessionContent(
+                  parseInt(sessionIdParam, 10)
+                )
+              : await sessionService.getSessionContentByClassDate(
+                  classId,
+                  sessionDateStr,
+                  slotIdNum
+                );
 
             if (savedContent) {
               console.log("📝 Saved Content Loaded:", savedContent);
@@ -218,119 +270,49 @@ export default function ClassDetail() {
               if (savedContent.baseCourseId) {
                 setBaseCourseIdState(savedContent.baseCourseId);
               }
-              // Source toggle
-              if (savedContent.sourceType === "PERSONAL") {
+              // Source toggle - switch to correct course data
+              if (savedContent.sourceType === "CLASS_PERSONAL") {
                 setUsingPersonalCourse(true);
+                if (loadedPersonalCourse) {
+                  setCourseData(loadedPersonalCourse);
+                }
               } else {
                 setUsingPersonalCourse(false);
+                if (loadedAdminCourse) {
+                  setCourseData(loadedAdminCourse);
+                }
               }
-              // Hydration: prefer explicit ids for PERSONAL; else fallback
-              const teacherCourseId = savedContent.teacherCourseId;
-              const selectedCourseId =
-                savedContent.selectedCourseId ||
-                (savedContent.sourceType === "PERSONAL"
-                  ? teacherCourseId
-                  : savedContent.baseCourseId);
+              // Hydration: set chapter/lesson selections
+              const classCourseId = savedContent.classCourseId;
+              if (classCourseId) {
+                setClassCourseIdState(String(classCourseId));
+              }
 
-              if (savedContent.sourceType === "PERSONAL" && teacherCourseId) {
-                try {
-                  const detail = await courseService.getCourseDetail(
-                    teacherCourseId
-                  );
-                  setCourseData(detail);
-                  setPersonalCourseData(detail);
-                  setSelectedPersonalCourseId(String(teacherCourseId));
-                  // After loading chapters/lessons, set explicit selections
-                  if (savedContent.chapterId) {
-                    setSelectedChapterId(String(savedContent.chapterId));
-                  } else if (
-                    Array.isArray(savedContent.linkedChapterIds) &&
-                    savedContent.linkedChapterIds.length > 0
-                  ) {
-                    setSelectedChapterId(
-                      String(savedContent.linkedChapterIds[0])
-                    );
-                  }
-                  if (savedContent.lessonId) {
-                    setSelectedLessonId(String(savedContent.lessonId));
-                  } else if (
-                    Array.isArray(savedContent.linkedLessonIds) &&
-                    savedContent.linkedLessonIds.length > 0
-                  ) {
-                    setSelectedLessonId(
-                      String(savedContent.linkedLessonIds[0])
-                    );
-                  }
-                  setHydratedSelections(true);
-                  console.log("Hydrated PERSONAL selections", {
-                    teacherCourseId,
-                    chapterId:
-                      savedContent.chapterId ||
-                      savedContent.linkedChapterIds?.[0],
-                    lessonId:
-                      savedContent.lessonId ||
-                      savedContent.linkedLessonIds?.[0],
-                  });
-                } catch (e) {
-                  console.error("Failed to load personal course detail:", e);
-                  error(
-                    "Phiên bản khóa học cá nhân đã bị xóa hoặc không khả dụng. Chuyển về khóa học gốc."
-                  );
-                  setUsingPersonalCourse(false);
-                  setSelectedPersonalCourseId("");
-                  const baseId =
-                    savedContent.baseCourseId || classDetail?.courseId;
-                  if (baseId) {
-                    try {
-                      const adminDetail = await courseService.getCourseDetail(
-                        baseId
-                      );
-                      setCourseData(adminDetail);
-                      setPersonalCourseData(null);
-                      setSelectedChapterId("");
-                      setSelectedLessonId("");
-                    } catch (err) {
-                      console.error("Fallback load base course failed:", err);
-                    }
-                  }
-                }
-              } else if (selectedCourseId) {
-                try {
-                  const detail = await courseService.getCourseDetail(
-                    selectedCourseId
-                  );
-                  setCourseData(detail);
-                  // Restore chapter/lesson selections from admin-linked IDs
-                  if (
-                    Array.isArray(savedContent.linkedChapterIds) &&
-                    savedContent.linkedChapterIds.length > 0
-                  ) {
-                    setSelectedChapterId(
-                      String(savedContent.linkedChapterIds[0])
-                    );
-                  }
-                  if (
-                    Array.isArray(savedContent.linkedLessonIds) &&
-                    savedContent.linkedLessonIds.length > 0
-                  ) {
-                    setSelectedLessonId(
-                      String(savedContent.linkedLessonIds[0])
-                    );
-                  }
-                  setHydratedSelections(true);
-                  console.log("Hydrated ADMIN selections", {
-                    chapterId: savedContent.linkedChapterIds?.[0],
-                    lessonId: savedContent.linkedLessonIds?.[0],
-                  });
-                } catch (e) {
-                  console.error("Failed to load selected course detail:", e);
-                }
+              // Set chapter/lesson selections from saved content
+              if (savedContent.chapterId) {
+                setSelectedChapterId(String(savedContent.chapterId));
+              } else if (
+                Array.isArray(savedContent.linkedChapterIds) &&
+                savedContent.linkedChapterIds.length > 0
+              ) {
+                setSelectedChapterId(String(savedContent.linkedChapterIds[0]));
               }
+              if (savedContent.lessonId) {
+                setSelectedLessonId(String(savedContent.lessonId));
+              } else if (
+                Array.isArray(savedContent.linkedLessonIds) &&
+                savedContent.linkedLessonIds.length > 0
+              ) {
+                setSelectedLessonId(String(savedContent.linkedLessonIds[0]));
+              }
+              setHydratedSelections(true);
+
               // Set lesson content text
               if (savedContent.content) {
                 setLessonContent(savedContent.content);
                 setHasExistingContent(true);
-                setContentEditMode(true); // keep editable even when content exists
+                // After reload, default to VIEW mode
+                setContentEditMode(false);
               }
             } else {
               setContentEditMode(true); // Edit mode if no content
@@ -353,6 +335,8 @@ export default function ClassDetail() {
     error,
     sessionDateStr,
     slotId,
+    slotIdNum,
+    sessionIdParam,
     isFutureSession,
     classDetail?.courseId,
   ]);
@@ -399,24 +383,35 @@ export default function ClassDetail() {
 
       const date = sessionDateStr;
       const slotIdNum = slotId ? parseInt(slotId, 10) : null;
-      console.log("Saving attendance:", { classId, date, slotId, slotIdNum });
-
-      await attendanceService.saveAttendance(
+      console.log("Saving attendance:", {
         classId,
         date,
-        attendanceData,
-        slotIdNum
-      );
+        slotId,
+        slotIdNum,
+        sessionIdParam,
+      });
+
+      if (sessionIdParam) {
+        await attendanceService.saveBySession(
+          parseInt(sessionIdParam, 10),
+          attendanceData
+        );
+      } else {
+        await attendanceService.saveAttendance(
+          classId,
+          date,
+          attendanceData,
+          slotIdNum
+        );
+      }
 
       setHasChanges(false);
       success("Lưu điểm danh thành công!");
 
       // Reload to reflect persisted statuses
-      const refreshed = await attendanceService.getByClass(
-        classId,
-        date,
-        slotIdNum
-      );
+      const refreshed = sessionIdParam
+        ? await attendanceService.getBySession(parseInt(sessionIdParam, 10))
+        : await attendanceService.getByClass(classId, date, slotIdNum);
       setAttendanceDetails(refreshed);
       setOriginalDetails(refreshed);
       setEditMode(false);
@@ -448,27 +443,48 @@ export default function ClassDetail() {
       }
 
       setSavingContent(true);
-      const payload = {
-        classId,
-        date: sessionDateStr,
+      const body = {
         chapterIds: [parseInt(selectedChapterId, 10)],
         lessonIds: [parseInt(selectedLessonId, 10)],
         content: lessonContent.trim(),
-        // Explicit configuration for BE persistence
+        // include source metadata so BE can persist selection source
         sourceType,
-        courseId:
-          sourceType === "ADMIN"
-            ? baseCourseIdState || classDetail?.courseId
-            : undefined,
-        teacherCourseId:
-          sourceType === "PERSONAL" && selectedPersonalCourseId
-            ? parseInt(selectedPersonalCourseId, 10)
-            : undefined,
+        ...(sourceType === "CLASS_PERSONAL" && classCourseIdState
+          ? { classCourseId: parseInt(classCourseIdState, 10) }
+          : {}),
+        ...(sourceType === "ADMIN"
+          ? { courseId: baseCourseIdState || classDetail?.courseId }
+          : {}),
         chapterId: parseInt(selectedChapterId, 10),
         lessonId: parseInt(selectedLessonId, 10),
       };
 
-      await sessionService.saveSessionContent(payload);
+      if (sessionIdParam) {
+        await sessionService.saveSessionContentBySessionId(
+          parseInt(sessionIdParam, 10),
+          body
+        );
+      } else {
+        await sessionService.saveSessionContent({
+          classId,
+          date: sessionDateStr,
+          slotId: slotIdNum,
+          chapterIds: body.chapterIds,
+          lessonIds: body.lessonIds,
+          content: body.content,
+          sourceType,
+          classCourseId:
+            sourceType === "CLASS_PERSONAL" && classCourseIdState
+              ? parseInt(classCourseIdState, 10)
+              : undefined,
+          courseId:
+            sourceType === "ADMIN"
+              ? baseCourseIdState || classDetail?.courseId
+              : undefined,
+          chapterId: parseInt(selectedChapterId, 10),
+          lessonId: parseInt(selectedLessonId, 10),
+        });
+      }
 
       success("Đã lưu nội dung buổi học thành công!");
       setHasExistingContent(true);
@@ -484,35 +500,6 @@ export default function ClassDetail() {
   const selectedChapter = courseData?.chapters?.find(
     (ch) => String(ch.id) === String(selectedChapterId)
   );
-
-  // When selecting a personal version, swap courseData; avoid clearing hydrated selections
-  useEffect(() => {
-    const applyPersonalSelection = async () => {
-      if (!usingPersonalCourse) return;
-      const selected = personalCandidates.find(
-        (v) => String(v.id) === String(selectedPersonalCourseId)
-      );
-      if (!selected) return;
-      try {
-        const detail = await courseService.getCourseDetail(selected.id);
-        setCourseData(detail);
-        setPersonalCourseData(detail);
-        // Only reset if user actively changed version after hydration
-        if (!hydratedSelections) {
-          setSelectedChapterId("");
-          setSelectedLessonId("");
-        }
-      } catch (e) {
-        console.error("Load personal course detail failed:", e);
-      }
-    };
-    applyPersonalSelection();
-  }, [
-    usingPersonalCourse,
-    selectedPersonalCourseId,
-    personalCandidates,
-    hydratedSelections,
-  ]);
 
   if (loading) {
     return (
@@ -1003,293 +990,467 @@ export default function ClassDetail() {
           </div>
         </div>
 
-        {/* Lesson Content Section */}
+        {/* Lesson Content Section - Duolingo Style */}
         {courseData ? (
-          <Card className="border border-gray-200 rounded-[14px] bg-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-lg font-bold text-neutral-950 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-purple-600" />
-                    Ghi nội dung buổi học
-                  </h2>
-                  <p className="text-[12px] text-[#62748e] mt-1">
-                    Chọn chương và bài học đang giảng dạy, sau đó ghi rõ nội
-                    dung
-                  </p>
+          <div className="relative">
+            {/* Decorative Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-[20px] -z-10" />
+
+            <div className="bg-white/80 backdrop-blur-sm border-2 border-indigo-100 rounded-[20px] shadow-xl shadow-indigo-100/50 overflow-hidden">
+              {/* Header with Mascot */}
+              <div className="relative bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6 overflow-hidden">
+                {/* Animated Background Circles */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 animate-pulse" />
+                <div className="absolute bottom-0 left-10 w-20 h-20 bg-white/10 rounded-full translate-y-1/2 animate-pulse delay-150" />
+
+                <div className="relative flex items-center gap-4">
+                  <div className="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center transform hover:scale-110 hover:rotate-3 transition-all duration-300 cursor-pointer">
+                    <span className="text-3xl">📚</span>
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      Ghi nội dung buổi học
+                      <span className="inline-flex items-center justify-center w-6 h-6 bg-yellow-400 rounded-full animate-bounce">
+                        <span className="text-sm">✨</span>
+                      </span>
+                    </h2>
+                    <p className="text-white/80 text-sm mt-1">
+                      Chọn nguồn nội dung và ghi nhận bài học đã giảng dạy
+                    </p>
+                  </div>
+                  {/* Progress indicator */}
+                  <div className="hidden sm:flex items-center gap-2 bg-white/20 rounded-full px-4 py-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        selectedChapterId ? "bg-green-400" : "bg-white/40"
+                      } transition-colors`}
+                    />
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        selectedLessonId ? "bg-green-400" : "bg-white/40"
+                      } transition-colors`}
+                    />
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        lessonContent.trim() ? "bg-green-400" : "bg-white/40"
+                      } transition-colors`}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                {/* Course Info */}
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <BookOpen className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-[12px] text-purple-700 font-medium">
-                        Chương trình học
-                      </p>
-                      <p className="text-[14px] text-purple-900 font-semibold mt-0.5">
-                        {courseData.title}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant={usingPersonalCourse ? "default" : "outline"}
-                          className={`h-9 ${
-                            usingPersonalCourse
-                              ? "bg-green-600 hover:bg-green-700 text-white"
-                              : ""
-                          }`}
-                          onClick={async () => {
-                            // Luôn cho phép bấm để chuyển nguồn sang cá nhân, không khóa vì thiếu dữ liệu
-                            setUsingPersonalCourse(true);
-                            try {
-                              // Nếu đã chọn sẵn một phiên bản, load chi tiết để hiển thị chương/bài
-                              const targetId = selectedPersonalCourseId;
-                              if (targetId) {
-                                const detail =
-                                  await courseService.getCourseDetail(targetId);
-                                // Sử dụng course cá nhân làm nguồn chính cho selector chương/bài
-                                setCourseData(detail);
-                                setPersonalCourseData(detail);
-                              }
-                              // Nếu chưa chọn, hiển thị dropdown để người dùng chọn phiên bản
-                            } catch (e) {
-                              console.error("Load personal course failed:", e);
-                            }
-                          }}
-                        >
-                          Upload tài liệu từ khóa học cá nhân
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={!usingPersonalCourse ? "default" : "outline"}
-                          className={`h-9 ${
-                            !usingPersonalCourse
-                              ? "bg-blue-600 hover:bg-blue-700 text-white"
-                              : ""
-                          }`}
-                          onClick={() => {
-                            // Switch to ADMIN source: always load base course chapters/lessons
-                            setUsingPersonalCourse(false);
-                            setSelectedPersonalCourseId("");
-                            if (classDetail?.courseId) {
-                              courseService
-                                .getCourseDetail(classDetail.courseId)
-                                .then((adminCourse) => {
-                                  setCourseData(adminCourse);
-                                  setPersonalCourseData(null);
-                                  // Reset selections; will be hydrated from saved config on reload
-                                  setSelectedChapterId("");
-                                  setSelectedLessonId("");
-                                })
-                                .catch((e) =>
-                                  console.error("Load base course failed:", e)
-                                );
-                            }
-                          }}
-                        >
-                          Upload tài liệu từ Admin đã cung cấp
-                        </Button>
-                      </div>
+              <div className="p-6 space-y-6">
+                {/* Step 1: Course Source Selection - Card Style */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200">
+                      1
+                    </span>
+                    <span className="font-semibold text-gray-800">
+                      Chọn nguồn khóa học
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Personal Course Card */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!contentEditMode) return;
+                        if (personalCourseData) {
+                          console.log(
+                            "🔄 Switching to Personal Course:",
+                            personalCourseData?.title,
+                            "| Chapters:",
+                            personalCourseData?.chapters?.length
+                          );
+                          setUsingPersonalCourse(true);
+                          setCourseData(personalCourseData);
+                          setSelectedChapterId("");
+                          setSelectedLessonId("");
+                          setHydratedSelections(false);
+                        } else {
+                          error("Không có khóa học cá nhân cho lớp này");
+                        }
+                      }}
+                      disabled={!contentEditMode || !personalCourseData}
+                      className={`relative group p-5 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        !contentEditMode || !personalCourseData
+                          ? "opacity-50 cursor-not-allowed border-gray-200 bg-gray-50"
+                          : usingPersonalCourse
+                          ? "border-emerald-400 bg-gradient-to-br from-emerald-50 to-green-50 shadow-lg shadow-emerald-100 scale-[1.02]"
+                          : "border-gray-200 bg-white hover:border-emerald-300 hover:shadow-md hover:scale-[1.01]"
+                      }`}
+                    >
+                      {/* Selection Indicator */}
                       {usingPersonalCourse && (
-                        <div className="mt-2">
-                          <label className="text-[11px] text-[#62748e] mb-1 block">
-                            Chọn phiên bản khóa học cá nhân
-                          </label>
-                          <Select
-                            value={selectedPersonalCourseId}
-                            onValueChange={async (value) => {
-                              const val = value == null ? "" : String(value);
-                              // Guard invalid placeholder values
-                              if (!val || val === "none") {
-                                setSelectedPersonalCourseId("");
-                                setPersonalCourseData(null);
-                                setSelectedChapterId("");
-                                setSelectedLessonId("");
-                                return; // do NOT call API
-                              }
-                              setSelectedPersonalCourseId(val);
-                              try {
-                                const detail =
-                                  await courseService.getCourseDetail(val);
-                                // Use personal course source for chapter/lesson selectors
-                                setCourseData(detail);
-                                setPersonalCourseData(detail);
-                                setSelectedChapterId("");
-                                setSelectedLessonId("");
-                              } catch (e) {
-                                console.error(
-                                  "Load selected personal course failed:",
-                                  e
-                                );
-                                error(
-                                  "Không tải được phiên bản khóa học cá nhân. Vui lòng chọn lại hoặc sử dụng khóa học gốc."
-                                );
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="w-full h-10">
-                              <SelectValue placeholder="Chọn phiên bản cá nhân" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {personalCandidates.length > 0 ? (
-                                personalCandidates.map((c) => (
-                                  <SelectItem key={c.id} value={String(c.id)}>
-                                    #{c.id} – {c.title} (
-                                    {String(c.status).toUpperCase()})
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="none" disabled>
-                                  Chưa có phiên bản cá nhân khả dụng
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                        <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                          <Check className="w-5 h-5 text-white" />
                         </div>
                       )}
-                      <p className="text-[11px] text-purple-600 mt-0.5">
-                        {courseData.chapters?.length || 0} chương ·{" "}
-                        {courseData.chapters?.reduce(
-                          (sum, ch) => sum + (ch.lessons?.length || 0),
-                          0
-                        ) || 0}{" "}
-                        bài học (nguồn chính)
-                      </p>
-                      {usingPersonalCourse && personalCourseData && (
-                        <p className="text-[11px] text-green-700 mt-0.5">
-                          Phiên bản cá nhân:{" "}
-                          {personalCourseData.chapters?.length || 0} chương ·{" "}
-                          {personalCourseData.chapters?.reduce(
-                            (sum, ch) => sum + (ch.lessons?.length || 0),
-                            0
-                          ) || 0}{" "}
-                          bài học (chỉ tham khảo nội dung)
-                        </p>
+
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                            usingPersonalCourse
+                              ? "bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg"
+                              : "bg-emerald-100 group-hover:bg-emerald-200"
+                          }`}
+                        >
+                          <span className="text-2xl">
+                            {usingPersonalCourse ? "🎯" : "📝"}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-bold ${
+                                usingPersonalCourse
+                                  ? "text-emerald-700"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              Khóa học cá nhân
+                            </span>
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold rounded-full">
+                              CÓ THỂ SỬA
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                            {personalCourseData?.title || "Chưa có khóa học"}
+                          </p>
+                          {personalCourseData && (
+                            <div className="flex items-center gap-3 mt-2">
+                              <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                                <Layers className="w-3 h-3" />
+                                {personalCourseData.chapters?.length || 0}{" "}
+                                chương
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Admin Course Card */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!contentEditMode) return;
+                        if (adminCourseData) {
+                          console.log(
+                            "🔄 Switching to Admin Course:",
+                            adminCourseData?.title,
+                            "| Chapters:",
+                            adminCourseData?.chapters?.length
+                          );
+                          setUsingPersonalCourse(false);
+                          setCourseData(adminCourseData);
+                          setSelectedChapterId("");
+                          setSelectedLessonId("");
+                          setHydratedSelections(false);
+                        } else {
+                          error("Không có khóa học gốc từ Admin");
+                        }
+                      }}
+                      disabled={!contentEditMode || !adminCourseData}
+                      className={`relative group p-5 rounded-2xl border-2 transition-all duration-300 text-left ${
+                        !contentEditMode || !adminCourseData
+                          ? "opacity-50 cursor-not-allowed border-gray-200 bg-gray-50"
+                          : !usingPersonalCourse
+                          ? "border-blue-400 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg shadow-blue-100 scale-[1.02]"
+                          : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-md hover:scale-[1.01]"
+                      }`}
+                    >
+                      {/* Selection Indicator */}
+                      {!usingPersonalCourse && (
+                        <div className="absolute -top-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                          <Check className="w-5 h-5 text-white" />
+                        </div>
                       )}
-                    </div>
+
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+                            !usingPersonalCourse
+                              ? "bg-gradient-to-br from-blue-400 to-indigo-500 shadow-lg"
+                              : "bg-blue-100 group-hover:bg-blue-200"
+                          }`}
+                        >
+                          <span className="text-2xl">
+                            {!usingPersonalCourse ? "🎓" : "📘"}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-bold ${
+                                !usingPersonalCourse
+                                  ? "text-blue-700"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              Khóa học từ Admin
+                            </span>
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full">
+                              CHỈ XEM
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                            {adminCourseData?.title || "Chưa có khóa học"}
+                          </p>
+                          {adminCourseData && (
+                            <div className="flex items-center gap-3 mt-2">
+                              <span className="inline-flex items-center gap-1 text-[11px] text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+                                <Layers className="w-3 h-3" />
+                                {adminCourseData.chapters?.length || 0} chương
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
                   </div>
                 </div>
 
-                {/* Chapter Selection */}
-                <div className="space-y-2">
-                  <label className="text-[13px] font-medium text-neutral-950 flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-blue-600" />
-                    Chương học <span className="text-red-500">*</span>
-                  </label>
-                  <Select
-                    value={selectedChapterId}
-                    onValueChange={(value) => {
-                      setSelectedChapterId(value);
-                      setSelectedLessonId(""); // Reset lesson when chapter changes
-                    }}
-                  >
-                    <SelectTrigger className="w-full h-11 text-[13px]">
-                      <SelectValue placeholder="Chọn chương đang học..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courseData.chapters && courseData.chapters.length > 0 ? (
-                        courseData.chapters.map((chapter, index) => (
-                          <SelectItem
-                            key={chapter.id}
-                            value={String(chapter.id)}
-                            className="text-[13px]"
-                          >
-                            Chương {index + 1}: {chapter.title}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" disabled>
-                          Không có chương học
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                {/* Step 2: Chapter Selection */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`flex items-center justify-center w-8 h-8 rounded-xl font-bold text-sm shadow-lg transition-all duration-300 ${
+                        courseData
+                          ? "bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-indigo-200"
+                          : "bg-gray-200 text-gray-400"
+                      }`}
+                    >
+                      2
+                    </span>
+                    <span
+                      className={`font-semibold ${
+                        courseData ? "text-gray-800" : "text-gray-400"
+                      }`}
+                    >
+                      Chọn chương học
+                    </span>
+                    {selectedChapterId && (
+                      <span className="text-emerald-500 animate-pulse">✓</span>
+                    )}
+                  </div>
+
+                  {courseData?.chapters && courseData.chapters.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {courseData.chapters.map((chapter, index) => (
+                        <button
+                          key={chapter.id}
+                          type="button"
+                          onClick={() => {
+                            if (!contentEditMode) return;
+                            setSelectedChapterId(String(chapter.id));
+                            setSelectedLessonId("");
+                          }}
+                          disabled={!contentEditMode}
+                          className={`group relative p-4 rounded-xl border-2 transition-all duration-300 text-left ${
+                            !contentEditMode
+                              ? "opacity-50 cursor-not-allowed"
+                              : String(chapter.id) === selectedChapterId
+                              ? `border-transparent shadow-lg scale-[1.02] ${
+                                  usingPersonalCourse
+                                    ? "bg-gradient-to-br from-emerald-400 to-green-500"
+                                    : "bg-gradient-to-br from-blue-400 to-indigo-500"
+                                }`
+                              : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-md hover:scale-[1.01]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm transition-all ${
+                                String(chapter.id) === selectedChapterId
+                                  ? "bg-white/30 text-white"
+                                  : usingPersonalCourse
+                                  ? "bg-emerald-100 text-emerald-600 group-hover:bg-emerald-200"
+                                  : "bg-blue-100 text-blue-600 group-hover:bg-blue-200"
+                              }`}
+                            >
+                              {index + 1}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`font-medium text-sm truncate ${
+                                  String(chapter.id) === selectedChapterId
+                                    ? "text-white"
+                                    : "text-gray-700"
+                                }`}
+                              >
+                                {chapter.title}
+                              </p>
+                              <p
+                                className={`text-xs mt-0.5 ${
+                                  String(chapter.id) === selectedChapterId
+                                    ? "text-white/70"
+                                    : "text-gray-400"
+                                }`}
+                              >
+                                {chapter.lessons?.length || 0} bài học
+                              </p>
+                            </div>
+                            {String(chapter.id) === selectedChapterId && (
+                              <Check className="w-5 h-5 text-white flex-shrink-0" />
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-8 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 text-center">
+                      <span className="text-4xl">📭</span>
+                      <p className="text-gray-500 mt-2">
+                        Chưa có chương học nào
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Lesson Selection */}
+                {/* Step 3: Lesson Selection */}
                 {selectedChapterId && selectedChapter && (
-                  <div className="space-y-2">
-                    <label className="text-[13px] font-medium text-neutral-950 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-green-600" />
-                      Bài học <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      value={selectedLessonId}
-                      onValueChange={setSelectedLessonId}
-                    >
-                      <SelectTrigger className="w-full h-11 text-[13px]">
-                        <SelectValue placeholder="Chọn bài học đang dạy..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {selectedChapter.lessons &&
-                        selectedChapter.lessons.length > 0 ? (
-                          selectedChapter.lessons.map((lesson, index) => (
-                            <SelectItem
-                              key={lesson.id}
-                              value={String(lesson.id)}
-                              className="text-[13px]"
-                            >
-                              Bài {index + 1}: {lesson.title}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>
-                            Chương này chưa có bài học
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-3 animate-in slide-in-from-bottom-4 duration-300">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200">
+                        3
+                      </span>
+                      <span className="font-semibold text-gray-800">
+                        Chọn bài học
+                      </span>
+                      {selectedLessonId && (
+                        <span className="text-emerald-500 animate-pulse">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+
+                    {selectedChapter.lessons &&
+                    selectedChapter.lessons.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedChapter.lessons.map((lesson, index) => (
+                          <button
+                            key={lesson.id}
+                            type="button"
+                            onClick={() =>
+                              contentEditMode &&
+                              setSelectedLessonId(String(lesson.id))
+                            }
+                            disabled={!contentEditMode}
+                            className={`group relative p-4 rounded-xl border-2 transition-all duration-300 text-left ${
+                              !contentEditMode
+                                ? "opacity-50 cursor-not-allowed"
+                                : String(lesson.id) === selectedLessonId
+                                ? "border-transparent bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-200 scale-[1.02]"
+                                : "border-gray-200 bg-white hover:border-purple-300 hover:shadow-md hover:scale-[1.01]"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                                  String(lesson.id) === selectedLessonId
+                                    ? "bg-white/30"
+                                    : "bg-purple-100 group-hover:bg-purple-200"
+                                }`}
+                              >
+                                <span className="text-lg">
+                                  {String(lesson.id) === selectedLessonId
+                                    ? "🎯"
+                                    : "📄"}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p
+                                  className={`font-medium text-sm truncate ${
+                                    String(lesson.id) === selectedLessonId
+                                      ? "text-white"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  Bài {index + 1}: {lesson.title}
+                                </p>
+                              </div>
+                              {String(lesson.id) === selectedLessonId && (
+                                <Check className="w-5 h-5 text-white flex-shrink-0" />
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-8 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 text-center">
+                        <span className="text-4xl">📝</span>
+                        <p className="text-gray-500 mt-2">
+                          Chương này chưa có bài học
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Lesson Content Input */}
+                {/* Step 4: Lesson Content Input */}
                 {selectedLessonId && (
-                  <div className="space-y-2">
-                    <label className="text-[13px] font-medium text-neutral-950 flex items-center gap-2">
-                      <Plus className="w-4 h-4 text-purple-600" />
-                      Nội dung buổi học <span className="text-red-500">*</span>
-                    </label>
-                    <Textarea
-                      value={lessonContent}
-                      onChange={(e) => setLessonContent(e.target.value)}
-                      placeholder="Ví dụ: Giảng lý thuyết về cú pháp if-else, thực hành bài tập 1-5, hướng dẫn làm bài tập về nhà..."
-                      rows={6}
-                      className="text-[13px] resize-none"
-                    />
-                    <p className="text-[11px] text-[#62748e]">
-                      Mô tả ngắn gọn về nội dung đã giảng dạy trong buổi học này
-                    </p>
+                  <div className="space-y-3 animate-in slide-in-from-bottom-4 duration-300">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200">
+                        4
+                      </span>
+                      <span className="font-semibold text-gray-800">
+                        Ghi nội dung đã giảng
+                      </span>
+                      {lessonContent.trim() && (
+                        <span className="text-emerald-500 animate-pulse">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 rounded-2xl opacity-20 blur-sm" />
+                      <div className="relative bg-white rounded-xl border-2 border-purple-100 p-4 space-y-3">
+                        <Textarea
+                          value={lessonContent}
+                          onChange={(e) =>
+                            contentEditMode && setLessonContent(e.target.value)
+                          }
+                          readOnly={!contentEditMode}
+                          placeholder="✍️ Ví dụ: Giảng lý thuyết về cú pháp if-else, thực hành bài tập 1-5, hướng dẫn làm bài tập về nhà..."
+                          rows={4}
+                          className={`text-sm resize-none border-0 focus:ring-0 p-0 placeholder:text-gray-400 ${
+                            !contentEditMode
+                              ? "bg-gray-50 cursor-not-allowed"
+                              : ""
+                          }`}
+                        />
+                        <div className="flex items-center justify-between text-xs text-gray-400">
+                          <span>💡 Mô tả ngắn gọn nội dung đã giảng dạy</span>
+                          <span>{lessonContent.length} ký tự</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {/* Action Buttons */}
                 {selectedLessonId && (
-                  <div className="flex justify-end gap-3 pt-2">
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100 animate-in slide-in-from-bottom-4 duration-300">
                     {hasExistingContent && !contentEditMode ? (
-                      // View mode - show Edit button
                       <Button
                         onClick={() => setContentEditMode(true)}
-                        className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white"
+                        className="h-12 px-8 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-[1.02] transition-all duration-300"
                       >
-                        <FileText className="w-4 h-4 mr-2" />
+                        <FileText className="w-5 h-5 mr-2" />
                         Sửa nội dung buổi học
                       </Button>
                     ) : (
-                      // Edit mode - show Save and Cancel buttons
                       <>
                         {hasExistingContent && (
                           <Button
-                            onClick={() => {
-                              setContentEditMode(true);
-                              // Optionally reload original content here
-                            }}
+                            onClick={() => setContentEditMode(false)}
                             variant="outline"
-                            className="h-11 px-6"
+                            className="h-12 px-6 rounded-xl border-2 hover:bg-gray-50 transition-all duration-300"
                           >
                             <X className="w-4 h-4 mr-2" />
                             Hủy
@@ -1297,18 +1458,22 @@ export default function ClassDetail() {
                         )}
                         <Button
                           onClick={handleSaveLessonContent}
-                          disabled={savingContent}
-                          className="h-11 px-6 bg-purple-600 hover:bg-purple-700 text-white"
+                          disabled={savingContent || !lessonContent.trim()}
+                          className={`h-12 px-8 rounded-xl shadow-lg transition-all duration-300 ${
+                            savingContent || !lessonContent.trim()
+                              ? "bg-gray-300 cursor-not-allowed"
+                              : "bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 shadow-emerald-200 hover:shadow-xl hover:scale-[1.02]"
+                          } text-white`}
                         >
                           {savingContent ? (
                             <>
-                              <Clock className="w-4 h-4 mr-2 animate-spin" />
+                              <div className="w-5 h-5 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                               Đang lưu...
                             </>
                           ) : (
                             <>
-                              <Save className="w-4 h-4 mr-2" />
-                              Lưu nội dung buổi học
+                              <Save className="w-5 h-5 mr-2" />
+                              Lưu nội dung 🎉
                             </>
                           )}
                         </Button>
@@ -1317,35 +1482,31 @@ export default function ClassDetail() {
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ) : classDetail?.courseId ? (
-          <Card className="border border-gray-200 rounded-[14px] bg-white">
-            <CardContent className="p-6 text-center">
-              <div className="text-gray-500">
-                <Clock className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                <p>Đang tải chương trình học...</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-2xl border-2 border-indigo-100 p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-2xl mb-4">
+              <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+            <p className="text-gray-600">Đang tải chương trình học...</p>
+          </div>
         ) : (
-          <Card className="border border-orange-200 rounded-[14px] bg-orange-50">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <BookOpen className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-[14px] font-semibold text-orange-900">
-                    Lớp học chưa có chương trình học
-                  </p>
-                  <p className="text-[12px] text-orange-700 mt-1">
-                    Vui lòng liên hệ Admin để gán chương trình học cho lớp này
-                  </p>
-                </div>
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border-2 border-orange-200 p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl">📚</span>
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className="text-lg font-bold text-orange-900">
+                  Lớp học chưa có chương trình học
+                </p>
+                <p className="text-sm text-orange-700 mt-1">
+                  Vui lòng liên hệ Admin để gán chương trình học cho lớp này
+                </p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

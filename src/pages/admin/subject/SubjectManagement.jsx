@@ -10,6 +10,7 @@ import {
   enableSubject,
   disableSubject,
 } from "../../../services/subject/subject.api";
+import { courseApi } from "../../../services/course/course.api";
 import SubjectTable from "./SubjectTable";
 // Modal view removed; use full page detail instead
 // import SubjectViewDialog from "./SubjectViewDialog";
@@ -102,7 +103,7 @@ export default function SubjectManagement() {
             `Subject "${s.name}": active=${s.active}, status=${s.status} => isActive=${isActive}`
           ); // Debug mỗi subject
 
-          return {
+          const base = {
             id: s.id ?? s.subjectId,
             code: s.code ?? s.subjectCode ?? s.maMon ?? "",
             name: s.name ?? s.subjectName ?? s.tenMon ?? "",
@@ -110,8 +111,35 @@ export default function SubjectManagement() {
             numClasses: s.numClasses ?? s.classCount ?? s.soLop ?? 0,
             active: isActive,
           };
+          return base;
         });
-        setAllSubjects(Array.isArray(subjects) ? subjects : []);
+        const listSubjects = Array.isArray(subjects) ? subjects : [];
+
+        // Fetch accurate approved course counts per subject
+        const withCounts = await Promise.all(
+          listSubjects.map(async (subj) => {
+            try {
+              const courses = await courseApi.list({
+                subjectId: Number(subj.id),
+                status: "APPROVED",
+              });
+              const filtered = (Array.isArray(courses) ? courses : []).filter(
+                (c) => {
+                  const hasSourceTag = String(c.description || "").includes(
+                    "[[SOURCE:"
+                  );
+                  const isPersonal = c && c.ownerTeacherId != null;
+                  return !hasSourceTag && !isPersonal;
+                }
+              );
+              return { ...subj, numCourses: filtered.length };
+            } catch (_) {
+              return { ...subj };
+            }
+          })
+        );
+
+        setAllSubjects(withCounts);
       } catch (e) {
         if (!mounted) return;
         console.error(e);

@@ -69,7 +69,7 @@ export default function Home() {
         return (
           <Card 
             key={cls.id}
-            className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-blue-200"
+            className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-blue-200 flex flex-col h-full"
             onClick={() => onNavigate({ type: "class", classId: cls.id })}
           >
             {/* Image Header with Gradient & Overlay */}
@@ -89,15 +89,16 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <CardContent className="p-5 relative">
+            <CardContent className="p-5 relative flex-1 flex flex-col">
               {/* Teacher Avatar - Overlapping */}
               <div className="absolute -top-10 right-4">
                 <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
                   {cls.teacherAvatarUrl ? (
-                    <img 
-                      src={cls.teacherAvatarUrl} 
+                    <ImageWithFallback
+                      src={cls.teacherAvatarUrl}
                       alt={cls.teacherFullName}
                       className="w-full h-full object-cover rounded-full"
+                      fallbackSrc="/assets/images/banner.jpg"
                     />
                   ) : (
                     <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
@@ -133,6 +134,8 @@ export default function Home() {
                   <span>Khai giảng: {cls.startDate || "01/11/2024"}</span>
                 </div>
               </div>
+              {/* Spacer to push content below to bottom */}
+              <div className="flex-1"></div>
               {/* Enrollment Progress */}
               <div className="mb-4 bg-gray-50 rounded-lg p-3">
                 <div className="flex items-center justify-between text-xs mb-2">
@@ -552,10 +555,11 @@ export default function Home() {
                   <div className="relative mx-auto -mt-16 mb-4">
                     <div className="w-28 h-28 rounded-full ring-4 ring-white shadow-xl overflow-hidden mx-auto bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
                       {teacher.avatar ? (
-                        <img
+                        <ImageWithFallback
                           src={teacher.avatar}
                           alt={teacher.name}
                           className="w-full h-full object-cover rounded-full"
+                          fallbackSrc="/assets/images/banner.jpg"
                         />
                       ) : (
                         <span className="text-3xl font-bold text-white">{lastInitial}</span>

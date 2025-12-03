@@ -2,12 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "../../components/ui/Card.jsx";
+import { Card, CardContent } from "../../components/ui/Card.jsx";
 import { Button } from "../../components/ui/Button.jsx";
 import { Input } from "../../components/ui/Input.jsx";
 import { Badge } from "../../components/ui/Badge.jsx";
@@ -23,7 +18,6 @@ import {
   BookOpen,
   Search,
   Filter,
-  Plus,
   Layers,
   FileText,
   Clock,
@@ -32,6 +26,7 @@ import {
 } from "lucide-react";
 
 import { courseService } from "../../services/course/course.service.js";
+import { classService } from "../../services/class/class.service.js";
 import { useToast } from "../../hooks/use-toast.js";
 import { useAuth } from "../../hooks/useAuth.js";
 
@@ -83,10 +78,13 @@ function getStatusConfig(status) {
 export default function TeacherCourseList() {
   const navigate = useNavigate();
   const { error } = useToast();
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [classMap, setClassMap] = useState({}); // { [classId]: classDetail }
+  const [sourceCourseMap, setSourceCourseMap] = useState({}); // { [sourceId]: courseDetail }
+  const [courseIdToClass, setCourseIdToClass] = useState({}); // { [courseId]: classDetail }
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -125,6 +123,99 @@ export default function TeacherCourseList() {
       ignore = true;
     };
   }, [search, statusFilter, error]);
+
+  // ====== ENRICH WITH LIVE CLASS NAMES ======
+  useEffect(() => {
+    // Collect unique class IDs from loaded courses
+    const ids = new Set();
+    for (const c of courses) {
+      const classId = c?.classId || c?.clazzId || c?.classID;
+      if (classId != null && classId !== "") ids.add(String(classId));
+    }
+
+    // Determine which IDs we still need to fetch
+    const missing = Array.from(ids).filter((id) => !classMap[id]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missing.map(async (id) => {
+            try {
+              const detail = await classService.getById(id);
+              return { id, detail };
+            } catch (e) {
+              console.warn("Failed to fetch class detail for id=", id, e);
+              return { id, detail: null };
+            }
+          })
+        );
+        if (!cancelled && results.length) {
+          setClassMap((prev) => {
+            const next = { ...prev };
+            for (const { id, detail } of results) next[id] = detail;
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to batch fetch class details:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courses, classMap]);
+
+  // ====== ENRICH WITH ADMIN (SOURCE) COURSE TITLES ======
+  useEffect(() => {
+    // Find unique SOURCE ids from course descriptions
+    const ids = new Set();
+    for (const c of courses) {
+      const desc = String(c?.description || "");
+      const m = desc.match(/\[\[SOURCE:([^\]]+)\]\]/);
+      if (m && m[1]) {
+        const sid = m[1].trim();
+        if (sid) ids.add(sid);
+      }
+    }
+
+    const missing = Array.from(ids).filter((id) => !sourceCourseMap[id]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missing.map(async (id) => {
+            try {
+              const detail = await courseService.getCourseDetail(id);
+              return { id, detail };
+            } catch (e) {
+              console.warn("Failed to fetch source course detail id=", id, e);
+              return { id, detail: null };
+            }
+          })
+        );
+        if (!cancelled && results.length) {
+          setSourceCourseMap((prev) => {
+            const next = { ...prev };
+            for (const { id, detail } of results) next[id] = detail;
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to batch fetch source courses:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courses, sourceCourseMap]);
+
+  // (ĐÃ BỎ fallback tìm lớp theo courseId để tránh gọi API liên tục khi không xác định được lớp)
 
   // ====== DERIVED STATS ======
   const stats = useMemo(() => {
@@ -167,7 +258,7 @@ export default function TeacherCourseList() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-neutral-950">
-            Quản lý khóa học cá nhân
+            Quản lý khóa học theo lớp
           </h1>
           <p className="text-[12px] text-[#62748e] mt-1">
             Xem và quản lý các khóa học cá nhân mà bạn trực tiếp biên soạn.
@@ -313,7 +404,37 @@ export default function TeacherCourseList() {
             const cleanedDescription = String(course.description || "")
               .replace(/\n?\[\[SOURCE:[^\]]+\]\]/, "")
               .replace(/\n?\[\[OWNER:[^\]]+\]\]/, "")
+              .replace(/\n?\[\[CLASS_ID:[^\]]+\]\]/, "")
+              .replace(/\n?\[\[CLASS_NAME:[^\]]+\]\]/, "")
               .trim();
+
+            // Try to identify linked class from known fields or tags
+            const classIdFromField =
+              course.classId || course.clazzId || course.classID;
+            let classIdFromTag = null;
+            const desc = String(course.description || "");
+            const m = desc.match(/\[\[CLASS_ID:([^\]]+)\]\]/);
+            if (m && m[1]) {
+              classIdFromTag = m[1].trim();
+            }
+            let linkedClassId = classIdFromField || classIdFromTag || null;
+            // Use courseId->class fallback only when it is unambiguous (exactly one match)
+            if (!linkedClassId && course?.id) {
+              const byCourse = courseIdToClass[String(course.id)];
+              if (byCourse?.id) linkedClassId = byCourse.id;
+            }
+
+            let classNameFromTag = null;
+            const mn = desc.match(/\[\[CLASS_NAME:([^\]]+)\]\]/);
+            if (mn && mn[1]) {
+              classNameFromTag = mn[1].trim();
+            }
+
+            // Prefer live class name from DB if available; fallback to tag
+            const liveClassName = linkedClassId
+              ? classMap[String(linkedClassId)]?.name || null
+              : null;
+            const effectiveClassName = liveClassName || classNameFromTag;
 
             const chapterCount =
               course.chapterCount ??
@@ -326,6 +447,9 @@ export default function TeacherCourseList() {
                     0
                   )
                 : 0);
+
+            // Render DB title directly for consistency with Admin
+            const displayTitle = String(course.title || "");
 
             return (
               <Card
@@ -343,11 +467,21 @@ export default function TeacherCourseList() {
                         </div>
                         <div>
                           <h2 className="text-sm font-semibold text-neutral-950">
-                            {course.title}
+                            {displayTitle}
                           </h2>
                           <p className="text-[11px] text-[#62748e]">
                             {course.subjectName || "Chưa có môn học"}
                           </p>
+                          {linkedClassId && (
+                            <div className="mt-1">
+                              <Badge className="text-[11px] px-2 py-0.5 bg-green-50 text-green-700 border border-green-200">
+                                Thuộc lớp:{" "}
+                                {effectiveClassName
+                                  ? `${effectiveClassName} (ID: ${linkedClassId})`
+                                  : `ID: ${linkedClassId}`}
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       </div>
                       {cleanedDescription && (
@@ -392,6 +526,11 @@ export default function TeacherCourseList() {
                       {hasSourceTag && (
                         <Badge className="text-[11px] px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200">
                           Nguồn: Nội dung giảng dạy
+                        </Badge>
+                      )}
+                      {linkedClassId && (
+                        <Badge className="text-[11px] px-3 py-1 bg-green-50 text-green-700 border border-green-200">
+                          Lớp: {linkedClassId}
                         </Badge>
                       )}
                       <Badge
