@@ -97,7 +97,6 @@ import AdminTeacherManagement from "../pages/admin/teacher/TeacherManagement.jsx
 import TeacherSchedule from "../pages/teacher/TeacherSchedule.jsx";
 import TeacherClassDetail from "../pages/teacher/ClassDetail.jsx";
 import TeacherCourseList from "../pages/teacher/TeacherCourseList.jsx";
-import TeacherCourseCreate from "../pages/teacher/TeacherCourseCreate.jsx";
 import TeacherCourseDetail from "../pages/teacher/TeacherCourseDetail.jsx";
 import TeacherCourseEdit from "../pages/teacher/TeacherCourseEdit.jsx";
 import TeachingContent from "../pages/teacher/TeachingContent.jsx";
@@ -223,8 +222,6 @@ function AppRouter() {
           {/* Cho phép chỉnh sửa dưới nhánh Nội dung giảng dạy */}
           <Route path="content/:id/edit" element={<TeacherCourseEdit />} />
           <Route path="courses" element={<TeacherCourseList />} />
-          {/* ✅ khớp với navigate("/home/teacher/courses/create") trong TeacherCourseList */}
-          <Route path="courses/create" element={<TeacherCourseCreate />} />
           {/* ✅ khớp với navigate(`/home/teacher/courses/${id}/edit`) - chỉnh sửa khóa học */}
           <Route path="courses/:id/edit" element={<TeacherCourseEdit />} />
           {/* ✅ khớp với navigate(`/home/teacher/courses/${id}`) - xem chi tiết khóa học */}

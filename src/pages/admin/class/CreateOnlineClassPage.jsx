@@ -16,17 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/Select";
-import {
-  Loader2,
-  CalendarCheck2,
-  Users,
-  Link2,
-  Eye,
-  ArrowLeft,
-  CheckCircle2,
-} from "lucide-react";
+import { Loader2, CalendarCheck2, Eye, ArrowLeft } from "lucide-react";
 
 import ScheduleGrid from "../schedule/ScheduleGrid";
+import ClassPreview from "../../../components/admin/ClassPreview";
 
 import { classService } from "../../../services/class/class.service";
 import { subjectService } from "../../../services/subject/subject.service";
@@ -825,156 +818,25 @@ export default function CreateOnlineClassPage() {
         )}
 
         {currentStep === 2 && (
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              {/* Header */}
-              <div className="text-center py-8 px-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Xem trước lớp học
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Kiểm tra thông tin trước khi tạo
-                </p>
-              </div>
-
-              {/* Content */}
-              <div className="px-8 pb-8">
-                {/* Blue card with class info */}
-                <div className="bg-blue-50 rounded-xl border border-blue-200 p-6 mb-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center text-white text-2xl flex-shrink-0">
-                      🌐
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-xl font-bold text-gray-900">
-                          {className || "Tên lớp"}
-                        </h3>
-                        <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
-                          Online
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Học từ xa qua Internet
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Info Grid */}
-                <div className="space-y-4 mb-6">
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Môn học:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {selectedSubject?.name || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Giáo viên:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {selectedTeacher?.fullName || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Link Meet:
-                      </label>
-                      <a
-                        href={meetingLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm font-semibold text-blue-600 hover:underline block truncate"
-                      >
-                        {meetingLink}
-                      </a>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Sĩ số:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {capacity} học sinh
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Thời gian:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {startDate} đến {endDate}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Giá tiền mỗi buổi học:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {pricePerSession !== ""
-                          ? formatCurrency(parseInt(pricePerSession))
-                          : "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Tổng giá tiền của lớp học:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {pricePerSession !== "" && totalSessions
-                          ? formatCurrency(
-                              parseInt(pricePerSession) *
-                                parseInt(totalSessions)
-                            )
-                          : "-"}
-                      </p>
-                    </div>
-                    {desc && (
-                      <div className="col-span-2">
-                        <label className="text-xs font-medium text-gray-500 block mb-1">
-                          Mô tả:
-                        </label>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {desc}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Schedule Summary */}
-                <div className="bg-blue-50 rounded-xl border border-blue-200 p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CalendarCheck2 className="h-5 w-5 text-blue-600" />
-                    <h4 className="text-sm font-semibold text-gray-900">
-                      Lịch học ({pickedSlots.length} buổi)
-                    </h4>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {pickedSlots.map((slot, idx) => {
-                      const d = new Date(slot.isoStart);
-                      const days = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-                      const timeStr = d.toLocaleTimeString("vi-VN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      return (
-                        <div
-                          key={idx}
-                          className="px-3 py-1.5 bg-white border border-blue-200 text-blue-700 rounded-lg text-sm font-medium"
-                        >
-                          {days[d.getDay()]} - {timeStr}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ClassPreview
+            name={className}
+            description={desc}
+            isOnline={true}
+            subjectName={selectedSubject?.name}
+            courseName={
+              courses.find((c) => String(c.id) === String(courseId))?.title
+            }
+            teacherFullName={selectedTeacher?.fullName}
+            teacherAvatarUrl={selectedTeacher?.avatarUrl}
+            teacherBio={selectedTeacher?.bio}
+            pickedSlots={pickedSlots}
+            startDate={startDate}
+            endDate={endDate}
+            totalSessions={totalSessions}
+            maxStudents={capacity}
+            pricePerSession={pricePerSession}
+            meetingLink={meetingLink}
+          />
         )}
 
         {/* Footer Actions */}

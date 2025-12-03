@@ -16,17 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/Select";
-import {
-  Loader2,
-  CalendarCheck2,
-  Users,
-  Building2,
-  Eye,
-  ArrowLeft,
-  CheckCircle2,
-} from "lucide-react";
+import { Loader2, CalendarCheck2, Eye, ArrowLeft } from "lucide-react";
 
 import ScheduleGrid from "../schedule/ScheduleGrid";
+import ClassPreview from "../../../components/admin/ClassPreview";
 
 import { classService } from "../../../services/class/class.service";
 import { subjectService } from "../../../services/subject/subject.service";
@@ -35,7 +28,6 @@ import { classroomService } from "../../../services/classrooms/classroom.service
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
 import { courseApi } from "../../../services/course/course.api";
 import { useToast } from "../../../hooks/use-toast";
-import { formatCurrency } from "../../../helper/formatters";
 
 export default function CreateOfflineClassPage() {
   const navigate = useNavigate();
@@ -871,153 +863,25 @@ export default function CreateOfflineClassPage() {
         )}
 
         {currentStep === 2 && (
-          <div className="max-w-5xl mx-auto">
-            <div className="rounded-3xl bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl shadow-green-500/10 p-12 flex flex-col gap-10 relative overflow-hidden">
-              {/* Decorative gradient aura */}
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute -top-24 -left-24 w-72 h-72 bg-green-400/10 rounded-full blur-3xl" />
-                <div className="absolute bottom-0 -right-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl" />
-              </div>
-              {/* Header / Title */}
-              <div className="text-center relative">
-                <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-green-500 via-emerald-600 to-teal-600 shadow-lg shadow-green-500/30 flex items-center justify-center mb-6">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-3xl">
-                    🏫
-                  </div>
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                  {className || "Tên lớp"}
-                </h2>
-                <div className="flex items-center justify-center gap-3">
-                  <span className="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide bg-green-600 text-white shadow shadow-green-500/30">
-                    Offline
-                  </span>
-                  {pickedSlots.length > 0 && (
-                    <span className="text-xs font-medium text-gray-500">
-                      {pickedSlots.length} buổi đã chọn
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Info Grid */}
-              <div className="grid md:grid-cols-2 gap-6 relative">
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Môn học
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {selectedSubject?.name || "-"}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Giáo viên
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {selectedTeacher?.fullName || "-"}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Phòng học
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {selectedRoom?.name || "-"}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Sĩ số
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {capacity || 0} học sinh
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Thời gian
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {startDate || "-"} {startDate && endDate && "→"}{" "}
-                    {endDate || "-"}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Tổng số buổi
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {totalSessions || 0} buổi
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Giá tiền mỗi buổi học
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {pricePerSession !== ""
-                      ? formatCurrency(parseInt(pricePerSession))
-                      : "-"}
-                  </div>
-                </div>
-                <div className="rounded-2xl bg-green-50/70 border border-green-100 p-4">
-                  <div className="text-xs font-semibold text-gray-500 mb-1">
-                    Tổng giá tiền của lớp học
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">
-                    {pricePerSession !== "" && totalSessions
-                      ? formatCurrency(
-                          parseInt(pricePerSession) * parseInt(totalSessions)
-                        )
-                      : "-"}
-                  </div>
-                </div>
-                {desc && (
-                  <div className="md:col-span-2 rounded-2xl bg-green-50/60 border border-green-100 p-4">
-                    <div className="text-xs font-semibold text-gray-500 mb-1">
-                      Mô tả
-                    </div>
-                    <div className="text-sm font-medium text-gray-800 whitespace-pre-line">
-                      {desc}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Schedule Summary */}
-              <div className="rounded-2xl bg-rose-50/70 border border-rose-100 p-6 relative">
-                <div className="flex items-center gap-2 mb-4">
-                  <CalendarCheck2 className="h-5 w-5 text-rose-600" />
-                  <h4 className="text-sm font-semibold text-gray-900">
-                    Lịch học ({pickedSlots.length} buổi)
-                  </h4>
-                </div>
-                {pickedSlots.length === 0 ? (
-                  <p className="text-xs text-gray-500">Chưa chọn lịch học.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {pickedSlots.map((slot, idx) => {
-                      const d = new Date(slot.isoStart);
-                      const days = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-                      const timeStr = d.toLocaleTimeString("vi-VN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      return (
-                        <div
-                          key={idx}
-                          className="px-3 py-1.5 rounded-xl bg-white/70 backdrop-blur-sm border border-rose-100 text-rose-700 text-sm font-medium shadow-sm"
-                        >
-                          {days[d.getDay()]} - {timeStr}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <ClassPreview
+            name={className}
+            description={desc}
+            isOnline={false}
+            subjectName={selectedSubject?.name}
+            courseName={
+              courses.find((c) => String(c.id) === String(courseId))?.title
+            }
+            teacherFullName={selectedTeacher?.fullName}
+            teacherAvatarUrl={selectedTeacher?.avatarUrl}
+            teacherBio={selectedTeacher?.bio}
+            pickedSlots={pickedSlots}
+            startDate={startDate}
+            endDate={endDate}
+            totalSessions={totalSessions}
+            maxStudents={capacity}
+            pricePerSession={pricePerSession}
+            roomName={selectedRoom?.name}
+          />
         )}
 
         {/* Footer Actions */}
