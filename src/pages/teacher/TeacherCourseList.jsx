@@ -215,61 +215,7 @@ export default function TeacherCourseList() {
     };
   }, [courses, sourceCourseMap]);
 
-  // ====== FALLBACK: FIND CLASS BY courseId ======
-  useEffect(() => {
-    // For courses without a linkedClassId, try querying classes by courseId
-    const missingCourseIds = [];
-    for (const c of courses) {
-      const classId = c?.classId || c?.clazzId || c?.classID;
-      if (!classId) {
-        const cid = c?.id;
-        if (cid && !courseIdToClass[String(cid)])
-          missingCourseIds.push(String(cid));
-      }
-    }
-    if (missingCourseIds.length === 0) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const results = await Promise.all(
-          missingCourseIds.map(async (courseId) => {
-            try {
-              const list = await classService.list({ courseId });
-              // Only use fallback when class resolution is unambiguous
-              const detail =
-                Array.isArray(list) && list.length === 1 ? list[0] : null;
-              return { courseId, detail };
-            } catch (e) {
-              console.warn("Failed to list classes by courseId=", courseId, e);
-              return { courseId, detail: null };
-            }
-          })
-        );
-        if (!cancelled && results.length) {
-          setCourseIdToClass((prev) => {
-            const next = { ...prev };
-            for (const { courseId, detail } of results) next[courseId] = detail;
-            return next;
-          });
-          // Also cache classMap by id for display badge consistency
-          setClassMap((prev) => {
-            const next = { ...prev };
-            for (const { detail } of results) {
-              if (detail?.id) next[String(detail.id)] = detail;
-            }
-            return next;
-          });
-        }
-      } catch (e) {
-        console.warn("Failed to fetch classes by courseId:", e);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [courses, courseIdToClass]);
+  // (ĐÃ BỎ fallback tìm lớp theo courseId để tránh gọi API liên tục khi không xác định được lớp)
 
   // ====== DERIVED STATS ======
   const stats = useMemo(() => {

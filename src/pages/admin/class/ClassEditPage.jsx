@@ -580,6 +580,7 @@ export default function ClassEditPage() {
         name: name || cls.name,
         subjectId: parseInt(subjectId),
         courseId: courseId ? parseInt(courseId) : null,
+        teacherId: teacherId ? parseInt(teacherId) : null,
         roomId: isOnline ? null : roomId ? parseInt(roomId) : null,
         maxStudents: parseInt(capacity),
         totalSessions: parseInt(totalSessions),
@@ -590,9 +591,25 @@ export default function ClassEditPage() {
         meetingLink: isOnline ? meetingLink.trim() : null,
         schedule: schedules,
       };
-      // Không gửi teacherId vì không cho đổi giáo viên ở trang này
-      // Backend sẽ giữ nguyên giáo viên hiện tại, tránh lỗi lookup theo userId
-      await classService.update(cls.id, payload);
+      try {
+        await classService.update(cls.id, payload);
+      } catch (e1) {
+        const backendMsg =
+          e1?.response?.data?.message || e1?.response?.data?.error || "";
+        const needConfirm =
+          typeof backendMsg === "string" &&
+          backendMsg.toLowerCase().includes("lớp đang có nội dung");
+        if (needConfirm) {
+          const ok = window.confirm(
+            "Lớp đang có nội dung. Xác nhận xóa toàn bộ nội dung buổi học và khóa học của giáo viên?"
+          );
+          if (!ok) throw e1;
+          const payload2 = { ...payload, forceDeleteContentAndCourse: true };
+          await classService.update(cls.id, payload2);
+        } else {
+          throw e1;
+        }
+      }
       success("Cập nhật lớp thành công");
       navigate(`/home/admin/class/${cls.id}`);
     } catch (e) {
@@ -801,7 +818,7 @@ export default function ClassEditPage() {
                       key={`subject-${subjectId}-${subjects.length}`}
                       value={String(subjectId)}
                       onValueChange={setSubjectId}
-                      disabled
+                      disabled={isPublic}
                     >
                       <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Chọn môn" />
@@ -814,10 +831,7 @@ export default function ClassEditPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="mt-1 text-[10px] text-amber-600">
-                      Thông tin này không được phép thay đổi khi chỉnh sửa lớp
-                      học.
-                    </p>
+                    {/* Cho phép đổi môn khi DRAFT; chỉ khóa khi PUBLIC */}
                   </div>
                   {/* Course optional */}
                   {subjectId && (
@@ -832,7 +846,7 @@ export default function ClassEditPage() {
                         key={`course-${courseId}-${courses.length}`}
                         value={String(courseId)}
                         onValueChange={setCourseId}
-                        disabled
+                        disabled={isPublic}
                       >
                         <SelectTrigger className="h-10 text-sm">
                           <SelectValue placeholder="Chọn khóa học" />
@@ -846,10 +860,7 @@ export default function ClassEditPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="mt-1 text-[10px] text-amber-600">
-                        Thông tin này không được phép thay đổi khi chỉnh sửa lớp
-                        học.
-                      </p>
+                      {/* Cho phép đổi khóa học khi DRAFT; chỉ khóa khi PUBLIC */}
                     </div>
                   )}
 
@@ -861,7 +872,7 @@ export default function ClassEditPage() {
                       key={`teacher-${teacherId}-${teachers.length}`}
                       value={String(teacherId)}
                       onValueChange={setTeacherId}
-                      disabled
+                      disabled={isPublic}
                     >
                       <SelectTrigger className="h-10 text-sm">
                         <SelectValue placeholder="Chọn GV" />
@@ -874,10 +885,7 @@ export default function ClassEditPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="mt-1 text-[10px] text-amber-600">
-                      Thông tin này không được phép thay đổi khi chỉnh sửa lớp
-                      học.
-                    </p>
+                    {/* Cho phép đổi giáo viên khi DRAFT; chỉ khóa khi PUBLIC */}
                   </div>
                   {/* Total sessions */}
                   <div>
