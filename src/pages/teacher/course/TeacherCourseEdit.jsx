@@ -7,17 +7,17 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { Input } from "../../components/ui/Input.jsx";
-import { Textarea } from "../../components/ui/Textarea.jsx";
+} from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { Input } from "../../../components/ui/Input.jsx";
+import { Textarea } from "../../../components/ui/Textarea.jsx";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/Select.jsx";
+} from "../../../components/ui/Select.jsx";
 
 import {
   ArrowLeft,
@@ -29,10 +29,10 @@ import {
   Save,
 } from "lucide-react";
 
-import { courseService } from "../../services/course/course.service.js";
-import { teacherApi } from "../../services/teacher/teacher.api.js";
-import { useToast } from "../../hooks/use-toast.js";
-import { useAuth } from "../../hooks/useAuth.js";
+import { courseService } from "../../../services/course/course.service.js";
+import { teacherApi } from "../../../services/teacher/teacher.api.js";
+import { useToast } from "../../../hooks/use-toast.js";
+import { useAuth } from "../../../hooks/useAuth.js";
 
 function createLocalId() {
   return Math.random().toString(36).slice(2, 9);

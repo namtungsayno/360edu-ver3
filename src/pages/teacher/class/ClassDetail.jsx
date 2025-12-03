@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useToast } from "../../hooks/use-toast";
-import { attendanceService } from "../../services/attendance/attendance.service";
-import sessionService from "../../services/class/session.service";
-import { Card, CardContent } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { Badge } from "../../components/ui/Badge.jsx";
-import { Input } from "../../components/ui/Input.jsx";
-import { Textarea } from "../../components/ui/Textarea.jsx";
+import { useToast } from "../../../hooks/use-toast";
+import { attendanceService } from "../../../services/attendance/attendance.service";
+import sessionService from "../../../services/class/session.service";
+import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { Badge } from "../../../components/ui/Badge.jsx";
+import { Input } from "../../../components/ui/Input.jsx";
+import { Textarea } from "../../../components/ui/Textarea.jsx";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "../../components/ui/Select.jsx";
+} from "../../../components/ui/Select.jsx";
 import {
   ArrowLeft,
   Save,
@@ -32,11 +32,11 @@ import {
   Mail,
   Send,
 } from "lucide-react";
-import { parentNotificationService } from "../../services/notification/parent-notification.service";
-import { scheduleService } from "../../services/schedule/schedule.service";
-import { courseService } from "../../services/course/course.service";
+import { parentNotificationService } from "../../../services/notification/parent-notification.service";
+import { scheduleService } from "../../../services/schedule/schedule.service";
+import { courseService } from "../../../services/course/course.service";
 // Personal course versions flow removed per new business logic
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../../../hooks/useAuth";
 
 export default function ClassDetail() {
   const navigate = useNavigate();

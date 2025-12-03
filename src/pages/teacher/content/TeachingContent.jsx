@@ -1,25 +1,25 @@
 // src/pages/teacher/TeachingContent.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "../../hooks/use-toast";
-import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../../hooks/use-toast";
+import { useAuth } from "../../../hooks/useAuth";
 
 // Chuyển sang dùng teacherService để lấy được subjectIds chuẩn thay vì map tên → id
-import { teacherService } from "../../services/teacher/teacher.service";
-import { teacherProfileService } from "../../services/teacher/teacher.profile.service"; // fallback legacy
-import { getAllSubjects } from "../../services/subject/subject.api"; // fallback legacy
-import { courseService } from "../../services/course/course.service";
+import { teacherService } from "../../../services/teacher/teacher.service";
+import { teacherProfileService } from "../../../services/teacher/teacher.profile.service"; // fallback legacy
+import { getAllSubjects } from "../../../services/subject/subject.api"; // fallback legacy
+import { courseService } from "../../../services/course/course.service";
 
-import { Card, CardContent } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { Input } from "../../components/ui/Input.jsx";
+import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { Input } from "../../../components/ui/Input.jsx";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "../../components/ui/Select.jsx";
+} from "../../../components/ui/Select.jsx";
 import {
   BookOpen,
   Layers,

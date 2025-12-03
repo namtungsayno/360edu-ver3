@@ -92,16 +92,16 @@ import AdminCourseCreate from "../pages/admin/course/AdminCourseCreate.jsx";
 import PaymentHistory from "../pages/admin/payment/PaymentHistory.jsx";
 
 // Teacher pages
-import TeacherManagement from "../pages/teacher/TeacherManagement.jsx";
+import TeacherManagement from "../pages/teacher/profile/TeacherManagement.jsx";
 import AdminTeacherManagement from "../pages/admin/teacher/TeacherManagement.jsx";
-import TeacherSchedule from "../pages/teacher/TeacherSchedule.jsx";
-import TeacherClassDetail from "../pages/teacher/ClassDetail.jsx";
-import TeacherCourseList from "../pages/teacher/TeacherCourseList.jsx";
-import TeacherCourseDetail from "../pages/teacher/TeacherCourseDetail.jsx";
-import TeacherCourseEdit from "../pages/teacher/TeacherCourseEdit.jsx";
-import TeachingContent from "../pages/teacher/TeachingContent.jsx";
-import TeachingContentDetail from "../pages/teacher/TeachingContentDetail.jsx";
-import TeacherResetPassword from "../pages/teacher/TeacherResetPassword.jsx";
+import TeacherSchedule from "../pages/teacher/schedule/TeacherSchedule.jsx";
+import TeacherClassDetail from "../pages/teacher/class/ClassDetail.jsx";
+import TeacherCourseList from "../pages/teacher/course/TeacherCourseList.jsx";
+import TeacherCourseDetail from "../pages/teacher/course/TeacherCourseDetail.jsx";
+import TeacherCourseEdit from "../pages/teacher/course/TeacherCourseEdit.jsx";
+import TeachingContent from "../pages/teacher/content/TeachingContent.jsx";
+import TeachingContentDetail from "../pages/teacher/content/TeachingContentDetail.jsx";
+import TeacherResetPassword from "../pages/teacher/profile/TeacherResetPassword.jsx";
 
 function AppRouter() {
   return (

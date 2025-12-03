@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "../../components/ui/Button";
-import { Input } from "../../components/ui/Input";
-import Card from "../../components/common/Card";
-import { teacherProfileService } from "../../services/teacher/teacher.profile.service";
-import { teacherProfileApi } from "../../services/teacher/teacher.profile.detail.api";
+import { Button } from "../../../components/ui/Button";
+import { Input } from "../../../components/ui/Input";
+import Card from "../../../components/common/Card";
+import { teacherProfileService } from "../../../services/teacher/teacher.profile.service";
+import { teacherProfileApi } from "../../../services/teacher/teacher.profile.detail.api";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
@@ -26,12 +26,31 @@ export default function TeacherProfileEdit() {
   const [certificates, setCertificates] = useState([]);
   const [experiences, setExperiences] = useState([]);
   const [educations, setEducations] = useState([]);
-  
+
   // State cho edit/add forms
-  const [certForm, setCertForm] = useState({ id: null, title: "", organization: "", year: "", description: "" });
-  const [expForm, setExpForm] = useState({ id: null, position: "", company: "", startYear: "", endYear: "", description: "" });
-  const [eduForm, setEduForm] = useState({ id: null, degree: "", school: "", year: "", description: "" });
-  
+  const [certForm, setCertForm] = useState({
+    id: null,
+    title: "",
+    organization: "",
+    year: "",
+    description: "",
+  });
+  const [expForm, setExpForm] = useState({
+    id: null,
+    position: "",
+    company: "",
+    startYear: "",
+    endYear: "",
+    description: "",
+  });
+  const [eduForm, setEduForm] = useState({
+    id: null,
+    degree: "",
+    school: "",
+    year: "",
+    description: "",
+  });
+
   const [showCertForm, setShowCertForm] = useState(false);
   const [showExpForm, setShowExpForm] = useState(false);
   const [showEduForm, setShowEduForm] = useState(false);
@@ -81,11 +100,11 @@ export default function TeacherProfileEdit() {
           }));
           setSaved(true);
         }
-      } catch (_) {
+      } catch {
         // ignore
       }
     })();
-    
+
     loadCertificates();
     loadExperiences();
     loadEducations();
@@ -163,7 +182,13 @@ export default function TeacherProfileEdit() {
         await teacherProfileApi.addCertificate(certForm);
       }
       await loadCertificates();
-      setCertForm({ id: null, title: "", organization: "", year: "", description: "" });
+      setCertForm({
+        id: null,
+        title: "",
+        organization: "",
+        year: "",
+        description: "",
+      });
       setShowCertForm(false);
     } catch (err) {
       alert("Lỗi: " + (err?.message || "Không thể lưu certificate"));
@@ -194,7 +219,14 @@ export default function TeacherProfileEdit() {
         await teacherProfileApi.addExperience(expForm);
       }
       await loadExperiences();
-      setExpForm({ id: null, position: "", company: "", startYear: "", endYear: "", description: "" });
+      setExpForm({
+        id: null,
+        position: "",
+        company: "",
+        startYear: "",
+        endYear: "",
+        description: "",
+      });
       setShowExpForm(false);
     } catch (err) {
       alert("Lỗi: " + (err?.message || "Không thể lưu experience"));
@@ -225,7 +257,13 @@ export default function TeacherProfileEdit() {
         await teacherProfileApi.addEducation(eduForm);
       }
       await loadEducations();
-      setEduForm({ id: null, degree: "", school: "", year: "", description: "" });
+      setEduForm({
+        id: null,
+        degree: "",
+        school: "",
+        year: "",
+        description: "",
+      });
       setShowEduForm(false);
     } catch (err) {
       alert("Lỗi: " + (err?.message || "Không thể lưu education"));
@@ -442,16 +480,20 @@ export default function TeacherProfileEdit() {
         <div className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Chứng chỉ
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900">Chứng chỉ</h2>
               <p className="text-sm text-gray-500 mt-1">
                 Danh sách chứng chỉ đã đạt được
               </p>
             </div>
             <Button
               onClick={() => {
-                setCertForm({ id: null, title: "", organization: "", year: "", description: "" });
+                setCertForm({
+                  id: null,
+                  title: "",
+                  organization: "",
+                  year: "",
+                  description: "",
+                });
                 setShowCertForm(true);
               }}
             >
@@ -468,23 +510,31 @@ export default function TeacherProfileEdit() {
                 <Input
                   placeholder="Tên chứng chỉ *"
                   value={certForm.title}
-                  onChange={(e) => setCertForm({ ...certForm, title: e.target.value })}
+                  onChange={(e) =>
+                    setCertForm({ ...certForm, title: e.target.value })
+                  }
                 />
                 <Input
                   placeholder="Tổ chức cấp"
                   value={certForm.organization}
-                  onChange={(e) => setCertForm({ ...certForm, organization: e.target.value })}
+                  onChange={(e) =>
+                    setCertForm({ ...certForm, organization: e.target.value })
+                  }
                 />
                 <Input
                   placeholder="Năm (VD: 2023)"
                   type="number"
                   value={certForm.year}
-                  onChange={(e) => setCertForm({ ...certForm, year: e.target.value })}
+                  onChange={(e) =>
+                    setCertForm({ ...certForm, year: e.target.value })
+                  }
                 />
                 <textarea
                   placeholder="Mô tả"
                   value={certForm.description}
-                  onChange={(e) => setCertForm({ ...certForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setCertForm({ ...certForm, description: e.target.value })
+                  }
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   rows="3"
                 />
@@ -492,7 +542,13 @@ export default function TeacherProfileEdit() {
                   <Button onClick={handleSaveCert}>Lưu</Button>
                   <Button
                     onClick={() => {
-                      setCertForm({ id: null, title: "", organization: "", year: "", description: "" });
+                      setCertForm({
+                        id: null,
+                        title: "",
+                        organization: "",
+                        year: "",
+                        description: "",
+                      });
                       setShowCertForm(false);
                     }}
                   >
@@ -515,13 +571,17 @@ export default function TeacherProfileEdit() {
                   <div>
                     <h4 className="font-medium text-gray-900">{cert.title}</h4>
                     {cert.organization && (
-                      <p className="text-sm text-gray-600">{cert.organization}</p>
+                      <p className="text-sm text-gray-600">
+                        {cert.organization}
+                      </p>
                     )}
                     {cert.year && (
                       <p className="text-sm text-gray-500">Năm: {cert.year}</p>
                     )}
                     {cert.description && (
-                      <p className="text-sm text-gray-600 mt-2">{cert.description}</p>
+                      <p className="text-sm text-gray-600 mt-2">
+                        {cert.description}
+                      </p>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -553,13 +613,18 @@ export default function TeacherProfileEdit() {
               <h2 className="text-xl font-semibold text-gray-900">
                 Kinh nghiệm làm việc
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Lịch sử công tác
-              </p>
+              <p className="text-sm text-gray-500 mt-1">Lịch sử công tác</p>
             </div>
             <Button
               onClick={() => {
-                setExpForm({ id: null, position: "", company: "", startYear: "", endYear: "", description: "" });
+                setExpForm({
+                  id: null,
+                  position: "",
+                  company: "",
+                  startYear: "",
+                  endYear: "",
+                  description: "",
+                });
                 setShowExpForm(true);
               }}
             >
@@ -576,31 +641,41 @@ export default function TeacherProfileEdit() {
                 <Input
                   placeholder="Vị trí *"
                   value={expForm.position}
-                  onChange={(e) => setExpForm({ ...expForm, position: e.target.value })}
+                  onChange={(e) =>
+                    setExpForm({ ...expForm, position: e.target.value })
+                  }
                 />
                 <Input
                   placeholder="Công ty/Tổ chức"
                   value={expForm.company}
-                  onChange={(e) => setExpForm({ ...expForm, company: e.target.value })}
+                  onChange={(e) =>
+                    setExpForm({ ...expForm, company: e.target.value })
+                  }
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     placeholder="Năm bắt đầu"
                     type="number"
                     value={expForm.startYear}
-                    onChange={(e) => setExpForm({ ...expForm, startYear: e.target.value })}
+                    onChange={(e) =>
+                      setExpForm({ ...expForm, startYear: e.target.value })
+                    }
                   />
                   <Input
                     placeholder="Năm kết thúc"
                     type="number"
                     value={expForm.endYear}
-                    onChange={(e) => setExpForm({ ...expForm, endYear: e.target.value })}
+                    onChange={(e) =>
+                      setExpForm({ ...expForm, endYear: e.target.value })
+                    }
                   />
                 </div>
                 <textarea
                   placeholder="Mô tả công việc"
                   value={expForm.description}
-                  onChange={(e) => setExpForm({ ...expForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setExpForm({ ...expForm, description: e.target.value })
+                  }
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   rows="3"
                 />
@@ -608,7 +683,14 @@ export default function TeacherProfileEdit() {
                   <Button onClick={handleSaveExp}>Lưu</Button>
                   <Button
                     onClick={() => {
-                      setExpForm({ id: null, position: "", company: "", startYear: "", endYear: "", description: "" });
+                      setExpForm({
+                        id: null,
+                        position: "",
+                        company: "",
+                        startYear: "",
+                        endYear: "",
+                        description: "",
+                      });
                       setShowExpForm(false);
                     }}
                   >
@@ -629,7 +711,9 @@ export default function TeacherProfileEdit() {
                   className="p-4 border border-gray-200 rounded-lg flex justify-between items-start"
                 >
                   <div>
-                    <h4 className="font-medium text-gray-900">{exp.position}</h4>
+                    <h4 className="font-medium text-gray-900">
+                      {exp.position}
+                    </h4>
                     {exp.company && (
                       <p className="text-sm text-gray-600">{exp.company}</p>
                     )}
@@ -639,7 +723,9 @@ export default function TeacherProfileEdit() {
                       </p>
                     )}
                     {exp.description && (
-                      <p className="text-sm text-gray-600 mt-2">{exp.description}</p>
+                      <p className="text-sm text-gray-600 mt-2">
+                        {exp.description}
+                      </p>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -668,16 +754,20 @@ export default function TeacherProfileEdit() {
         <div className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Học vấn
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900">Học vấn</h2>
               <p className="text-sm text-gray-500 mt-1">
                 Bằng cấp và trình độ học vấn
               </p>
             </div>
             <Button
               onClick={() => {
-                setEduForm({ id: null, degree: "", school: "", year: "", description: "" });
+                setEduForm({
+                  id: null,
+                  degree: "",
+                  school: "",
+                  year: "",
+                  description: "",
+                });
                 setShowEduForm(true);
               }}
             >
@@ -694,23 +784,31 @@ export default function TeacherProfileEdit() {
                 <Input
                   placeholder="Bằng cấp *"
                   value={eduForm.degree}
-                  onChange={(e) => setEduForm({ ...eduForm, degree: e.target.value })}
+                  onChange={(e) =>
+                    setEduForm({ ...eduForm, degree: e.target.value })
+                  }
                 />
                 <Input
                   placeholder="Trường"
                   value={eduForm.school}
-                  onChange={(e) => setEduForm({ ...eduForm, school: e.target.value })}
+                  onChange={(e) =>
+                    setEduForm({ ...eduForm, school: e.target.value })
+                  }
                 />
                 <Input
                   placeholder="Năm tốt nghiệp"
                   type="number"
                   value={eduForm.year}
-                  onChange={(e) => setEduForm({ ...eduForm, year: e.target.value })}
+                  onChange={(e) =>
+                    setEduForm({ ...eduForm, year: e.target.value })
+                  }
                 />
                 <textarea
                   placeholder="Mô tả"
                   value={eduForm.description}
-                  onChange={(e) => setEduForm({ ...eduForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setEduForm({ ...eduForm, description: e.target.value })
+                  }
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   rows="3"
                 />
@@ -718,7 +816,13 @@ export default function TeacherProfileEdit() {
                   <Button onClick={handleSaveEdu}>Lưu</Button>
                   <Button
                     onClick={() => {
-                      setEduForm({ id: null, degree: "", school: "", year: "", description: "" });
+                      setEduForm({
+                        id: null,
+                        degree: "",
+                        school: "",
+                        year: "",
+                        description: "",
+                      });
                       setShowEduForm(false);
                     }}
                   >
@@ -731,7 +835,9 @@ export default function TeacherProfileEdit() {
 
           <div className="mt-6 space-y-3">
             {educations.length === 0 ? (
-              <p className="text-gray-500 text-sm">Chưa có thông tin học vấn.</p>
+              <p className="text-gray-500 text-sm">
+                Chưa có thông tin học vấn.
+              </p>
             ) : (
               educations.map((edu) => (
                 <div
@@ -747,7 +853,9 @@ export default function TeacherProfileEdit() {
                       <p className="text-sm text-gray-500">Năm: {edu.year}</p>
                     )}
                     {edu.description && (
-                      <p className="text-sm text-gray-600 mt-2">{edu.description}</p>
+                      <p className="text-sm text-gray-600 mt-2">
+                        {edu.description}
+                      </p>
                     )}
                   </div>
                   <div className="flex gap-2">

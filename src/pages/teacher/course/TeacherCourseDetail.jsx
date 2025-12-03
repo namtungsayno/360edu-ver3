@@ -6,9 +6,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { Badge } from "../../components/ui/Badge.jsx";
+} from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { Badge } from "../../../components/ui/Badge.jsx";
 import {
   ArrowLeft,
   BookOpen,
@@ -24,8 +24,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-import { courseService } from "../../services/course/course.service.js";
-import { useToast } from "../../hooks/use-toast.js";
+import { courseService } from "../../../services/course/course.service.js";
+import { useToast } from "../../../hooks/use-toast.js";
 
 function getStatusConfig(status) {
   const normalized = String(status || "").toUpperCase();
