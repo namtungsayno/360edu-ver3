@@ -29,7 +29,10 @@ import {
   FileText,
   Layers,
   Plus,
+  Mail,
+  Send,
 } from "lucide-react";
+import { parentNotificationService } from "../../services/notification/parent-notification.service";
 import { scheduleService } from "../../services/schedule/schedule.service";
 import { courseService } from "../../services/course/course.service";
 // Personal course versions flow removed per new business logic
@@ -79,6 +82,9 @@ export default function ClassDetail() {
   const [hasChanges, setHasChanges] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [originalDetails, setOriginalDetails] = useState([]);
+
+  // Parent notification state
+  const [sendingNotification, setSendingNotification] = useState(false);
 
   // Lesson content states
   const [courseData, setCourseData] = useState(null); // Current displayed course (switches based on tab)
@@ -500,6 +506,44 @@ export default function ClassDetail() {
   const selectedChapter = courseData?.chapters?.find(
     (ch) => String(ch.id) === String(selectedChapterId)
   );
+
+  // Handler gửi thông báo cho phụ huynh
+  const handleSendParentNotification = async () => {
+    try {
+      setSendingNotification(true);
+
+      let result;
+      if (sessionIdParam) {
+        result = await parentNotificationService.sendBySession(
+          parseInt(sessionIdParam, 10)
+        );
+      } else {
+        result = await parentNotificationService.sendByClassAndDate(
+          classId,
+          sessionDateStr,
+          slotIdNum
+        );
+      }
+
+      if (result.success) {
+        success(
+          result.message ||
+            `Đã gửi thông báo thành công cho ${result.data || 0} phụ huynh!`
+        );
+      } else {
+        error(result.message || "Có lỗi xảy ra khi gửi thông báo");
+      }
+    } catch (err) {
+      console.error("Error sending parent notification:", err);
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Có lỗi xảy ra khi gửi thông báo";
+      error(errorMsg);
+    } finally {
+      setSendingNotification(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -1508,6 +1552,55 @@ export default function ClassDetail() {
             </div>
           </div>
         )}
+
+        {/* Send Parent Notification Button */}
+        <Card className="border border-gray-200 rounded-[14px] bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                  <Mail className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Gửi thông báo cho phụ huynh
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Gửi email thông báo về điểm danh và nội dung buổi học cho
+                    phụ huynh học viên
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleSendParentNotification}
+                disabled={sendingNotification || isFutureSession}
+                className={`h-12 px-6 rounded-xl shadow-lg transition-all duration-300 ${
+                  sendingNotification || isFutureSession
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-blue-200 hover:shadow-xl hover:scale-[1.02]"
+                } text-white font-medium`}
+              >
+                {sendingNotification ? (
+                  <>
+                    <div className="w-5 h-5 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Đang gửi...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5 mr-2" />
+                    Gửi thông báo
+                  </>
+                )}
+              </Button>
+            </div>
+            {isFutureSession && (
+              <p className="text-xs text-orange-600 mt-3 flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                Chưa đến ngày diễn ra buổi học, không thể gửi thông báo
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
