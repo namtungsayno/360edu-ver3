@@ -109,7 +109,7 @@ export default function TeacherAttendanceDetail() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="p-6">
         <Card className="rounded-[14px] p-6 text-center text-[#62748e]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           Đang tải thông tin chấm công...
@@ -120,10 +120,12 @@ export default function TeacherAttendanceDetail() {
 
   if (!summary) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="p-6">
         <Card className="rounded-[14px] p-6 text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-400" />
-          <p className="text-red-600 mb-4">Không tìm thấy thông tin giáo viên</p>
+          <p className="text-red-600 mb-4">
+            Không tìm thấy thông tin giáo viên
+          </p>
           <Button onClick={() => navigate("/home/admin/teacher-attendance")}>
             Quay lại danh sách
           </Button>
@@ -133,7 +135,7 @@ export default function TeacherAttendanceDetail() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button
@@ -202,7 +204,11 @@ export default function TeacherAttendanceDetail() {
             </div>
 
             {/* Overall Rate */}
-            <div className={`p-4 rounded-xl border ${getAttendanceColor(summary.attendanceRate || 0)}`}>
+            <div
+              className={`p-4 rounded-xl border ${getAttendanceColor(
+                summary.attendanceRate || 0
+              )}`}
+            >
               <p className="text-3xl font-bold text-center">
                 {(summary.attendanceRate || 0).toFixed(1)}%
               </p>
@@ -340,15 +346,20 @@ export default function TeacherAttendanceDetail() {
             <div className="divide-y divide-gray-100">
               {summary.classDetails.map((cls) => {
                 const statusBadge = getStatusBadge(cls.status);
-                const completionRate = cls.totalSlots > 0 
-                  ? (cls.completedSlots * 100 / cls.totalSlots) 
-                  : 0;
-                
+                const completionRate =
+                  cls.totalSlots > 0
+                    ? (cls.completedSlots * 100) / cls.totalSlots
+                    : 0;
+
                 return (
                   <div
                     key={cls.classId}
                     className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/home/admin/teacher-attendance/${teacherId}/class/${cls.classId}`)}
+                    onClick={() =>
+                      navigate(
+                        `/home/admin/teacher-attendance/${teacherId}/class/${cls.classId}`
+                      )
+                    }
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
@@ -360,7 +371,9 @@ export default function TeacherAttendanceDetail() {
                           <h3 className="font-semibold text-neutral-950 truncate">
                             {cls.className}
                           </h3>
-                          <Badge className={`text-[10px] ${statusBadge.className}`}>
+                          <Badge
+                            className={`text-[10px] ${statusBadge.className}`}
+                          >
                             {statusBadge.label}
                           </Badge>
                         </div>
@@ -374,13 +387,17 @@ export default function TeacherAttendanceDetail() {
                           <p className="text-lg font-semibold text-neutral-950">
                             {cls.totalSlots || 0}
                           </p>
-                          <p className="text-[11px] text-[#62748e]">Tổng slot</p>
+                          <p className="text-[11px] text-[#62748e]">
+                            Tổng slot
+                          </p>
                         </div>
                         <div className="text-center">
                           <p className="text-lg font-semibold text-green-600">
                             {cls.completedSlots || 0}
                           </p>
-                          <p className="text-[11px] text-[#62748e]">Hoàn thành</p>
+                          <p className="text-[11px] text-[#62748e]">
+                            Hoàn thành
+                          </p>
                         </div>
                         <div className="text-center">
                           <p className="text-lg font-semibold text-amber-600">
@@ -389,7 +406,11 @@ export default function TeacherAttendanceDetail() {
                           <p className="text-[11px] text-[#62748e]">Chờ</p>
                         </div>
                         <div className="text-center min-w-[60px]">
-                          <Badge className={`text-[11px] border ${getAttendanceColor(completionRate)}`}>
+                          <Badge
+                            className={`text-[11px] border ${getAttendanceColor(
+                              completionRate
+                            )}`}
+                          >
                             {completionRate.toFixed(0)}%
                           </Badge>
                         </div>

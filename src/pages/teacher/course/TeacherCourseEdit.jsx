@@ -36,7 +36,7 @@ import { courseService } from "../../../services/course/course.service.js";
 import { teacherApi } from "../../../services/teacher/teacher.api.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import { useAuth } from "../../../hooks/useAuth.js";
-import LessonMaterialUpload from "../../components/teacher/LessonMaterialUpload.jsx";
+import LessonMaterialUpload from "../../../components/teacher/LessonMaterialUpload.jsx";
 
 function createLocalId() {
   return Math.random().toString(36).slice(2, 9);

@@ -36,7 +36,7 @@ import {
 import { parentNotificationService } from "../../../services/notification/parent-notification.service";
 import { scheduleService } from "../../../services/schedule/schedule.service";
 import { courseService } from "../../../services/course/course.service";
-import SessionMaterialUpload from "../../components/teacher/SessionMaterialUpload.jsx";
+import SessionMaterialUpload from "../../../components/teacher/SessionMaterialUpload.jsx";
 // Personal course versions flow removed per new business logic
 import { useAuth } from "../../../hooks/useAuth";
 

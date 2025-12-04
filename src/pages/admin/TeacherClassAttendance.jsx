@@ -29,7 +29,16 @@ import {
 import { teacherAttendanceService } from "../../services/teacher-attendance/teacher-attendance.service";
 import { useToast } from "../../hooks/use-toast.js";
 
-const DAYS_OF_WEEK = ["", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"];
+const DAYS_OF_WEEK = [
+  "",
+  "Thứ 2",
+  "Thứ 3",
+  "Thứ 4",
+  "Thứ 5",
+  "Thứ 6",
+  "Thứ 7",
+  "Chủ nhật",
+];
 
 export default function TeacherClassAttendance() {
   const { teacherId, classId } = useParams();
@@ -76,11 +85,11 @@ export default function TeacherClassAttendance() {
         className: "bg-green-100 text-green-700 border-green-200",
       };
     }
-    
+
     const sessionDate = new Date(session.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (sessionDate < today) {
       return {
         icon: AlertCircle,
@@ -88,7 +97,7 @@ export default function TeacherClassAttendance() {
         className: "bg-amber-100 text-amber-700 border-amber-200",
       };
     }
-    
+
     if (sessionDate.getTime() === today.getTime()) {
       return {
         icon: Clock,
@@ -96,7 +105,7 @@ export default function TeacherClassAttendance() {
         className: "bg-blue-100 text-blue-700 border-blue-200",
       };
     }
-    
+
     return {
       icon: Calendar,
       label: "Sắp tới",
@@ -113,7 +122,7 @@ export default function TeacherClassAttendance() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="p-6">
         <Card className="rounded-[14px] p-6 text-center text-[#62748e]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           Đang tải thông tin chấm công...
@@ -124,11 +133,15 @@ export default function TeacherClassAttendance() {
 
   if (!data) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="p-6">
         <Card className="rounded-[14px] p-6 text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-400" />
           <p className="text-red-600 mb-4">Không tìm thấy thông tin lớp học</p>
-          <Button onClick={() => navigate(`/home/admin/teacher-attendance/${teacherId}`)}>
+          <Button
+            onClick={() =>
+              navigate(`/home/admin/teacher-attendance/${teacherId}`)
+            }
+          >
             Quay lại
           </Button>
         </Card>
@@ -137,13 +150,15 @@ export default function TeacherClassAttendance() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate(`/home/admin/teacher-attendance/${teacherId}`)}
+          onClick={() =>
+            navigate(`/home/admin/teacher-attendance/${teacherId}`)
+          }
           className="rounded-full"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -171,12 +186,16 @@ export default function TeacherClassAttendance() {
                 <h2 className="text-xl font-semibold text-neutral-950">
                   {data.className}
                 </h2>
-                <Badge className={
-                  data.classStatus === "ACTIVE" 
-                    ? "bg-green-100 text-green-700" 
-                    : "bg-gray-100 text-gray-600"
-                }>
-                  {data.classStatus === "ACTIVE" ? "Đang học" : data.classStatus}
+                <Badge
+                  className={
+                    data.classStatus === "ACTIVE"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-600"
+                  }
+                >
+                  {data.classStatus === "ACTIVE"
+                    ? "Đang học"
+                    : data.classStatus}
                 </Badge>
               </div>
               <p className="text-[13px] text-[#62748e]">
@@ -184,7 +203,11 @@ export default function TeacherClassAttendance() {
               </p>
             </div>
 
-            <div className={`p-4 rounded-xl border ${getAttendanceColor(data.completionRate || 0)}`}>
+            <div
+              className={`p-4 rounded-xl border ${getAttendanceColor(
+                data.completionRate || 0
+              )}`}
+            >
               <p className="text-3xl font-bold text-center">
                 {(data.completionRate || 0).toFixed(1)}%
               </p>
@@ -266,19 +289,30 @@ export default function TeacherClassAttendance() {
                 const isExpanded = expandedSessions[session.sessionId];
 
                 return (
-                  <div key={session.sessionId} className="border-b last:border-b-0">
+                  <div
+                    key={session.sessionId}
+                    className="border-b last:border-b-0"
+                  >
                     {/* Session Header */}
                     <div
                       className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                       onClick={() => toggleSession(session.sessionId)}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          session.isAttendanceSubmitted ? "bg-green-100" : "bg-gray-100"
-                        }`}>
-                          <span className={`text-sm font-bold ${
-                            session.isAttendanceSubmitted ? "text-green-600" : "text-gray-500"
-                          }`}>
+                        <div
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            session.isAttendanceSubmitted
+                              ? "bg-green-100"
+                              : "bg-gray-100"
+                          }`}
+                        >
+                          <span
+                            className={`text-sm font-bold ${
+                              session.isAttendanceSubmitted
+                                ? "text-green-600"
+                                : "text-gray-500"
+                            }`}
+                          >
                             {index + 1}
                           </span>
                         </div>
@@ -286,14 +320,19 @@ export default function TeacherClassAttendance() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-semibold text-neutral-950">
-                              {new Date(session.date).toLocaleDateString("vi-VN", {
-                                weekday: "long",
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                              })}
+                              {new Date(session.date).toLocaleDateString(
+                                "vi-VN",
+                                {
+                                  weekday: "long",
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                }
+                              )}
                             </span>
-                            <Badge className={`text-[10px] border ${statusBadge.className}`}>
+                            <Badge
+                              className={`text-[10px] border ${statusBadge.className}`}
+                            >
                               <StatusIcon className="w-3 h-3 mr-1" />
                               {statusBadge.label}
                             </Badge>
@@ -313,15 +352,23 @@ export default function TeacherClassAttendance() {
                         {session.isAttendanceSubmitted && (
                           <div className="flex items-center gap-4 flex-shrink-0">
                             <div className="text-center">
-                              <span className="text-green-600 font-semibold">{session.presentCount}</span>
-                              <p className="text-[10px] text-[#62748e]">Có mặt</p>
+                              <span className="text-green-600 font-semibold">
+                                {session.presentCount}
+                              </span>
+                              <p className="text-[10px] text-[#62748e]">
+                                Có mặt
+                              </p>
                             </div>
                             <div className="text-center">
-                              <span className="text-amber-600 font-semibold">{session.lateCount}</span>
+                              <span className="text-amber-600 font-semibold">
+                                {session.lateCount}
+                              </span>
                               <p className="text-[10px] text-[#62748e]">Trễ</p>
                             </div>
                             <div className="text-center">
-                              <span className="text-red-600 font-semibold">{session.absentCount}</span>
+                              <span className="text-red-600 font-semibold">
+                                {session.absentCount}
+                              </span>
                               <p className="text-[10px] text-[#62748e]">Vắng</p>
                             </div>
                           </div>
@@ -346,20 +393,33 @@ export default function TeacherClassAttendance() {
                             <div className="bg-white rounded-lg p-4 border">
                               <p className="text-sm font-medium text-neutral-950 mb-3 flex items-center gap-2">
                                 <Users className="w-4 h-4 text-blue-600" />
-                                Thống kê điểm danh ({session.totalStudents} học sinh)
+                                Thống kê điểm danh ({session.totalStudents} học
+                                sinh)
                               </p>
                               <div className="grid grid-cols-3 gap-4">
                                 <div className="text-center p-3 bg-green-50 rounded-lg">
-                                  <p className="text-2xl font-bold text-green-600">{session.presentCount}</p>
-                                  <p className="text-[11px] text-green-700">Có mặt</p>
+                                  <p className="text-2xl font-bold text-green-600">
+                                    {session.presentCount}
+                                  </p>
+                                  <p className="text-[11px] text-green-700">
+                                    Có mặt
+                                  </p>
                                 </div>
                                 <div className="text-center p-3 bg-amber-50 rounded-lg">
-                                  <p className="text-2xl font-bold text-amber-600">{session.lateCount}</p>
-                                  <p className="text-[11px] text-amber-700">Đi trễ</p>
+                                  <p className="text-2xl font-bold text-amber-600">
+                                    {session.lateCount}
+                                  </p>
+                                  <p className="text-[11px] text-amber-700">
+                                    Đi trễ
+                                  </p>
                                 </div>
                                 <div className="text-center p-3 bg-red-50 rounded-lg">
-                                  <p className="text-2xl font-bold text-red-600">{session.absentCount}</p>
-                                  <p className="text-[11px] text-red-700">Vắng mặt</p>
+                                  <p className="text-2xl font-bold text-red-600">
+                                    {session.absentCount}
+                                  </p>
+                                  <p className="text-[11px] text-red-700">
+                                    Vắng mặt
+                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -367,7 +427,9 @@ export default function TeacherClassAttendance() {
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                               <div className="flex items-center gap-2 text-amber-700">
                                 <AlertCircle className="w-5 h-5" />
-                                <span className="font-medium">Buổi học này chưa được điểm danh</span>
+                                <span className="font-medium">
+                                  Buổi học này chưa được điểm danh
+                                </span>
                               </div>
                             </div>
                           )}
@@ -379,9 +441,11 @@ export default function TeacherClassAttendance() {
                                 <FileText className="w-4 h-4 text-purple-600" />
                                 Nội dung buổi học
                               </p>
-                              <div 
+                              <div
                                 className="text-[13px] text-[#45556c] prose prose-sm max-w-none"
-                                dangerouslySetInnerHTML={{ __html: session.lessonContent }}
+                                dangerouslySetInnerHTML={{
+                                  __html: session.lessonContent,
+                                }}
                               />
                             </div>
                           )}
@@ -400,7 +464,9 @@ export default function TeacherClassAttendance() {
       <div className="flex justify-start">
         <Button
           variant="outline"
-          onClick={() => navigate(`/home/admin/teacher-attendance/${teacherId}`)}
+          onClick={() =>
+            navigate(`/home/admin/teacher-attendance/${teacherId}`)
+          }
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Quay lại

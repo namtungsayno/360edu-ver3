@@ -67,10 +67,13 @@ export default function TeacherAttendanceList() {
 
   // Stats
   const totalTeachers = teachers.length;
-  const teachersWithClasses = teachers.filter((t) => t.assignedClasses > 0).length;
+  const teachersWithClasses = teachers.filter(
+    (t) => t.assignedClasses > 0
+  ).length;
   const avgAttendanceRate =
     teachers.length > 0
-      ? teachers.reduce((sum, t) => sum + (t.attendanceRateThisMonth || 0), 0) / teachers.length
+      ? teachers.reduce((sum, t) => sum + (t.attendanceRateThisMonth || 0), 0) /
+        teachers.length
       : 0;
 
   function getAttendanceColor(rate) {
@@ -81,15 +84,30 @@ export default function TeacherAttendanceList() {
   }
 
   function getAttendanceBadge(rate) {
-    if (rate >= 90) return { label: "Xuất sắc", className: "bg-green-100 text-green-700 border-green-200" };
-    if (rate >= 70) return { label: "Tốt", className: "bg-amber-100 text-amber-700 border-amber-200" };
-    if (rate >= 50) return { label: "Trung bình", className: "bg-orange-100 text-orange-700 border-orange-200" };
-    return { label: "Cần cải thiện", className: "bg-red-100 text-red-700 border-red-200" };
+    if (rate >= 90)
+      return {
+        label: "Xuất sắc",
+        className: "bg-green-100 text-green-700 border-green-200",
+      };
+    if (rate >= 70)
+      return {
+        label: "Tốt",
+        className: "bg-amber-100 text-amber-700 border-amber-200",
+      };
+    if (rate >= 50)
+      return {
+        label: "Trung bình",
+        className: "bg-orange-100 text-orange-700 border-orange-200",
+      };
+    return {
+      label: "Cần cải thiện",
+      className: "bg-red-100 text-red-700 border-red-200",
+    };
   }
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="p-6">
         <Card className="rounded-[14px] p-6 text-center text-[#62748e]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           Đang tải danh sách giáo viên...
@@ -99,7 +117,7 @@ export default function TeacherAttendanceList() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-neutral-950">
@@ -120,7 +138,9 @@ export default function TeacherAttendanceList() {
               </div>
               <div>
                 <p className="text-[12px] text-[#62748e]">Tổng giáo viên</p>
-                <p className="text-2xl font-semibold text-neutral-950">{totalTeachers}</p>
+                <p className="text-2xl font-semibold text-neutral-950">
+                  {totalTeachers}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -134,7 +154,9 @@ export default function TeacherAttendanceList() {
               </div>
               <div>
                 <p className="text-[12px] text-[#62748e]">Đang có lớp</p>
-                <p className="text-2xl font-semibold text-neutral-950">{teachersWithClasses}</p>
+                <p className="text-2xl font-semibold text-neutral-950">
+                  {teachersWithClasses}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -143,7 +165,11 @@ export default function TeacherAttendanceList() {
         <Card className="rounded-[14px]">
           <CardContent className="p-5">
             <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${getAttendanceColor(avgAttendanceRate)}`}>
+              <div
+                className={`w-12 h-12 rounded-xl flex items-center justify-center ${getAttendanceColor(
+                  avgAttendanceRate
+                )}`}
+              >
                 <TrendingUp className="w-6 h-6" />
               </div>
               <div>
@@ -188,12 +214,18 @@ export default function TeacherAttendanceList() {
           ) : (
             <div className="divide-y divide-gray-100">
               {filteredTeachers.map((teacher) => {
-                const badge = getAttendanceBadge(teacher.attendanceRateThisMonth || 0);
+                const badge = getAttendanceBadge(
+                  teacher.attendanceRateThisMonth || 0
+                );
                 return (
                   <div
                     key={teacher.teacherId}
                     className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/home/admin/teacher-attendance/${teacher.teacherId}`)}
+                    onClick={() =>
+                      navigate(
+                        `/home/admin/teacher-attendance/${teacher.teacherId}`
+                      )
+                    }
                   >
                     <div className="flex items-center gap-4">
                       {/* Avatar */}
@@ -250,15 +282,22 @@ export default function TeacherAttendanceList() {
                         </div>
                         <div className="text-center">
                           <p className="text-lg font-semibold text-neutral-950">
-                            {teacher.completedSlotsThisMonth || 0}/{teacher.totalSlotsThisMonth || 0}
+                            {teacher.completedSlotsThisMonth || 0}/
+                            {teacher.totalSlotsThisMonth || 0}
                           </p>
-                          <p className="text-[11px] text-[#62748e]">Slot tháng</p>
+                          <p className="text-[11px] text-[#62748e]">
+                            Slot tháng
+                          </p>
                         </div>
                         <div className="text-center min-w-[80px]">
-                          <Badge className={`text-[11px] border ${badge.className}`}>
+                          <Badge
+                            className={`text-[11px] border ${badge.className}`}
+                          >
                             {(teacher.attendanceRateThisMonth || 0).toFixed(1)}%
                           </Badge>
-                          <p className="text-[11px] text-[#62748e] mt-1">{badge.label}</p>
+                          <p className="text-[11px] text-[#62748e] mt-1">
+                            {badge.label}
+                          </p>
                         </div>
                         <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>

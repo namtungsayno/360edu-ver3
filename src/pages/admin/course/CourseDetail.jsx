@@ -221,7 +221,7 @@ export default function AdminCourseDetail() {
   // ======================
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+    <div className="p-6 space-y-6">
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>

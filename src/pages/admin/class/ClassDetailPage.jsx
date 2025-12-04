@@ -3,6 +3,23 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { classService } from "../../../services/class/class.service";
 import { dayLabelVi, formatCurrency } from "../../../helper/formatters";
+import {
+  User,
+  MapPin,
+  Calendar,
+  Clock,
+  Users,
+  Banknote,
+  FileText,
+  Video,
+  Building,
+  BookOpen,
+  ExternalLink,
+  CheckCircle,
+  AlertCircle,
+  PlayCircle,
+  PauseCircle,
+} from "lucide-react";
 
 /**
  * Trang chi tiết lớp học (Admin)
@@ -64,14 +81,24 @@ export default function ClassDetailPage() {
     }
   }
 
-  function derivedRuntimeStatus(c) {
+  // Tính trạng thái thời gian của lớp học
+  function getTimeStatus(c) {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const sd = c?.startDate ? new Date(c.startDate) : null;
     const ed = c?.endDate ? new Date(c.endDate) : null;
-    if (sd && sd > today)
-      return { label: "Sắp mở", style: "bg-sky-100 text-sky-700" };
-    if (sd && ed && sd <= today && today <= ed)
-      return { label: "Đang diễn ra", style: "bg-violet-100 text-violet-700" };
+    if (sd) sd.setHours(0, 0, 0, 0);
+    if (ed) ed.setHours(0, 0, 0, 0);
+
+    if (sd && sd > today) {
+      return { label: "Chưa bắt đầu", color: "sky", icon: PauseCircle };
+    }
+    if (sd && ed && sd <= today && today <= ed) {
+      return { label: "Đang diễn ra", color: "emerald", icon: PlayCircle };
+    }
+    if (ed && ed < today) {
+      return { label: "Đã kết thúc", color: "gray", icon: CheckCircle };
+    }
     return null;
   }
 
@@ -96,15 +123,24 @@ export default function ClassDetailPage() {
     return v;
   })();
 
+  const totalPrice =
+    priceValue != null && totalSessionsValue != null
+      ? Number(priceValue) * Number(totalSessionsValue)
+      : null;
+
+  const timeStatus = cls ? getTimeStatus(cls) : null;
+
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
             Chi tiết lớp học
           </h1>
-          <p className="text-gray-500">Xem và quản lý thông tin lớp học</p>
+          <p className="text-gray-500 text-sm">
+            Xem và quản lý thông tin lớp học
+          </p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => navigate(-1)}>
@@ -148,209 +184,330 @@ export default function ClassDetailPage() {
 
       {cls && (
         <div className="space-y-6">
-          {/* Summary Card */}
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-1">
-                  {cls.name}
-                </h2>
-                <p className="text-sm text-gray-600">{cls.subjectName}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {cls.status && (
-                  <span
-                    className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                      cls.status === "DRAFT"
-                        ? "bg-amber-200 text-amber-900"
-                        : cls.status === "PUBLIC"
-                        ? "bg-emerald-200 text-emerald-900"
-                        : "bg-gray-200 text-gray-800"
-                    }`}
-                  >
-                    {cls.status === "DRAFT"
-                      ? "Draft"
-                      : cls.status === "PUBLIC"
-                      ? "Public"
-                      : "Archived"}
-                  </span>
-                )}
-                {(() => {
-                  const d = derivedRuntimeStatus(cls);
-                  return d ? (
-                    <span
-                      className={`px-3 py-1 text-xs rounded-full ${d.style}`}
-                    >
-                      {d.label}
-                    </span>
-                  ) : null;
-                })()}
-                <span
-                  className={`px-3 py-1 text-xs rounded-full ${
-                    cls.online
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-green-100 text-green-700"
-                  }`}
-                >
-                  {cls.online ? "Online" : "Offline"}
-                </span>
+          {/* ═══════════════════════════════════════════════════════════════════
+              CARD 1: THÔNG TIN CHÍNH & TRẠNG THÁI
+          ═══════════════════════════════════════════════════════════════════ */}
+          <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+            {/* Header với tên lớp */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white">{cls.name}</h2>
+                  <p className="text-blue-100 text-sm mt-1 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    {cls.subjectName || "Chưa gán môn học"}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="mt-4 grid md:grid-cols-2 gap-4 text-sm">
-              <div className="space-y-1">
-                <div className="text-xs text-gray-500 font-medium">
-                  Giáo viên
+
+            {/* Các badge trạng thái - với label rõ ràng */}
+            <div className="px-6 py-4 bg-gray-50 border-b">
+              <div className="flex flex-wrap gap-4">
+                {/* Trạng thái xuất bản */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">
+                    Trạng thái:
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full ${
+                      cls.status === "DRAFT"
+                        ? "bg-amber-100 text-amber-800 border border-amber-200"
+                        : cls.status === "PUBLIC"
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        : "bg-gray-100 text-gray-800 border border-gray-200"
+                    }`}
+                  >
+                    {cls.status === "DRAFT" ? (
+                      <>
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        Bản nháp
+                      </>
+                    ) : cls.status === "PUBLIC" ? (
+                      <>
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Đã xuất bản
+                      </>
+                    ) : (
+                      "Đã lưu trữ"
+                    )}
+                  </span>
                 </div>
-                <div className="font-semibold text-gray-800">
-                  {cls.teacherFullName || "-"}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs text-gray-500 font-medium">
-                  Loại lớp
-                </div>
-                <div className="font-semibold text-gray-800">
-                  {cls.online ? "Học Online" : "Học tại trung tâm"}
-                </div>
-              </div>
-              {cls.online ? (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Link học
-                  </div>
-                  {cls.meetingLink ? (
-                    <a
-                      href={cls.meetingLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center text-blue-600 hover:underline break-all"
+
+                {/* Trạng thái thời gian */}
+                {timeStatus && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 font-medium">
+                      Tiến độ:
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-${timeStatus.color}-100 text-${timeStatus.color}-800 border border-${timeStatus.color}-200`}
                     >
-                      {cls.meetingLink}
-                    </a>
-                  ) : (
-                    <div className="text-gray-600">Chưa có link</div>
-                  )}
+                      <timeStatus.icon className="w-3.5 h-3.5" />
+                      {timeStatus.label}
+                    </span>
+                  </div>
+                )}
+
+                {/* Hình thức học */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">
+                    Hình thức:
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full ${
+                      cls.online
+                        ? "bg-purple-100 text-purple-800 border border-purple-200"
+                        : "bg-teal-100 text-teal-800 border border-teal-200"
+                    }`}
+                  >
+                    {cls.online ? (
+                      <>
+                        <Video className="w-3.5 h-3.5" />
+                        Học Online
+                      </>
+                    ) : (
+                      <>
+                        <Building className="w-3.5 h-3.5" />
+                        Học Offline
+                      </>
+                    )}
+                  </span>
                 </div>
-              ) : (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Phòng học
+              </div>
+            </div>
+
+            {/* Thông tin chi tiết - Grid layout */}
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Giáo viên */}
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <User className="w-5 h-5 text-blue-600" />
                   </div>
-                  <div className="font-semibold text-gray-800">
-                    {cls.roomName || "-"}
-                  </div>
-                </div>
-              )}
-              {(cls.startDate || cls.endDate) && (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Thời gian
-                  </div>
-                  <div className="font-semibold text-gray-800">
-                    {cls.startDate && cls.endDate
-                      ? `${cls.startDate} → ${cls.endDate}`
-                      : cls.startDate || cls.endDate}
-                  </div>
-                </div>
-              )}
-              {typeof cls.maxStudents === "number" && (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Sĩ số tối đa
-                  </div>
-                  <div className="font-semibold text-gray-800">
-                    {cls.maxStudents} học sinh
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Giáo viên phụ trách
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                      {cls.teacherFullName || "Chưa phân công"}
+                    </p>
                   </div>
                 </div>
-              )}
-              {cls.totalSessions && (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Tổng số buổi
+
+                {/* Phòng học / Link học */}
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      cls.online ? "bg-purple-100" : "bg-teal-100"
+                    }`}
+                  >
+                    {cls.online ? (
+                      <Video className="w-5 h-5 text-purple-600" />
+                    ) : (
+                      <MapPin className="w-5 h-5 text-teal-600" />
+                    )}
                   </div>
-                  <div className="font-semibold text-gray-800">
-                    {cls.totalSessions} buổi
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-gray-500 font-medium">
+                      {cls.online ? "Link học Online" : "Phòng học"}
+                    </p>
+                    {cls.online ? (
+                      cls.meetingLink ? (
+                        <a
+                          href={cls.meetingLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm font-semibold text-blue-600 hover:underline flex items-center gap-1 mt-0.5 truncate"
+                        >
+                          <span className="truncate">{cls.meetingLink}</span>
+                          <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                        </a>
+                      ) : (
+                        <p className="text-sm text-gray-500 mt-0.5">
+                          Chưa có link
+                        </p>
+                      )
+                    ) : (
+                      <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                        {cls.roomName || "Chưa xếp phòng"}
+                      </p>
+                    )}
                   </div>
                 </div>
-              )}
-              {/* Giá tiền mỗi buổi học (luôn hiển thị, fallback '-') */}
-              <div className="space-y-1 md:col-span-2">
-                <div className="text-xs text-gray-500 font-medium">
-                  Giá tiền mỗi buổi học
+
+                {/* Thời gian học */}
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Thời gian khóa học
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                      {cls.startDate && cls.endDate
+                        ? `${cls.startDate} → ${cls.endDate}`
+                        : cls.startDate || cls.endDate || "Chưa xác định"}
+                    </p>
+                  </div>
                 </div>
-                <div className="font-semibold text-gray-800">
-                  {priceValue !== undefined &&
-                  priceValue !== null &&
-                  priceValue !== "" &&
-                  !Number.isNaN(Number(priceValue))
-                    ? formatCurrency(priceValue)
-                    : "-"}
+
+                {/* Sĩ số */}
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                    <Users className="w-5 h-5 text-pink-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Sĩ số tối đa
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                      {cls.maxStudents != null
+                        ? `${cls.currentStudents || 0}/${
+                            cls.maxStudents
+                          } học sinh`
+                        : "Chưa giới hạn"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tổng số buổi */}
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Tổng số buổi học
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                      {totalSessionsValue != null
+                        ? `${totalSessionsValue} buổi`
+                        : "Chưa xác định"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Giá mỗi buổi */}
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <Banknote className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Học phí / buổi
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                      {priceValue != null
+                        ? formatCurrency(priceValue)
+                        : "Chưa xác định"}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* Tổng giá tiền của lớp học (luôn hiển thị, fallback '-') */}
-              <div className="space-y-1 md:col-span-2">
-                <div className="text-xs text-gray-500 font-medium">
-                  Tổng giá tiền của lớp học
+              {/* Tổng học phí - Highlight */}
+              {totalPrice != null && (
+                <div className="mt-6 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                        <Banknote className="w-6 h-6 text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-emerald-700 font-medium">
+                          Tổng học phí cả khóa
+                        </p>
+                        <p className="text-xs text-emerald-600">
+                          {totalSessionsValue} buổi ×{" "}
+                          {formatCurrency(priceValue)}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-2xl font-bold text-emerald-700">
+                      {formatCurrency(totalPrice)}
+                    </p>
+                  </div>
                 </div>
-                <div className="font-semibold text-gray-800">
-                  {priceValue !== undefined &&
-                  priceValue !== null &&
-                  priceValue !== "" &&
-                  !Number.isNaN(Number(priceValue)) &&
-                  totalSessionsValue
-                    ? formatCurrency(
-                        Number(priceValue) * Number(totalSessionsValue)
-                      )
-                    : "-"}
-                </div>
-              </div>
+              )}
+
+              {/* Mô tả */}
               {cls.description && (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">Mô tả</div>
-                  <div className="text-gray-700 whitespace-pre-line">
-                    {cls.description}
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-gray-500" />
+                    <p className="text-xs text-gray-500 font-medium">Mô tả</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-lg border">
+                    <p className="text-sm text-gray-700 whitespace-pre-line">
+                      {cls.description}
+                    </p>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Schedule */}
+          {/* ═══════════════════════════════════════════════════════════════════
+              CARD 2: LỊCH HỌC
+          ═══════════════════════════════════════════════════════════════════ */}
           <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Lịch học
-            </h3>
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="w-5 h-5 text-gray-700" />
+              <h3 className="text-base font-semibold text-gray-900">
+                Lịch học hàng tuần
+              </h3>
+            </div>
             {Array.isArray(cls.schedule) && cls.schedule.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {cls.schedule.map((s, idx) => (
                   <div
                     key={idx}
-                    className="px-3 py-1.5 rounded-lg bg-slate-50 border text-xs text-gray-700"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100"
                   >
-                    {dayLabelVi(s.dayOfWeek)} • {s.startTime?.slice(0, 5)}-
-                    {s.endTime?.slice(0, 5)}
+                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {dayLabelVi(s.dayOfWeek)}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {s.startTime?.slice(0, 5)} - {s.endTime?.slice(0, 5)}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-gray-500">Chưa có lịch học.</div>
+              <div className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 text-center">
+                Chưa thiết lập lịch học
+              </div>
             )}
           </div>
 
-          {/* Future: Enrollment / Students list could be added here */}
+          {/* ═══════════════════════════════════════════════════════════════════
+              CARD 3: HÀNH ĐỘNG
+          ═══════════════════════════════════════════════════════════════════ */}
           <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">
-              Hành động
+            <h3 className="text-base font-semibold text-gray-900 mb-2">
+              Hành động quản lý
             </h3>
-            <p className="text-xs text-gray-500">
-              Bạn có thể Publish lớp để học sinh nhìn thấy hoặc chuyển về Draft
-              để chỉnh sửa thêm.
+            <p className="text-sm text-gray-500 mb-4">
+              {cls.status === "DRAFT"
+                ? "Lớp học đang ở trạng thái Bản nháp. Xuất bản để học sinh có thể nhìn thấy và đăng ký."
+                : "Lớp học đã được xuất bản. Bạn có thể chuyển về Bản nháp để chỉnh sửa thêm."}
             </p>
-            <div className="mt-3 flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {cls.status === "DRAFT" && (
-                <Button onClick={handlePublish} disabled={updatingStatus}>
-                  {updatingStatus ? "Đang cập nhật..." : "Publish lớp"}
+                <Button
+                  onClick={handlePublish}
+                  disabled={updatingStatus}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  {updatingStatus ? "Đang xử lý..." : "Xuất bản lớp học"}
                 </Button>
               )}
               {cls.status === "PUBLIC" && (
@@ -359,7 +516,8 @@ export default function ClassDetailPage() {
                   onClick={handleRevertDraft}
                   disabled={updatingStatus}
                 >
-                  {updatingStatus ? "Đang cập nhật..." : "Chuyển về Draft"}
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  {updatingStatus ? "Đang xử lý..." : "Chuyển về Bản nháp"}
                 </Button>
               )}
               <Button
