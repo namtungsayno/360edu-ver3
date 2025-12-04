@@ -347,6 +347,8 @@ export default function StudentSchedule() {
 
 // Student class card component - giống admin nhưng đơn giản hơn
 function StudentClassCard({ classData }) {
+  const [showDetail, setShowDetail] = useState(false);
+  
   const STATUS_LABELS = { PRESENT: "Có mặt", ABSENT: "Vắng", LATE: "Đi trễ", UNMARKED: "Chưa điểm danh" };
   const STATUS_STYLES = {
     PRESENT: "from-green-500 to-green-600 border-green-400 text-white",
@@ -356,37 +358,209 @@ function StudentClassCard({ classData }) {
   };
   const st = classData.attendanceStatus || "UNMARKED";
   const style = STATUS_STYLES[st] || STATUS_STYLES.UNMARKED;
+  
+  // Có nội dung bài học hay không
+  const hasContent = classData.lessonContent || 
+    (classData.linkedChapters && classData.linkedChapters.length > 0) ||
+    (classData.linkedLessons && classData.linkedLessons.length > 0);
+  
   return (
-    <div className={`relative bg-gradient-to-br ${style} rounded-md p-2 border shadow-sm transition-all cursor-pointer`}>      
-      <div className="absolute top-1 right-1 text-[10px] px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm font-semibold">
-        {STATUS_LABELS[st]}
-      </div>
-      <div className="text-xs font-bold mb-1 line-clamp-2">
-        {classData.className}
+    <>
+      <div 
+        className={`relative bg-gradient-to-br ${style} rounded-md p-2 border shadow-sm transition-all cursor-pointer hover:shadow-md`}
+        onClick={() => setShowDetail(true)}
+      >      
+        <div className="absolute top-1 right-1 text-[10px] px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm font-semibold">
+          {STATUS_LABELS[st]}
+        </div>
+        <div className="text-xs font-bold mb-1 line-clamp-2">
+          {classData.className}
+        </div>
+        
+        <div className="space-y-1">
+          <div className="flex items-center gap-1 text-xs opacity-90">
+            <BookOpen className="w-3 h-3" />
+            <span className="truncate">{classData.subjectName}</span>
+          </div>
+          
+          <div className="flex items-center gap-1 text-xs opacity-90">
+            <User className="w-3 h-3" />
+            <span className="truncate">{classData.teacherName}</span>
+          </div>
+          
+          <div className="flex items-center gap-1 text-xs opacity-90">
+            <Clock className="w-3 h-3" />
+            <span>{classData.timeDisplay}</span>
+          </div>
+          
+          {classData.roomName && (
+            <div className="flex items-center gap-1 text-xs opacity-90">
+              <MapPin className="w-3 h-3" />
+              <span className="truncate">{classData.roomName}</span>
+            </div>
+          )}
+          
+          {hasContent && (
+            <div className="flex items-center gap-1 text-xs opacity-90 mt-1 pt-1 border-t border-white/20">
+              <BookOpen className="w-3 h-3" />
+              <span className="font-medium">Có nội dung bài học</span>
+            </div>
+          )}
+        </div>
       </div>
       
-      <div className="space-y-1">
-        <div className="flex items-center gap-1 text-xs opacity-90">
-          <BookOpen className="w-3 h-3" />
-          <span className="truncate">{classData.subjectName}</span>
-        </div>
-        
-        <div className="flex items-center gap-1 text-xs opacity-90">
-          <User className="w-3 h-3" />
-          <span className="truncate">{classData.teacherName}</span>
-        </div>
-        
-        <div className="flex items-center gap-1 text-xs opacity-90">
-          <Clock className="w-3 h-3" />
-          <span>{classData.timeDisplay}</span>
-        </div>
-        
-        {classData.roomName && (
-          <div className="flex items-center gap-1 text-xs opacity-90">
-            <MapPin className="w-3 h-3" />
-            <span className="truncate">{classData.roomName}</span>
+      {/* Modal hiển thị chi tiết nội dung buổi học */}
+      {showDetail && (
+        <SessionDetailModal 
+          classData={classData} 
+          onClose={() => setShowDetail(false)} 
+        />
+      )}
+    </>
+  );
+}
+
+// Modal hiển thị chi tiết buổi học với nội dung bài học
+function SessionDetailModal({ classData, onClose }) {
+  const STATUS_LABELS = { PRESENT: "Có mặt", ABSENT: "Vắng", LATE: "Đi trễ", UNMARKED: "Chưa điểm danh" };
+  const STATUS_STYLES = {
+    PRESENT: "bg-green-100 text-green-800 border-green-300",
+    ABSENT: "bg-red-100 text-red-800 border-red-300",
+    LATE: "bg-amber-100 text-amber-800 border-amber-300",
+    UNMARKED: "bg-gray-100 text-gray-800 border-gray-300"
+  };
+  const st = classData.attendanceStatus || "UNMARKED";
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div 
+        className="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-lg">{classData.className}</h3>
+            <button 
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition"
+            >
+              ✕
+            </button>
           </div>
-        )}
+          <p className="text-sm opacity-90 mt-1">{classData.subjectName}</p>
+        </div>
+        
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          {/* Thông tin cơ bản */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Calendar className="w-4 h-4 text-blue-600" />
+              <span className="font-medium">{new Date(classData.date).toLocaleDateString('vi-VN')}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="w-4 h-4 text-blue-600" />
+              <span className="font-medium">{classData.timeDisplay}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <User className="w-4 h-4 text-blue-600" />
+              <span>{classData.teacherName}</span>
+            </div>
+            {classData.roomName && (
+              <div className="flex items-center gap-2 text-sm">
+                <MapPin className="w-4 h-4 text-blue-600" />
+                <span>{classData.roomName}</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Trạng thái điểm danh */}
+          <div className={`px-3 py-2 rounded-lg border ${STATUS_STYLES[st]}`}>
+            <span className="font-semibold">Điểm danh: {STATUS_LABELS[st]}</span>
+          </div>
+          
+          {/* Nội dung bài học */}
+          <div className="border-t pt-4">
+            <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-blue-600" />
+              Nội dung buổi học
+            </h4>
+            
+            {/* Danh sách chapters được gán */}
+            {classData.linkedChapters && classData.linkedChapters.length > 0 && (
+              <div className="mb-3">
+                <p className="text-sm font-medium text-gray-700 mb-2">Chương:</p>
+                <div className="space-y-2">
+                  {classData.linkedChapters.map((chapter) => (
+                    <div key={chapter.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="font-semibold text-blue-900">{chapter.title}</div>
+                      {chapter.description && (
+                        <p className="text-sm text-blue-700 mt-1">{chapter.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Danh sách lessons được gán */}
+            {classData.linkedLessons && classData.linkedLessons.length > 0 && (
+              <div className="mb-3">
+                <p className="text-sm font-medium text-gray-700 mb-2">Bài học:</p>
+                <div className="space-y-2">
+                  {classData.linkedLessons.map((lesson) => (
+                    <div key={lesson.id} className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                      <div className="text-xs text-purple-600 mb-1">
+                        {lesson.chapterTitle && `Chương: ${lesson.chapterTitle}`}
+                      </div>
+                      <div className="font-semibold text-purple-900">{lesson.title}</div>
+                      {lesson.description && (
+                        <p className="text-sm text-purple-700 mt-1">{lesson.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Nội dung ghi chú từ giáo viên */}
+            {classData.lessonContent && (
+              <div className="mb-3">
+                <p className="text-sm font-medium text-gray-700 mb-2">Ghi chú từ giáo viên:</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div 
+                    className="text-sm text-gray-700 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: classData.lessonContent }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Nếu không có nội dung */}
+            {!classData.lessonContent && 
+             (!classData.linkedChapters || classData.linkedChapters.length === 0) &&
+             (!classData.linkedLessons || classData.linkedLessons.length === 0) && (
+              <div className="text-center py-6 text-gray-400">
+                <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Chưa có nội dung bài học cho buổi này</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Xem khóa học đầy đủ */}
+          {classData.courseId && (
+            <div className="border-t pt-4">
+              <a 
+                href={`/home/courses/${classData.courseId}`}
+                className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition"
+              >
+                <BookOpen className="w-4 h-4" />
+                Xem toàn bộ khóa học
+              </a>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -61,12 +61,17 @@ export const attendanceService = {
       }
     };
 
-    return (data.students || []).map((it) => ({
+    const students = (data.students || []).map((it) => ({
       id: it.studentId,
       student: it.studentName,
       status: mapStatus(it.status),
       note: it.note || "",
     }));
+
+    return {
+      sessionId: data.sessionId,
+      students,
+    };
   },
 
   async getByClassForAdmin(classId, date, slotId) {

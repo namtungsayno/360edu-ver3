@@ -109,6 +109,7 @@ const NotificationBell = ({ variant = "default" }) => {
   };
 
   const handleNotificationClick = (notification) => {
+    // Chỉ đánh dấu đã đọc, không navigate đến link
     if (!notification.isRead) {
       NotificationService.markAsRead(notification.id);
       setNotifications((prev) =>
@@ -116,11 +117,7 @@ const NotificationBell = ({ variant = "default" }) => {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
-
-    if (notification.link) {
-      setIsOpen(false);
-      navigate(notification.link);
-    }
+    // Không navigate - chỉ hiển thị thông báo trong dropdown
   };
 
   const handleDelete = async (id, e) => {
@@ -246,12 +243,6 @@ const NotificationBell = ({ variant = "default" }) => {
                           <span className="text-xs text-gray-400">
                             {NotificationService.formatTime(notification.createdAt)}
                           </span>
-                          {notification.link && (
-                            <span className="flex items-center gap-1 text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                              Xem chi tiết
-                              <ArrowRight className="h-3 w-3" />
-                            </span>
-                          )}
                         </div>
                       </div>
 

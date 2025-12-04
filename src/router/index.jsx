@@ -90,6 +90,9 @@ import AdminCourseList from "../pages/admin/course/CourseList.jsx";
 import AdminCourseDetail from "../pages/admin/course/CourseDetail.jsx";
 import AdminCourseCreate from "../pages/admin/course/AdminCourseCreate.jsx";
 import PaymentHistory from "../pages/admin/payment/PaymentHistory.jsx";
+import TeacherAttendanceList from "../pages/admin/TeacherAttendanceList.jsx";
+import TeacherAttendanceDetail from "../pages/admin/TeacherAttendanceDetail.jsx";
+import TeacherClassAttendance from "../pages/admin/TeacherClassAttendance.jsx";
 
 // Teacher pages
 import TeacherManagement from "../pages/teacher/profile/TeacherManagement.jsx";
@@ -209,6 +212,10 @@ function AppRouter() {
             <Route path="courses/:id" element={<AdminCourseDetail />} />
             {/* Payment Management - Quản lý thanh toán */}
             <Route path="payment" element={<PaymentHistory />} />
+            {/* Teacher Attendance - Chấm công giáo viên */}
+            <Route path="teacher-attendance" element={<TeacherAttendanceList />} />
+            <Route path="teacher-attendance/:teacherId" element={<TeacherAttendanceDetail />} />
+            <Route path="teacher-attendance/:teacherId/class/:classId" element={<TeacherClassAttendance />} />
           </Route>
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}

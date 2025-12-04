@@ -225,7 +225,7 @@ export default function StudentClassDetail() {
                       <Button
                         size="sm"
                         className="bg-blue-600 hover:bg-blue-700"
-                        onClick={() => navigate(`/home/courses/${data.courseId}`)}
+                        onClick={() => navigate(`/home/courses/${data.courseId}?classId=${data.classId}`)}
                       >
                         Xem khóa học
                       </Button>
