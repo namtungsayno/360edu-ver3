@@ -27,12 +27,16 @@ import {
   Layers,
   FileText,
   Save,
+  Paperclip,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 import { courseService } from "../../services/course/course.service.js";
 import { teacherApi } from "../../services/teacher/teacher.api.js";
 import { useToast } from "../../hooks/use-toast.js";
 import { useAuth } from "../../hooks/useAuth.js";
+import LessonMaterialUpload from "../../components/teacher/LessonMaterialUpload.jsx";
 
 function createLocalId() {
   return Math.random().toString(36).slice(2, 9);
@@ -60,6 +64,7 @@ export default function TeacherCourseEdit() {
   // ====== CHAPTERS & LESSONS (LOCAL ONLY) ======
   const [chapters, setChapters] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [expandedLessonMaterials, setExpandedLessonMaterials] = useState({});
   // Không còn ráp title ở FE; hiển thị trực tiếp từ DB
 
   // Derived counts
@@ -261,6 +266,14 @@ export default function TeacherCourseEdit() {
     );
   };
 
+  // Toggle lesson materials panel
+  const toggleLessonMaterials = (lessonId) => {
+    setExpandedLessonMaterials((prev) => ({
+      ...prev,
+      [lessonId]: !prev[lessonId],
+    }));
+  };
+
   // ====== SUBMIT ======
 
   const validateForm = () => {
@@ -315,39 +328,79 @@ export default function TeacherCourseEdit() {
         description: nextDescription,
       });
 
+      // Collect existing chapter/lesson IDs that we want to KEEP
+      const keepChapterIds = new Set();
+      const keepLessonIds = new Set();
+      for (const ch of chapters) {
+        if (ch.id) keepChapterIds.add(ch.id);
+        for (const ls of ch.lessons) {
+          if (ls.id) keepLessonIds.add(ls.id);
+        }
+      }
+
+      // Delete lessons and chapters that are NOT in our current list
       if (latest?.chapters && latest.chapters.length > 0) {
         for (const ch of latest.chapters) {
           if (ch.lessons && ch.lessons.length > 0) {
             for (const ls of ch.lessons) {
-              try {
-                await courseService.removeLesson(ls.id);
-              } catch (lessonErr) {
-                console.warn(`Failed to remove lesson ${ls.id}:`, lessonErr);
+              if (!keepLessonIds.has(ls.id)) {
+                try {
+                  await courseService.removeLesson(ls.id);
+                } catch (lessonErr) {
+                  console.warn(`Failed to remove lesson ${ls.id}:`, lessonErr);
+                }
               }
             }
           }
-          try {
-            await courseService.removeChapter(ch.id);
-          } catch (chapterErr) {
-            console.warn(`Failed to remove chapter ${ch.id}:`, chapterErr);
+          if (!keepChapterIds.has(ch.id)) {
+            try {
+              await courseService.removeChapter(ch.id);
+            } catch (chapterErr) {
+              console.warn(`Failed to remove chapter ${ch.id}:`, chapterErr);
+            }
           }
         }
       }
 
+      // Update existing chapters/lessons OR create new ones
       for (const ch of chapters) {
-        const createdChapter = await courseService.addChapter(id, {
-          title: ch.title.trim(),
-          description: ch.description.trim(),
-          orderIndex: ch.orderIndex,
-        });
-        const chapterId = createdChapter?.id;
-        if (!chapterId) continue;
-        for (const ls of ch.lessons) {
-          await courseService.addLesson(chapterId, {
-            title: ls.title.trim(),
-            description: ls.description.trim(),
-            orderIndex: ls.orderIndex,
+        let chapterId = ch.id;
+        
+        if (chapterId) {
+          // Update existing chapter
+          await courseService.updateChapter(chapterId, {
+            title: ch.title.trim(),
+            description: ch.description.trim(),
+            orderIndex: ch.orderIndex,
           });
+        } else {
+          // Create new chapter
+          const createdChapter = await courseService.addChapter(id, {
+            title: ch.title.trim(),
+            description: ch.description.trim(),
+            orderIndex: ch.orderIndex,
+          });
+          chapterId = createdChapter?.id;
+        }
+        
+        if (!chapterId) continue;
+        
+        for (const ls of ch.lessons) {
+          if (ls.id) {
+            // Update existing lesson
+            await courseService.updateLesson(ls.id, {
+              title: ls.title.trim(),
+              description: ls.description.trim(),
+              orderIndex: ls.orderIndex,
+            });
+          } else {
+            // Create new lesson
+            await courseService.addLesson(chapterId, {
+              title: ls.title.trim(),
+              description: ls.description.trim(),
+              orderIndex: ls.orderIndex,
+            });
+          }
         }
       }
 
@@ -603,56 +656,94 @@ export default function TeacherCourseEdit() {
                           </label>
                         </div>
 
-                        {chapter.lessons.map((lesson, lIdx) => (
-                          <div
-                            key={lesson._id}
-                            className="flex items-start gap-2 mb-2 p-3 bg-gray-50 rounded-lg"
-                          >
-                            <div className="w-6 h-6 rounded-md bg-purple-100 flex items-center justify-center flex-shrink-0 mt-1">
-                              <span className="text-[11px] font-medium text-purple-600">
-                                {lIdx + 1}
-                              </span>
-                            </div>
-                            <div className="flex-1 space-y-2">
-                              <Input
-                                placeholder="Tên bài học"
-                                value={lesson.title}
-                                onChange={(e) =>
-                                  handleChangeLessonField(
-                                    chapter._id,
-                                    lesson._id,
-                                    "title",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                              <Textarea
-                                rows={2}
-                                placeholder="Giới thiệu ngắn gọn về bài học..."
-                                value={lesson.description}
-                                onChange={(e) =>
-                                  handleChangeLessonField(
-                                    chapter._id,
-                                    lesson._id,
-                                    "description",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </div>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() =>
-                                handleRemoveLesson(chapter._id, lesson._id)
-                              }
-                              className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                        {chapter.lessons.map((lesson, lIdx) => {
+                          const isExpanded = expandedLessonMaterials[lesson.id];
+                          const hasBackendId = !!lesson.id; // Chỉ có id nếu đã lưu vào DB
+                          
+                          return (
+                            <div
+                              key={lesson._id}
+                              className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
                             >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
+                              <div className="flex items-start gap-2">
+                                <div className="w-6 h-6 rounded-md bg-purple-100 flex items-center justify-center flex-shrink-0 mt-1">
+                                  <span className="text-[11px] font-medium text-purple-600">
+                                    {lIdx + 1}
+                                  </span>
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                  <Input
+                                    placeholder="Tên bài học"
+                                    value={lesson.title}
+                                    onChange={(e) =>
+                                      handleChangeLessonField(
+                                        chapter._id,
+                                        lesson._id,
+                                        "title",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                  <Textarea
+                                    rows={2}
+                                    placeholder="Giới thiệu ngắn gọn về bài học..."
+                                    value={lesson.description}
+                                    onChange={(e) =>
+                                      handleChangeLessonField(
+                                        chapter._id,
+                                        lesson._id,
+                                        "description",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                  
+                                  {/* Button to toggle materials */}
+                                  {hasBackendId && (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleLessonMaterials(lesson.id)}
+                                      className="flex items-center gap-2 text-[12px] text-blue-600 hover:text-blue-700 font-medium mt-2"
+                                    >
+                                      <Paperclip className="w-3.5 h-3.5" />
+                                      <span>Quản lý tài liệu bài học</span>
+                                      {isExpanded ? (
+                                        <ChevronDown className="w-3.5 h-3.5" />
+                                      ) : (
+                                        <ChevronRight className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                  )}
+                                  
+                                  {!hasBackendId && (
+                                    <p className="text-[11px] text-amber-600 mt-2 flex items-center gap-1">
+                                      <Info className="w-3.5 h-3.5" />
+                                      Lưu khóa học trước để thêm tài liệu cho bài học này
+                                    </p>
+                                  )}
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    handleRemoveLesson(chapter._id, lesson._id)
+                                  }
+                                  className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                              
+                              {/* Lesson Materials Upload Panel */}
+                              {hasBackendId && isExpanded && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <LessonMaterialUpload lessonId={lesson.id} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
 
                         <Button
                           type="button"

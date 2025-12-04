@@ -28,10 +28,12 @@ import {
   User as UserIcon,
   FileText,
   Layers,
+  Paperclip,
   Plus,
 } from "lucide-react";
 import { scheduleService } from "../../services/schedule/schedule.service";
 import { courseService } from "../../services/course/course.service";
+import SessionMaterialUpload from "../../components/teacher/SessionMaterialUpload.jsx";
 // Personal course versions flow removed per new business logic
 import { useAuth } from "../../hooks/useAuth";
 
@@ -79,6 +81,7 @@ export default function ClassDetail() {
   const [hasChanges, setHasChanges] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [originalDetails, setOriginalDetails] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null); // Session ID từ attendance response
 
   // Lesson content states
   const [courseData, setCourseData] = useState(null); // Current displayed course (switches based on tab)
@@ -119,11 +122,22 @@ export default function ClassDetail() {
               sessionDateStr,
               slotIdNum
             );
-        setAttendanceDetails(attendance);
-        setOriginalDetails(attendance);
+        
+        // Handle response format - getByClass returns { sessionId, students }, getBySession returns array
+        const attendanceList = Array.isArray(attendance) ? attendance : (attendance.students || []);
+        const fetchedSessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : attendance.sessionId;
+        
+        console.log("🎯 ClassDetail: slotId=", slotIdNum, "fetchedSessionId=", fetchedSessionId);
+        
+        setAttendanceDetails(attendanceList);
+        setOriginalDetails(attendanceList);
+        if (fetchedSessionId) {
+          setCurrentSessionId(fetchedSessionId);
+        }
+        
         // Auto-enter edit mode if nothing marked yet
         if (
-          attendance.every((a) => !a.status || a.status === "-") &&
+          attendanceList.every((a) => !a.status || a.status === "-") &&
           !isFutureSession
         ) {
           setEditMode(true);
@@ -140,7 +154,7 @@ export default function ClassDetail() {
           console.log("📚 Class Info Loaded:", classInfo);
           setClassDetail({
             ...classInfo,
-            studentCount: attendance.length,
+            studentCount: attendanceList.length,
           });
 
           // Capture classCourseId from schedule.originalClass if provided
@@ -412,8 +426,16 @@ export default function ClassDetail() {
       const refreshed = sessionIdParam
         ? await attendanceService.getBySession(parseInt(sessionIdParam, 10))
         : await attendanceService.getByClass(classId, date, slotIdNum);
-      setAttendanceDetails(refreshed);
-      setOriginalDetails(refreshed);
+      
+      // Handle response format - getByClass returns { sessionId, students }, getBySession returns array
+      const refreshedList = Array.isArray(refreshed) ? refreshed : (refreshed.students || []);
+      const refreshedSessionId = sessionIdParam ? parseInt(sessionIdParam, 10) : refreshed.sessionId;
+      
+      setAttendanceDetails(refreshedList);
+      setOriginalDetails(refreshedList);
+      if (refreshedSessionId) {
+        setCurrentSessionId(refreshedSessionId);
+      }
       setEditMode(false);
     } catch (err) {
       console.error("Error saving attendance:", err);
@@ -1392,7 +1414,7 @@ export default function ClassDetail() {
 
                 {/* Step 4: Lesson Content Input */}
                 {selectedLessonId && (
-                  <div className="space-y-3 animate-in slide-in-from-bottom-4 duration-300">
+                  <div className={`space-y-3 animate-in slide-in-from-bottom-4 duration-300 transition-opacity ${!contentEditMode && hasExistingContent ? 'opacity-60' : ''}`}>
                     <div className="flex items-center gap-2">
                       <span className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200">
                         4
@@ -1404,6 +1426,9 @@ export default function ClassDetail() {
                         <span className="text-emerald-500 animate-pulse">
                           ✓
                         </span>
+                      )}
+                      {!contentEditMode && hasExistingContent && (
+                        <span className="text-xs text-gray-400 ml-2">(Nhấn "Sửa nội dung" để chỉnh sửa)</span>
                       )}
                     </div>
 
@@ -1433,8 +1458,23 @@ export default function ClassDetail() {
                   </div>
                 )}
 
-                {/* Action Buttons */}
-                {selectedLessonId && (
+                {/* Upload tài liệu buổi học */}
+                {currentSessionId && (
+                  <div className={`mt-6 mb-6 transition-opacity ${!contentEditMode && hasExistingContent ? 'opacity-60' : ''}`}>
+                    <SessionMaterialUpload 
+                      sessionId={currentSessionId} 
+                      readOnly={isFutureSession || (!contentEditMode && hasExistingContent)}
+                    />
+                    {!contentEditMode && hasExistingContent && (
+                      <p className="text-xs text-gray-400 mt-2 text-center">
+                        Nhấn "Sửa nội dung buổi học" để thêm/xóa tài liệu
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Nút lưu nội dung */}
+                {(selectedChapterId || selectedLessonId || lessonContent) && (
                   <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100 animate-in slide-in-from-bottom-4 duration-300">
                     {hasExistingContent && !contentEditMode ? (
                       <Button

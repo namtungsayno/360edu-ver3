@@ -18,6 +18,7 @@ import {
   Newspaper,
   DoorOpen,
   LogOut,
+  ClipboardCheck,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -52,6 +53,12 @@ const Sidebar = () => {
           label: "Giáo viên",
           icon: UserCog,
           href: "/home/admin/teachers",
+        },
+        {
+          id: "teacher-attendance",
+          label: "Chấm công GV",
+          icon: ClipboardCheck,
+          href: "/home/admin/teacher-attendance",
         },
       ],
     },

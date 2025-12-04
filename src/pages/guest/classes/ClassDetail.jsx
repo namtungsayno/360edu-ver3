@@ -252,19 +252,9 @@ export default function ClassDetail() {
           <div className="lg:col-span-2 space-y-6">
             {/* Class Header */}
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className="bg-green-100 text-green-800">
-                  Online - Offline
-                </Badge>
-              </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-3">
                 {data.subjectName || "Toán học"} - {data.name || "Học kỳ 1"}
               </h1>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span className="font-medium">THPT</span>
-                <span>•</span>
-                <span>36 buổi học</span>
-              </div>
             </div>
 
             {/* Opening notice */}
