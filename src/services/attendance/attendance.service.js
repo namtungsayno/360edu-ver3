@@ -9,7 +9,7 @@ export const attendanceService = {
     }));
     return attendanceApi.saveBySession(sessionId, { items });
   },
-
+  // lấy danh sách điểm danh
   async getBySession(sessionId) {
     const data = await attendanceApi.getBySession(sessionId);
     const mapStatus = (s) => {
