@@ -1,65 +1,52 @@
-// src/pages/admin/classrooms/ClassroomList.jsx
+// src/pages/admin/room/RoomManagement.jsx
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { classroomService } from "../../../services/classrooms/classroom.service";
-import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
-import {
-  Table,
-  TableHead,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "../../../components/ui/Table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/Dialog";
-import { Switch } from "../../../components/ui/Switch";
-import ClassroomForm from "./RoomForm";
+import RoomTable from "./RoomTable";
+import RoomPagination from "./RoomPagination";
 import { useToast } from "../../../hooks/use-toast";
-import { Plus } from "lucide-react";
-// SidePanel removed: chuyển detail sang Dialog popup theo yêu cầu
-// import SidePanel from "../../../components/ui/SidePanel";
-import {
-  Dialog as DetailDialog,
-  DialogContent as DetailContent,
-  DialogHeader as DetailHeader,
-  DialogTitle as DetailTitle,
-} from "../../../components/ui/Dialog";
+import { Building, X, Pencil, Trash2, Plus, Users } from "lucide-react";
 import useDebounce from "../../../hooks/useDebounce";
 
-const SORTS = {
-  NAME_ASC: "NAME_ASC",
-  NAME_DESC: "NAME_DESC",
-  CAP_ASC: "CAP_ASC",
-  CAP_DESC: "CAP_DESC",
-};
-
-const FILTERS = {
-  ALL: "ALL",
-  ACTIVE: "ACTIVE",
-  INACTIVE: "INACTIVE",
-};
+const STATUS_FILTERS = ["ALL", "ACTIVE", "INACTIVE"];
 
 export default function ClassroomList() {
-  const [classrooms, setClassrooms] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
-  const [editing, setEditing] = useState(null); // for form create/edit
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selected, setSelected] = useState(null);
-
-  // sort & filter
-  const [sortBy, setSortBy] = useState(SORTS.NAME_ASC);
-  const [filterBy, setFilterBy] = useState(FILTERS.ALL);
-
   const toast = useToast();
   const toastRef = useRef(toast);
+
+  // Filter state
+  const [tab, setTab] = useState("ALL");
+  const [query, setQuery] = useState("");
+  const q = useDebounce(query, 300);
+
+  // Per-tab pagination
+  const [pageByTab, setPageByTab] = useState({
+    ALL: 0,
+    ACTIVE: 0,
+    INACTIVE: 0,
+  });
+  const [sizeByTab, setSizeByTab] = useState({
+    ALL: 10,
+    ACTIVE: 10,
+    INACTIVE: 10,
+  });
+  const curPage = pageByTab[tab] ?? 0;
+  const curSize = sizeByTab[tab] ?? 10;
+
+  // Data
+  const [allRooms, setAllRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Side Panel states
+  const [panelMode, setPanelMode] = useState(null); // 'view' | 'edit' | 'create' | null
+  const [selected, setSelected] = useState(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    capacity: "",
+    description: "",
+  });
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     toastRef.current = toast;
   }, [toast]);
@@ -85,39 +72,73 @@ export default function ClassroomList() {
   const fetchClassrooms = useCallback(async () => {
     setLoading(true);
     try {
-      // Gửi nhiều khóa tìm kiếm phổ biến lên BE nếu có hỗ trợ
-      const params = {
-        q: debouncedSearch || undefined,
-        name: debouncedSearch || undefined,
-        keyword: debouncedSearch || undefined,
-      };
-      const data = await classroomService.list(params);
+      const data = await classroomService.list();
       const items = Array.isArray(data)
         ? data
         : data?.items ?? data?.content ?? [];
-      setClassrooms(items.map(normalizeRoom));
-      // eslint-disable-next-line no-unused-vars
-    } catch (_) {
-      // Tránh đưa toast vào dependency của useCallback/useEffect để không bị loop
-      toastRef.current?.error?.("Lỗi tải danh sách lớp học");
+      setAllRooms(items.map(normalizeRoom));
+    } catch {
+      toastRef.current?.error?.("Lỗi tải danh sách phòng học");
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch]);
+  }, []);
 
-  // Quan trọng: chỉ phụ thuộc vào debouncedSearch để tránh re-render vô hạn
   useEffect(() => {
     fetchClassrooms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch]);
+  }, [fetchClassrooms]);
 
-  const handleToggleStatus = async (id, nextEnabled) => {
+  // Counts for tabs
+  const counts = useMemo(() => {
+    const active = allRooms.filter((r) => r.enabled).length;
+    const inactive = allRooms.filter((r) => !r.enabled).length;
+    return { ALL: allRooms.length, ACTIVE: active, INACTIVE: inactive };
+  }, [allRooms]);
+
+  // Filter + paginate
+  const filtered = useMemo(() => {
+    let statusFiltered;
+    if (tab === "ALL") {
+      statusFiltered = allRooms;
+    } else if (tab === "ACTIVE") {
+      statusFiltered = allRooms.filter((r) => r.enabled);
+    } else {
+      statusFiltered = allRooms.filter((r) => !r.enabled);
+    }
+
+    if (!q) return statusFiltered;
+    const kw = q.toLowerCase();
+    return statusFiltered.filter(
+      (r) =>
+        (r.name || "").toLowerCase().includes(kw) ||
+        String(r.id || "")
+          .toLowerCase()
+          .includes(kw) ||
+        String(r.capacity || "").includes(kw)
+    );
+  }, [allRooms, tab, q]);
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / curSize));
+  const pageSafe = Math.min(curPage, totalPages - 1);
+  const pageItems = filtered.slice(
+    pageSafe * curSize,
+    pageSafe * curSize + curSize
+  );
+
+  // Helpers
+  const setPageForCurrentTab = (p) =>
+    setPageByTab((prev) => ({ ...prev, [tab]: Math.max(0, p) }));
+  const setSizeForCurrentTab = (s) => {
+    setSizeByTab((prev) => ({ ...prev, [tab]: s }));
+    setPageForCurrentTab(0);
+  };
+
+  const handleToggleStatus = async (room) => {
+    const nextEnabled = !room.enabled;
     try {
-      // Find room for guard
-      const room = classrooms.find((c) => c.id === id);
       if (
         !nextEnabled &&
-        room &&
         (room.numClasses || room.classCount || room.soLop) > 0
       ) {
         const count = room.numClasses || room.classCount || room.soLop;
@@ -127,321 +148,335 @@ export default function ClassroomList() {
         return;
       }
       if (nextEnabled && classroomService.enable) {
-        await classroomService.enable(id);
+        await classroomService.enable(room.id);
       } else if (!nextEnabled && classroomService.disable) {
-        await classroomService.disable(id);
+        await classroomService.disable(room.id);
       } else if (classroomService.update) {
-        await classroomService.update(id, { enabled: nextEnabled });
+        await classroomService.update(room.id, { enabled: nextEnabled });
       }
 
-      setClassrooms((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, enabled: nextEnabled } : c))
+      setAllRooms((prev) =>
+        prev.map((r) => (r.id === room.id ? { ...r, enabled: nextEnabled } : r))
       );
 
       toast?.success?.(nextEnabled ? "Đã bật phòng học" : "Đã tắt phòng học");
-      // eslint-disable-next-line no-unused-vars
-    } catch (_) {
+    } catch {
       toast?.error?.("Cập nhật trạng thái thất bại");
     }
   };
 
-  // Đếm số lượng theo filter để hiển thị (12) như screenshot
-  const getCount = (type) => {
-    if (type === FILTERS.ACTIVE)
-      return classrooms.filter((c) => !!c.enabled).length;
-    if (type === FILTERS.INACTIVE)
-      return classrooms.filter((c) => !c.enabled).length;
-    return classrooms.length;
+  // Side Panel handlers
+  const openViewPanel = (room) => {
+    setSelected(room);
+    setPanelMode("view");
   };
 
-  // --- FILTER + SORT (client-side) ---
-  const displayedRooms = useMemo(() => {
-    let list = [...classrooms];
-
-    // Fallback filter client-side theo search (nếu BE không lọc)
-    const kw = (debouncedSearch || "").trim().toLowerCase();
-    if (kw) {
-      list = list.filter((r) => {
-        const name = (r.name || "").toLowerCase();
-        const idStr = String(r.id || "").toLowerCase();
-        const capStr = String(r.capacity || "").toLowerCase();
-        return name.includes(kw) || idStr.includes(kw) || capStr.includes(kw);
-      });
-    }
-
-    // 1) Lọc theo trạng thái
-    if (filterBy === FILTERS.ACTIVE) {
-      list = list.filter((r) => !!r.enabled);
-    } else if (filterBy === FILTERS.INACTIVE) {
-      list = list.filter((r) => !r.enabled);
-    }
-
-    // 2) Sắp xếp: chỉ sort theo sortBy, không ưu tiên enabled nữa
-    list.sort((a, b) => {
-      const nameA = (a.name ?? "").toString();
-      const nameB = (b.name ?? "").toString();
-      const capA = Number(a.capacity ?? 0);
-      const capB = Number(b.capacity ?? 0);
-
-      switch (sortBy) {
-        case SORTS.NAME_ASC:
-          return nameA.localeCompare(nameB, "vi", { sensitivity: "base" });
-        case SORTS.NAME_DESC:
-          return nameB.localeCompare(nameA, "vi", { sensitivity: "base" });
-        case SORTS.CAP_ASC:
-          return capA - capB;
-        case SORTS.CAP_DESC:
-          return capB - capA;
-        default:
-          return 0;
-      }
+  const openEditPanel = (room) => {
+    setSelected(room);
+    setFormData({
+      name: room?.name || "",
+      capacity: room?.capacity || "",
+      description: room?.description || "",
     });
+    setPanelMode("edit");
+  };
 
-    return list;
-  }, [classrooms, sortBy, filterBy, debouncedSearch]);
+  const openCreatePanel = () => {
+    setSelected(null);
+    setFormData({ name: "", capacity: "", description: "" });
+    setPanelMode("create");
+  };
+
+  const closePanel = () => {
+    setPanelMode(null);
+    setSelected(null);
+    setFormData({ name: "", capacity: "", description: "" });
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      toast?.error?.("Vui lòng nhập tên phòng học");
+      return;
+    }
+    if (!formData.capacity || Number(formData.capacity) <= 0) {
+      toast?.error?.("Vui lòng nhập sức chứa hợp lệ");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (panelMode === "create") {
+        await classroomService.create(formData);
+        toast?.success?.("Thêm phòng học thành công!");
+      } else if (panelMode === "edit" && selected) {
+        await classroomService.update(selected.id, formData);
+        toast?.success?.("Cập nhật phòng học thành công!");
+      }
+      closePanel();
+      fetchClassrooms();
+    } catch {
+      toast?.error?.("Lưu thất bại, vui lòng thử lại");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRowClick = (room) => {
+    openViewPanel(room);
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header giống SubjectManagement */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Quản lý phòng học
-        </h1>
-        <p className="text-gray-500">
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Quản lý phòng học</h1>
+        <p className="text-sm text-gray-600">
           Quản lý thông tin các phòng học trong hệ thống
         </p>
       </div>
-      {/* Thanh điều khiển giống screenshot, có SORT + SEARCH ngắn */}
-      <div className="flex items-center justify-between rounded-xl border bg-white p-3 md:p-4">
-        {/* Pills filter bên trái */}
-        <div className="flex flex-wrap items-center gap-2">
-          {[
-            { key: FILTERS.ALL, label: `Tất cả` },
-            { key: FILTERS.ACTIVE, label: `Hoạt động` },
-            { key: FILTERS.INACTIVE, label: `Tạm dừng` },
-          ].map((opt) => {
-            const active = filterBy === opt.key;
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setFilterBy(opt.key)}
-                className={[
-                  "h-8 rounded-full px-3 text-sm transition",
-                  active
-                    ? "bg-gray-900 text-white shadow"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                ].join(" ")}
-              >
-                {opt.label}
-                <span className="ml-1 opacity-80">({getCount(opt.key)})</span>
-              </button>
-            );
-          })}
+
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        {/* Toolbar */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div className="flex gap-2 overflow-x-auto">
+            {STATUS_FILTERS.map((r) => {
+              const active = tab === r;
+              let label;
+              if (r === "ALL") {
+                label = `Tất cả (${counts.ALL})`;
+              } else if (r === "ACTIVE") {
+                label = `Hoạt động (${counts.ACTIVE})`;
+              } else {
+                label = `Tạm dừng (${counts.INACTIVE})`;
+              }
+              return (
+                <button
+                  key={r}
+                  onClick={() => setTab(r)}
+                  className={`px-3 py-1.5 rounded-md border whitespace-nowrap ${
+                    active
+                      ? "bg-gray-900 text-white border-gray-900"
+                      : "bg-white text-gray-700 border-gray-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-3">
+            <Input
+              className="w-72"
+              placeholder="Tìm theo tên phòng, mã, sức chứa…"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPageForCurrentTab(0);
+              }}
+            />
+            <button
+              onClick={openCreatePanel}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-black text-white rounded-lg hover:bg-gray-800"
+            >
+              <Plus className="w-4 h-4" />
+              Thêm phòng học
+            </button>
+          </div>
         </div>
 
-        {/* Search ngắn + Sort + Thêm */}
-        <div className="flex items-center gap-2">
-          {/* Sort ngắn gọn */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="h-9 w-44 rounded-md border px-2 text-sm"
-            aria-label="Sắp xếp"
-            title="Sắp xếp"
-          >
-            <option value={SORTS.NAME_ASC}>Tên: A → Z</option>
-            <option value={SORTS.NAME_DESC}>Tên: Z → A</option>
-            <option value={SORTS.CAP_ASC}>Sức chứa: nhỏ → lớn</option>
-            <option value={SORTS.CAP_DESC}>Sức chứa: lớn → nhỏ</option>
-          </select>
+        {/* Data table */}
+        <RoomTable
+          items={pageItems}
+          loading={loading}
+          onToggleStatus={handleToggleStatus}
+          onRowClick={handleRowClick}
+        />
 
-          {/* Search ngắn */}
-          <Input
-            placeholder="Tìm theo tên, mã, sức chứa"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && fetchClassrooms()}
-            className="h-9 w-56 md:w-72"
-          />
-
-          {/* Nút thêm (giống style của User Management: primary + icon) */}
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditing(null);
-              setIsDialogOpen(true);
-            }}
-          >
-            <Plus className="w-4 h-4 mr-2" /> Thêm lớp học
-          </Button>
-        </div>
+        {/* Pagination */}
+        <RoomPagination
+          page={pageSafe}
+          size={curSize}
+          total={total}
+          onPageChange={setPageForCurrentTab}
+          onSizeChange={setSizeForCurrentTab}
+        />
       </div>
 
-      {/* Bảng dữ liệu */}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Mã</TableHead>
-            <TableHead>Tên lớp</TableHead>
-            <TableHead align="center">Sức chứa</TableHead>
-            <TableHead align="center">Trạng thái</TableHead>
-            {/* removed action column */}
-          </TableRow>
-        </TableHeader>
+      {/* Side Panel */}
+      {panelMode && (
+        <div className="fixed inset-0 z-40">
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/30" onClick={closePanel} />
 
-        <TableBody>
-          {loading ? (
-            <TableRow>
-              <TableCell colSpan={5} align="center">
-                Đang tải...
-              </TableCell>
-            </TableRow>
-          ) : displayedRooms.length ? (
-            displayedRooms.map((c) => (
-              <TableRow
-                key={c.id}
-                className="hover:bg-indigo-50 cursor-pointer"
-                onClick={(e) => {
-                  // Nếu click nằm trong vùng có class 'no-row-open' (toggle status) thì không mở detail
-                  if (e.target.closest(".no-row-open")) return;
-                  setSelected(c);
-                  setDetailOpen(true);
-                }}
+          {/* Panel */}
+          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl border-l border-gray-200 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {panelMode === "create"
+                  ? "Thêm phòng học mới"
+                  : panelMode === "edit"
+                  ? "Chỉnh sửa phòng học"
+                  : "Thông tin phòng học"}
+              </h2>
+              <button
+                onClick={closePanel}
+                className="p-2 hover:bg-gray-100 rounded-md"
               >
-                <TableCell>{c.id}</TableCell>
-                <TableCell>{c.name}</TableCell>
-                <TableCell align="center">{c.capacity}</TableCell>
-
-                <TableCell align="center">
-                  <div
-                    className="flex items-center justify-center gap-2 no-row-open"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Switch
-                      checked={!!c.enabled}
-                      onCheckedChange={(v) => handleToggleStatus(c.id, v)}
-                      aria-label={`Chuyển trạng thái phòng ${c.name}`}
-                    />
-                    <span
-                      className={
-                        c.enabled
-                          ? "text-sm font-medium text-green-700"
-                          : "text-sm font-medium text-red-600"
-                      }
-                    >
-                      {c.enabled ? "Hoạt động" : "Tạm dừng"}
-                    </span>
-                  </div>
-                </TableCell>
-
-                {/* removed action cell */}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={5} align="center">
-                Không có dữ liệu
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-
-      {/* Dialog thêm/sửa — light theme */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="bg-white text-gray-900 border border-gray-200">
-          <DialogHeader>
-            <DialogTitle>
-              {editing ? "Chỉnh sửa lớp học" : "Thêm lớp học mới"}
-            </DialogTitle>
-          </DialogHeader>
-          <ClassroomForm
-            initialData={editing}
-            onClose={() => {
-              setIsDialogOpen(false);
-              fetchClassrooms();
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-      <DetailDialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DetailContent className="sm:max-w-xl">
-          <DetailHeader>
-            <DetailTitle>
-              {selected
-                ? selected.name || "Thông tin phòng học"
-                : "Thông tin phòng học"}
-            </DetailTitle>
-          </DetailHeader>
-          {selected ? (
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    Mã phòng
-                  </p>
-                  <p className="text-sm text-gray-700">{selected.id}</p>
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    Tên phòng
-                  </p>
-                  <p className="text-sm text-gray-700">{selected.name}</p>
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    Sức chứa
-                  </p>
-                  <p className="text-sm text-gray-700">{selected.capacity}</p>
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    Trạng thái
-                  </p>
-                  <p
-                    className={`text-sm font-medium ${
-                      selected.enabled ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    {selected.enabled ? "Hoạt động" : "Tạm dừng"}
-                  </p>
-                </div>
-              </div>
-              <div className="border-t pt-4">
-                <p className="text-base font-semibold text-gray-900 mb-1">
-                  Mô tả
-                </p>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {selected.description || "Không có mô tả"}
-                </p>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setEditing(selected);
-                    setIsDialogOpen(true);
-                    setDetailOpen(false);
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-700"
-                >
-                  Sửa
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => toast.error("Xóa phòng học chưa được hỗ trợ")}
-                >
-                  Xóa
-                </Button>
-              </div>
+                <X className="h-5 w-5 text-gray-700" />
+              </button>
             </div>
-          ) : (
-            <div className="text-gray-500">Không có dữ liệu</div>
-          )}
-        </DetailContent>
-      </DetailDialog>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {panelMode === "view" && selected ? (
+                // View mode
+                <div className="space-y-6">
+                  {/* Room info header */}
+                  <div className="flex items-center gap-4 pb-4 border-b border-gray-100">
+                    <div className="h-14 w-14 rounded-xl bg-indigo-100 flex items-center justify-center">
+                      <Building className="h-7 w-7 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {selected.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">Mã: {selected.id}</p>
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500 mb-1">Sức chứa</p>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-gray-400" />
+                        <p className="text-base font-medium text-gray-900">
+                          {selected.capacity} người
+                        </p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-xs text-gray-500 mb-1">Trạng thái</p>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                          selected.enabled
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {selected.enabled ? "Hoạt động" : "Tạm dừng"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Mô tả
+                    </p>
+                    <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 rounded-lg p-3">
+                      {selected.description || "Không có mô tả"}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                // Create/Edit mode - Form
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tên phòng học <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleFormChange}
+                      placeholder="VD: Phòng A101"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Sức chứa <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="capacity"
+                      value={formData.capacity}
+                      onChange={handleFormChange}
+                      placeholder="VD: 40"
+                      min="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mô tả
+                    </label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleFormChange}
+                      placeholder="Nhập mô tả phòng học..."
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black text-sm resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-200 flex items-center justify-end gap-2">
+              {panelMode === "view" ? (
+                <>
+                  <button
+                    onClick={() => openEditPanel(selected)}
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-black text-white rounded-lg hover:bg-gray-800"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Sửa
+                  </button>
+                  <button
+                    onClick={() =>
+                      toast?.error?.("Xóa phòng học chưa được hỗ trợ")
+                    }
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Xóa
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={closePanel}
+                    className="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="px-3 py-2 text-sm rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {saving ? "Đang lưu..." : "Lưu"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
