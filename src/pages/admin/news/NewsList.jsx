@@ -18,6 +18,8 @@ import {
   EyeOff,
   Calendar,
   Loader2,
+  FileText,
+  CheckCircle,
 } from "lucide-react";
 import {
   Tabs,
@@ -132,62 +134,123 @@ export default function NewsList() {
   );
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý tin tức</h1>
-          <p className="text-slate-600 mt-1">
-            Quản lý và đăng tin tức, thông báo cho học viên và phụ huynh
-          </p>
+    <div className="p-6 min-h-screen">
+      {/* ============ HEADER ============ */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl shadow-lg shadow-rose-200">
+              <Newspaper className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Quản lý tin tức
+              </h1>
+              <p className="text-sm text-gray-500">
+                Quản lý và đăng tin tức, thông báo cho học viên và phụ huynh
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => navigate("/home/admin/news/create")}
+            className="bg-rose-600 hover:bg-rose-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Tạo tin tức mới
+          </Button>
         </div>
-        <Button onClick={() => navigate("/home/admin/news/create")}>
-          <Plus className="h-4 w-4 mr-2" />
-          Tạo tin tức mới
-        </Button>
+      </div>
+
+      {/* ============ STATS CARDS ============ */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Tổng tin tức</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {news.length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <FileText className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Đã đăng</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {news.filter((n) => n.status === "published").length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Bản nháp</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {news.filter((n) => n.status === "draft").length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Edit className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
       </div>
 
       {/* Loading State */}
       {loading && (
-        <Card>
-          <CardContent className="p-12 flex flex-col items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-2" />
-            <p className="text-slate-600">Đang tải danh sách tin tức...</p>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-rose-600 mb-2" />
+          <p className="text-gray-500">Đang tải danh sách tin tức...</p>
+        </div>
       )}
 
       {/* Error State */}
       {error && !loading && (
-        <Card>
-          <CardContent className="p-12 flex flex-col items-center justify-center">
-            <div className="text-red-600 mb-2">⚠️</div>
-            <p className="text-slate-600 mb-4">{error}</p>
-            <Button onClick={fetchNews} variant="outline">
-              Thử lại
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center">
+          <div className="text-red-600 mb-2">⚠️</div>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <Button onClick={fetchNews} variant="outline">
+            Thử lại
+          </Button>
+        </div>
       )}
 
-      {/* Danh sách tin tức */}
+      {/* ============ TOOLBAR & LIST ============ */}
       {!loading && !error && (
-        <Card>
-          <CardHeader>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Toolbar */}
+          <div className="p-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
-              <CardTitle>Danh sách tin tức</CardTitle>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Danh sách tin tức
+              </h2>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Tìm kiếm tin tức..."
-                  className="pl-10 w-80"
+                  className="pl-10 w-80 rounded-xl"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+
+          {/* Content */}
+          <div className="p-4">
             <Tabs defaultValue="all" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="all">Tất cả ({news.length})</TabsTrigger>
@@ -345,8 +408,8 @@ export default function NewsList() {
                   ))}
               </TabsContent>
             </Tabs>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Preview Modal */}

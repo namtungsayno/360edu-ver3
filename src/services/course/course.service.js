@@ -42,6 +42,8 @@ export const courseService = {
   /**
    * Lấy chi tiết 1 khóa học (dùng cho màn detail + editor)
    */
+
+  //lấy khóa học cá nhân
   async getCourseDetail(id) {
     return courseApi.getById(id);
   },
@@ -90,6 +92,7 @@ export const courseService = {
    * Dùng khi tạo Class:
    * - Truyền subjectId → nhận danh sách course APPROVED thuộc môn đó
    */
+  //lấy khóa học Admin
   async getApprovedCoursesBySubject(subjectId) {
     if (!subjectId) return [];
     // Fallback to generic list API with filters since dedicated endpoint is absent

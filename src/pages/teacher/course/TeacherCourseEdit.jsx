@@ -30,6 +30,7 @@ import {
   Paperclip,
   ChevronDown,
   ChevronRight,
+  BookOpen,
 } from "lucide-react";
 
 import { courseService } from "../../../services/course/course.service.js";
@@ -37,6 +38,7 @@ import { teacherApi } from "../../../services/teacher/teacher.api.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import { useAuth } from "../../../hooks/useAuth.js";
 import LessonMaterialUpload from "../../../components/teacher/LessonMaterialUpload.jsx";
+import { BackButton } from "../../../components/common/BackButton";
 
 function createLocalId() {
   return Math.random().toString(36).slice(2, 9);
@@ -428,7 +430,7 @@ export default function TeacherCourseEdit() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="p-6">
         <Card className="rounded-[14px] p-6 text-center text-[#62748e]">
           Đang tải thông tin khóa học...
         </Card>
@@ -437,23 +439,22 @@ export default function TeacherCourseEdit() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
+        <div className="flex items-center gap-4">
+          <BackButton
             onClick={() => navigate(`/home/teacher/courses/${id}`)}
-            className="inline-flex items-center gap-2 text-sm text-[#62748e] hover:text-neutral-950"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Quay lại
-          </button>
+            showLabel={false}
+          />
+          <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+            <BookOpen className="h-7 w-7 text-white" />
+          </div>
           <div>
-            <h1 className="text-xl font-semibold text-neutral-950">
+            <h1 className="text-2xl font-bold text-gray-900">
               Chỉnh sửa nội dung khóa học
             </h1>
-            <p className="text-[12px] text-[#62748e] mt-1">
+            <p className="text-sm text-gray-500">
               Chỉ được sửa chương học và bài học. Thay đổi sẽ được áp dụng ngay.
             </p>
           </div>

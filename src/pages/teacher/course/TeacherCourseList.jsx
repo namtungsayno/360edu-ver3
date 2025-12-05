@@ -254,18 +254,20 @@ export default function TeacherCourseList() {
   }, [courses, search, statusFilter]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+          <BookOpen className="h-7 w-7 text-white" />
+        </div>
         <div>
-          <h1 className="text-xl font-semibold text-neutral-950">
+          <h1 className="text-2xl font-bold text-gray-900">
             Quản lý khóa học theo lớp
           </h1>
-          <p className="text-[12px] text-[#62748e] mt-1">
+          <p className="text-sm text-gray-500">
             Xem và quản lý các khóa học cá nhân mà bạn trực tiếp biên soạn.
           </p>
         </div>
-        {/* Theo nghiệp vụ mới: bỏ tính năng tạo khóa học tại đây */}
       </div>
 
       {/* STATS CARDS */}

@@ -4,7 +4,7 @@ import { Input } from "../../../components/ui/Input.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { teacherSecurityService } from "../../../services/teacher/teacher.security.service";
 import { useToast } from "../../../hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { consumeLastPassword } from "../../../utils/last-login";
 
 export default function TeacherResetPassword() {
@@ -48,13 +48,21 @@ export default function TeacherResetPassword() {
 
   return (
     <div className="p-6">
-      <Card>
-        <CardContent className="p-6 max-w-xl">
-          <h1 className="text-2xl font-semibold mb-1">Đổi mật khẩu</h1>
-          <p className="text-sm text-gray-500 mb-6">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="p-3 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg shadow-orange-200">
+          <KeyRound className="h-7 w-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Đổi mật khẩu</h1>
+          <p className="text-sm text-gray-500">
             Vui lòng nhập mật khẩu hiện tại và mật khẩu mới.
           </p>
+        </div>
+      </div>
 
+      <Card>
+        <CardContent className="p-6 max-w-xl">
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
               <label

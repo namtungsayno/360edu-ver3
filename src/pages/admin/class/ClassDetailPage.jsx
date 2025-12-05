@@ -220,6 +220,8 @@ export default function ClassDetailPage() {
         title={cls.name}
         subtitle={cls.subjectName || "Chưa gán môn học"}
         onBack={() => navigate(-1)}
+        icon={BookOpen}
+        iconColor="purple"
         status={{
           label: statusInfo.label,
           variant: statusInfo.variant,

@@ -250,9 +250,9 @@ export default function ClassroomList() {
     <div className="p-6 min-h-screen">
       {/* ============ HEADER ============ */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-200">
-            <DoorOpen className="w-6 h-6 text-white" />
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-200">
+            <DoorOpen className="h-7 w-7 text-white" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">

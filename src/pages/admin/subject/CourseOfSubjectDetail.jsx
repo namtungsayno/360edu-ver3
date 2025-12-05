@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import {
   BookOpen,
   Layers,
   FileText,
-  ArrowLeft,
   Plus,
   X,
   Save,
@@ -15,9 +14,9 @@ import {
 import { courseService } from "../../../services/course/course.service";
 import { Input } from "../../../components/ui/Input.jsx";
 import { Textarea } from "../../../components/ui/Textarea.jsx";
+import { BackButton } from "../../../components/common/BackButton";
 
 export default function CourseOfSubjectDetail() {
-  const navigate = useNavigate();
   const { id: subjectId, courseId } = useParams();
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState(null);
@@ -61,12 +60,11 @@ export default function CourseOfSubjectDetail() {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-6xl mx-auto">
-          <Button
+          <BackButton
+            to={`/home/admin/subject/${subjectId}`}
             variant="outline"
-            onClick={() => navigate(`/home/admin/subject/${subjectId}`)}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" /> Quay lại môn học
-          </Button>
+            showLabel={false}
+          />
           <div className="mt-6 text-gray-500">Không tìm thấy khóa học</div>
         </div>
       </div>
@@ -263,13 +261,21 @@ export default function CourseOfSubjectDetail() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigate(`/home/admin/subject/${subjectId}`)}
-            className="flex items-center gap-2 text-sm text-[#45556c] hover:text-neutral-950 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại môn học</span>
-          </button>
+          <div className="flex items-center gap-4">
+            <BackButton
+              to={`/home/admin/subject/${subjectId}`}
+              showLabel={false}
+            />
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
+              <BookOpen className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Chi tiết khóa học
+              </h1>
+              <p className="text-sm text-gray-500">Thuộc môn ID #{subjectId}</p>
+            </div>
+          </div>
           {!editMode && (
             <Button
               className="bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center"
@@ -279,11 +285,6 @@ export default function CourseOfSubjectDetail() {
             </Button>
           )}
         </div>
-
-        <h1 className="text-2xl font-bold text-neutral-950 mb-1">
-          Chi tiết khóa học
-        </h1>
-        <p className="text-sm text-[#45556c] mb-6">Thuộc môn ID #{subjectId}</p>
 
         {errorMsg && (
           <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">

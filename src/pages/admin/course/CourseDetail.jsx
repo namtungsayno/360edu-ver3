@@ -248,6 +248,8 @@ export default function AdminCourseDetail() {
         title={displayTitle}
         subtitle="Xem thông tin đầy đủ về khóa học và phê duyệt nội dung"
         onBack={() => navigate(-1)}
+        icon={BookOpen}
+        iconColor="blue"
         status={{
           label: statusCfg.label,
           variant: statusCfg.variant,

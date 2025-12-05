@@ -1,6 +1,6 @@
 // src/pages/admin/User.jsx
 import { useEffect, useMemo, useState } from "react";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Users, GraduationCap, UserCog, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
@@ -22,7 +22,11 @@ import UserTable from "./user/UserTable";
 import Pagination from "./user/Pagination";
 import CreateTeacherForm from "./user/CreateTeacherForm";
 
-const ROLE_LABEL = { STUDENT: "Student", TEACHER: "Teacher", PARENT: "Parent" };
+const ROLE_LABEL = {
+  STUDENT: "Học viên",
+  TEACHER: "Giáo viên",
+  PARENT: "Phụ huynh",
+};
 const ROLES = ["ALL", "STUDENT", "TEACHER", "PARENT"];
 
 export default function UserManagement() {
@@ -143,80 +147,169 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Quản lý người dùng
-        </h1>
-        <p className="text-gray-500">
-          Quản lý thông tin học viên, giáo viên và phụ huynh
-        </p>
+    <div className="p-6 min-h-screen">
+      {/* ============ HEADER ============ */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
+            <Users className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Quản lý người dùng
+            </h1>
+            <p className="text-sm text-gray-500">
+              Quản lý thông tin học viên, giáo viên và phụ huynh trong hệ thống
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        {/* Toolbar */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-          <div className="flex gap-2 overflow-x-auto">
+      {/* ============ STATS CARDS ============ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">
+                Tổng người dùng
+              </p>
+              <p className="text-2xl font-bold text-white mt-1">{counts.ALL}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Học viên</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {counts.STUDENT}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <GraduationCap className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Giáo viên</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {counts.TEACHER}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <UserCog className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Phụ huynh</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {counts.PARENT}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+      </div>
+
+      {/* ============ TOOLBAR ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Filter tabs */}
+          <div className="flex items-center gap-2">
             {ROLES.map((r) => {
-              const active = tab === r;
-              const label =
-                r === "ALL"
-                  ? `Tất cả (${counts.ALL})`
-                  : `${ROLE_LABEL[r]} (${counts[r] ?? 0})`;
+              const isActive = tab === r;
+              const label = r === "ALL" ? "Tất cả" : ROLE_LABEL[r];
+              const count = counts[r] ?? 0;
               return (
                 <button
                   key={r}
                   onClick={() => setTab(r)}
-                  className={`px-3 py-1.5 rounded-md border whitespace-nowrap ${
-                    active
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-700 border-gray-200"
-                  }`}
+                  className={`
+                    relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-gray-900 text-white shadow-lg shadow-gray-300"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                    }
+                  `}
                 >
                   {label}
+                  <span
+                    className={`ml-1.5 px-1.5 py-0.5 rounded-md text-xs ${
+                      isActive ? "bg-white/20" : "bg-gray-200"
+                    }`}
+                  >
+                    {count}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          <div className="flex gap-3">
-            <Input
-              className="w-72"
-              placeholder="Tìm theo tên, email, số điện thoại…"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPageForCurrentTab(0);
-              }}
-            />
+          {/* Search & Actions */}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                className="w-72 pl-9"
+                placeholder="Tìm kiếm người dùng..."
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPageForCurrentTab(0);
+                }}
+              />
+            </div>
             <Button
               onClick={() => navigate("/home/admin/users/create-teacher")}
+              className="bg-blue-600 hover:bg-blue-700"
             >
               <UserPlus className="w-4 h-4 mr-2" /> Thêm giáo viên
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* Data table */}
-        <UserTable
-          items={pageItems}
-          loading={loading}
-          onToggleStatus={handleToggleStatus}
-          onRowClick={(u) => {
-            setSelected(u);
-            setDetailMode("view");
-            setDetailOpen(true);
-          }}
-        />
+      {/* ============ DATA TABLE ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-4">
+          <UserTable
+            items={pageItems}
+            loading={loading}
+            onToggleStatus={handleToggleStatus}
+            onRowClick={(u) => {
+              setSelected(u);
+              setDetailMode("view");
+              setDetailOpen(true);
+            }}
+          />
 
-        {/* Pagination */}
-        <Pagination
-          page={pageSafe}
-          size={curSize}
-          total={total}
-          onPageChange={setPageForCurrentTab}
-          onSizeChange={setSizeForCurrentTab}
-        />
+          {/* Pagination */}
+          <Pagination
+            page={pageSafe}
+            size={curSize}
+            total={total}
+            onPageChange={setPageForCurrentTab}
+            onSizeChange={setSizeForCurrentTab}
+          />
+        </div>
       </div>
 
       {/* Modal chi tiết / chỉnh sửa người dùng */}

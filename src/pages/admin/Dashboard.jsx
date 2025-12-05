@@ -1,13 +1,20 @@
 // pages/admin/Dashboard.jsx
 import { useMemo } from "react";
-import StatsCard from "../../components/common/StatsCard";
+import {
+  LayoutDashboard,
+  Users,
+  GraduationCap,
+  BookOpen,
+  Wallet,
+  Calendar,
+} from "lucide-react";
 
 /** --------- LightCard: khung trắng chuẩn light --------- */
 function LightCard({ title, children, right }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
       {(title || right) && (
-        <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+        <div className="px-5 pt-4 pb-2 flex items-center justify-between border-b border-gray-100">
           <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
           {right}
         </div>
@@ -262,80 +269,95 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-          Dashboard
-        </h1>
-        <p className="text-gray-500 mt-1">
-          Chào mừng trở lại! Đây là tổng quan hệ thống của bạn.
-        </p>
+    <div className="space-y-6 p-6">
+      {/* Header với gradient */}
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-200">
+          <LayoutDashboard className="h-7 w-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 text-sm">
+            Chào mừng trở lại! Đây là tổng quan hệ thống của bạn.
+          </p>
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats với gradient cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <LightCard>
-          <div className="flex items-center justify-between">
+        {/* Tổng số học viên */}
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg shadow-blue-200 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-xs text-gray-500">Tổng số học viên</p>
-              <p className="text-2xl font-semibold text-gray-900 mt-1">1,234</p>
-              <p className="text-xs text-emerald-600 mt-1">
+              <p className="text-blue-100 text-sm font-medium">
+                Tổng số học viên
+              </p>
+              <p className="text-3xl font-bold mt-1">1,234</p>
+              <p className="text-xs text-blue-100 mt-2">
                 ▲ +12.5% so với tháng trước
               </p>
             </div>
-            <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              👥
+            <div className="p-3 bg-white/20 rounded-xl">
+              <Users className="h-6 w-6" />
             </div>
           </div>
-        </LightCard>
+        </div>
 
-        <LightCard>
-          <div className="flex items-center justify-between">
+        {/* Giáo viên */}
+        <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-200 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-xs text-gray-500">Giáo viên</p>
-              <p className="text-2xl font-semibold text-gray-900 mt-1">89</p>
-              <p className="text-xs text-emerald-600 mt-1">
+              <p className="text-violet-100 text-sm font-medium">Giáo viên</p>
+              <p className="text-3xl font-bold mt-1">89</p>
+              <p className="text-xs text-violet-100 mt-2">
                 ▲ +3.2% so với tháng trước
               </p>
             </div>
-            <div className="h-10 w-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
-              🎓
+            <div className="p-3 bg-white/20 rounded-xl">
+              <GraduationCap className="h-6 w-6" />
             </div>
           </div>
-        </LightCard>
+        </div>
 
-        <LightCard>
-          <div className="flex items-center justify-between">
+        {/* Lớp học hoạt động */}
+        <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg shadow-cyan-200 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-xs text-gray-500">Lớp học hoạt động</p>
-              <p className="text-2xl font-semibold text-gray-900 mt-1">156</p>
-              <p className="text-xs text-emerald-600 mt-1">
+              <p className="text-cyan-100 text-sm font-medium">
+                Lớp học hoạt động
+              </p>
+              <p className="text-3xl font-bold mt-1">156</p>
+              <p className="text-xs text-cyan-100 mt-2">
                 ▲ +8.1% so với tháng trước
               </p>
             </div>
-            <div className="h-10 w-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
-              📘
+            <div className="p-3 bg-white/20 rounded-xl">
+              <BookOpen className="h-6 w-6" />
             </div>
           </div>
-        </LightCard>
+        </div>
 
-        <LightCard>
-          <div className="flex items-center justify-between">
+        {/* Doanh thu tháng */}
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-200 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-xs text-gray-500">Doanh thu tháng</p>
-              <p className="text-2xl font-semibold text-gray-900 mt-1">
-                ₫245.5M
+              <p className="text-emerald-100 text-sm font-medium">
+                Doanh thu tháng
               </p>
-              <p className="text-xs text-emerald-600 mt-1">
+              <p className="text-3xl font-bold mt-1">₫245.5M</p>
+              <p className="text-xs text-emerald-100 mt-2">
                 ▲ +15.3% so với tháng trước
               </p>
             </div>
-            <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              💰
+            <div className="p-3 bg-white/20 rounded-xl">
+              <Wallet className="h-6 w-6" />
             </div>
           </div>
-        </LightCard>
+        </div>
       </div>
 
       {/* Charts row 1 */}
@@ -356,8 +378,8 @@ export default function Dashboard() {
                 className="py-3 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    📅
+                  <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center">
+                    <Calendar className="h-4 w-4" />
                   </div>
                   <div>
                     <p className="text-gray-900 font-medium">{it.title}</p>

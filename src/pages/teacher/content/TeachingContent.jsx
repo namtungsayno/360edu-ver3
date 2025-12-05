@@ -190,14 +190,19 @@ export default function TeachingContent() {
   }, [courses, subjectFilter, q]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-950">
-          Nội dung giảng dạy
-        </h1>
-        <p className="text-[12px] text-[#62748e] mt-1">
-          Xem các khóa học đã được admin phê duyệt cho bộ môn bạn phụ trách.
-        </p>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-200">
+          <BookOpen className="h-7 w-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Nội dung giảng dạy
+          </h1>
+          <p className="text-sm text-gray-500">
+            Xem các khóa học đã được admin phê duyệt cho bộ môn bạn phụ trách.
+          </p>
+        </div>
       </div>
 
       {/* FILTER BAR */}

@@ -3,9 +3,10 @@
 // // AdminLayout: Có navbar, menu, hiển thị nội dung chính bằng <Outlet />.
 
 import { useEffect, useState } from "react";
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useLocation } from "react-router-dom";
 import Navigation from "../components/common/Navigation";
 import Sidebar from "../components/common/Sidebar";
+import PageTransition from "../components/common/PageTransition";
 import { Menu, X } from "lucide-react";
 
 export default function AdminLayout() {
@@ -64,9 +65,11 @@ export default function AdminLayout() {
 
       {/* MAIN */}
       <div className="lg:pl-72 min-h-screen flex flex-col">
-        {/* Content LIGHT - No padding for full-screen pages */}
+        {/* Content LIGHT - với Page Transition */}
         <main className="flex-1 text-slate-900">
-          <Outlet />
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
         </main>
       </div>
     </div>

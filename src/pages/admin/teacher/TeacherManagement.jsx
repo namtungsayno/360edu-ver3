@@ -7,6 +7,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Users,
+  UserCog,
+  BookOpen,
 } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 import { teacherService } from "../../../services/teacher/teacher.service";
@@ -387,50 +390,119 @@ const TeacherManagement = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 min-h-screen">
+      {/* ============ HEADER ============ */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Quản lý giáo viên</h1>
-        <p className="text-sm text-gray-600">
-          Xem và chỉnh sửa danh sách môn dạy của giáo viên
-        </p>
-      </div>
-
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo tên, mã giáo viên, email hoặc số điện thoại"
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black text-sm"
-            />
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-200">
+            <UserCog className="h-7 w-7 text-white" />
           </div>
-        </div>
-        <div className="w-full md:w-64">
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <select
-              value={subjectFilter}
-              onChange={(e) => {
-                setSubjectFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black text-sm appearance-none"
-            >
-              <option value="">Lọc theo môn học</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Quản lý giáo viên
+            </h1>
+            <p className="text-sm text-gray-500">
+              Xem và chỉnh sửa danh sách môn dạy của giáo viên
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      {/* ============ STATS CARDS ============ */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">
+                Tổng giáo viên
+              </p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {teachers.length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">
+                Đang hoạt động
+              </p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {teachers.filter((t) => t.classCount > 0).length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <UserCog className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Số môn học</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {subjects.length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+      </div>
+
+      {/* ============ TOOLBAR ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Search */}
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm kiếm giáo viên..."
+                className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Filter */}
+          <div className="w-full lg:w-64">
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <select
+                value={subjectFilter}
+                onChange={(e) => {
+                  setSubjectFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-10 pr-8 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm appearance-none"
+              >
+                <option value="">Lọc theo môn học</option>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ============ DATA TABLE ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -514,7 +586,7 @@ const TeacherManagement = () => {
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => openEdit(t)}
-                      className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-black text-white rounded-lg hover:bg-gray-800"
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                     >
                       <Pencil className="h-4 w-4" />
                       Sửa
@@ -526,24 +598,27 @@ const TeacherManagement = () => {
           </tbody>
         </table>
 
+        {/* Pagination */}
         <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-t border-gray-100">
           <div className="text-sm text-gray-600">
-            {loading ? "Đang tải..." : `Tổng ${filtered.length} giáo viên`}
+            {loading
+              ? "Đang tải..."
+              : `Hiển thị ${paged.length} / ${filtered.length} giáo viên`}
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded-md bg-white hover:bg-gray-100"
+              className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
               disabled={currentPage === 1}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-sm text-gray-700">
-              Trang {currentPage} / {totalPages}
+            <span className="text-sm text-gray-700 px-3">
+              {currentPage} / {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded-md bg-white hover:bg-gray-100"
+              className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
               disabled={currentPage === totalPages}
             >
               <ChevronRight className="h-4 w-4" />

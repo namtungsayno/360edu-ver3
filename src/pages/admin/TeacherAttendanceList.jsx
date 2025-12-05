@@ -118,96 +118,105 @@ export default function TeacherAttendanceList() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-950">
-          Chấm công Giáo viên
-        </h1>
-        <p className="text-[13px] text-[#62748e] mt-1">
-          Quản lý và theo dõi chấm công làm việc của giáo viên theo lớp học
-        </p>
+      {/* Header với gradient */}
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg shadow-amber-200">
+          <Clock className="h-7 w-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Chấm công Giáo viên
+          </h1>
+          <p className="text-gray-500 text-sm">
+            Quản lý và theo dõi chấm công làm việc của giáo viên theo lớp học
+          </p>
+        </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards với gradient */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-[12px] text-[#62748e]">Tổng giáo viên</p>
-                <p className="text-2xl font-semibold text-neutral-950">
-                  {totalTeachers}
-                </p>
-              </div>
+        {/* Tổng giáo viên */}
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg shadow-blue-200 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <p className="text-blue-100 text-sm font-medium">
+                Tổng giáo viên
+              </p>
+              <p className="text-3xl font-bold mt-1">{totalTeachers}</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-[12px] text-[#62748e]">Đang có lớp</p>
-                <p className="text-2xl font-semibold text-neutral-950">
-                  {teachersWithClasses}
-                </p>
-              </div>
+            <div className="p-3 bg-white/20 rounded-xl">
+              <Users className="h-6 w-6" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-4">
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${getAttendanceColor(
-                  avgAttendanceRate
-                )}`}
+        {/* Đang có lớp */}
+        <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-200 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <p className="text-violet-100 text-sm font-medium">Đang có lớp</p>
+              <p className="text-3xl font-bold mt-1">{teachersWithClasses}</p>
+            </div>
+            <div className="p-3 bg-white/20 rounded-xl">
+              <BookOpen className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+
+        {/* Tỷ lệ TB tháng này */}
+        <div
+          className={`bg-gradient-to-br ${
+            avgAttendanceRate >= 70
+              ? "from-emerald-500 to-teal-600 shadow-emerald-200"
+              : "from-rose-500 to-pink-600 shadow-rose-200"
+          } rounded-2xl p-5 text-white shadow-lg relative overflow-hidden`}
+        >
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <div className="flex items-center justify-between relative z-10">
+            <div>
+              <p
+                className={`${
+                  avgAttendanceRate >= 70 ? "text-emerald-100" : "text-rose-100"
+                } text-sm font-medium`}
               >
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-[12px] text-[#62748e]">Tỷ lệ TB tháng này</p>
-                <p className="text-2xl font-semibold text-neutral-950">
-                  {avgAttendanceRate.toFixed(1)}%
-                </p>
-              </div>
+                Tỷ lệ TB tháng này
+              </p>
+              <p className="text-3xl font-bold mt-1">
+                {avgAttendanceRate.toFixed(1)}%
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="p-3 bg-white/20 rounded-xl">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Search */}
-      <Card className="rounded-[14px]">
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="Tìm kiếm theo tên, email, số điện thoại hoặc môn học..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Tìm kiếm theo tên, email, số điện thoại hoặc môn học..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 rounded-xl border-gray-200"
+          />
+        </div>
+      </div>
 
       {/* Teacher List */}
-      <Card className="rounded-[14px]">
-        <CardHeader className="border-b border-gray-100">
-          <CardTitle className="text-base font-semibold text-neutral-950">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">
             Danh sách giáo viên ({filteredTeachers.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+          </h2>
+        </div>
+        <div className="p-0">
           {filteredTeachers.length === 0 ? (
-            <div className="text-center py-12 text-[#62748e]">
+            <div className="text-center py-12 text-gray-500">
               <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
               <p>Không tìm thấy giáo viên nào</p>
             </div>
@@ -246,7 +255,7 @@ export default function TeacherAttendanceList() {
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-neutral-950 truncate">
+                          <h3 className="font-semibold text-gray-900 truncate">
                             {teacher.fullName}
                           </h3>
                           {teacher.degree && (
@@ -255,7 +264,7 @@ export default function TeacherAttendanceList() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-[12px] text-[#62748e] truncate">
+                        <p className="text-[12px] text-gray-500 truncate">
                           {teacher.email} • {teacher.phone || "Chưa có SĐT"}
                         </p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -275,17 +284,17 @@ export default function TeacherAttendanceList() {
                       {/* Stats */}
                       <div className="flex items-center gap-6 flex-shrink-0">
                         <div className="text-center">
-                          <p className="text-lg font-semibold text-neutral-950">
+                          <p className="text-lg font-semibold text-gray-900">
                             {teacher.assignedClasses || 0}
                           </p>
-                          <p className="text-[11px] text-[#62748e]">Lớp</p>
+                          <p className="text-[11px] text-gray-500">Lớp</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-lg font-semibold text-neutral-950">
+                          <p className="text-lg font-semibold text-gray-900">
                             {teacher.completedSlotsThisMonth || 0}/
                             {teacher.totalSlotsThisMonth || 0}
                           </p>
-                          <p className="text-[11px] text-[#62748e]">
+                          <p className="text-[11px] text-gray-500">
                             Slot tháng
                           </p>
                         </div>
@@ -295,7 +304,7 @@ export default function TeacherAttendanceList() {
                           >
                             {(teacher.attendanceRateThisMonth || 0).toFixed(1)}%
                           </Badge>
-                          <p className="text-[11px] text-[#62748e] mt-1">
+                          <p className="text-[11px] text-gray-500 mt-1">
                             {badge.label}
                           </p>
                         </div>
@@ -307,8 +316,8 @@ export default function TeacherAttendanceList() {
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

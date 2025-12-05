@@ -18,8 +18,9 @@ import { teacherService } from "../../../services/teacher/teacher.service";
 import { classroomService } from "../../../services/classrooms/classroom.service";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
 import { courseApi } from "../../../services/course/course.api";
-import { Loader2, ArrowLeft, Eye } from "lucide-react";
+import { Loader2, Eye } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
+import { BackButton } from "../../../components/common/BackButton";
 
 /**
  * ClassEditPage
@@ -695,17 +696,13 @@ export default function ClassEditPage() {
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
+                <BackButton
                   onClick={() => {
                     if (currentStep === 2) setCurrentStep(1);
                     else navigate(`/home/admin/class/${cls.id}`);
                   }}
-                  className="flex items-center gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Quay lại
-                </Button>
+                  showLabel={false}
+                />
                 <div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1

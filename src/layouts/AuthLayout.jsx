@@ -1,10 +1,10 @@
 /**
  * AUTH LAYOUT - Layout cho các trang authentication
- * 
+ *
  * Routes được quản lý:
  * - /home/login → Login.jsx
  * - /home/register → Register.jsx
- * 
+ *
  * Chức năng:
  * - Layout đơn giản không có Header/Footer
  * - Chỉ render Outlet với context navigation
@@ -13,6 +13,7 @@
  */
 
 import { Outlet, useNavigate } from "react-router-dom";
+import PageTransition from "../components/common/PageTransition";
 
 export default function AuthLayout() {
   const navigate = useNavigate();
@@ -36,8 +37,10 @@ export default function AuthLayout() {
 
   return (
     <div>
-      {/* Chỉ render content, không có header/footer */}
-      <Outlet context={{ onNavigate }} />
+      {/* Chỉ render content với Page Transition */}
+      <PageTransition>
+        <Outlet context={{ onNavigate }} />
+      </PageTransition>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { Input } from "../../../components/ui/Input";
 import Card from "../../../components/common/Card";
 import { teacherProfileService } from "../../../services/teacher/teacher.profile.service";
 import { teacherProfileApi } from "../../../services/teacher/teacher.profile.detail.api";
+import { UserCog } from "lucide-react";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
@@ -286,7 +287,24 @@ export default function TeacherProfileEdit() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-200">
+            <UserCog className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Chỉnh sửa hồ sơ
+            </h1>
+            <p className="text-sm text-gray-500">
+              Giáo viên tự thêm/chỉnh sửa thông tin của mình
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* THÔNG TIN CƠ BẢN */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <Card className="bg-white border border-gray-200">
@@ -295,7 +313,7 @@ export default function TeacherProfileEdit() {
               Thông tin cơ bản
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              Giáo viên tự thêm/chỉnh sửa thông tin của mình.
+              Cập nhật thông tin cá nhân của bạn.
             </p>
 
             <form className="mt-6 space-y-5" onSubmit={onSubmit}>

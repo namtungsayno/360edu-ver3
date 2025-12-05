@@ -291,6 +291,8 @@ export default function SubjectDetail() {
         title={subject?.name || "Chi tiết môn học"}
         subtitle={`Mã môn: ${subject?.code}`}
         onBack={handleBack}
+        icon={BookOpen}
+        iconColor="indigo"
         status={
           !editMode
             ? {
