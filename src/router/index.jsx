@@ -69,7 +69,7 @@ import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 
 // tuấn test
 // FIXED: Import các component cho Class Management (Quản lý lớp học)
-import CreateClass from "../pages/admin/class/ClassManagement.jsx";
+import ClassManagement from "../pages/admin/class/ClassManagement.jsx";
 import ClassDetailPage from "../pages/admin/class/ClassDetailPage.jsx";
 import ClassEditPage from "../pages/admin/class/ClassEditPage.jsx";
 import CreateOfflineClassPage from "../pages/admin/class/CreateOfflineClassPage.jsx";
@@ -176,7 +176,7 @@ function AppRouter() {
             <Route path="classrooms" element={<ClassroomList />} />
             {/* Tuấn test */}
             {/* FIXED: Thêm route cho Class Management - Quản lý lớp học */}
-            <Route path="class" element={<CreateClass />} />
+            <Route path="class" element={<ClassManagement />} />
             <Route path="class/:id" element={<ClassDetailPage />} />
             <Route path="class/:id/edit" element={<ClassEditPage />} />
             <Route
@@ -213,9 +213,18 @@ function AppRouter() {
             {/* Payment Management - Quản lý thanh toán */}
             <Route path="payment" element={<PaymentHistory />} />
             {/* Teacher Attendance - Chấm công giáo viên */}
-            <Route path="teacher-attendance" element={<TeacherAttendanceList />} />
-            <Route path="teacher-attendance/:teacherId" element={<TeacherAttendanceDetail />} />
-            <Route path="teacher-attendance/:teacherId/class/:classId" element={<TeacherClassAttendance />} />
+            <Route
+              path="teacher-attendance"
+              element={<TeacherAttendanceList />}
+            />
+            <Route
+              path="teacher-attendance/:teacherId"
+              element={<TeacherAttendanceDetail />}
+            />
+            <Route
+              path="teacher-attendance/:teacherId/class/:classId"
+              element={<TeacherClassAttendance />}
+            />
           </Route>
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}

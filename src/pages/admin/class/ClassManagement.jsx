@@ -1,68 +1,602 @@
+// src/pages/admin/class/ClassManagement.jsx
+// ✨ MASTER-DETAIL SPLIT VIEW - Xem list và chi tiết cùng lúc
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { dayLabelVi } from "../../../helper/formatters";
-import { Button } from "../../../components/ui/Button";
+import { dayLabelVi, formatCurrency } from "../../../helper/formatters";
 import { classService } from "../../../services/class/class.service";
-import { teacherService } from "../../../services/teacher/teacher.service";
-// timeslot service
-import { timeslotService } from "../../../services/timeslot/timeslot.service";
-import { Input } from "../../../components/ui/Input";
-
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/Dialog";
-// import { useToast } from "../../../hooks/use-toast";
+  Search,
+  Plus,
+  Filter,
+  ChevronRight,
+  Users,
+  Clock,
+  MapPin,
+  Video,
+  Building,
+  Calendar,
+  Banknote,
+  BookOpen,
+  User,
+  ExternalLink,
+  Edit,
+  CheckCircle,
+  AlertCircle,
+  PlayCircle,
+  PauseCircle,
+  X,
+  Globe,
+  Home,
+  FileText,
+  GraduationCap,
+  Layers,
+  ChevronDown,
+} from "lucide-react";
 
-/**
- * Trang quản lý lớp học
- * List tất cả lớp học
- * Add class offline/online
- * Filter theo giáo viên, theo slot
- * Xem chi tiết lớp học
- */
-export default function CreateClassPage() {
+// ============ HELPER FUNCTIONS ============
+function getDerivedStatus(cls) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const sd = cls?.startDate ? new Date(cls.startDate) : null;
+  const ed = cls?.endDate ? new Date(cls.endDate) : null;
+  if (sd) sd.setHours(0, 0, 0, 0);
+  if (ed) ed.setHours(0, 0, 0, 0);
+
+  if (sd && sd > today) {
+    return { label: "Sắp mở", color: "sky", icon: PauseCircle };
+  }
+  if (sd && ed && sd <= today && today <= ed) {
+    return { label: "Đang diễn ra", color: "emerald", icon: PlayCircle };
+  }
+  if (ed && ed < today) {
+    return { label: "Đã kết thúc", color: "gray", icon: CheckCircle };
+  }
+  return null;
+}
+
+function getStatusBadge(status) {
+  if (status === "DRAFT") {
+    return {
+      label: "Bản nháp",
+      bg: "bg-amber-100",
+      text: "text-amber-700",
+      icon: AlertCircle,
+    };
+  }
+  if (status === "PUBLIC") {
+    return {
+      label: "Đã xuất bản",
+      bg: "bg-emerald-100",
+      text: "text-emerald-700",
+      icon: CheckCircle,
+    };
+  }
+  return {
+    label: "Lưu trữ",
+    bg: "bg-gray-100",
+    text: "text-gray-600",
+    icon: FileText,
+  };
+}
+
+// ============ STAT CARD COMPONENT ============
+function StatCard({ icon: Icon, label, value, gradient, iconBg }) {
+  return (
+    <div className={`relative overflow-hidden rounded-2xl ${gradient} p-4`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-white/80">{label}</p>
+          <p className="text-2xl font-bold text-white mt-1">{value}</p>
+        </div>
+        <div
+          className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center`}
+        >
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+      </div>
+      {/* Decorative circles */}
+      <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+      <div className="absolute -right-2 -bottom-2 w-16 h-16 rounded-full bg-white/10" />
+    </div>
+  );
+}
+
+// ============ CLASS LIST ITEM ============
+function ClassListItem({ cls, isSelected, onClick }) {
+  const timeStatus = getDerivedStatus(cls);
+  const statusBadge = getStatusBadge(cls.status);
+
+  return (
+    <div
+      onClick={onClick}
+      className={`
+        group relative p-4 rounded-xl cursor-pointer transition-all duration-200
+        ${
+          isSelected
+            ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 shadow-md"
+            : "bg-white hover:bg-gray-50 border border-gray-100 hover:border-gray-200 hover:shadow-sm"
+        }
+      `}
+    >
+      {/* Selection indicator */}
+      {isSelected && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-blue-500 rounded-r-full" />
+      )}
+
+      <div className="flex items-start gap-3">
+        {/* Type Icon */}
+        <div
+          className={`
+          w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+          ${
+            cls.online
+              ? "bg-gradient-to-br from-blue-500 to-indigo-600"
+              : "bg-gradient-to-br from-emerald-500 to-teal-600"
+          }
+        `}
+        >
+          {cls.online ? (
+            <Globe className="w-5 h-5 text-white" />
+          ) : (
+            <Home className="w-5 h-5 text-white" />
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-semibold text-gray-900 truncate">
+                {cls.name}
+              </h3>
+              <p className="text-sm text-gray-500 truncate">
+                {cls.subjectName}
+              </p>
+            </div>
+            <ChevronRight
+              className={`w-5 h-5 flex-shrink-0 transition-colors ${
+                isSelected
+                  ? "text-blue-500"
+                  : "text-gray-300 group-hover:text-gray-400"
+              }`}
+            />
+          </div>
+
+          {/* Meta info */}
+          <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+            <span className="flex items-center gap-1">
+              <User className="w-3.5 h-3.5" />
+              {cls.teacherFullName?.split(" ").slice(-2).join(" ") || "—"}
+            </span>
+            {!cls.online && cls.roomName && (
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" />
+                {cls.roomName}
+              </span>
+            )}
+          </div>
+
+          {/* Badges */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge.bg} ${statusBadge.text}`}
+            >
+              {statusBadge.label}
+            </span>
+            {timeStatus && (
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-${timeStatus.color}-100 text-${timeStatus.color}-700`}
+              >
+                {timeStatus.label}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============ DETAIL PANEL ============
+function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
+  const navigate = useNavigate();
+  const timeStatus = getDerivedStatus(cls);
+  const statusBadge = getStatusBadge(cls.status);
+
+  // DEBUG: Log dữ liệu từ API
+  console.log("🔍 DetailPanel cls data - ALL KEYS:", Object.keys(cls));
+  console.log("🔍 DetailPanel cls data - FULL OBJECT:", cls);
+  console.log("🔍 Checking session fields:", {
+    pricePerSession: cls?.pricePerSession,
+    price: cls?.price,
+    sessionPrice: cls?.sessionPrice,
+    price_per_session: cls?.price_per_session,
+    totalSessions: cls?.totalSessions,
+    numberOfSessions: cls?.numberOfSessions,
+    sessionCount: cls?.sessionCount,
+    total_sessions: cls?.total_sessions,
+    sessions: cls?.sessions,
+    totalSessionCount: cls?.totalSessionCount,
+    sessionNumber: cls?.sessionNumber,
+  });
+
+  // Hỗ trợ các tên trường thay thế từ backend (giống ClassDetailPage)
+  const priceValue = (() => {
+    const v =
+      cls?.pricePerSession ??
+      cls?.price ??
+      cls?.sessionPrice ??
+      cls?.price_per_session ??
+      null;
+    console.log("💰 priceValue:", v);
+    return v;
+  })();
+
+  const totalSessions = (() => {
+    // Thử lấy từ backend trước
+    let v =
+      cls?.totalSessions ??
+      cls?.numberOfSessions ??
+      cls?.sessionCount ??
+      cls?.total_sessions ??
+      null;
+
+    // Nếu backend trả về 0 hoặc null, thử tính từ schedule + duration
+    if (!v || v === 0) {
+      const scheduleLength = Array.isArray(cls?.schedule)
+        ? cls.schedule.length
+        : 0;
+      if (scheduleLength > 0 && cls?.startDate && cls?.endDate) {
+        try {
+          const start = new Date(cls.startDate);
+          const end = new Date(cls.endDate);
+          const diffTime = Math.abs(end - start);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          const weeks = Math.ceil(diffDays / 7);
+          v = scheduleLength * weeks;
+          console.log(
+            `📊 Calculated totalSessions from schedule: ${scheduleLength} sessions/week × ${weeks} weeks = ${v}`
+          );
+        } catch (e) {
+          console.error("Error calculating sessions:", e);
+        }
+      }
+    }
+
+    console.log("📊 totalSessions:", v);
+    return v;
+  })();
+
+  const totalPrice =
+    priceValue != null && totalSessions != null && totalSessions > 0
+      ? Number(priceValue) * Number(totalSessions)
+      : null;
+
+  return (
+    <div className="h-full flex flex-col bg-white">
+      {/* Header */}
+      <div className="flex-shrink-0 p-6 border-b border-gray-100">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 min-w-0">
+            {/* Type badge */}
+            <div
+              className={`
+              w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0
+              ${
+                cls.online
+                  ? "bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-200"
+                  : "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-200"
+              }
+            `}
+            >
+              {cls.online ? (
+                <Globe className="w-7 h-7 text-white" />
+              ) : (
+                <Building className="w-7 h-7 text-white" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-gray-900 truncate">
+                {cls.name}
+              </h2>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {cls.subjectName || "Chưa gán môn học"}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${statusBadge.bg} ${statusBadge.text}`}
+                >
+                  <statusBadge.icon className="w-3.5 h-3.5" />
+                  {statusBadge.label}
+                </span>
+                {timeStatus && (
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-${timeStatus.color}-100 text-${timeStatus.color}-700`}
+                  >
+                    <timeStatus.icon className="w-3.5 h-3.5" />
+                    {timeStatus.label}
+                  </span>
+                )}
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                    cls.online
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-emerald-100 text-emerald-700"
+                  }`}
+                >
+                  {cls.online ? "Online" : "Offline"}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors lg:hidden"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+      </div>
+
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl border border-pink-100">
+            <div className="flex items-center gap-2 text-pink-600 mb-1">
+              <Users className="w-4 h-4" />
+              <span className="text-xs font-medium">Sĩ số</span>
+            </div>
+            <p className="text-xl font-bold text-gray-900">
+              {cls.currentStudents || 0}/{cls.maxStudents || "—"}
+            </p>
+          </div>
+          <div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+            <div className="flex items-center gap-2 text-indigo-600 mb-1">
+              <Clock className="w-4 h-4" />
+              <span className="text-xs font-medium">Tổng buổi</span>
+            </div>
+            <p className="text-xl font-bold text-gray-900">
+              {totalSessions || "—"} buổi
+            </p>
+          </div>
+          <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
+            <div className="flex items-center gap-2 text-emerald-600 mb-1">
+              <Banknote className="w-4 h-4" />
+              <span className="text-xs font-medium">Học phí/buổi</span>
+            </div>
+            <p className="text-xl font-bold text-gray-900">
+              {priceValue ? formatCurrency(priceValue) : "—"}
+            </p>
+          </div>
+          <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100">
+            <div className="flex items-center gap-2 text-amber-600 mb-1">
+              <Banknote className="w-4 h-4" />
+              <span className="text-xs font-medium">Tổng học phí</span>
+            </div>
+            <p className="text-xl font-bold text-gray-900">
+              {totalPrice ? formatCurrency(totalPrice) : "—"}
+            </p>
+          </div>
+        </div>
+
+        {/* Class Info */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-gray-400" />
+            Thông tin lớp học
+          </h3>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                <User className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Giáo viên</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {cls.teacherFullName || "Chưa phân công"}
+                </p>
+              </div>
+            </div>
+
+            {cls.online ? (
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Video className="w-4 h-4 text-purple-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-500">Link học Online</p>
+                  {cls.meetingLink ? (
+                    <a
+                      href={cls.meetingLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                      <span className="truncate">{cls.meetingLink}</span>
+                      <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                    </a>
+                  ) : (
+                    <p className="text-sm text-gray-400">Chưa có link</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <MapPin className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Phòng học</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {cls.roomName || "Chưa xếp phòng"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center">
+                <Calendar className="w-4 h-4 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Thời gian khóa học</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {cls.startDate && cls.endDate
+                    ? `${cls.startDate} → ${cls.endDate}`
+                    : cls.startDate || cls.endDate || "Chưa xác định"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div className="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center">
+                <BookOpen className="w-4 h-4 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Môn học</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {cls.subjectName || "Chưa gán"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Schedule */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-400" />
+            Lịch học hàng tuần
+          </h3>
+          {Array.isArray(cls.schedule) && cls.schedule.length > 0 ? (
+            <div className="space-y-2">
+              {cls.schedule.map((s, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {dayLabelVi(s.dayOfWeek)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {s.startTime?.slice(0, 5)} - {s.endTime?.slice(0, 5)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-center">
+              <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">Chưa thiết lập lịch học</p>
+            </div>
+          )}
+        </div>
+
+        {/* Description */}
+        {cls.description && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-gray-400" />
+              Mô tả
+            </h3>
+            <p className="text-sm text-gray-600 leading-relaxed p-4 bg-gray-50 rounded-xl whitespace-pre-line">
+              {cls.description}
+            </p>
+          </div>
+        )}
+
+        {/* Action Info */}
+        <div className="p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border border-gray-100">
+          <p className="text-sm text-gray-600">
+            {cls.status === "DRAFT"
+              ? "💡 Lớp học đang ở trạng thái Bản nháp. Xuất bản để học sinh có thể nhìn thấy và đăng ký."
+              : "✅ Lớp học đã được xuất bản. Bạn có thể chuyển về Bản nháp nếu cần chỉnh sửa thêm."}
+          </p>
+        </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-gray-50/50">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/home/admin/class/${cls.id}/edit`)}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            <Edit className="w-4 h-4" />
+            Sửa
+          </button>
+          {cls.status === "DRAFT" ? (
+            <button
+              onClick={onPublish}
+              disabled={updating}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl hover:shadow-lg hover:shadow-emerald-200 disabled:opacity-50 transition-all"
+            >
+              <CheckCircle className="w-4 h-4" />
+              {updating ? "Đang xử lý..." : "Xuất bản"}
+            </button>
+          ) : (
+            <button
+              onClick={onRevert}
+              disabled={updating}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 disabled:opacity-50 transition-colors"
+            >
+              <AlertCircle className="w-4 h-4" />
+              {updating ? "Đang xử lý..." : "Về nháp"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============ EMPTY DETAIL STATE ============
+function EmptyDetail() {
+  return (
+    <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-gray-50 to-white">
+      <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-6">
+        <Layers className="w-12 h-12 text-blue-400" />
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+        Chọn một lớp học
+      </h3>
+      <p className="text-sm text-gray-500 max-w-xs">
+        Click vào một lớp học từ danh sách bên trái để xem thông tin chi tiết
+        tại đây
+      </p>
+    </div>
+  );
+}
+
+// ============ MAIN COMPONENT ============
+export default function ClassManagementV2() {
   const navigate = useNavigate();
 
-  // filters
-  const [teacherUserId, setTeacherUserId] = useState("");
-  const [timeSlotId, setTimeSlotId] = useState("");
-  const [classType, setClassType] = useState(""); // "", "online", "offline"
+  // Filters
   const [query, setQuery] = useState("");
+  const [classType, setClassType] = useState(""); // "", "online", "offline"
+  const [statusFilter, setStatusFilter] = useState(""); // "", "DRAFT", "PUBLIC"
+  const [showFilters, setShowFilters] = useState(false);
 
-  // data sources
-  const [teachers, setTeachers] = useState([]);
-  const [timeSlots, setTimeSlots] = useState([]);
+  // Data
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
-  // modal detail removed; no selected/actionMsg needed
-  // const { error } = useToast();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        // sử dụng Promise.all để call API song song
-        const [ts, tch] = await Promise.all([
-          timeslotService.list(),
-          teacherService.list(),
-        ]);
-        setTimeSlots(Array.isArray(ts) ? ts : []);
-        setTeachers(Array.isArray(tch) ? tch : []);
-      } catch (e) {
-        console.error(e);
-      }
-    })();
-  }, []);
+  // Selection
+  const [selectedId, setSelectedId] = useState(null);
+  const [updating, setUpdating] = useState(false);
 
+  // Load classes
   const loadClasses = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await classService.list({
-        teacherUserId: teacherUserId || undefined,
-        timeSlotId: timeSlotId || undefined,
-      });
+      const data = await classService.list({});
       setClasses(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
@@ -70,23 +604,32 @@ export default function CreateClassPage() {
     } finally {
       setLoading(false);
     }
-  }, [teacherUserId, timeSlotId]);
+  }, []);
 
   useEffect(() => {
     loadClasses();
   }, [loadClasses]);
 
+  // Stats
+  const stats = useMemo(() => {
+    const online = classes.filter((c) => c.online === true).length;
+    const offline = classes.filter((c) => c.online === false).length;
+    const draft = classes.filter((c) => c.status === "DRAFT").length;
+    const published = classes.filter((c) => c.status === "PUBLIC").length;
+    return { total: classes.length, online, offline, draft, published };
+  }, [classes]);
+
+  // Filter
   const filtered = useMemo(() => {
     let result = classes;
 
-    // Filter by class type (online/offline)
-    if (classType === "online") {
+    if (classType === "online")
       result = result.filter((c) => c.online === true);
-    } else if (classType === "offline") {
+    else if (classType === "offline")
       result = result.filter((c) => c.online === false);
-    }
 
-    // Filter by search query
+    if (statusFilter) result = result.filter((c) => c.status === statusFilter);
+
     const q = query.trim().toLowerCase();
     if (q) {
       result = result.filter((c) =>
@@ -97,264 +640,229 @@ export default function CreateClassPage() {
     }
 
     return result;
-  }, [classes, query, classType]);
+  }, [classes, query, classType, statusFilter]);
 
-  // Derived status by date: Sắp mở / Đang diễn ra
-  function getDerivedStatus(cls) {
-    const today = new Date();
-    const sd = cls?.startDate ? new Date(cls.startDate) : null;
-    const ed = cls?.endDate ? new Date(cls.endDate) : null;
-    if (sd && sd > today)
-      return { label: "Sắp mở", style: "bg-sky-100 text-sky-700" };
-    if (sd && ed && sd <= today && today <= ed)
-      return { label: "Đang diễn ra", style: "bg-violet-100 text-violet-700" };
-    return null;
-  }
+  // Selected class
+  const selectedClass = useMemo(() => {
+    if (!selectedId) return null;
+    return classes.find((c) => c.id === selectedId) || null;
+  }, [classes, selectedId]);
 
-  // Statistics
-  const stats = useMemo(() => {
-    const online = classes.filter((c) => c.online === true).length;
-    const offline = classes.filter((c) => c.online === false).length;
-    return { online, offline, total: classes.length };
-  }, [classes]);
+  // Actions
+  const handlePublish = async () => {
+    if (!selectedClass) return;
+    setUpdating(true);
+    try {
+      await classService.publish(selectedClass.id);
+      await loadClasses();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUpdating(false);
+    }
+  };
 
-  // Publish/Revert actions moved to detail page
+  const handleRevert = async () => {
+    if (!selectedClass) return;
+    setUpdating(true);
+    try {
+      await classService.revertDraft(selectedClass.id);
+      await loadClasses();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Quản lý lớp học
-        </h1>
-        <p className="text-gray-500">
-          Quản lý thông tin các lớp học trong hệ thống
-        </p>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
+    <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-50">
+      {/* ============ HEADER ============ */}
+      <div className="flex-shrink-0 p-6 bg-white border-b border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
+              <GraduationCap className="w-6 h-6 text-white" />
+            </div>
             <div>
-              <p className="text-sm text-blue-600 font-medium">Tổng số lớp</p>
-              <p className="text-2xl font-bold text-blue-900 mt-1">
-                {stats.total}
+              <h1 className="text-2xl font-bold text-gray-900">
+                Quản lý lớp học
+              </h1>
+              <p className="text-sm text-gray-500">
+                Quản lý thông tin các lớp học trong hệ thống
               </p>
             </div>
-            <div className="h-12 w-12 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xl">
-              📚
-            </div>
           </div>
-        </div>
-        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-indigo-600 font-medium">Lớp Online</p>
-              <p className="text-2xl font-bold text-indigo-900 mt-1">
-                {stats.online}
-              </p>
-            </div>
-            <div className="h-12 w-12 bg-indigo-500 rounded-lg flex items-center justify-center text-white text-xl">
-              🌐
-            </div>
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-green-600 font-medium">Lớp Offline</p>
-              <p className="text-2xl font-bold text-green-900 mt-1">
-                {stats.offline}
-              </p>
-            </div>
-            <div className="h-12 w-12 bg-green-500 rounded-lg flex items-center justify-center text-white text-xl">
-              🏫
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <div></div>
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={() => navigate("/home/admin/class/create-offline")}
-            className="bg-white hover:bg-gray-50"
-          >
-            Tạo lớp Offline
-          </Button>
-          <Button
-            onClick={() => navigate("/home/admin/class/create-online")}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Tạo lớp Online
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Input
-          placeholder="Tìm kiếm lớp học..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-72"
-        />
-        <select
-          value={classType}
-          onChange={(e) => setClassType(e.target.value)}
-          className="px-3 py-2 border rounded-md text-sm bg-white"
-        >
-          <option value="">Tất cả loại lớp</option>
-          <option value="online">🌐 Lớp Online</option>
-          <option value="offline">🏫 Lớp Offline</option>
-        </select>
-        <select
-          value={teacherUserId}
-          onChange={(e) => setTeacherUserId(e.target.value)}
-          className="px-3 py-2 border rounded-md text-sm"
-        >
-          <option value="">Lọc theo giáo viên</option>
-          {teachers.map((t) => (
-            <option key={t.userId} value={t.userId}>
-              {t.fullName}
-            </option>
-          ))}
-        </select>
-        <select
-          value={timeSlotId}
-          onChange={(e) => setTimeSlotId(e.target.value)}
-          className="px-3 py-2 border rounded-md text-sm"
-        >
-          <option value="">Lọc theo Slot</option>
-          {timeSlots.map((s) => (
-            <option key={s.id} value={s.id}>
-              Ca {s.id} • {s.startTime?.slice(0, 5)}-{s.endTime?.slice(0, 5)}
-            </option>
-          ))}
-        </select>
-        <Button variant="outline" onClick={loadClasses}>
-          Làm mới
-        </Button>
-      </div>
-
-      {/* List */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-        {loading && <div className="text-sm text-gray-500">Đang tải...</div>}
-        {!loading && filtered.length === 0 && (
-          <div className="text-sm text-gray-500">Không có lớp nào.</div>
-        )}
-        {!loading &&
-          filtered.map((c) => (
-            <div
-              key={c.id}
-              className="rounded-2xl border bg-white p-5 hover:shadow-md transition cursor-pointer"
-              onClick={() => navigate(`/home/admin/class/${c.id}`)}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/home/admin/class/create-offline")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {c.name}
-                  </h3>
-                  <p className="text-gray-600 text-sm">{c.subjectName}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {/* Status badge */}
-                  {c.status && (
-                    <span
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
-                        c.status === "DRAFT"
-                          ? "bg-amber-200 text-amber-900"
-                          : c.status === "PUBLIC"
-                          ? "bg-emerald-200 text-emerald-900"
-                          : "bg-gray-200 text-gray-800"
-                      }`}
-                    >
-                      {c.status === "DRAFT"
-                        ? "Draft"
-                        : c.status === "PUBLIC"
-                        ? "Public"
-                        : "Archived"}
-                    </span>
-                  )}
-                  {/* Derived runtime badge */}
-                  {(() => {
-                    const d = getDerivedStatus(c);
-                    return d ? (
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${d.style}`}
-                      >
-                        {d.label}
-                      </span>
-                    ) : null;
-                  })()}
-                  {/* Type badge */}
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      c.online
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-green-100 text-green-700"
-                    }`}
-                  >
-                    {c.online ? "Online" : "Offline"}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-4 space-y-2 text-sm text-gray-700">
-                <div>👨‍🏫 {c.teacherFullName}</div>
-                <div className="flex items-center gap-1">
-                  {c.online ? (
-                    <>
-                      📡 Online
-                      {c.meetingLink && (
-                        <a
-                          href={c.meetingLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="ml-2 inline-flex items-center text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 hover:underline"
-                        >
-                          Vào học
-                        </a>
-                      )}
-                    </>
-                  ) : (
-                    <>📍 {c.roomName}</>
-                  )}
-                </div>
-                <div>
-                  ⏰{" "}
-                  {Array.isArray(c.schedule) && c.schedule.length > 0
-                    ? c.schedule
-                        .map(
-                          (s) =>
-                            `${dayLabelVi(s.dayOfWeek)} - ${s.startTime?.slice(
-                              0,
-                              5
-                            )}-${s.endTime?.slice(0, 5)}`
-                        )
-                        .join(", ")
-                    : "Chưa có lịch"}
-                </div>
-                {(c.startDate || c.endDate) && (
-                  <div>
-                    📅{" "}
-                    {c.startDate && c.endDate
-                      ? `${c.startDate} → ${c.endDate}`
-                      : c.startDate || c.endDate}
-                  </div>
-                )}
-              </div>
-              {typeof c.maxStudents === "number" && (
-                <div className="mt-3 text-sm text-gray-600">
-                  Sĩ số tối đa: {c.maxStudents}
-                </div>
-              )}
-            </div>
-          ))}
+              <Building className="w-4 h-4" />
+              Tạo Offline
+            </button>
+            <button
+              onClick={() => navigate("/home/admin/class/create-online")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all"
+            >
+              <Globe className="w-4 h-4" />
+              Tạo Online
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard
+            icon={Layers}
+            label="Tổng số lớp"
+            value={stats.total}
+            gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
+            iconBg="bg-white/20"
+          />
+          <StatCard
+            icon={Globe}
+            label="Lớp Online"
+            value={stats.online}
+            gradient="bg-gradient-to-br from-purple-500 to-pink-600"
+            iconBg="bg-white/20"
+          />
+          <StatCard
+            icon={Building}
+            label="Lớp Offline"
+            value={stats.offline}
+            gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
+            iconBg="bg-white/20"
+          />
+          <StatCard
+            icon={CheckCircle}
+            label="Đã xuất bản"
+            value={stats.published}
+            gradient="bg-gradient-to-br from-amber-500 to-orange-600"
+            iconBg="bg-white/20"
+          />
+        </div>
       </div>
 
-      {/* Chi tiết lớp chuyển sang trang riêng: /home/admin/class/:id */}
+      {/* ============ MAIN CONTENT - SPLIT VIEW ============ */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* ============ LEFT: MASTER LIST ============ */}
+        <div className="w-full lg:w-[420px] xl:w-[480px] flex flex-col border-r border-gray-200 bg-white">
+          {/* Search & Filter */}
+          <div className="flex-shrink-0 p-4 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm lớp học..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
+              </div>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`p-2.5 rounded-xl border transition-colors ${
+                  showFilters
+                    ? "bg-blue-50 border-blue-200 text-blue-600"
+                    : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                <Filter className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filter Options */}
+            {showFilters && (
+              <div className="mt-3 flex flex-wrap gap-2 animate-in slide-in-from-top-2 duration-200">
+                <select
+                  value={classType}
+                  onChange={(e) => setClassType(e.target.value)}
+                  className="px-3 py-2 text-sm bg-gray-50 border-0 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Tất cả loại</option>
+                  <option value="online">🌐 Online</option>
+                  <option value="offline">🏫 Offline</option>
+                </select>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 text-sm bg-gray-50 border-0 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="DRAFT">📝 Bản nháp</option>
+                  <option value="PUBLIC">✅ Đã xuất bản</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-12">
+                <Layers className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">Không có lớp học nào</p>
+              </div>
+            ) : (
+              filtered.map((cls) => (
+                <ClassListItem
+                  key={cls.id}
+                  cls={cls}
+                  isSelected={selectedId === cls.id}
+                  onClick={() => setSelectedId(cls.id)}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+            <p className="text-xs text-gray-500 text-center">
+              Hiển thị {filtered.length} / {classes.length} lớp học
+            </p>
+          </div>
+        </div>
+
+        {/* ============ RIGHT: DETAIL PANEL ============ */}
+        <div className="hidden lg:flex flex-1 flex-col overflow-hidden">
+          {selectedClass ? (
+            <DetailPanel
+              cls={selectedClass}
+              onClose={() => setSelectedId(null)}
+              onPublish={handlePublish}
+              onRevert={handleRevert}
+              updating={updating}
+            />
+          ) : (
+            <EmptyDetail />
+          )}
+        </div>
+      </div>
+
+      {/* ============ MOBILE DETAIL DRAWER ============ */}
+      {selectedClass && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setSelectedId(null)}
+          />
+          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl">
+            <DetailPanel
+              cls={selectedClass}
+              onClose={() => setSelectedId(null)}
+              onPublish={handlePublish}
+              onRevert={handleRevert}
+              updating={updating}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
