@@ -541,18 +541,18 @@ export default function CreateOnlineClassPage() {
       {/* Progress Steps moved to header above */}
 
       {/* Content */}
-      <div className="max-w-[1400px] mx-auto px-6 py-8">
+      <div className="max-w-[1600px] mx-auto px-6 py-6">
         {currentStep === 1 && (
-          <div className="grid grid-cols-[380px_1fr] gap-6 items-stretch">
-            {/* Left: Thông tin cơ bản - Frosted Card */}
-            <div className="rounded-2xl p-5 h-[calc(100vh-250px)] overflow-y-auto sticky top-24 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg shadow-indigo-500/20">
-              <div className="mb-5">
-                <div className="flex items-center gap-3 p-4 bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 text-white rounded-2xl shadow-lg shadow-indigo-500/30 w-full">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-xl flex-shrink-0">
+          <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6">
+            {/* Left: Thông tin cơ bản - Compact Form */}
+            <div className="rounded-2xl p-5 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg shadow-indigo-500/20">
+              <div className="mb-4">
+                <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 text-white rounded-xl shadow-lg shadow-indigo-500/30 w-full">
+                  <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-lg flex-shrink-0">
                     🌐
                   </div>
                   <div>
-                    <h2 className="text-base font-semibold">Lớp học Online</h2>
+                    <h2 className="text-sm font-semibold">Lớp học Online</h2>
                     <p className="text-xs text-white/80">
                       Học từ xa qua Internet
                     </p>
@@ -561,10 +561,10 @@ export default function CreateOnlineClassPage() {
               </div>
 
               <div className="space-y-3">
-                {/* Ngày bắt đầu + Ngày kết thúc */}
+                {/* Row 1: Ngày bắt đầu + Ngày kết thúc */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Ngày bắt đầu <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -572,59 +572,82 @@ export default function CreateOnlineClassPage() {
                       value={startDate}
                       min={todayStr}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="h-10 text-sm"
+                      className="h-9 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Ngày kết thúc <span className="text-red-500">*</span>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Ngày kết thúc
                     </label>
                     <Input
                       type="date"
                       value={endDate}
                       readOnly
-                      className="h-10 text-sm bg-gray-50"
+                      className="h-9 text-sm bg-gray-50"
                     />
                   </div>
                 </div>
 
-                {/* Môn học */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Môn học <span className="text-red-500">*</span>
-                  </label>
-                  <Select
-                    value={String(subjectId)}
-                    onValueChange={setSubjectId}
-                  >
-                    <SelectTrigger className="h-10 text-sm">
-                      <SelectValue placeholder="Chọn môn" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {subjects.map((s) => (
-                        <SelectItem key={s.id} value={String(s.id)}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Row 2: Môn học + Giáo viên */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Môn học <span className="text-red-500">*</span>
+                    </label>
+                    <Select
+                      value={String(subjectId)}
+                      onValueChange={setSubjectId}
+                    >
+                      <SelectTrigger className="h-9 text-sm w-full">
+                        <SelectValue placeholder="Chọn môn" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Giáo viên <span className="text-red-500">*</span>
+                    </label>
+                    <Select
+                      value={String(teacherId)}
+                      onValueChange={setTeacherId}
+                      disabled={!subjectId}
+                    >
+                      <SelectTrigger className="h-9 text-sm w-full">
+                        <SelectValue placeholder="Chọn GV" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teachers.map((t) => (
+                          <SelectItem key={t.userId} value={String(t.userId)}>
+                            {t.fullName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                {/* Khóa học của môn (tùy chọn) */}
+                {/* Row 3: Khóa học (optional) */}
                 {subjectId && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Khóa học của môn
-                      <span className="ml-1 text-xs text-gray-500">
-                        (Tùy chọn)
-                      </span>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Khóa học <span className="text-gray-400">(Tùy chọn)</span>
                     </label>
                     <Select
                       value={String(courseId)}
                       onValueChange={setCourseId}
                     >
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Chọn khóa học (không bắt buộc)" />
+                      <SelectTrigger className="h-auto min-h-[36px] text-sm py-2">
+                        <SelectValue
+                          placeholder="Chọn khóa học"
+                          className="whitespace-normal line-clamp-2"
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">-- Không chọn --</SelectItem>
@@ -635,75 +658,41 @@ export default function CreateOnlineClassPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Khóa học này sẽ được liên kết với lớp học
-                    </p>
                   </div>
                 )}
 
-                {/* Giáo viên */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Giáo viên <span className="text-red-500">*</span>
-                  </label>
-                  <Select
-                    value={String(teacherId)}
-                    onValueChange={setTeacherId}
-                    disabled={!subjectId}
-                  >
-                    <SelectTrigger className="w-full h-10 text-sm">
-                      <SelectValue placeholder="Chọn GV" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teachers.map((t) => (
-                        <SelectItem key={t.userId} value={String(t.userId)}>
-                          {t.fullName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {subjectId && teachers.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      Không có giáo viên dạy môn này
-                    </p>
-                  )}
-                </div>
-
-                {/* Số buổi */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Số buổi <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={totalSessions}
-                    onChange={(e) => setTotalSessions(e.target.value)}
-                    placeholder="24"
-                    className="h-10 text-sm"
-                  />
-                </div>
-
-                {/* Link Meet + Sĩ số */}
+                {/* Row 4: Link Meet + Số buổi */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Link Meet <span className="text-red-500">*</span>
                     </label>
                     <Input
                       value={meetingLink}
                       onChange={(e) => setMeetingLink(e.target.value)}
-                      placeholder="https://meet.google.com/..."
-                      className="h-10 text-sm"
+                      placeholder="https://meet..."
+                      className="h-9 text-sm"
                     />
-                    {meetingLink && !isValidUrl(meetingLink) && (
-                      <p className="text-xs text-red-600 mt-1">
-                        Link không hợp lệ. Nhập URL http(s)://
-                      </p>
-                    )}
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Số buổi <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={totalSessions}
+                      onChange={(e) => setTotalSessions(e.target.value)}
+                      placeholder="24"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 5: Sĩ số + Giá tiền */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Sĩ số <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -712,56 +701,42 @@ export default function CreateOnlineClassPage() {
                       max={30}
                       value={capacity}
                       onChange={(e) => setCapacity(e.target.value)}
-                      placeholder="Tối đa 30"
-                      className="h-10 text-sm"
+                      placeholder="Max 30"
+                      className="h-9 text-sm"
                     />
-                    {capacity && parseInt(capacity) > 30 && (
-                      <p className="text-xs text-red-600 mt-1">
-                        Sĩ số không vượt quá 30
-                      </p>
-                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Giá/buổi (VNĐ) <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={formatVNNumber(pricePerSession)}
+                      onChange={(e) =>
+                        setPricePerSession(digitsOnly(e.target.value))
+                      }
+                      placeholder="150.000"
+                      className="h-9 text-sm"
+                    />
                   </div>
                 </div>
 
-                {/* Giá tiền mỗi buổi học (VNĐ) */}
+                {/* Row 6: Tên lớp (auto) */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Giá tiền mỗi buổi học (VNĐ){" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={formatVNNumber(pricePerSession)}
-                    onChange={(e) =>
-                      setPricePerSession(digitsOnly(e.target.value))
-                    }
-                    placeholder="Ví dụ: 150.000"
-                    className="h-10 text-sm"
-                  />
-                  {pricePerSession !== "" && parseInt(pricePerSession) < 0 && (
-                    <p className="text-xs text-red-600 mt-1">
-                      Giá tiền mỗi buổi học phải ≥ 0
-                    </p>
-                  )}
-                </div>
-
-                {/* Tên lớp */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Tên lớp
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Tên lớp <span className="text-gray-400">(Tự động)</span>
                   </label>
                   <Input
                     value={className}
-                    placeholder="Tự động từ môn & GV"
                     readOnly
-                    className="w-full h-10 text-sm bg-gray-50"
+                    className="h-9 text-sm bg-gray-50 font-medium"
                   />
                 </div>
 
-                {/* Mô tả */}
+                {/* Row 7: Mô tả */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Mô tả
                   </label>
                   <Textarea
@@ -772,30 +747,26 @@ export default function CreateOnlineClassPage() {
                     className="resize-none text-sm"
                   />
                 </div>
+
+                {/* Action Button */}
+                <Button
+                  onClick={() => setCurrentStep(2)}
+                  disabled={!step1Valid}
+                  className="w-full h-10 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/30 mt-2"
+                >
+                  Tiếp tục
+                </Button>
               </div>
             </div>
 
-            {/* Right: Chọn lịch học - Glass Card */}
-            <div className="rounded-2xl p-5 h-[calc(100vh-250px)] bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg shadow-indigo-500/20">
+            {/* Right: Chọn lịch học - Expanded */}
+            <div className="rounded-2xl p-5 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg shadow-indigo-500/20">
               <div className="mb-4">
-                <div className="sticky top-0 z-10 -mx-5 px-5 py-3 rounded-xl text-white bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-md">
-                  <h2 className="text-lg font-bold">Chọn lịch học</h2>
-                </div>
                 <div className="flex items-center justify-between">
-                  {pickedSlots.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked
-                        readOnly
-                        className="rounded w-4 h-4"
-                      />
-                      <span className="text-sm text-gray-600">
-                        Chi lịch rảnh
-                      </span>
-                    </div>
-                  )}
-                  <div className="text-sm text-gray-600">
+                  <div className="px-4 py-2 rounded-xl text-white bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-md">
+                    <h2 className="text-base font-bold">Chọn lịch học</h2>
+                  </div>
+                  <div className="text-sm text-gray-500">
                     Lọc ngày: <span className="font-medium">Không có</span>
                   </div>
                 </div>
@@ -815,51 +786,36 @@ export default function CreateOnlineClassPage() {
         )}
 
         {currentStep === 2 && (
-          <ClassPreview
-            name={className}
-            description={desc}
-            isOnline={true}
-            subjectName={selectedSubject?.name}
-            courseName={
-              courses.find((c) => String(c.id) === String(courseId))?.title
-            }
-            teacherFullName={selectedTeacher?.fullName}
-            teacherAvatarUrl={selectedTeacher?.avatarUrl}
-            teacherBio={selectedTeacher?.bio}
-            pickedSlots={pickedSlots}
-            startDate={startDate}
-            endDate={endDate}
-            totalSessions={totalSessions}
-            maxStudents={capacity}
-            pricePerSession={pricePerSession}
-            meetingLink={meetingLink}
-          />
-        )}
+          <div className="space-y-6">
+            <ClassPreview
+              name={className}
+              description={desc}
+              isOnline={true}
+              subjectName={selectedSubject?.name}
+              courseName={
+                courses.find((c) => String(c.id) === String(courseId))?.title
+              }
+              teacherFullName={selectedTeacher?.fullName}
+              teacherAvatarUrl={selectedTeacher?.avatarUrl}
+              teacherBio={selectedTeacher?.bio}
+              pickedSlots={pickedSlots}
+              startDate={startDate}
+              endDate={endDate}
+              totalSessions={totalSessions}
+              maxStudents={capacity}
+              pricePerSession={pricePerSession}
+              meetingLink={meetingLink}
+            />
 
-        {/* Footer Actions */}
-        <div className="mt-8 flex items-center justify-between">
-          <div>
-            {currentStep === 2 && (
+            {/* Footer Actions for Step 2 */}
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep(1)}
                 className="px-6 h-11 rounded-xl"
               >
-                Hủy
+                ← Quay lại
               </Button>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {currentStep === 1 && (
-              <Button
-                onClick={() => setCurrentStep(2)}
-                disabled={!step1Valid}
-                className="px-8 h-11 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/30"
-              >
-                Tiếp tục
-              </Button>
-            )}
-            {currentStep === 2 && (
               <Button
                 onClick={handleSubmit}
                 disabled={submitting}
@@ -873,13 +829,13 @@ export default function CreateOnlineClassPage() {
                 ) : (
                   <>
                     <CalendarCheck2 className="h-4 w-4 mr-2" />
-                    Xác nhận
+                    Xác nhận tạo lớp
                   </>
                 )}
               </Button>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
