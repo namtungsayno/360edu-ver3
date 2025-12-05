@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent } from "../../components/ui/Card.jsx";
-import { Input } from "../../components/ui/Input.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { teacherSecurityService } from "../../services/teacher/teacher.security.service";
-import { useToast } from "../../hooks/use-toast";
+import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { Input } from "../../../components/ui/Input.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { teacherSecurityService } from "../../../services/teacher/teacher.security.service";
+import { useToast } from "../../../hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
-import { consumeLastPassword } from "../../utils/last-login";
+import { consumeLastPassword } from "../../../utils/last-login";
 
 export default function TeacherResetPassword() {
   const { success, error } = useToast();
@@ -15,7 +15,11 @@ export default function TeacherResetPassword() {
     confirmPassword: "",
   });
   const [submitting, setSubmitting] = useState(false);
-  const [show, setShow] = useState({ current: false, next: false, confirm: false });
+  const [show, setShow] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  });
 
   // Prefill current password from last login (session-scoped) and consume it
   useEffect(() => {
@@ -53,7 +57,10 @@ export default function TeacherResetPassword() {
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
-              <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="currentPassword"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Mật khẩu hiện tại
               </label>
               <div className="relative">
@@ -69,16 +76,25 @@ export default function TeacherResetPassword() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShow((s) => ({ ...s, current: !s.current }))}
+                  onClick={() =>
+                    setShow((s) => ({ ...s, current: !s.current }))
+                  }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {show.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {show.current ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
 
             <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="newPassword"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Mật khẩu mới
               </label>
               <div className="relative">
@@ -97,13 +113,20 @@ export default function TeacherResetPassword() {
                   onClick={() => setShow((s) => ({ ...s, next: !s.next }))}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {show.next ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {show.next ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Xác nhận mật khẩu mới
               </label>
               <div className="relative">
@@ -119,16 +142,26 @@ export default function TeacherResetPassword() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShow((s) => ({ ...s, confirm: !s.confirm }))}
+                  onClick={() =>
+                    setShow((s) => ({ ...s, confirm: !s.confirm }))
+                  }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {show.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {show.confirm ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
 
             <div className="pt-2">
-              <Button type="submit" disabled={submitting} className="min-w-[160px]">
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="min-w-[160px]"
+              >
                 {submitting ? "Đang lưu..." : "Đổi mật khẩu"}
               </Button>
             </div>

@@ -51,6 +51,7 @@ const sessionService = {
    * Get session content by session ID
    * @param {number} sessionId - Session ID
    */
+  //lấy nội dung buổi học
   getSessionContent: async (sessionId) => {
     const response = await http.get(`/sessions/${sessionId}/content`);
     return response.data;

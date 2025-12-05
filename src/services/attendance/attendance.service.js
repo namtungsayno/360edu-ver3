@@ -9,7 +9,7 @@ export const attendanceService = {
     }));
     return attendanceApi.saveBySession(sessionId, { items });
   },
-
+  // lấy danh sách điểm danh
   async getBySession(sessionId) {
     const data = await attendanceApi.getBySession(sessionId);
     const mapStatus = (s) => {
@@ -61,12 +61,17 @@ export const attendanceService = {
       }
     };
 
-    return (data.students || []).map((it) => ({
+    const students = (data.students || []).map((it) => ({
       id: it.studentId,
       student: it.studentName,
       status: mapStatus(it.status),
       note: it.note || "",
     }));
+
+    return {
+      sessionId: data.sessionId,
+      students,
+    };
   },
 
   async getByClassForAdmin(classId, date, slotId) {

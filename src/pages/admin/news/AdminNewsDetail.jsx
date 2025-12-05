@@ -38,16 +38,29 @@ export default function AdminNewsDetail() {
   };
 
   if (loading) return <div className="p-12 text-center">Đang tải...</div>;
-  if (!news) return <div className="p-12 text-center text-red-600">Không tìm thấy tin tức</div>;
+  if (!news)
+    return (
+      <div className="p-12 text-center text-red-600">
+        Không tìm thấy tin tức
+      </div>
+    );
 
   const tags = Array.isArray(news.tags)
     ? news.tags
-    : (typeof news.tags === "string" ? news.tags.split(",").map(t => t.trim()).filter(Boolean) : []);
+    : typeof news.tags === "string"
+    ? news.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+    : [];
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <Button variant="ghost" onClick={() => navigate("/home/admin/news")}
-        className="mb-4">
+    <div className="p-6 space-y-6">
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/home/admin/news")}
+        className="mb-4"
+      >
         <ArrowLeft className="h-4 w-4 mr-2" /> Quay lại danh sách
       </Button>
       {news.imageUrl && (
@@ -67,11 +80,15 @@ export default function AdminNewsDetail() {
       </div>
       <div className="flex flex-wrap gap-2 mb-4">
         {tags.map((tag, idx) => (
-          <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+          <Badge key={tag} variant="outline" className="text-xs">
+            {tag}
+          </Badge>
         ))}
       </div>
       <div className="prose max-w-none mb-6">
-        <p className="whitespace-pre-line text-base text-slate-800">{news.content}</p>
+        <p className="whitespace-pre-line text-base text-slate-800">
+          {news.content}
+        </p>
       </div>
       <div className="flex gap-2 mt-4">
         <Button variant="default" onClick={handleEdit}>

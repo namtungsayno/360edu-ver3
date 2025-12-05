@@ -69,7 +69,7 @@ import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 
 // tuấn test
 // FIXED: Import các component cho Class Management (Quản lý lớp học)
-import CreateClass from "../pages/admin/class/ClassManagement.jsx";
+import ClassManagement from "../pages/admin/class/ClassManagement.jsx";
 import ClassDetailPage from "../pages/admin/class/ClassDetailPage.jsx";
 import ClassEditPage from "../pages/admin/class/ClassEditPage.jsx";
 import CreateOfflineClassPage from "../pages/admin/class/CreateOfflineClassPage.jsx";
@@ -90,18 +90,21 @@ import AdminCourseList from "../pages/admin/course/CourseList.jsx";
 import AdminCourseDetail from "../pages/admin/course/CourseDetail.jsx";
 import AdminCourseCreate from "../pages/admin/course/AdminCourseCreate.jsx";
 import PaymentHistory from "../pages/admin/payment/PaymentHistory.jsx";
+import TeacherAttendanceList from "../pages/admin/TeacherAttendanceList.jsx";
+import TeacherAttendanceDetail from "../pages/admin/TeacherAttendanceDetail.jsx";
+import TeacherClassAttendance from "../pages/admin/TeacherClassAttendance.jsx";
 
 // Teacher pages
-import TeacherManagement from "../pages/teacher/TeacherManagement.jsx";
+import TeacherManagement from "../pages/teacher/profile/TeacherManagement.jsx";
 import AdminTeacherManagement from "../pages/admin/teacher/TeacherManagement.jsx";
-import TeacherSchedule from "../pages/teacher/TeacherSchedule.jsx";
-import TeacherClassDetail from "../pages/teacher/ClassDetail.jsx";
-import TeacherCourseList from "../pages/teacher/TeacherCourseList.jsx";
-import TeacherCourseDetail from "../pages/teacher/TeacherCourseDetail.jsx";
-import TeacherCourseEdit from "../pages/teacher/TeacherCourseEdit.jsx";
-import TeachingContent from "../pages/teacher/TeachingContent.jsx";
-import TeachingContentDetail from "../pages/teacher/TeachingContentDetail.jsx";
-import TeacherResetPassword from "../pages/teacher/TeacherResetPassword.jsx";
+import TeacherSchedule from "../pages/teacher/schedule/TeacherSchedule.jsx";
+import TeacherClassDetail from "../pages/teacher/class/ClassDetail.jsx";
+import TeacherCourseList from "../pages/teacher/course/TeacherCourseList.jsx";
+import TeacherCourseDetail from "../pages/teacher/course/TeacherCourseDetail.jsx";
+import TeacherCourseEdit from "../pages/teacher/course/TeacherCourseEdit.jsx";
+import TeachingContent from "../pages/teacher/content/TeachingContent.jsx";
+import TeachingContentDetail from "../pages/teacher/content/TeachingContentDetail.jsx";
+import TeacherResetPassword from "../pages/teacher/profile/TeacherResetPassword.jsx";
 
 function AppRouter() {
   return (
@@ -173,7 +176,7 @@ function AppRouter() {
             <Route path="classrooms" element={<ClassroomList />} />
             {/* Tuấn test */}
             {/* FIXED: Thêm route cho Class Management - Quản lý lớp học */}
-            <Route path="class" element={<CreateClass />} />
+            <Route path="class" element={<ClassManagement />} />
             <Route path="class/:id" element={<ClassDetailPage />} />
             <Route path="class/:id/edit" element={<ClassEditPage />} />
             <Route
@@ -209,6 +212,19 @@ function AppRouter() {
             <Route path="courses/:id" element={<AdminCourseDetail />} />
             {/* Payment Management - Quản lý thanh toán */}
             <Route path="payment" element={<PaymentHistory />} />
+            {/* Teacher Attendance - Chấm công giáo viên */}
+            <Route
+              path="teacher-attendance"
+              element={<TeacherAttendanceList />}
+            />
+            <Route
+              path="teacher-attendance/:teacherId"
+              element={<TeacherAttendanceDetail />}
+            />
+            <Route
+              path="teacher-attendance/:teacherId/class/:classId"
+              element={<TeacherClassAttendance />}
+            />
           </Route>
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}

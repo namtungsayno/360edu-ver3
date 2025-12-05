@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
+import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,10 +11,10 @@ import {
   Users,
   BookOpen,
 } from "lucide-react";
-import { scheduleService } from "../../services/schedule/schedule.service";
-import { attendanceService } from "../../services/attendance/attendance.service";
-import { useAuth } from "../../hooks/useAuth";
-import { useToast } from "../../hooks/use-toast";
+import { scheduleService } from "../../../services/schedule/schedule.service";
+import { attendanceService } from "../../../services/attendance/attendance.service";
+import { useAuth } from "../../../hooks/useAuth";
+import { useToast } from "../../../hooks/use-toast";
 
 // Lightweight date helpers
 // tính toán hiển thị lịch

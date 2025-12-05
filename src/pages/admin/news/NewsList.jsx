@@ -117,11 +117,7 @@ export default function NewsList() {
       const newStatus = currentStatus === "published" ? "hidden" : "published";
       await newsService.updateStatus(id, newStatus);
       setNews((prev) =>
-        prev.map((n) =>
-          n.id === id
-            ? { ...n, status: newStatus }
-            : n
-        )
+        prev.map((n) => (n.id === id ? { ...n, status: newStatus } : n))
       );
     } catch (err) {
       console.error("Failed to toggle status:", err);
@@ -136,7 +132,7 @@ export default function NewsList() {
   );
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -236,8 +232,11 @@ export default function NewsList() {
                             {item.excerpt}
                           </p>
                           <div className="flex flex-wrap gap-2 mt-2">
-                            {(typeof item.tags === 'string' 
-                              ? item.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+                            {(typeof item.tags === "string"
+                              ? item.tags
+                                  .split(",")
+                                  .map((tag) => tag.trim())
+                                  .filter(Boolean)
                               : item.tags || []
                             ).map((tag, index) => (
                               <Badge
@@ -259,7 +258,7 @@ export default function NewsList() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={e => {
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   handleToggleStatus(item.id);
                                 }}
@@ -270,7 +269,7 @@ export default function NewsList() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={e => {
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   handleToggleStatus(item.id);
                                 }}

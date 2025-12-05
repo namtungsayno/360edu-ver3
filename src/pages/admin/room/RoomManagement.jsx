@@ -1,65 +1,65 @@
-// src/pages/admin/classrooms/ClassroomList.jsx
+// src/pages/admin/room/RoomManagement.jsx
+// ✨ INLINE EXPANSION - Click row để mở rộng thành form tại chỗ
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { classroomService } from "../../../services/classrooms/classroom.service";
-import { Button } from "../../../components/ui/Button";
-import { Input } from "../../../components/ui/Input";
-import {
-  Table,
-  TableHead,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableCell,
-} from "../../../components/ui/Table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../../components/ui/Dialog";
-import { Switch } from "../../../components/ui/Switch";
-import ClassroomForm from "./RoomForm";
 import { useToast } from "../../../hooks/use-toast";
-import { Plus } from "lucide-react";
-// SidePanel removed: chuyển detail sang Dialog popup theo yêu cầu
-// import SidePanel from "../../../components/ui/SidePanel";
 import {
-  Dialog as DetailDialog,
-  DialogContent as DetailContent,
-  DialogHeader as DetailHeader,
-  DialogTitle as DetailTitle,
-} from "../../../components/ui/Dialog";
+  Building,
+  X,
+  Pencil,
+  Trash2,
+  Plus,
+  Users,
+  Search,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Sparkles,
+  DoorOpen,
+} from "lucide-react";
 import useDebounce from "../../../hooks/useDebounce";
+import { Switch } from "../../../components/ui/Switch";
 
-const SORTS = {
-  NAME_ASC: "NAME_ASC",
-  NAME_DESC: "NAME_DESC",
-  CAP_ASC: "CAP_ASC",
-  CAP_DESC: "CAP_DESC",
-};
-
-const FILTERS = {
-  ALL: "ALL",
-  ACTIVE: "ACTIVE",
-  INACTIVE: "INACTIVE",
-};
+const STATUS_FILTERS = ["ALL", "ACTIVE", "INACTIVE"];
 
 export default function ClassroomList() {
-  const [classrooms, setClassrooms] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
-  const [editing, setEditing] = useState(null); // for form create/edit
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [selected, setSelected] = useState(null);
-
-  // sort & filter
-  const [sortBy, setSortBy] = useState(SORTS.NAME_ASC);
-  const [filterBy, setFilterBy] = useState(FILTERS.ALL);
-
   const toast = useToast();
   const toastRef = useRef(toast);
+
+  // Filter & Search
+  const [tab, setTab] = useState("ALL");
+  const [query, setQuery] = useState("");
+  const q = useDebounce(query, 300);
+
+  // Pagination per tab
+  const [pageByTab, setPageByTab] = useState({
+    ALL: 0,
+    ACTIVE: 0,
+    INACTIVE: 0,
+  });
+  const sizeByTab = { ALL: 8, ACTIVE: 8, INACTIVE: 8 };
+  const curPage = pageByTab[tab] ?? 0;
+  const curSize = sizeByTab[tab] ?? 8;
+
+  // Data
+  const [allRooms, setAllRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Inline Expansion states
+  const [expandedId, setExpandedId] = useState(null); // ID of expanded row
+  const [editMode, setEditMode] = useState(false); // true = editing, false = viewing
+  const [isCreating, setIsCreating] = useState(false); // true = creating new row
+  const [formData, setFormData] = useState({
+    name: "",
+    capacity: "",
+    description: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Refs for animation
+  const expandedRef = useRef(null);
+
   useEffect(() => {
     toastRef.current = toast;
   }, [toast]);
@@ -85,363 +85,705 @@ export default function ClassroomList() {
   const fetchClassrooms = useCallback(async () => {
     setLoading(true);
     try {
-      // Gửi nhiều khóa tìm kiếm phổ biến lên BE nếu có hỗ trợ
-      const params = {
-        q: debouncedSearch || undefined,
-        name: debouncedSearch || undefined,
-        keyword: debouncedSearch || undefined,
-      };
-      const data = await classroomService.list(params);
+      const data = await classroomService.list();
       const items = Array.isArray(data)
         ? data
         : data?.items ?? data?.content ?? [];
-      setClassrooms(items.map(normalizeRoom));
-      // eslint-disable-next-line no-unused-vars
-    } catch (_) {
-      // Tránh đưa toast vào dependency của useCallback/useEffect để không bị loop
-      toastRef.current?.error?.("Lỗi tải danh sách lớp học");
+      setAllRooms(items.map(normalizeRoom));
+    } catch {
+      toastRef.current?.error?.("Lỗi tải danh sách phòng học");
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch]);
+  }, []);
 
-  // Quan trọng: chỉ phụ thuộc vào debouncedSearch để tránh re-render vô hạn
   useEffect(() => {
     fetchClassrooms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch]);
+  }, [fetchClassrooms]);
 
-  const handleToggleStatus = async (id, nextEnabled) => {
+  // Counts
+  const counts = useMemo(() => {
+    const active = allRooms.filter((r) => r.enabled).length;
+    const inactive = allRooms.filter((r) => !r.enabled).length;
+    return { ALL: allRooms.length, ACTIVE: active, INACTIVE: inactive };
+  }, [allRooms]);
+
+  // Filter + paginate
+  const filtered = useMemo(() => {
+    let list = allRooms;
+    if (tab === "ACTIVE") list = allRooms.filter((r) => r.enabled);
+    else if (tab === "INACTIVE") list = allRooms.filter((r) => !r.enabled);
+
+    if (!q) return list;
+    const kw = q.toLowerCase();
+    return list.filter(
+      (r) =>
+        (r.name || "").toLowerCase().includes(kw) ||
+        String(r.id || "")
+          .toLowerCase()
+          .includes(kw) ||
+        String(r.capacity || "").includes(kw)
+    );
+  }, [allRooms, tab, q]);
+
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / curSize));
+  const pageSafe = Math.min(curPage, totalPages - 1);
+  const pageItems = filtered.slice(
+    pageSafe * curSize,
+    pageSafe * curSize + curSize
+  );
+
+  // Helpers
+  const setPage = (p) =>
+    setPageByTab((prev) => ({ ...prev, [tab]: Math.max(0, p) }));
+
+  // Toggle status
+  const handleToggleStatus = async (room, e) => {
+    e?.stopPropagation();
+    const nextEnabled = !room.enabled;
     try {
-      // Find room for guard
-      const room = classrooms.find((c) => c.id === id);
       if (
         !nextEnabled &&
-        room &&
         (room.numClasses || room.classCount || room.soLop) > 0
       ) {
-        const count = room.numClasses || room.classCount || room.soLop;
-        toast?.error?.(
-          `Phòng đang được sử dụng bởi ${count} lớp chưa hoàn thành, không thể vô hiệu hóa.`
-        );
+        toast?.error?.("Phòng đang được sử dụng, không thể vô hiệu hóa.");
         return;
       }
-      if (nextEnabled && classroomService.enable) {
-        await classroomService.enable(id);
-      } else if (!nextEnabled && classroomService.disable) {
-        await classroomService.disable(id);
-      } else if (classroomService.update) {
-        await classroomService.update(id, { enabled: nextEnabled });
-      }
+      if (nextEnabled && classroomService.enable)
+        await classroomService.enable(room.id);
+      else if (!nextEnabled && classroomService.disable)
+        await classroomService.disable(room.id);
+      else if (classroomService.update)
+        await classroomService.update(room.id, { enabled: nextEnabled });
 
-      setClassrooms((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, enabled: nextEnabled } : c))
+      setAllRooms((prev) =>
+        prev.map((r) => (r.id === room.id ? { ...r, enabled: nextEnabled } : r))
       );
-
       toast?.success?.(nextEnabled ? "Đã bật phòng học" : "Đã tắt phòng học");
-      // eslint-disable-next-line no-unused-vars
-    } catch (_) {
-      toast?.error?.("Cập nhật trạng thái thất bại");
+    } catch {
+      toast?.error?.("Cập nhật thất bại");
     }
   };
 
-  // Đếm số lượng theo filter để hiển thị (12) như screenshot
-  const getCount = (type) => {
-    if (type === FILTERS.ACTIVE)
-      return classrooms.filter((c) => !!c.enabled).length;
-    if (type === FILTERS.INACTIVE)
-      return classrooms.filter((c) => !c.enabled).length;
-    return classrooms.length;
-  };
+  // ============ INLINE EXPANSION HANDLERS ============
 
-  // --- FILTER + SORT (client-side) ---
-  const displayedRooms = useMemo(() => {
-    let list = [...classrooms];
-
-    // Fallback filter client-side theo search (nếu BE không lọc)
-    const kw = (debouncedSearch || "").trim().toLowerCase();
-    if (kw) {
-      list = list.filter((r) => {
-        const name = (r.name || "").toLowerCase();
-        const idStr = String(r.id || "").toLowerCase();
-        const capStr = String(r.capacity || "").toLowerCase();
-        return name.includes(kw) || idStr.includes(kw) || capStr.includes(kw);
-      });
+  // Expand row to view details
+  const expandRow = (room) => {
+    if (expandedId === room.id && !editMode) {
+      // Collapse if clicking same row
+      collapseRow();
+      return;
     }
-
-    // 1) Lọc theo trạng thái
-    if (filterBy === FILTERS.ACTIVE) {
-      list = list.filter((r) => !!r.enabled);
-    } else if (filterBy === FILTERS.INACTIVE) {
-      list = list.filter((r) => !r.enabled);
-    }
-
-    // 2) Sắp xếp: chỉ sort theo sortBy, không ưu tiên enabled nữa
-    list.sort((a, b) => {
-      const nameA = (a.name ?? "").toString();
-      const nameB = (b.name ?? "").toString();
-      const capA = Number(a.capacity ?? 0);
-      const capB = Number(b.capacity ?? 0);
-
-      switch (sortBy) {
-        case SORTS.NAME_ASC:
-          return nameA.localeCompare(nameB, "vi", { sensitivity: "base" });
-        case SORTS.NAME_DESC:
-          return nameB.localeCompare(nameA, "vi", { sensitivity: "base" });
-        case SORTS.CAP_ASC:
-          return capA - capB;
-        case SORTS.CAP_DESC:
-          return capB - capA;
-        default:
-          return 0;
-      }
+    setExpandedId(room.id);
+    setEditMode(false);
+    setIsCreating(false);
+    setFormData({
+      name: room.name || "",
+      capacity: room.capacity || "",
+      description: room.description || "",
     });
+  };
 
-    return list;
-  }, [classrooms, sortBy, filterBy, debouncedSearch]);
+  // Switch to edit mode
+  const startEdit = () => {
+    setEditMode(true);
+  };
+
+  // Start creating new
+  const startCreate = () => {
+    setExpandedId(null);
+    setIsCreating(true);
+    setEditMode(true);
+    setFormData({ name: "", capacity: "", description: "" });
+  };
+
+  // Collapse/Cancel
+  const collapseRow = () => {
+    setExpandedId(null);
+    setEditMode(false);
+    setIsCreating(false);
+    setFormData({ name: "", capacity: "", description: "" });
+  };
+
+  // Form change
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Save
+  const handleSave = async () => {
+    if (!formData.name.trim()) {
+      toast?.error?.("Vui lòng nhập tên phòng học");
+      return;
+    }
+    if (!formData.capacity || Number(formData.capacity) <= 0) {
+      toast?.error?.("Vui lòng nhập sức chứa hợp lệ");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (isCreating) {
+        await classroomService.create(formData);
+        toast?.success?.("Thêm phòng học thành công!");
+      } else if (expandedId) {
+        await classroomService.update(expandedId, formData);
+        toast?.success?.("Cập nhật thành công!");
+      }
+      collapseRow();
+      fetchClassrooms();
+    } catch {
+      toast?.error?.("Lưu thất bại");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Get current room data
+  const currentRoom = expandedId
+    ? allRooms.find((r) => r.id === expandedId)
+    : null;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header giống SubjectManagement */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Quản lý phòng học
-        </h1>
-        <p className="text-gray-500">
-          Quản lý thông tin các phòng học trong hệ thống
-        </p>
-      </div>
-      {/* Thanh điều khiển giống screenshot, có SORT + SEARCH ngắn */}
-      <div className="flex items-center justify-between rounded-xl border bg-white p-3 md:p-4">
-        {/* Pills filter bên trái */}
-        <div className="flex flex-wrap items-center gap-2">
-          {[
-            { key: FILTERS.ALL, label: `Tất cả` },
-            { key: FILTERS.ACTIVE, label: `Hoạt động` },
-            { key: FILTERS.INACTIVE, label: `Tạm dừng` },
-          ].map((opt) => {
-            const active = filterBy === opt.key;
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setFilterBy(opt.key)}
-                className={[
-                  "h-8 rounded-full px-3 text-sm transition",
-                  active
-                    ? "bg-gray-900 text-white shadow"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-                ].join(" ")}
-              >
-                {opt.label}
-                <span className="ml-1 opacity-80">({getCount(opt.key)})</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search ngắn + Sort + Thêm */}
-        <div className="flex items-center gap-2">
-          {/* Sort ngắn gọn */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="h-9 w-44 rounded-md border px-2 text-sm"
-            aria-label="Sắp xếp"
-            title="Sắp xếp"
-          >
-            <option value={SORTS.NAME_ASC}>Tên: A → Z</option>
-            <option value={SORTS.NAME_DESC}>Tên: Z → A</option>
-            <option value={SORTS.CAP_ASC}>Sức chứa: nhỏ → lớn</option>
-            <option value={SORTS.CAP_DESC}>Sức chứa: lớn → nhỏ</option>
-          </select>
-
-          {/* Search ngắn */}
-          <Input
-            placeholder="Tìm theo tên, mã, sức chứa"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && fetchClassrooms()}
-            className="h-9 w-56 md:w-72"
-          />
-
-          {/* Nút thêm (giống style của User Management: primary + icon) */}
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditing(null);
-              setIsDialogOpen(true);
-            }}
-          >
-            <Plus className="w-4 h-4 mr-2" /> Thêm lớp học
-          </Button>
+    <div className="p-6 min-h-screen">
+      {/* ============ HEADER ============ */}
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-200">
+            <DoorOpen className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Quản lý phòng học
+            </h1>
+            <p className="text-sm text-gray-500">
+              Click vào dòng để xem chi tiết • Double-click để chỉnh sửa
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Bảng dữ liệu */}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Mã</TableHead>
-            <TableHead>Tên lớp</TableHead>
-            <TableHead align="center">Sức chứa</TableHead>
-            <TableHead align="center">Trạng thái</TableHead>
-            {/* removed action column */}
-          </TableRow>
-        </TableHeader>
-
-        <TableBody>
-          {loading ? (
-            <TableRow>
-              <TableCell colSpan={5} align="center">
-                Đang tải...
-              </TableCell>
-            </TableRow>
-          ) : displayedRooms.length ? (
-            displayedRooms.map((c) => (
-              <TableRow
-                key={c.id}
-                className="hover:bg-indigo-50 cursor-pointer"
-                onClick={(e) => {
-                  // Nếu click nằm trong vùng có class 'no-row-open' (toggle status) thì không mở detail
-                  if (e.target.closest(".no-row-open")) return;
-                  setSelected(c);
-                  setDetailOpen(true);
-                }}
-              >
-                <TableCell>{c.id}</TableCell>
-                <TableCell>{c.name}</TableCell>
-                <TableCell align="center">{c.capacity}</TableCell>
-
-                <TableCell align="center">
-                  <div
-                    className="flex items-center justify-center gap-2 no-row-open"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Switch
-                      checked={!!c.enabled}
-                      onCheckedChange={(v) => handleToggleStatus(c.id, v)}
-                      aria-label={`Chuyển trạng thái phòng ${c.name}`}
-                    />
-                    <span
-                      className={
-                        c.enabled
-                          ? "text-sm font-medium text-green-700"
-                          : "text-sm font-medium text-red-600"
-                      }
-                    >
-                      {c.enabled ? "Hoạt động" : "Tạm dừng"}
-                    </span>
-                  </div>
-                </TableCell>
-
-                {/* removed action cell */}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={5} align="center">
-                Không có dữ liệu
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-
-      {/* Dialog thêm/sửa — light theme */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="bg-white text-gray-900 border border-gray-200">
-          <DialogHeader>
-            <DialogTitle>
-              {editing ? "Chỉnh sửa lớp học" : "Thêm lớp học mới"}
-            </DialogTitle>
-          </DialogHeader>
-          <ClassroomForm
-            initialData={editing}
-            onClose={() => {
-              setIsDialogOpen(false);
-              fetchClassrooms();
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-      <DetailDialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DetailContent className="sm:max-w-xl">
-          <DetailHeader>
-            <DetailTitle>
-              {selected
-                ? selected.name || "Thông tin phòng học"
-                : "Thông tin phòng học"}
-            </DetailTitle>
-          </DetailHeader>
-          {selected ? (
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    Mã phòng
-                  </p>
-                  <p className="text-sm text-gray-700">{selected.id}</p>
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    Tên phòng
-                  </p>
-                  <p className="text-sm text-gray-700">{selected.name}</p>
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    Sức chứa
-                  </p>
-                  <p className="text-sm text-gray-700">{selected.capacity}</p>
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    Trạng thái
-                  </p>
-                  <p
-                    className={`text-sm font-medium ${
-                      selected.enabled ? "text-green-600" : "text-red-600"
+      {/* ============ TOOLBAR ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Filter tabs */}
+          <div className="flex items-center gap-2">
+            {STATUS_FILTERS.map((f) => {
+              const isActive = tab === f;
+              const label =
+                f === "ALL"
+                  ? "Tất cả"
+                  : f === "ACTIVE"
+                  ? "Hoạt động"
+                  : "Tạm dừng";
+              const count = counts[f];
+              return (
+                <button
+                  key={f}
+                  onClick={() => setTab(f)}
+                  className={`
+                    relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-gray-900 text-white shadow-lg shadow-gray-300"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                    }
+                  `}
+                >
+                  {label}
+                  <span
+                    className={`ml-1.5 px-1.5 py-0.5 rounded-md text-xs ${
+                      isActive ? "bg-white/20" : "bg-gray-200"
                     }`}
                   >
-                    {selected.enabled ? "Hoạt động" : "Tạm dừng"}
-                  </p>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search + Add */}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm phòng..."
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(0);
+                }}
+                className="pl-10 pr-4 py-2.5 w-64 bg-gray-50 border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+            <button
+              onClick={startCreate}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all duration-200 hover:-translate-y-0.5"
+            >
+              <Plus className="w-4 h-4" />
+              Thêm phòng
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ============ CREATE NEW ROW (Inline) ============ */}
+      {isCreating && (
+        <div className="mb-4 animate-in slide-in-from-top-2 duration-300">
+          <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-2xl border-2 border-dashed border-indigo-300 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Tạo phòng học mới
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Tên phòng <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="VD: Phòng A101"
+                    autoFocus
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Sức chứa <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="capacity"
+                    value={formData.capacity}
+                    onChange={handleChange}
+                    placeholder="VD: 40"
+                    min="1"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Mô tả
+                  </label>
+                  <input
+                    type="text"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder="Mô tả ngắn..."
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
                 </div>
               </div>
-              <div className="border-t pt-4">
-                <p className="text-base font-semibold text-gray-900 mb-1">
-                  Mô tả
-                </p>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {selected.description || "Không có mô tả"}
-                </p>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setEditing(selected);
-                    setIsDialogOpen(true);
-                    setDetailOpen(false);
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-700"
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={collapseRow}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
                 >
-                  Sửa
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => toast.error("Xóa phòng học chưa được hỗ trợ")}
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl hover:shadow-lg disabled:opacity-50 transition-all"
                 >
-                  Xóa
-                </Button>
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Đang tạo...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Tạo phòng
+                    </>
+                  )}
+                </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ TABLE WITH INLINE EXPANSION ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gray-50/80 border-b border-gray-100">
+          <div className="col-span-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            STT
+          </div>
+          <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Tên phòng
+          </div>
+          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Sức chứa
+          </div>
+          <div className="col-span-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Mô tả
+          </div>
+          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
+            Trạng thái
+          </div>
+        </div>
+
+        {/* Table Body */}
+        <div className="divide-y divide-gray-50">
+          {loading ? (
+            <div className="px-6 py-16 text-center">
+              <div className="inline-flex items-center gap-3 text-gray-500">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin" />
+                Đang tải...
+              </div>
+            </div>
+          ) : pageItems.length === 0 ? (
+            <div className="px-6 py-16 text-center">
+              <DoorOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">Không có phòng học nào</p>
+            </div>
           ) : (
-            <div className="text-gray-500">Không có dữ liệu</div>
+            pageItems.map((room, idx) => {
+              const isExpanded = expandedId === room.id;
+              const rowNum = pageSafe * curSize + idx + 1;
+
+              return (
+                <div key={room.id} className="group">
+                  {/* ============ COLLAPSED ROW ============ */}
+                  <div
+                    onClick={() => expandRow(room)}
+                    onDoubleClick={() => {
+                      expandRow(room);
+                      setTimeout(() => setEditMode(true), 100);
+                    }}
+                    className={`
+                      grid grid-cols-12 gap-4 px-6 py-4 cursor-pointer transition-all duration-200
+                      ${
+                        isExpanded
+                          ? "bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50"
+                          : "hover:bg-gray-50/80"
+                      }
+                    `}
+                  >
+                    <div className="col-span-1 flex items-center">
+                      <span
+                        className={`
+                        w-7 h-7 rounded-lg flex items-center justify-center text-xs font-semibold
+                        ${
+                          isExpanded
+                            ? "bg-indigo-600 text-white"
+                            : "bg-gray-100 text-gray-600 group-hover:bg-indigo-100 group-hover:text-indigo-600"
+                        }
+                        transition-colors
+                      `}
+                      >
+                        {rowNum}
+                      </span>
+                    </div>
+                    <div className="col-span-3 flex items-center gap-3">
+                      <div
+                        className={`
+                        p-2 rounded-xl transition-colors
+                        ${
+                          isExpanded
+                            ? "bg-indigo-100"
+                            : "bg-gray-100 group-hover:bg-indigo-50"
+                        }
+                      `}
+                      >
+                        <Building
+                          className={`w-4 h-4 ${
+                            isExpanded ? "text-indigo-600" : "text-gray-500"
+                          }`}
+                        />
+                      </div>
+                      <span className="font-medium text-gray-900">
+                        {room.name}
+                      </span>
+                    </div>
+                    <div className="col-span-2 flex items-center">
+                      <div className="flex items-center gap-1.5 text-gray-600">
+                        <Users className="w-4 h-4 text-gray-400" />
+                        <span>{room.capacity} người</span>
+                      </div>
+                    </div>
+                    <div className="col-span-4 flex items-center">
+                      <span className="text-gray-500 truncate">
+                        {room.description || "—"}
+                      </span>
+                    </div>
+                    <div
+                      className="col-span-2 flex items-center justify-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={room.enabled}
+                          onCheckedChange={() => handleToggleStatus(room)}
+                        />
+                        <span
+                          className={`text-xs font-medium ${
+                            room.enabled ? "text-emerald-600" : "text-gray-400"
+                          }`}
+                        >
+                          {room.enabled ? "Bật" : "Tắt"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ============ EXPANDED SECTION ============ */}
+                  <div
+                    ref={isExpanded ? expandedRef : null}
+                    className={`
+                      overflow-hidden transition-all duration-300 ease-out
+                      ${
+                        isExpanded
+                          ? "max-h-96 opacity-100"
+                          : "max-h-0 opacity-0"
+                      }
+                    `}
+                  >
+                    <div className="px-6 pb-6 bg-gradient-to-r from-indigo-50/50 via-purple-50/50 to-pink-50/50">
+                      <div className="pt-2 border-t border-indigo-100">
+                        {editMode ? (
+                          /* ============ EDIT MODE ============ */
+                          <div className="pt-4">
+                            <div className="flex items-center gap-2 mb-4">
+                              <Pencil className="w-4 h-4 text-indigo-600" />
+                              <span className="text-sm font-semibold text-indigo-600">
+                                Chế độ chỉnh sửa
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                  Tên phòng
+                                </label>
+                                <input
+                                  type="text"
+                                  name="name"
+                                  value={formData.name}
+                                  onChange={handleChange}
+                                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                  Sức chứa
+                                </label>
+                                <input
+                                  type="number"
+                                  name="capacity"
+                                  value={formData.capacity}
+                                  onChange={handleChange}
+                                  min="1"
+                                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                  Mô tả
+                                </label>
+                                <input
+                                  type="text"
+                                  name="description"
+                                  value={formData.description}
+                                  onChange={handleChange}
+                                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditMode(false);
+                                  setFormData({
+                                    name: currentRoom?.name || "",
+                                    capacity: currentRoom?.capacity || "",
+                                    description: currentRoom?.description || "",
+                                  });
+                                }}
+                                className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                              >
+                                Hủy
+                              </button>
+                              <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl hover:shadow-lg disabled:opacity-50 transition-all"
+                              >
+                                {saving ? (
+                                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                  <Check className="w-4 h-4" />
+                                )}
+                                Lưu
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* ============ VIEW MODE ============ */
+                          <div className="pt-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                              <div className="bg-white rounded-xl p-4 border border-gray-100">
+                                <p className="text-xs text-gray-500 mb-1">
+                                  Mã phòng
+                                </p>
+                                <p className="text-lg font-bold text-gray-900">
+                                  #{room.id}
+                                </p>
+                              </div>
+                              <div className="bg-white rounded-xl p-4 border border-gray-100">
+                                <p className="text-xs text-gray-500 mb-1">
+                                  Tên phòng
+                                </p>
+                                <p className="text-lg font-bold text-gray-900">
+                                  {room.name}
+                                </p>
+                              </div>
+                              <div className="bg-white rounded-xl p-4 border border-gray-100">
+                                <p className="text-xs text-gray-500 mb-1">
+                                  Sức chứa
+                                </p>
+                                <p className="text-lg font-bold text-indigo-600">
+                                  {room.capacity} người
+                                </p>
+                              </div>
+                              <div className="bg-white rounded-xl p-4 border border-gray-100">
+                                <p className="text-xs text-gray-500 mb-1">
+                                  Trạng thái
+                                </p>
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm font-medium ${
+                                    room.enabled
+                                      ? "bg-emerald-100 text-emerald-700"
+                                      : "bg-gray-100 text-gray-600"
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      room.enabled
+                                        ? "bg-emerald-500"
+                                        : "bg-gray-400"
+                                    }`}
+                                  />
+                                  {room.enabled ? "Hoạt động" : "Tạm dừng"}
+                                </span>
+                              </div>
+                            </div>
+                            {room.description && (
+                              <div className="bg-white rounded-xl p-4 border border-gray-100 mb-4">
+                                <p className="text-xs text-gray-500 mb-1">
+                                  Mô tả
+                                </p>
+                                <p className="text-sm text-gray-700">
+                                  {room.description}
+                                </p>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center">
+                              <button
+                                onClick={collapseRow}
+                                className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                              >
+                                <ChevronDown className="w-4 h-4 rotate-180" />
+                                Thu gọn
+                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={startEdit}
+                                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                  Chỉnh sửa
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    toast?.error?.(
+                                      "Xóa phòng học chưa được hỗ trợ"
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Xóa
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           )}
-        </DetailContent>
-      </DetailDialog>
+        </div>
+
+        {/* ============ PAGINATION ============ */}
+        <div className="flex items-center justify-between px-6 py-4 bg-gray-50/50 border-t border-gray-100">
+          <div className="text-sm text-gray-500">
+            Hiển thị {pageItems.length} / {total} phòng học
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(pageSafe - 1)}
+              disabled={pageSafe === 0}
+              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i;
+                } else if (pageSafe < 3) {
+                  pageNum = i;
+                } else if (pageSafe > totalPages - 4) {
+                  pageNum = totalPages - 5 + i;
+                } else {
+                  pageNum = pageSafe - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                      pageSafe === pageNum
+                        ? "bg-gray-900 text-white shadow-lg"
+                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    {pageNum + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setPage(pageSafe + 1)}
+              disabled={pageSafe >= totalPages - 1}
+              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

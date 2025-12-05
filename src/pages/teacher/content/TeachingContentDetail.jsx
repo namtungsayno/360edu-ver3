@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BookOpen, Layers, FileText, Loader2 } from "lucide-react";
 
-import { Card, CardContent } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { useToast } from "../../hooks/use-toast.js";
-import { courseService } from "../../services/course/course.service.js";
+import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { useToast } from "../../../hooks/use-toast.js";
+import { courseService } from "../../../services/course/course.service.js";
 
 export default function TeachingContentDetail() {
   const { id } = useParams();

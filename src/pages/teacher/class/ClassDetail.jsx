@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useToast } from "../../hooks/use-toast";
-import { attendanceService } from "../../services/attendance/attendance.service";
-import sessionService from "../../services/class/session.service";
-import { Card, CardContent } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { Badge } from "../../components/ui/Badge.jsx";
-import { Input } from "../../components/ui/Input.jsx";
-import { Textarea } from "../../components/ui/Textarea.jsx";
+import { useToast } from "../../../hooks/use-toast";
+import { attendanceService } from "../../../services/attendance/attendance.service";
+import sessionService from "../../../services/class/session.service";
+import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { Badge } from "../../../components/ui/Badge.jsx";
+import { Input } from "../../../components/ui/Input.jsx";
+import { Textarea } from "../../../components/ui/Textarea.jsx";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "../../components/ui/Select.jsx";
+} from "../../../components/ui/Select.jsx";
 import {
   ArrowLeft,
   Save,
@@ -28,22 +28,41 @@ import {
   User as UserIcon,
   FileText,
   Layers,
+  Paperclip,
   Plus,
+  Mail,
+  Send,
 } from "lucide-react";
-import { scheduleService } from "../../services/schedule/schedule.service";
-import { courseService } from "../../services/course/course.service";
+import { parentNotificationService } from "../../../services/notification/parent-notification.service";
+import { scheduleService } from "../../../services/schedule/schedule.service";
+import { courseService } from "../../../services/course/course.service";
+import SessionMaterialUpload from "../../../components/teacher/SessionMaterialUpload.jsx";
 // Personal course versions flow removed per new business logic
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../../../hooks/useAuth";
 
 export default function ClassDetail() {
-  const navigate = useNavigate();
-  const { classId } = useParams();
-  const [searchParams] = useSearchParams();
-  useAuth();
-  const slotId = searchParams.get("slotId");
-  const slotIdNum = slotId ? parseInt(slotId, 10) : null;
-  const sessionIdParam = searchParams.get("sessionId");
-  // Local date helpers to avoid UTC shift
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHẦN 1: ROUTING & URL PARAMS - Lấy thông tin từ URL
+  // ═══════════════════════════════════════════════════════════════════════════
+  const navigate = useNavigate(); // Điều hướng giữa các trang
+  const { classId } = useParams(); // Lấy classId từ URL path: /class/:classId
+  const [searchParams] = useSearchParams(); // Lấy query params từ URL
+  useAuth(); // Hook xác thực người dùng
+
+  // Lấy các tham số từ URL query string
+  // VD: /class/123?slotId=1&sessionId=456&date=2025-12-04
+  const slotId = searchParams.get("slotId"); // ID của slot thời gian (tiết học)
+  const slotIdNum = slotId ? parseInt(slotId, 10) : null; // Chuyển slotId sang số
+  const sessionIdParam = searchParams.get("sessionId"); // ID của phiên học cụ thể
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHẦN 2: XỬ LÝ NGÀY THÁNG - Tránh lỗi UTC timezone
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Chuyển Date object thành chuỗi "YYYY-MM-DD" theo múi giờ local
+   * VD: new Date() → "2025-12-04"
+   */
   const toLocalYmd = (d) => {
     const dt = new Date(d);
     const yyyy = dt.getFullYear();
@@ -51,6 +70,11 @@ export default function ClassDetail() {
     const dd = String(dt.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
   };
+
+  /**
+   * Parse chuỗi "YYYY-MM-DD" thành Date object theo múi giờ local
+   * VD: "2025-12-04" → Date object
+   */
   const parseLocalDate = (str) => {
     if (!str) return null;
     const parts = String(str).split("-").map(Number);
@@ -58,60 +82,98 @@ export default function ClassDetail() {
     const [y, m, d] = parts;
     return new Date(y, m - 1, d);
   };
+
+  // Ngày của buổi học (lấy từ URL hoặc mặc định là hôm nay)
   const sessionDateStr = searchParams.get("date") || toLocalYmd(new Date());
+  // Ngày hôm nay
   const todayStr = toLocalYmd(new Date());
+
+  /**
+   * Kiểm tra buổi học có phải là buổi học TƯƠNG LAI không
+   * - true: Buổi học chưa diễn ra → không cho phép điểm danh
+   * - false: Buổi học đã hoặc đang diễn ra → cho phép điểm danh
+   */
   const isFutureSession = (() => {
     try {
-      const s = parseLocalDate(sessionDateStr);
-      const t = parseLocalDate(todayStr);
+      const s = parseLocalDate(sessionDateStr); // Ngày buổi học
+      const t = parseLocalDate(todayStr); // Ngày hôm nay
       if (!s || !t) return false;
       t.setHours(0, 0, 0, 0);
       s.setHours(0, 0, 0, 0);
-      return s > t;
+      return s > t; // So sánh: ngày buổi học > ngày hôm nay?
     } catch {
       return false;
     }
   })();
-  const { success, error } = useToast();
-  const [classDetail, setClassDetail] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [attendanceDetails, setAttendanceDetails] = useState([]);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [originalDetails, setOriginalDetails] = useState([]);
 
-  // Lesson content states
-  const [courseData, setCourseData] = useState(null); // Current displayed course (switches based on tab)
-  const [adminCourseData, setAdminCourseData] = useState(null); // Course gốc từ Admin (trong Môn học)
-  const [personalCourseData, setPersonalCourseData] = useState(null); // Course clone của lớp
-  const [usingPersonalCourse, setUsingPersonalCourse] = useState(false);
-  const [selectedChapterId, setSelectedChapterId] = useState("");
-  const [selectedLessonId, setSelectedLessonId] = useState("");
-  const [lessonContent, setLessonContent] = useState("");
-  const [savingContent, setSavingContent] = useState(false);
-  const [contentEditMode, setContentEditMode] = useState(true);
-  const [hasExistingContent, setHasExistingContent] = useState(false);
-  // Flag to prevent clearing hydrated selections on initial personal course load
-  const [, setHydratedSelections] = useState(false);
-  // Fields to hydrate from backend
-  const [baseCourseIdState, setBaseCourseIdState] = useState(null); // Course gốc Admin ID
-  const [classCourseIdState, setClassCourseIdState] = useState(null); // Course clone ID
-  // Track explicit source type for saving
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHẦN 3: TOAST NOTIFICATIONS - Hiển thị thông báo
+  // ═══════════════════════════════════════════════════════════════════════════
+  const { success, error } = useToast(); // success: thông báo thành công, error: thông báo lỗi
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHẦN 4: STATE THÔNG TIN LỚP HỌC & LOADING
+  // ═══════════════════════════════════════════════════════════════════════════
+  const [classDetail, setClassDetail] = useState(null); // Thông tin chi tiết lớp học (tên, GV, môn, phòng...)
+  const [loading, setLoading] = useState(true); // Trạng thái đang tải dữ liệu
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHẦN 5: STATE ĐIỂM DANH HỌC SINH
+  // ═══════════════════════════════════════════════════════════════════════════
+  const [attendanceDetails, setAttendanceDetails] = useState([]); // Danh sách học sinh + trạng thái điểm danh
+  const [hasChanges, setHasChanges] = useState(false); // Có thay đổi chưa lưu không?
+  const [editMode, setEditMode] = useState(false); // Đang ở chế độ sửa điểm danh?
+  const [originalDetails, setOriginalDetails] = useState([]); // Backup dữ liệu gốc để hủy thay đổi
+  const [currentSessionId, setCurrentSessionId] = useState(null); // Session ID từ attendance response
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHẦN 6: STATE GỬI THÔNG BÁO PHỤ HUYNH
+  // ═══════════════════════════════════════════════════════════════════════════
+  const [sendingNotification, setSendingNotification] = useState(false); // Đang gửi thông báo?
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHẦN 7: STATE NỘI DUNG BUỔI HỌC (CHƯƠNG, BÀI, GHI CHÚ GIẢNG DẠY)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // --- 7.1: Dữ liệu khóa học ---
+  const [courseData, setCourseData] = useState(null); // Khóa học ĐANG HIỂN THỊ (có thể là Admin hoặc Personal)
+  const [adminCourseData, setAdminCourseData] = useState(null); // Khóa học GỐC từ Admin (chỉ xem, không sửa được)
+  const [personalCourseData, setPersonalCourseData] = useState(null); // Khóa học CÁ NHÂN (clone riêng cho lớp, có thể sửa)
+
+  // --- 7.2: Lựa chọn nguồn khóa học ---
+  const [usingPersonalCourse, setUsingPersonalCourse] = useState(false); // Đang dùng khóa học cá nhân? (false = dùng Admin)
+
+  // --- 7.3: Lựa chọn chương & bài học ---
+  const [selectedChapterId, setSelectedChapterId] = useState(""); // ID chương đã chọn
+  const [selectedLessonId, setSelectedLessonId] = useState(""); // ID bài học đã chọn
+
+  // --- 7.4: Nội dung ghi chú giảng dạy ---
+  const [lessonContent, setLessonContent] = useState(""); // Nội dung giáo viên đã giảng (text)
+  const [savingContent, setSavingContent] = useState(false); // Đang lưu nội dung?
+  const [contentEditMode, setContentEditMode] = useState(true); // Đang ở chế độ sửa nội dung?
+  const [hasExistingContent, setHasExistingContent] = useState(false); // Đã có nội dung được lưu trước đó?
+
+  // --- 7.5: Hydration flags (khôi phục dữ liệu từ backend) ---
+  const [, setHydratedSelections] = useState(false); // Đánh dấu đã khôi phục chapter/lesson từ DB
+
+  // --- 7.6: ID khóa học để lưu ---
+  const [baseCourseIdState, setBaseCourseIdState] = useState(null); // ID khóa học GỐC từ Admin
+  const [classCourseIdState, setClassCourseIdState] = useState(null); // ID khóa học CLONE của lớp
+
+  /**
+   * Loại nguồn để gửi lên backend khi lưu:
+   * - "CLASS_PERSONAL": Đang dùng khóa học cá nhân (clone)
+   * - "ADMIN": Đang dùng khóa học gốc từ Admin
+   */
   const sourceType = usingPersonalCourse ? "CLASS_PERSONAL" : "ADMIN";
+  // Load dữ liệu
   useEffect(() => {
     if (!classId) return;
 
     (async () => {
       try {
         setLoading(true);
-        // Load attendance theo ngày phiên học (từ URL) + slotId
-        console.log("ClassDetail loading:", {
-          classId,
-          date: sessionDateStr,
-          slotId,
-          slotIdNum,
-        });
-
+        // Load danh sách điểm danh
         const attendance = sessionIdParam
           ? await attendanceService.getBySession(parseInt(sessionIdParam, 10))
           : await attendanceService.getByClass(
@@ -119,28 +181,46 @@ export default function ClassDetail() {
               sessionDateStr,
               slotIdNum
             );
-        setAttendanceDetails(attendance);
-        setOriginalDetails(attendance);
+
+        // Handle response format - getByClass returns { sessionId, students }, getBySession returns array
+        const attendanceList = Array.isArray(attendance)
+          ? attendance
+          : attendance.students || [];
+        const fetchedSessionId = sessionIdParam
+          ? parseInt(sessionIdParam, 10)
+          : attendance.sessionId;
+
+        console.log(
+          "🎯 ClassDetail: slotId=",
+          slotIdNum,
+          "fetchedSessionId=",
+          fetchedSessionId
+        );
+
+        setAttendanceDetails(attendanceList);
+        setOriginalDetails(attendanceList);
+        if (fetchedSessionId) {
+          setCurrentSessionId(fetchedSessionId);
+        }
+
         // Auto-enter edit mode if nothing marked yet
         if (
-          attendance.every((a) => !a.status || a.status === "-") &&
+          attendanceList.every((a) => !a.status || a.status === "-") &&
           !isFutureSession
         ) {
           setEditMode(true);
         }
 
-        // Get class info from schedule (we need to fetch schedule to get class details)
-        // For now, we'll get it from URL state or fetch all schedule
+        // Load thông tin lớp học từ lịch học
         const allSchedule = await scheduleService.getScheduleBySemester("all");
         const classInfo = allSchedule.find(
           (item) => String(item.classId) === String(classId)
         );
 
         if (classInfo) {
-          console.log("📚 Class Info Loaded:", classInfo);
           setClassDetail({
             ...classInfo,
-            studentCount: attendance.length,
+            studentCount: attendanceList.length,
           });
 
           // Capture classCourseId from schedule.originalClass if provided
@@ -168,12 +248,6 @@ export default function ClassDetail() {
               );
               setPersonalCourseData(loadedPersonalCourse);
               setClassCourseIdState(String(classInfo.courseId));
-              console.log(
-                "📝 Personal Course (clone) loaded:",
-                loadedPersonalCourse?.title,
-                "| Chapters:",
-                loadedPersonalCourse?.chapters?.length || 0
-              );
 
               // Try to extract baseCourseId from description tag [[SOURCE:xxx]]
               const sourceMatch =
@@ -182,10 +256,6 @@ export default function ClassDetail() {
                 );
               if (sourceMatch) {
                 baseCourseId = parseInt(sourceMatch[1], 10);
-                console.log(
-                  "🔍 Found baseCourseId from SOURCE tag:",
-                  baseCourseId
-                );
               }
             } catch (err) {
               console.error("Load personal course failed:", err);
@@ -200,12 +270,6 @@ export default function ClassDetail() {
               );
               setAdminCourseData(loadedAdminCourse);
               setBaseCourseIdState(baseCourseId);
-              console.log(
-                "📚 Admin Course (gốc) loaded from SOURCE:",
-                loadedAdminCourse?.title,
-                "| Chapters:",
-                loadedAdminCourse?.chapters?.length || 0
-              );
             } catch (err) {
               console.error("Load admin course from SOURCE failed:", err);
             }
@@ -231,12 +295,6 @@ export default function ClassDetail() {
                 );
                 setAdminCourseData(loadedAdminCourse);
                 setBaseCourseIdState(adminCourse.id);
-                console.log(
-                  "📚 Admin Course (gốc) loaded from Subject fallback:",
-                  loadedAdminCourse?.title,
-                  "| Chapters:",
-                  loadedAdminCourse?.chapters?.length || 0
-                );
               }
             } catch (err) {
               console.error("Load admin course from Subject failed:", err);
@@ -252,7 +310,7 @@ export default function ClassDetail() {
             setUsingPersonalCourse(true);
           }
 
-          // Load saved lesson content if exists (and hydrate UI state)
+          // load nội dung buổi học đã lưu
           try {
             const savedContent = sessionIdParam
               ? await sessionService.getSessionContent(
@@ -265,12 +323,11 @@ export default function ClassDetail() {
                 );
 
             if (savedContent) {
-              console.log("📝 Saved Content Loaded:", savedContent);
-              // Base course id
+              // lưu id khóa học gốc
               if (savedContent.baseCourseId) {
                 setBaseCourseIdState(savedContent.baseCourseId);
               }
-              // Source toggle - switch to correct course data
+              // Chọn nguồn khóa học
               if (savedContent.sourceType === "CLASS_PERSONAL") {
                 setUsingPersonalCourse(true);
                 if (loadedPersonalCourse) {
@@ -283,6 +340,7 @@ export default function ClassDetail() {
                 }
               }
               // Hydration: set chapter/lesson selections
+              // Lưu ID khóa học cá nhân
               const classCourseId = savedContent.classCourseId;
               if (classCourseId) {
                 setClassCourseIdState(String(classCourseId));
@@ -317,9 +375,8 @@ export default function ClassDetail() {
             } else {
               setContentEditMode(true); // Edit mode if no content
             }
-          } catch (err) {
+          } catch {
             // No saved content found yet - allow editing
-            console.log("No saved content for date:", err.message);
             setContentEditMode(true);
           }
         }
@@ -383,13 +440,6 @@ export default function ClassDetail() {
 
       const date = sessionDateStr;
       const slotIdNum = slotId ? parseInt(slotId, 10) : null;
-      console.log("Saving attendance:", {
-        classId,
-        date,
-        slotId,
-        slotIdNum,
-        sessionIdParam,
-      });
 
       if (sessionIdParam) {
         await attendanceService.saveBySession(
@@ -412,8 +462,20 @@ export default function ClassDetail() {
       const refreshed = sessionIdParam
         ? await attendanceService.getBySession(parseInt(sessionIdParam, 10))
         : await attendanceService.getByClass(classId, date, slotIdNum);
-      setAttendanceDetails(refreshed);
-      setOriginalDetails(refreshed);
+
+      // Handle response format - getByClass returns { sessionId, students }, getBySession returns array
+      const refreshedList = Array.isArray(refreshed)
+        ? refreshed
+        : refreshed.students || [];
+      const refreshedSessionId = sessionIdParam
+        ? parseInt(sessionIdParam, 10)
+        : refreshed.sessionId;
+
+      setAttendanceDetails(refreshedList);
+      setOriginalDetails(refreshedList);
+      if (refreshedSessionId) {
+        setCurrentSessionId(refreshedSessionId);
+      }
       setEditMode(false);
     } catch (err) {
       console.error("Error saving attendance:", err);
@@ -500,6 +562,44 @@ export default function ClassDetail() {
   const selectedChapter = courseData?.chapters?.find(
     (ch) => String(ch.id) === String(selectedChapterId)
   );
+
+  // Handler gửi thông báo cho phụ huynh
+  const handleSendParentNotification = async () => {
+    try {
+      setSendingNotification(true);
+
+      let result;
+      if (sessionIdParam) {
+        result = await parentNotificationService.sendBySession(
+          parseInt(sessionIdParam, 10)
+        );
+      } else {
+        result = await parentNotificationService.sendByClassAndDate(
+          classId,
+          sessionDateStr,
+          slotIdNum
+        );
+      }
+
+      if (result.success) {
+        success(
+          result.message ||
+            `Đã gửi thông báo thành công cho ${result.data || 0} phụ huynh!`
+        );
+      } else {
+        error(result.message || "Có lỗi xảy ra khi gửi thông báo");
+      }
+    } catch (err) {
+      console.error("Error sending parent notification:", err);
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Có lỗi xảy ra khi gửi thông báo";
+      error(errorMsg);
+    } finally {
+      setSendingNotification(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -1392,7 +1492,11 @@ export default function ClassDetail() {
 
                 {/* Step 4: Lesson Content Input */}
                 {selectedLessonId && (
-                  <div className="space-y-3 animate-in slide-in-from-bottom-4 duration-300">
+                  <div
+                    className={`space-y-3 animate-in slide-in-from-bottom-4 duration-300 transition-opacity ${
+                      !contentEditMode && hasExistingContent ? "opacity-60" : ""
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
                       <span className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200">
                         4
@@ -1403,6 +1507,11 @@ export default function ClassDetail() {
                       {lessonContent.trim() && (
                         <span className="text-emerald-500 animate-pulse">
                           ✓
+                        </span>
+                      )}
+                      {!contentEditMode && hasExistingContent && (
+                        <span className="text-xs text-gray-400 ml-2">
+                          (Nhấn "Sửa nội dung" để chỉnh sửa)
                         </span>
                       )}
                     </div>
@@ -1433,8 +1542,30 @@ export default function ClassDetail() {
                   </div>
                 )}
 
-                {/* Action Buttons */}
-                {selectedLessonId && (
+                {/* Upload tài liệu buổi học */}
+                {currentSessionId && (
+                  <div
+                    className={`mt-6 mb-6 transition-opacity ${
+                      !contentEditMode && hasExistingContent ? "opacity-60" : ""
+                    }`}
+                  >
+                    <SessionMaterialUpload
+                      sessionId={currentSessionId}
+                      readOnly={
+                        isFutureSession ||
+                        (!contentEditMode && hasExistingContent)
+                      }
+                    />
+                    {!contentEditMode && hasExistingContent && (
+                      <p className="text-xs text-gray-400 mt-2 text-center">
+                        Nhấn "Sửa nội dung buổi học" để thêm/xóa tài liệu
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Nút lưu nội dung */}
+                {(selectedChapterId || selectedLessonId || lessonContent) && (
                   <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100 animate-in slide-in-from-bottom-4 duration-300">
                     {hasExistingContent && !contentEditMode ? (
                       <Button
@@ -1508,6 +1639,55 @@ export default function ClassDetail() {
             </div>
           </div>
         )}
+
+        {/* Send Parent Notification Button */}
+        <Card className="border border-gray-200 rounded-[14px] bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                  <Mail className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Gửi thông báo cho phụ huynh
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Gửi email thông báo về điểm danh và nội dung buổi học cho
+                    phụ huynh học viên
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleSendParentNotification}
+                disabled={sendingNotification || isFutureSession}
+                className={`h-12 px-6 rounded-xl shadow-lg transition-all duration-300 ${
+                  sendingNotification || isFutureSession
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-blue-200 hover:shadow-xl hover:scale-[1.02]"
+                } text-white font-medium`}
+              >
+                {sendingNotification ? (
+                  <>
+                    <div className="w-5 h-5 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Đang gửi...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5 mr-2" />
+                    Gửi thông báo
+                  </>
+                )}
+              </Button>
+            </div>
+            {isFutureSession && (
+              <p className="text-xs text-orange-600 mt-3 flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                Chưa đến ngày diễn ra buổi học, không thể gửi thông báo
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

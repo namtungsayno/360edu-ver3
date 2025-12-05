@@ -1,18 +1,19 @@
 // src/pages/teacher/TeacherCourseList.jsx
+// QUản lý khóa học theo lớp - "Quản lý khóa học theo lớp"
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { Card, CardContent } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { Input } from "../../components/ui/Input.jsx";
-import { Badge } from "../../components/ui/Badge.jsx";
+import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { Input } from "../../../components/ui/Input.jsx";
+import { Badge } from "../../../components/ui/Badge.jsx";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "../../components/ui/Select.jsx";
+} from "../../../components/ui/Select.jsx";
 
 import {
   BookOpen,
@@ -25,10 +26,10 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-import { courseService } from "../../services/course/course.service.js";
-import { classService } from "../../services/class/class.service.js";
-import { useToast } from "../../hooks/use-toast.js";
-import { useAuth } from "../../hooks/useAuth.js";
+import { courseService } from "../../../services/course/course.service.js";
+import { classService } from "../../../services/class/class.service.js";
+import { useToast } from "../../../hooks/use-toast.js";
+import { useAuth } from "../../../hooks/useAuth.js";
 
 const STATUS_OPTIONS = [
   { value: "ALL", label: "Tất cả trạng thái" },
@@ -84,7 +85,7 @@ export default function TeacherCourseList() {
   const [loading, setLoading] = useState(true);
   const [classMap, setClassMap] = useState({}); // { [classId]: classDetail }
   const [sourceCourseMap, setSourceCourseMap] = useState({}); // { [sourceId]: courseDetail }
-  const [courseIdToClass, setCourseIdToClass] = useState({}); // { [courseId]: classDetail }
+  const [courseIdToClass] = useState({}); // { [courseId]: classDetail } - read-only fallback map
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
