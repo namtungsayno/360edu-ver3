@@ -1,9 +1,15 @@
 // src/components/ui/ImageWithFallback.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function ImageWithFallback({ src, alt, className = "", fallbackSrc = "/assets/images/banner.jpg", ...props }) {
   const [imgSrc, setImgSrc] = useState(src);
   const [hasError, setHasError] = useState(false);
+
+  // Reset state when src prop changes
+  useEffect(() => {
+    setImgSrc(src);
+    setHasError(false);
+  }, [src]);
 
   const handleError = () => {
     if (!hasError) {
@@ -22,3 +28,5 @@ export function ImageWithFallback({ src, alt, className = "", fallbackSrc = "/as
     />
   );
 }
+
+export default ImageWithFallback;

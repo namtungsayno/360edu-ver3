@@ -37,6 +37,7 @@ export default function ScheduleGrid({
   teacherBusy = [],
   roomBusy = [],
   selected = [],
+  originalSelected = [],
   timeSlots: propTimeSlots = [],
   onToggle,
   disabled = false,
@@ -83,6 +84,12 @@ export default function ScheduleGrid({
     );
   }
 
+  function isOriginalSelected(slotObj) {
+    return originalSelected.some(
+      (s) => s.isoStart === slotObj.isoStart && s.isoEnd === slotObj.isoEnd
+    );
+  }
+
   // Chuẩn hoá busy => Set pattern `${isoDay}-${slotId}`
   const busyKeysTeacher = useMemo(() => {
     const set = new Set();
@@ -119,6 +126,7 @@ export default function ScheduleGrid({
   }, [roomBusy, timeSlots]);
 
   function isTeacherBusySlot(slotObj) {
+    if (isOriginalSelected(slotObj)) return false;
     const d = new Date(slotObj.isoStart);
     const isoDay = d.getDay() === 0 ? 7 : d.getDay();
     const pattern = `${isoDay}-${slotObj.slotId}`;
@@ -131,6 +139,7 @@ export default function ScheduleGrid({
   }
 
   function isRoomBusySlot(slotObj) {
+    if (isOriginalSelected(slotObj)) return false;
     const d = new Date(slotObj.isoStart);
     const isoDay = d.getDay() === 0 ? 7 : d.getDay();
     const pattern = `${isoDay}-${slotObj.slotId}`;
@@ -190,6 +199,7 @@ export default function ScheduleGrid({
                   const d = weekDates[dayIdx];
                   const sObj = buildSlot(d, slot);
                   const sel = isSelected(sObj);
+                  const wasOriginal = isOriginalSelected(sObj);
                   const teacherB = isTeacherBusySlot(sObj);
                   const roomB = isRoomBusySlot(sObj);
                   const busy = teacherB || roomB;
@@ -212,16 +222,24 @@ export default function ScheduleGrid({
                     : roomB
                     ? "P bận"
                     : sel
-                    ? "Đã chọn"
+                    ? wasOriginal
+                      ? "Slot cũ"
+                      : "Đã chọn"
                     : "Rảnh";
                   return (
                     <div
                       key={dayIdx + "-" + slot.id}
                       className={`${base} ${cls} animate-fadeIn`}
                       style={{ transition: "all .2s cubic-bezier(.4,0,.2,1)" }}
-                      onClick={() => !busy && !disabled && onToggle?.(sObj)}
+                      onClick={() =>
+                        !disabled && (wasOriginal || !busy) && onToggle?.(sObj)
+                      }
                       title={
-                        busy ? "Giờ này đã bận" : sel ? "Bỏ chọn" : "Chọn giờ"
+                        busy && !wasOriginal
+                          ? "Giờ này đã bận"
+                          : sel
+                          ? "Bỏ chọn"
+                          : "Chọn giờ"
                       }
                     >
                       {text}
@@ -246,6 +264,9 @@ export default function ScheduleGrid({
           </div>
           <div className="flex items-center gap-2">
             <span className="h-4 w-4 rounded border bg-blue-600" /> Đã chọn
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-4 rounded border bg-blue-500" /> Slot cũ
           </div>
         </div>
       </div>

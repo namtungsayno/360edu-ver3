@@ -18,6 +18,7 @@ import { Input } from "../../components/ui/Input";
 import Logo from "../../components/common/Logo";
 import { authService } from "../../services/auth/auth.service";
 import { useToast } from "../../hooks/use-toast";
+import { Eye, EyeOff } from "lucide-react";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const PHONE_REGEX = /^0\d{9}$/; // 10 số, bắt đầu bằng 0
@@ -40,6 +41,8 @@ export default function Register() {
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -51,40 +54,57 @@ export default function Register() {
   const validate = () => {
     const next = {};
 
-    if (!formData.fullName.trim()) next.fullName = "Vui lòng nhập họ và tên.";
-    if (!formData.username.trim())
+    if (!formData.fullName.trim()) {
+      next.fullName = "Vui lòng nhập họ và tên.";
+    } else if (formData.fullName.trim().length < 2) {
+      next.fullName = "Họ và tên phải có ít nhất 2 ký tự.";
+    }
+    
+    if (!formData.username.trim()) {
       next.username = "Vui lòng nhập tên đăng nhập.";
+    } else if (formData.username.trim().length < 3) {
+      next.username = "Tên đăng nhập phải có ít nhất 3 ký tự.";
+    }
 
-    if (!formData.email.trim()) next.email = "Vui lòng nhập email.";
-    else if (!EMAIL_REGEX.test(formData.email))
+    if (!formData.email.trim()) {
+      next.email = "Vui lòng nhập email.";
+    } else if (!EMAIL_REGEX.test(formData.email)) {
       next.email = "Email không hợp lệ.";
+    }
 
-    if (!formData.phone.trim()) next.phone = "Vui lòng nhập số điện thoại.";
-    else if (!PHONE_REGEX.test(formData.phone))
+    if (!formData.phone.trim()) {
+      next.phone = "Vui lòng nhập số điện thoại.";
+    } else if (!PHONE_REGEX.test(formData.phone)) {
       next.phone = "Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0).";
+    }
 
-    if (!formData.password) next.password = "Vui lòng nhập mật khẩu.";
-    else if (formData.password.length < 6)
+    if (!formData.password) {
+      next.password = "Vui lòng nhập mật khẩu.";
+    } else if (formData.password.length < 6) {
       next.password = "Mật khẩu tối thiểu 6 ký tự.";
+    }
 
-    if (!formData.confirmPassword)
+    if (!formData.confirmPassword) {
       next.confirmPassword = "Vui lòng xác nhận mật khẩu.";
-    else if (formData.confirmPassword !== formData.password)
+    } else if (formData.confirmPassword !== formData.password) {
       next.confirmPassword = "Mật khẩu xác nhận không khớp.";
+    }
 
-    if (!formData.parentName.trim())
+    if (!formData.parentName.trim()) {
       next.parentName = "Vui lòng nhập tên phụ huynh.";
+    }
 
-    if (!formData.parentEmail.trim())
+    if (!formData.parentEmail.trim()) {
       next.parentEmail = "Vui lòng nhập email phụ huynh.";
-    else if (!EMAIL_REGEX.test(formData.parentEmail))
+    } else if (!EMAIL_REGEX.test(formData.parentEmail)) {
       next.parentEmail = "Email phụ huynh không hợp lệ.";
+    }
 
-    if (!formData.parentPhone.trim())
+    if (!formData.parentPhone.trim()) {
       next.parentPhone = "Vui lòng nhập số điện thoại phụ huynh.";
-    else if (!PHONE_REGEX.test(formData.parentPhone))
-      next.parentPhone =
-        "Số điện thoại phụ huynh không hợp lệ (10 số, bắt đầu bằng 0).";
+    } else if (!PHONE_REGEX.test(formData.parentPhone)) {
+      next.parentPhone = "Số điện thoại phụ huynh không hợp lệ (10 số, bắt đầu bằng 0).";
+    }
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -236,6 +256,8 @@ export default function Register() {
               error={errors.password}
               onChange={handleInputChange}
               helper="Tối thiểu 6 ký tự."
+              showPassword={showPassword}
+              onTogglePassword={() => setShowPassword(!showPassword)}
             />
 
             {/* Confirm */}
@@ -246,6 +268,8 @@ export default function Register() {
               value={formData.confirmPassword}
               error={errors.confirmPassword}
               onChange={handleInputChange}
+              showPassword={showConfirmPassword}
+              onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
             />
 
             {/* Parent Name */}
@@ -317,7 +341,9 @@ export default function Register() {
 }
 
 /** Reusable field component */
-function Field({ id, label, type = "text", value, onChange, error, helper }) {
+function Field({ id, label, type = "text", value, onChange, error, helper, showPassword, onTogglePassword }) {
+  const isPassword = type === "password";
+  
   return (
     <div>
       <label
@@ -326,16 +352,31 @@ function Field({ id, label, type = "text", value, onChange, error, helper }) {
       >
         {label}
       </label>
-      <Input
-        id={id}
-        name={id}
-        type={type}
-        required
-        value={value}
-        onChange={onChange}
-        placeholder={`Nhập ${label.toLowerCase()}`}
-        className="w-full"
-      />
+      <div className="relative">
+        <Input
+          id={id}
+          name={id}
+          type={isPassword && showPassword !== undefined ? (showPassword ? "text" : "password") : type}
+          required
+          value={value}
+          onChange={onChange}
+          placeholder={`Nhập ${label.toLowerCase()}`}
+          className={`w-full ${isPassword && onTogglePassword ? "pr-10" : ""} ${error ? "border-red-500" : ""}`}
+        />
+        {isPassword && onTogglePassword && (
+          <button
+            type="button"
+            onClick={onTogglePassword}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+          >
+            {showPassword ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
+          </button>
+        )}
+      </div>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
       {helper && <p className="mt-1 text-[11px] text-gray-500">{helper}</p>}
     </div>

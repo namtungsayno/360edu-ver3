@@ -20,4 +20,14 @@ export const attendanceApi = {
     http
       .get(`/attendance/admin/class/${classId}`, { params: { date, slotId } })
       .then((r) => r.data),
+
+  // Save attendance by sessionId (preferred long-term)
+  saveBySession: (sessionId, attendanceData) =>
+    http
+      .post(`/attendance/session/${sessionId}`, attendanceData)
+      .then((r) => r.data),
+
+  // Get attendance detail by sessionId (preferred long-term)
+  getBySession: (sessionId) =>
+    http.get(`/attendance/session/${sessionId}`).then((r) => r.data),
 };

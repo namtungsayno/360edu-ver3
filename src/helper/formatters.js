@@ -1,5 +1,8 @@
-export const formatCurrency = (amount) =>
-  `${amount?.toLocaleString?.() ?? 0} ₫`;
+export const formatCurrency = (amount) => {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return "0 ₫";
+  return `${n.toLocaleString("vi-VN")} ₫`;
+};
 
 // Convert day to Vietnamese label
 // Accepts both JS convention (0=Sun) and ISO convention (1=Mon..7=Sun)

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import {
@@ -11,7 +10,28 @@ import {
   TableHeader,
   TableRow,
 } from "../../../components/ui/Table.jsx";
-import { ExternalLink, ArrowLeft, AlertCircle } from "lucide-react";
+import {
+  ExternalLink,
+  Users,
+  BookOpen,
+  User,
+  MapPin,
+  Clock,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Video,
+} from "lucide-react";
+import {
+  DetailPageWrapper,
+  DetailHeader,
+  DetailSection,
+  DetailFieldGrid,
+  DetailField,
+  DetailHighlightCard,
+  DetailLoading,
+  DetailError,
+} from "../../../components/common/DetailPageLayout";
 import { scheduleService } from "../../../services/schedule/schedule.service";
 import { attendanceService } from "../../../services/attendance/attendance.service";
 import { toast } from "../../../hooks/use-toast";
@@ -27,7 +47,6 @@ function AdminClassDetail() {
 
   useEffect(() => {
     if (!classId) {
-      console.error("❌ classId is missing!");
       setError("Class ID không hợp lệ");
       setLoading(false);
       return;
@@ -38,27 +57,16 @@ function AdminClassDetail() {
         setLoading(true);
         setError(null);
 
-        // Lấy date từ location state, nếu không có thì dùng hôm nay
         const date =
           location.state?.date || new Date().toISOString().split("T")[0];
         const slotId = location.state?.slotId;
-        const passedClassData = location.state?.classData;
 
-        console.log("🔍 Loading class detail:", {
-          classId,
-          date,
-          slotId,
-          passedClassData,
-          type: typeof classId,
-        });
-
-        // Load attendance from backend by class + date (admin endpoint)
+        // Load attendance
         const attendance = await attendanceService.getByClassForAdmin(
           classId,
           date,
           slotId
         );
-        console.log("✅ Attendance loaded:", attendance.length, "students");
         setAttendanceDetails(attendance);
 
         // Get class info from schedule
@@ -71,7 +79,7 @@ function AdminClassDetail() {
           setClassDetail({
             ...classInfo,
             studentCount: attendance.length,
-            viewDate: date, // Lưu ngày đang xem
+            viewDate: date,
           });
         }
       } catch (e) {
@@ -81,218 +89,236 @@ function AdminClassDetail() {
             e.response.data?.message ||
               "Không có buổi học nào cho lớp này vào ngày đã chọn."
           );
-          toast.error(
-            e.response.data?.message ||
-              "Không có buổi học nào cho lớp này vào ngày đã chọn."
-          );
         } else {
           setError("Không thể tải thông tin lớp học");
-          toast.error("Không thể tải thông tin lớp học");
         }
+        toast.error("Không thể tải thông tin lớp học");
       } finally {
         setLoading(false);
       }
     })();
   }, [classId, location.state]);
 
+  // Thống kê điểm danh
+  const stats = {
+    total: attendanceDetails.length,
+    present: attendanceDetails.filter((a) => a.status === "present").length,
+    absent: attendanceDetails.filter((a) => a.status === "absent").length,
+    late: attendanceDetails.filter((a) => a.status === "late").length,
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case "present":
-        return <Badge className="bg-green-100 text-green-800">Có mặt</Badge>;
-      case "absent":
-        return <Badge className="bg-red-100 text-red-800">Vắng</Badge>;
-      case "late":
-        return <Badge className="bg-yellow-100 text-yellow-800">Muộn</Badge>;
-      case "-":
-      case "":
-      case null:
-      case undefined:
         return (
-          <Badge className="bg-slate-100 text-slate-800">Chưa điểm danh</Badge>
+          <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-200">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Có mặt
+          </Badge>
+        );
+      case "absent":
+        return (
+          <Badge className="bg-red-100 text-red-700 border border-red-200">
+            <XCircle className="w-3 h-3 mr-1" />
+            Vắng
+          </Badge>
+        );
+      case "late":
+        return (
+          <Badge className="bg-amber-100 text-amber-700 border border-amber-200">
+            <Clock className="w-3 h-3 mr-1" />
+            Muộn
+          </Badge>
         );
       default:
-        return <Badge className="bg-slate-100 text-slate-800">-</Badge>;
+        return (
+          <Badge className="bg-gray-100 text-gray-600 border border-gray-200">
+            Chưa điểm danh
+          </Badge>
+        );
     }
   };
 
   if (loading) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Đang tải...</p>
-        </div>
-      </div>
-    );
+    return <DetailLoading message="Đang tải thông tin lớp học..." />;
   }
 
   if (error) {
     return (
-      <div className="p-6">
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Quay lại
-        </Button>
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <AlertCircle className="h-16 w-16 text-orange-500 mb-4" />
-          <p className="text-lg font-semibold text-gray-700 mb-2">
-            Không tìm thấy buổi học
-          </p>
-          <p className="text-gray-500 max-w-md">{error}</p>
-          <p className="text-sm text-gray-400 mt-4">
-            Có thể buổi học này chưa được tạo trong hệ thống, hoặc đã bị hủy.
-          </p>
-        </div>
-      </div>
+      <DetailError
+        message={error}
+        onBack={() => navigate(-1)}
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 
   if (!classDetail) {
     return (
-      <div className="p-6">
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Quay lại
-        </Button>
-        <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Không tìm thấy thông tin lớp học</p>
-        </div>
-      </div>
+      <DetailError
+        message="Không tìm thấy thông tin lớp học"
+        onBack={() => navigate(-1)}
+      />
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <DetailPageWrapper>
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Quay lại
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">
-              Chi tiết lớp {classDetail.className}
-            </h1>
-            <p className="text-slate-600 mt-1">
-              {classDetail.subjectName} - {classDetail.teacherName}
-            </p>
-          </div>
-        </div>
-        {classDetail.meetLink && (
-          <Button onClick={() => window.open(classDetail.meetLink, "_blank")}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Vào lớp học
-          </Button>
-        )}
+      <DetailHeader
+        title={`Chi tiết lớp ${classDetail.className}`}
+        subtitle={`${classDetail.subjectName} • ${classDetail.teacherName}`}
+        onBack={() => navigate(-1)}
+        actions={
+          classDetail.meetLink && (
+            <Button
+              onClick={() => window.open(classDetail.meetLink, "_blank")}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Video className="w-4 h-4 mr-2" />
+              Vào lớp học
+            </Button>
+          )
+        }
+      />
+
+      {/* Thống kê nhanh */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <DetailHighlightCard
+          icon={Users}
+          label="Tổng học viên"
+          value={stats.total}
+          colorScheme="blue"
+        />
+        <DetailHighlightCard
+          icon={CheckCircle}
+          label="Có mặt"
+          value={stats.present}
+          colorScheme="green"
+        />
+        <DetailHighlightCard
+          icon={XCircle}
+          label="Vắng"
+          value={stats.absent}
+          colorScheme="red"
+        />
+        <DetailHighlightCard
+          icon={Clock}
+          label="Muộn"
+          value={stats.late}
+          colorScheme="orange"
+        />
       </div>
 
-      {/* Class Info */}
-      <Card>
-        <CardContent className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Thông tin lớp học</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div>
-                <span className="text-sm text-gray-600">Môn học:</span>
-                <p className="font-medium">{classDetail.subjectName}</p>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">Giáo viên:</span>
-                <p className="font-medium">{classDetail.teacherName}</p>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">Địa điểm:</span>
-                <p className="font-medium">
-                  {classDetail.isOnline ? (
-                    <Badge className="bg-purple-100 text-purple-800">
-                      Online
-                    </Badge>
-                  ) : (
-                    classDetail.room || "Chưa có phòng"
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <span className="text-sm text-gray-600">Số học viên:</span>
-                <p className="font-medium">{classDetail.studentCount}</p>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">Thời gian:</span>
-                <p className="font-medium">
-                  {classDetail.startTime} - {classDetail.endTime}
-                </p>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">Ngày học:</span>
-                <p className="font-medium">{classDetail.dayName}</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Student List */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Danh sách học viên</h2>
-            <div className="flex items-center gap-4 text-sm">
-              <span className="text-gray-600">
-                Tổng:{" "}
-                <span className="font-bold">{attendanceDetails.length}</span>
-              </span>
-              <span className="text-green-600">
-                {attendanceDetails.filter((a) => a.status === "present").length}{" "}
-                có mặt
-              </span>
-              <span className="text-red-600">
-                {attendanceDetails.filter((a) => a.status === "absent").length}{" "}
-                vắng
-              </span>
-              <span className="text-yellow-600">
-                {attendanceDetails.filter((a) => a.status === "late").length}{" "}
-                muộn
-              </span>
-            </div>
-          </div>
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">STT</TableHead>
-                <TableHead>Học viên</TableHead>
-                <TableHead className="w-48">Trạng thái</TableHead>
-                <TableHead>Ghi chú</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {attendanceDetails.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-gray-500">
-                    Chưa có học viên nào trong lớp
-                  </TableCell>
-                </TableRow>
+      {/* Thông tin lớp học */}
+      <DetailSection title="Thông tin lớp học" icon={BookOpen}>
+        <DetailFieldGrid cols={3}>
+          <DetailField
+            icon={BookOpen}
+            label="Môn học"
+            value={classDetail.subjectName}
+          />
+          <DetailField
+            icon={User}
+            label="Giáo viên"
+            value={classDetail.teacherName}
+          />
+          <DetailField
+            icon={MapPin}
+            label="Địa điểm"
+            value={
+              classDetail.isOnline ? (
+                <Badge className="bg-purple-100 text-purple-700">Online</Badge>
               ) : (
-                attendanceDetails.map((record, index) => (
-                  <TableRow key={record.id}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell className="font-medium">
+                classDetail.room || "Chưa có phòng"
+              )
+            }
+          />
+          <DetailField
+            icon={Clock}
+            label="Thời gian"
+            value={`${classDetail.startTime} - ${classDetail.endTime}`}
+          />
+          <DetailField
+            icon={Calendar}
+            label="Ngày học"
+            value={classDetail.dayName}
+          />
+          <DetailField
+            icon={Users}
+            label="Số học viên"
+            value={`${classDetail.studentCount} học viên`}
+          />
+        </DetailFieldGrid>
+
+        {classDetail.meetLink && (
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <p className="text-xs text-blue-600 font-medium mb-1">
+              Link học Online
+            </p>
+            <a
+              href={classDetail.meetLink}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-blue-700 hover:underline flex items-center gap-1"
+            >
+              {classDetail.meetLink}
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        )}
+      </DetailSection>
+
+      {/* Danh sách học viên */}
+      <DetailSection
+        title="Danh sách học viên"
+        icon={Users}
+        description={`Tổng ${stats.total} học viên • ${stats.present} có mặt • ${stats.absent} vắng • ${stats.late} muộn`}
+      >
+        {attendanceDetails.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p>Chưa có học viên nào trong lớp</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="w-16 text-center font-semibold">
+                    STT
+                  </TableHead>
+                  <TableHead className="font-semibold">Học viên</TableHead>
+                  <TableHead className="w-40 font-semibold">
+                    Trạng thái
+                  </TableHead>
+                  <TableHead className="font-semibold">Ghi chú</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attendanceDetails.map((record, index) => (
+                  <TableRow
+                    key={record.id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <TableCell className="text-center text-gray-500">
+                      {index + 1}
+                    </TableCell>
+                    <TableCell className="font-medium text-gray-900">
                       {record.student}
                     </TableCell>
                     <TableCell>{getStatusBadge(record.status)}</TableCell>
-                    <TableCell className="text-sm text-slate-600">
-                      {record.note || ""}
+                    <TableCell className="text-sm text-gray-500">
+                      {record.note || "—"}
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </DetailSection>
+    </DetailPageWrapper>
   );
 }
 

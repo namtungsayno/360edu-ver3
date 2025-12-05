@@ -64,11 +64,6 @@ export default function AdminLayout() {
 
       {/* MAIN */}
       <div className="lg:pl-72 min-h-screen flex flex-col">
-        {/* Header LIGHT */}
-        <header className="sticky top-0 z-20 bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"></div>
-        </header>
-
         {/* Content LIGHT - No padding for full-screen pages */}
         <main className="flex-1 text-slate-900">
           <Outlet />

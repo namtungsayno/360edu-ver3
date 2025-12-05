@@ -1,12 +1,13 @@
 // src/pages/teacher/TeachingContentDetail.jsx
+// content gốc của admin không thể chỉnh sửa.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BookOpen, Layers, FileText, Loader2 } from "lucide-react";
 
-import { Card, CardContent } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { useToast } from "../../hooks/use-toast.js";
-import { courseService } from "../../services/course/course.service.js";
+import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { useToast } from "../../../hooks/use-toast.js";
+import { courseService } from "../../../services/course/course.service.js";
 
 export default function TeachingContentDetail() {
   const { id } = useParams();
@@ -53,12 +54,6 @@ export default function TeachingContentDetail() {
     );
   }, [course]);
 
-  function cloneToMyCourses() {
-    if (!course) return;
-    // Không gọi API ở bước này; chỉ chuyển sang trang chỉnh sửa dưới nhánh Nội dung giảng dạy
-    navigate(`/home/teacher/content/${id}/edit`);
-  }
-
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto p-8">
@@ -104,21 +99,7 @@ export default function TeachingContentDetail() {
           <Button variant="outline" onClick={() => navigate(-1)}>
             Quay lại
           </Button>
-          <Button
-            onClick={cloneToMyCourses}
-            className="bg-[#155dfc] hover:bg-[#0f4ad1] text-white inline-flex items-center gap-2"
-          >
-            Chỉnh sửa theo ý cá nhân
-          </Button>
         </div>
-      </div>
-
-      {/* Admin source note */}
-      <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
-        <p className="text-sm text-blue-800">
-          Đây là bản tham khảo do Admin tạo. Bạn có thể bấm "Chỉnh sửa theo ý cá
-          nhân" để sao chép và điều chỉnh, bản gốc sẽ không bị thay đổi.
-        </p>
       </div>
 
       {/* Summary */}

@@ -1,14 +1,41 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
+import { Badge } from "../../../components/ui/Badge";
 import { classService } from "../../../services/class/class.service";
-import { dayLabelVi } from "../../../helper/formatters";
+import { dayLabelVi, formatCurrency } from "../../../helper/formatters";
+import {
+  User,
+  MapPin,
+  Calendar,
+  Clock,
+  Users,
+  Banknote,
+  FileText,
+  Video,
+  Building,
+  BookOpen,
+  ExternalLink,
+  CheckCircle,
+  AlertCircle,
+  PlayCircle,
+  PauseCircle,
+  Edit,
+} from "lucide-react";
+import {
+  DetailPageWrapper,
+  DetailHeader,
+  DetailSection,
+  DetailField,
+  DetailFieldGrid,
+  DetailHighlightCard,
+  DetailLoading,
+  DetailError,
+  DetailEmpty,
+} from "../../../components/common/DetailPageLayout";
 
 /**
  * Trang chi tiết lớp học (Admin)
- * - Hiển thị toàn bộ thông tin lớp (online/offline)
- * - Cho phép Publish / Revert Draft
- * - Điều hướng tới trang sửa (edit) – sẽ triển khai sau
  */
 export default function ClassDetailPage() {
   const { id } = useParams();
@@ -64,261 +91,360 @@ export default function ClassDetailPage() {
     }
   }
 
-  function derivedRuntimeStatus(c) {
+  // Tính trạng thái thời gian của lớp học
+  function getTimeStatus(c) {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const sd = c?.startDate ? new Date(c.startDate) : null;
     const ed = c?.endDate ? new Date(c.endDate) : null;
-    if (sd && sd > today)
-      return { label: "Sắp mở", style: "bg-sky-100 text-sky-700" };
-    if (sd && ed && sd <= today && today <= ed)
-      return { label: "Đang diễn ra", style: "bg-violet-100 text-violet-700" };
+    if (sd) sd.setHours(0, 0, 0, 0);
+    if (ed) ed.setHours(0, 0, 0, 0);
+
+    if (sd && sd > today) {
+      return { label: "Chưa bắt đầu", variant: "secondary", icon: PauseCircle };
+    }
+    if (sd && ed && sd <= today && today <= ed) {
+      return { label: "Đang diễn ra", variant: "success", icon: PlayCircle };
+    }
+    if (ed && ed < today) {
+      return { label: "Đã kết thúc", variant: "secondary", icon: CheckCircle };
+    }
     return null;
   }
 
+  // Hỗ trợ các tên trường thay thế từ backend
+  const priceValue = (() => {
+    const v =
+      cls?.pricePerSession ??
+      cls?.price ??
+      cls?.sessionPrice ??
+      cls?.price_per_session ??
+      null;
+    return v;
+  })();
+
+  const totalSessionsValue = (() => {
+    const v =
+      cls?.totalSessions ??
+      cls?.numberOfSessions ??
+      cls?.sessionCount ??
+      cls?.total_sessions ??
+      null;
+    return v;
+  })();
+
+  const totalPrice =
+    priceValue != null && totalSessionsValue != null
+      ? Number(priceValue) * Number(totalSessionsValue)
+      : null;
+
+  // Loading state
+  if (loading) {
+    return <DetailLoading message="Đang tải thông tin lớp học..." />;
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <DetailError
+        title="Không thể tải thông tin lớp học"
+        message={error}
+        onBack={() => navigate(-1)}
+        backLabel="Quay lại"
+      />
+    );
+  }
+
+  // Empty state
+  if (!cls) {
+    return (
+      <DetailEmpty
+        title="Không tìm thấy lớp học"
+        message="Lớp học này không tồn tại hoặc đã bị xóa."
+        onAction={() => navigate(-1)}
+        actionLabel="Quay lại"
+      />
+    );
+  }
+
+  const timeStatus = getTimeStatus(cls);
+
+  // Get status info
+  const getStatusInfo = () => {
+    if (cls.status === "DRAFT") {
+      return { label: "Bản nháp", variant: "warning", icon: AlertCircle };
+    }
+    if (cls.status === "PUBLIC") {
+      return { label: "Đã xuất bản", variant: "success", icon: CheckCircle };
+    }
+    return { label: "Đã lưu trữ", variant: "secondary", icon: FileText };
+  };
+
+  const statusInfo = getStatusInfo();
+
+  // Stats data
+  const statsData = [
+    {
+      icon: Users,
+      label: "Sĩ số",
+      value:
+        cls.maxStudents != null
+          ? `${cls.currentStudents || 0}/${cls.maxStudents}`
+          : "—",
+      color: "pink",
+    },
+    {
+      icon: Clock,
+      label: "Tổng buổi",
+      value: totalSessionsValue != null ? `${totalSessionsValue} buổi` : "—",
+      color: "indigo",
+    },
+    {
+      icon: Banknote,
+      label: "Học phí/buổi",
+      value: priceValue != null ? formatCurrency(priceValue) : "—",
+      color: "green",
+    },
+    {
+      icon: cls.online ? Video : Building,
+      label: "Hình thức",
+      value: cls.online ? "Online" : "Offline",
+      color: cls.online ? "purple" : "teal",
+    },
+  ];
+
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <DetailPageWrapper>
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Chi tiết lớp học
-          </h1>
-          <p className="text-gray-500">Xem và quản lý thông tin lớp học</p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            Quay lại
-          </Button>
-          {cls && (
+      <DetailHeader
+        title={cls.name}
+        subtitle={cls.subjectName || "Chưa gán môn học"}
+        onBack={() => navigate(-1)}
+        status={{
+          label: statusInfo.label,
+          variant: statusInfo.variant,
+        }}
+        actions={
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={() => navigate(`/home/admin/class/${cls.id}/edit`)}
             >
+              <Edit className="w-4 h-4 mr-2" />
               Sửa
             </Button>
+            {cls.status === "DRAFT" && (
+              <Button
+                onClick={handlePublish}
+                disabled={updatingStatus}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                {updatingStatus ? "Đang xử lý..." : "Xuất bản"}
+              </Button>
+            )}
+            {cls.status === "PUBLIC" && (
+              <Button
+                variant="outline"
+                onClick={handleRevertDraft}
+                disabled={updatingStatus}
+              >
+                <AlertCircle className="w-4 h-4 mr-2" />
+                {updatingStatus ? "Đang xử lý..." : "Chuyển về nháp"}
+              </Button>
+            )}
+          </div>
+        }
+      />
+
+      {/* Status Badges */}
+      <div className="flex flex-wrap gap-3">
+        {timeStatus && (
+          <Badge variant={timeStatus.variant} className="text-sm px-3 py-1">
+            <timeStatus.icon className="w-4 h-4 mr-1" />
+            Tiến độ: {timeStatus.label}
+          </Badge>
+        )}
+        <Badge
+          variant={cls.online ? "default" : "secondary"}
+          className="text-sm px-3 py-1"
+        >
+          {cls.online ? (
+            <>
+              <Video className="w-4 h-4 mr-1" />
+              Học Online
+            </>
+          ) : (
+            <>
+              <Building className="w-4 h-4 mr-1" />
+              Học Offline
+            </>
           )}
-          {cls && cls.status === "DRAFT" && (
+        </Badge>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {statsData.map((stat, index) => (
+          <DetailHighlightCard
+            key={index}
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+          />
+        ))}
+      </div>
+
+      {/* Total Price Highlight */}
+      {totalPrice != null && (
+        <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border border-emerald-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <Banknote className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm text-emerald-700 font-medium">
+                  Tổng học phí cả khóa
+                </p>
+                <p className="text-xs text-emerald-600">
+                  {totalSessionsValue} buổi × {formatCurrency(priceValue)}
+                </p>
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-emerald-700">
+              {formatCurrency(totalPrice)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Class Information */}
+      <DetailSection title="Thông tin lớp học">
+        <DetailFieldGrid columns={2}>
+          <DetailField
+            label="Giáo viên phụ trách"
+            value={
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-blue-600" />
+                {cls.teacherFullName || "Chưa phân công"}
+              </div>
+            }
+          />
+          <DetailField
+            label={cls.online ? "Link học Online" : "Phòng học"}
+            value={
+              cls.online ? (
+                cls.meetingLink ? (
+                  <a
+                    href={cls.meetingLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    <span className="truncate max-w-xs">{cls.meetingLink}</span>
+                    <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                  </a>
+                ) : (
+                  "Chưa có link"
+                )
+              ) : (
+                cls.roomName || "Chưa xếp phòng"
+              )
+            }
+          />
+          <DetailField
+            label="Thời gian khóa học"
+            value={
+              cls.startDate && cls.endDate
+                ? `${cls.startDate} → ${cls.endDate}`
+                : cls.startDate || cls.endDate || "Chưa xác định"
+            }
+          />
+          <DetailField label="Môn học" value={cls.subjectName || "Chưa gán"} />
+        </DetailFieldGrid>
+        {cls.description && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+            <p className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-1">
+              <FileText className="w-4 h-4" />
+              Mô tả
+            </p>
+            <p className="text-sm text-gray-700 whitespace-pre-line">
+              {cls.description}
+            </p>
+          </div>
+        )}
+      </DetailSection>
+
+      {/* Schedule */}
+      <DetailSection title="Lịch học hàng tuần">
+        {Array.isArray(cls.schedule) && cls.schedule.length > 0 ? (
+          <div className="flex flex-wrap gap-3">
+            {cls.schedule.map((s, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100"
+              >
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {dayLabelVi(s.dayOfWeek)}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {s.startTime?.slice(0, 5)} - {s.endTime?.slice(0, 5)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 text-center">
+            <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            Chưa thiết lập lịch học
+          </div>
+        )}
+      </DetailSection>
+
+      {/* Actions */}
+      <DetailSection title="Hành động quản lý">
+        <p className="text-sm text-gray-500 mb-4">
+          {cls.status === "DRAFT"
+            ? "Lớp học đang ở trạng thái Bản nháp. Xuất bản để học sinh có thể nhìn thấy và đăng ký."
+            : "Lớp học đã được xuất bản. Bạn có thể chuyển về Bản nháp để chỉnh sửa thêm."}
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {cls.status === "DRAFT" && (
             <Button
               onClick={handlePublish}
               disabled={updatingStatus}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {updatingStatus ? "Đang cập nhật..." : "Publish"}
+              <CheckCircle className="w-4 h-4 mr-2" />
+              {updatingStatus ? "Đang xử lý..." : "Xuất bản lớp học"}
             </Button>
           )}
-          {cls && cls.status === "PUBLIC" && (
+          {cls.status === "PUBLIC" && (
             <Button
               variant="outline"
               onClick={handleRevertDraft}
               disabled={updatingStatus}
             >
-              {updatingStatus ? "Đang cập nhật..." : "Revert Draft"}
+              <AlertCircle className="w-4 h-4 mr-2" />
+              {updatingStatus ? "Đang xử lý..." : "Chuyển về Bản nháp"}
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/home/admin/class/${cls.id}/edit`)}
+          >
+            <Edit className="w-4 h-4 mr-2" />
+            Sửa thông tin
+          </Button>
         </div>
-      </div>
-
-      {/* Body */}
-      {loading && <div className="text-sm text-gray-500">Đang tải...</div>}
-      {error && !loading && <div className="text-sm text-red-600">{error}</div>}
-      {!loading && !error && !cls && (
-        <div className="text-sm text-gray-500">Không tìm thấy lớp học.</div>
-      )}
-
-      {cls && (
-        <div className="space-y-6">
-          {/* Summary Card */}
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-1">
-                  {cls.name}
-                </h2>
-                <p className="text-sm text-gray-600">{cls.subjectName}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {cls.status && (
-                  <span
-                    className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                      cls.status === "DRAFT"
-                        ? "bg-amber-200 text-amber-900"
-                        : cls.status === "PUBLIC"
-                        ? "bg-emerald-200 text-emerald-900"
-                        : "bg-gray-200 text-gray-800"
-                    }`}
-                  >
-                    {cls.status === "DRAFT"
-                      ? "Draft"
-                      : cls.status === "PUBLIC"
-                      ? "Public"
-                      : "Archived"}
-                  </span>
-                )}
-                {(() => {
-                  const d = derivedRuntimeStatus(cls);
-                  return d ? (
-                    <span
-                      className={`px-3 py-1 text-xs rounded-full ${d.style}`}
-                    >
-                      {d.label}
-                    </span>
-                  ) : null;
-                })()}
-                <span
-                  className={`px-3 py-1 text-xs rounded-full ${
-                    cls.online
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-green-100 text-green-700"
-                  }`}
-                >
-                  {cls.online ? "Online" : "Offline"}
-                </span>
-              </div>
-            </div>
-            <div className="mt-4 grid md:grid-cols-2 gap-4 text-sm">
-              <div className="space-y-1">
-                <div className="text-xs text-gray-500 font-medium">
-                  Giáo viên
-                </div>
-                <div className="font-semibold text-gray-800">
-                  {cls.teacherFullName || "-"}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs text-gray-500 font-medium">
-                  Loại lớp
-                </div>
-                <div className="font-semibold text-gray-800">
-                  {cls.online ? "Học Online" : "Học tại trung tâm"}
-                </div>
-              </div>
-              {cls.online ? (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Link học
-                  </div>
-                  {cls.meetingLink ? (
-                    <a
-                      href={cls.meetingLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center text-blue-600 hover:underline break-all"
-                    >
-                      {cls.meetingLink}
-                    </a>
-                  ) : (
-                    <div className="text-gray-600">Chưa có link</div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Phòng học
-                  </div>
-                  <div className="font-semibold text-gray-800">
-                    {cls.roomName || "-"}
-                  </div>
-                </div>
-              )}
-              {(cls.startDate || cls.endDate) && (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Thời gian
-                  </div>
-                  <div className="font-semibold text-gray-800">
-                    {cls.startDate && cls.endDate
-                      ? `${cls.startDate} → ${cls.endDate}`
-                      : cls.startDate || cls.endDate}
-                  </div>
-                </div>
-              )}
-              {typeof cls.maxStudents === "number" && (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Sĩ số tối đa
-                  </div>
-                  <div className="font-semibold text-gray-800">
-                    {cls.maxStudents} học sinh
-                  </div>
-                </div>
-              )}
-              {cls.totalSessions && (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">
-                    Tổng số buổi
-                  </div>
-                  <div className="font-semibold text-gray-800">
-                    {cls.totalSessions} buổi
-                  </div>
-                </div>
-              )}
-              {cls.description && (
-                <div className="space-y-1 md:col-span-2">
-                  <div className="text-xs text-gray-500 font-medium">Mô tả</div>
-                  <div className="text-gray-700 whitespace-pre-line">
-                    {cls.description}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Schedule */}
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
-              Lịch học
-            </h3>
-            {Array.isArray(cls.schedule) && cls.schedule.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {cls.schedule.map((s, idx) => (
-                  <div
-                    key={idx}
-                    className="px-3 py-1.5 rounded-lg bg-slate-50 border text-xs text-gray-700"
-                  >
-                    {dayLabelVi(s.dayOfWeek)} • {s.startTime?.slice(0, 5)}-
-                    {s.endTime?.slice(0, 5)}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sm text-gray-500">Chưa có lịch học.</div>
-            )}
-          </div>
-
-          {/* Future: Enrollment / Students list could be added here */}
-          <div className="rounded-2xl border bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">
-              Hành động
-            </h3>
-            <p className="text-xs text-gray-500">
-              Bạn có thể Publish lớp để học sinh nhìn thấy hoặc chuyển về Draft
-              để chỉnh sửa thêm.
-            </p>
-            <div className="mt-3 flex gap-3">
-              {cls.status === "DRAFT" && (
-                <Button onClick={handlePublish} disabled={updatingStatus}>
-                  {updatingStatus ? "Đang cập nhật..." : "Publish lớp"}
-                </Button>
-              )}
-              {cls.status === "PUBLIC" && (
-                <Button
-                  variant="outline"
-                  onClick={handleRevertDraft}
-                  disabled={updatingStatus}
-                >
-                  {updatingStatus ? "Đang cập nhật..." : "Chuyển về Draft"}
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/home/admin/class/${cls.id}/edit`)}
-              >
-                Sửa thông tin
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </DetailSection>
+    </DetailPageWrapper>
   );
 }

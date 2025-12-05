@@ -5,7 +5,6 @@ import {
   Clock,
   Calendar,
   MapPin,
-  Users,
   Star,
   CheckCircle,
   Video,
@@ -13,21 +12,26 @@ import {
 } from "lucide-react";
 import { classService } from "../../../services/class/class.service";
 import { enrollmentService } from "../../../services/enrollment/enrollment.service";
+import { buildScheduleIndex, hasConflict, buildIndexByFetchingDetails } from "../../../helper/schedule-conflicts";
+import { dayLabelVi } from "../../../helper/formatters";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import AuthContext from "../../../context/AuthContext";
 import { useToast } from "../../../hooks/use-toast";
+import PaymentQRModal from "../../../components/payment/PaymentQRModal";
 
 export default function ClassDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  const { success, error: showError, warning } = useToast();
+  const { success, error: showError, warning, info } = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(false); // Track if already enrolled
 
   const classId = Number(id);
 
@@ -36,10 +40,8 @@ export default function ClassDetail() {
       setLoading(true);
       setError("");
       try {
-        const list = await classService.list();
-        const cls = Array.isArray(list)
-          ? list.find((c) => c.id === classId)
-          : null;
+        // Use new public API to get class detail with course info
+        const cls = await classService.getPublicDetail(classId);
         setData(cls || null);
         if (!cls) setError("Không tìm thấy lớp.");
       } catch (e) {
@@ -52,12 +54,32 @@ export default function ClassDetail() {
   }, [classId]);
 
   const handleEnroll = async () => {
-    // Block enroll when class has not opened yet
-    if (data?.startDate && new Date(data.startDate) > new Date()) {
-      warning(
-        `Lớp sẽ mở vào ngày ${data.startDate}. Vui lòng liên hệ với chúng tôi để được tư vấn.`
-      );
+    // Nếu đã enrolled trong session này, báo toast
+    if (isEnrolled) {
+      info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
       return;
+    }
+
+    // Helper to parse a YYYY-MM-DD as LOCAL date (avoid UTC shift)
+    const parseLocalDate = (dateStr) => {
+      if (!dateStr) return null;
+      const parts = String(dateStr).split("-").map(Number);
+      if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(dateStr);
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d);
+    };
+
+    // Block enroll only if start date is strictly after today (not same-day)
+    if (data?.startDate) {
+      const start = parseLocalDate(data.startDate);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      if (start > todayStart) {
+        warning(
+          `Lớp sẽ mở vào ngày ${data.startDate}. Vui lòng liên hệ với chúng tôi để được tư vấn.`
+        );
+        return;
+      }
     }
     // Check authentication trước
     if (!user) {
@@ -75,16 +97,58 @@ export default function ClassDetail() {
 
     setEnrolling(true);
     try {
-      await enrollmentService.selfEnroll(classId);
+      console.log("🟦 [Enroll] Start enroll flow for class:", classId);
+      // 1. Load current enrolled classes (may not include schedule data)
+      const myClasses = await enrollmentService.listMyClasses();
+      console.log("🟦 [Enroll] My classes count:", Array.isArray(myClasses) ? myClasses.length : 0);
+
+      // 1.1 Already enrolled check
+      const already = (myClasses || []).some((c) => (c.classId || c.id) === classId);
+      if (already) {
+        console.warn("🟧 [Enroll] Already enrolled in this class:", classId);
+        setIsEnrolled(true);
+        info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
+        return;
+      }
+
+      // 2. Build index: if schedule missing, fetch details per class
+      let scheduleIndex = buildScheduleIndex(myClasses || []);
+      const hasAnySchedule = scheduleIndex.length > 0;
+      console.log("🟦 [Enroll] Schedule index from list size:", scheduleIndex.length);
+      if (!hasAnySchedule) {
+        console.log("🟨 [Enroll] No schedules on list API. Fetching class details to build index...");
+        scheduleIndex = await buildIndexByFetchingDetails(myClasses || [], classService.getById);
+        console.log("🟦 [Enroll] Schedule index from details size:", scheduleIndex.length);
+      }
+      // 3. Check conflict
+      const conflict = hasConflict(data, scheduleIndex);
+      console.log("🟥 [Enroll] Conflict detected?", conflict);
+      if (conflict) {
+        warning("Lịch học lớp này bị trùng với lớp bạn đã đăng ký.", "Trùng lịch");
+        return;
+      }
+
+      // 4. Try enrollment - if needs payment, show QR modal
+      const res = await enrollmentService.selfEnroll(classId);
+      console.log("🟩 [Enroll] Enroll API success:", res);
+      setIsEnrolled(true);
       success(
         "Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.",
         "Thành công"
       );
     } catch (e) {
-      console.error(e);
+      console.error("🟥 [Enroll] Enroll API error:", e);
       const status = e?.response?.status;
       const msg =
         e?.response?.data?.message || e?.message || "Đăng ký thất bại";
+
+      // 402 Payment Required -> show QR payment modal
+      if (status === 402 || String(msg).toLowerCase().includes("payment required") || String(msg).toLowerCase().includes("thanh toán")) {
+        console.log("🟦 [Enroll] Payment required, showing QR modal");
+        info("Vui lòng thanh toán để hoàn tất đăng ký", "Yêu cầu thanh toán");
+        setShowPaymentModal(true);
+        return;
+      }
 
       if (status === 403) {
         showError(
@@ -96,14 +160,26 @@ export default function ClassDetail() {
             state: { from: `/home/classes/${classId}` },
           });
         }, 2000);
-      } else if (msg.includes("already enrolled")) {
-        warning("Bạn đã đăng ký lớp học này", "Thông báo");
+      } else if (String(msg).toLowerCase().includes("already enrolled") || String(msg).toLowerCase().includes("đã đăng ký")) {
+        setIsEnrolled(true);
+        info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
       } else {
         showError(msg, "Lỗi");
       }
     } finally {
       setEnrolling(false);
+      console.log("🟦 [Enroll] End enroll flow for class:", classId);
     }
+  };
+
+  // Handler to open payment modal directly (for "Thanh toán ngay" button)
+  const handlePaymentClick = () => {
+    if (!user) {
+      warning("Vui lòng đăng nhập để thanh toán!", "Yêu cầu đăng nhập");
+      navigate("/home/login", { state: { from: `/home/classes/${classId}` } });
+      return;
+    }
+    setShowPaymentModal(true);
   };
 
   if (loading) {
@@ -136,9 +212,24 @@ export default function ClassDetail() {
   const maxStudents = data.maxStudents || 30;
   const availableSlots = maxStudents - currentStudents;
   const enrollmentPercentage = (currentStudents / maxStudents) * 100;
-  const notOpened = data?.startDate
-    ? new Date(data.startDate) > new Date()
-    : false;
+  // Helper to parse a YYYY-MM-DD as LOCAL date (avoid UTC shift)
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return null;
+    const parts = String(dateStr).split("-").map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(dateStr);
+    const [y, m, d] = parts;
+    return new Date(y, m - 1, d);
+  };
+
+  // Consider class "not opened" only when start date is after today (strictly future),
+  // so same-day is allowed for registration.
+  const notOpened = (() => {
+    if (!data?.startDate) return false;
+    const start = parseLocalDate(data.startDate);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return start > todayStart;
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -161,19 +252,9 @@ export default function ClassDetail() {
           <div className="lg:col-span-2 space-y-6">
             {/* Class Header */}
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className="bg-green-100 text-green-800">
-                  Online - Offline
-                </Badge>
-              </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-3">
                 {data.subjectName || "Toán học"} - {data.name || "Học kỳ 1"}
               </h1>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span className="font-medium">THPT</span>
-                <span>•</span>
-                <span>36 buổi học</span>
-              </div>
             </div>
 
             {/* Opening notice */}
@@ -210,12 +291,23 @@ export default function ClassDetail() {
                     <div className="ml-7 text-gray-600">
                       {Array.isArray(data.schedule) &&
                       data.schedule.length > 0 ? (
-                        data.schedule.map((s, idx) => (
-                          <div key={idx}>
-                            Thứ {s.dayOfWeek}, {s.startTime?.slice(0, 5)} -{" "}
-                            {s.endTime?.slice(0, 5)}
-                          </div>
-                        ))
+                        (() => {
+                          // Group slots by dayOfWeek
+                          const grouped = data.schedule.reduce((acc, s) => {
+                            const day = s.dayOfWeek;
+                            if (!acc[day]) acc[day] = [];
+                            acc[day].push(`${s.startTime?.slice(0, 5)} - ${s.endTime?.slice(0, 5)}`);
+                            return acc;
+                          }, {});
+                          // Sort by dayOfWeek and render
+                          return Object.keys(grouped)
+                            .sort((a, b) => Number(a) - Number(b))
+                            .map((day) => (
+                              <div key={day}>
+                                {dayLabelVi(Number(day))}: {grouped[day].join(", ")}
+                              </div>
+                            ));
+                        })()
                       ) : (
                         <div>Thứ 2, 4, 6 • 19:00 - 21:00</div>
                       )}
@@ -292,12 +384,20 @@ export default function ClassDetail() {
                   Giáo viên giảng dạy
                 </h2>
                 <div className="flex items-start gap-4">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-                    {(data.teacherFullName || "Nguyễn Văn A").charAt(0)}
-                  </div>
+                  {data.teacherAvatarUrl ? (
+                    <img 
+                      src={data.teacherAvatarUrl} 
+                      alt={data.teacherFullName}
+                      className="w-20 h-20 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
+                      {(data.teacherFullName || "G").charAt(0)}
+                    </div>
+                  )}
                   <div className="flex-1">
                     <h3 className="text-lg font-bold text-gray-900 mb-1">
-                      {data.teacherFullName || "Thầy Nguyễn Văn A"}
+                      {data.teacherFullName || "Giáo viên"}
                     </h3>
                     <div className="flex items-center gap-1 text-yellow-500 mb-2">
                       <Star className="w-4 h-4 fill-current" />
@@ -305,19 +405,25 @@ export default function ClassDetail() {
                         4.9
                       </span>
                     </div>
-                    <p className="text-gray-600 text-sm mb-3">
-                      15 năm kinh nghiệm
-                      <br />
-                      Trực tổ Toán học - Đại học phạm HN
-                    </p>
+                    {(data.teacherBio || data.teacherDepartment) && (
+                      <p className="text-gray-600 text-sm mb-3">
+                        {data.teacherBio}
+                        {data.teacherDepartment && (
+                          <>
+                            <br />
+                            {data.teacherDepartment}
+                          </>
+                        )}
+                      </p>
+                    )}
                     <div className="space-y-1 text-sm">
                       <div className="flex items-center gap-2 text-blue-600">
                         <Award className="w-4 h-4" />
-                        <span>Giáo viên xuất sắc 2023</span>
+                        <span>Giáo viên chuyên nghiệp</span>
                       </div>
                       <div className="flex items-center gap-2 text-blue-600">
                         <CheckCircle className="w-4 h-4" />
-                        <span>500+ học sinh đã học</span>
+                        <span>Giảng dạy môn {data.subjectName}</span>
                       </div>
                     </div>
                   </div>
@@ -325,66 +431,42 @@ export default function ClassDetail() {
               </CardContent>
             </Card>
 
-            {/* Curriculum */}
+            {/* Curriculum - Dynamic from Course Lessons */}
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-gray-900">
                     Chương trình học
                   </h2>
-                  <button className="text-blue-600 text-sm font-medium hover:underline">
-                    Lời ích
-                  </button>
+                  {data.courseTitle && (
+                    <span className="text-blue-600 text-sm font-medium">
+                      {data.courseTitle}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-4">
-                  {/* Week 1-6 */}
-                  <div className="border-l-4 border-blue-600 pl-4">
-                    <h3 className="font-bold text-gray-900 mb-2">Tuần 1-6</h3>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>Mệnh đề - Tập hợp</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>Hàm số bậc nhất, bậc hai</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>Phương trình và bất phương trình</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Week 7-12 */}
-                  <div className="border-l-4 border-gray-300 pl-4">
-                    <h3 className="font-bold text-gray-900 mb-2">Tuần 7-12</h3>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span>Thống kê</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span>Hình học: Góc và đường thẳng song</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span>Tích vô hướng của hai vector</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Week 13-18 */}
-                  <div className="border-l-4 border-gray-300 pl-4">
-                    <h3 className="font-bold text-gray-900 mb-2">Tuần 13-18</h3>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li className="text-gray-500">
-                        Nội dung sẽ được cập nhật
-                      </li>
-                    </ul>
-                  </div>
+                  {data.courseLessons && data.courseLessons.length > 0 ? (
+                    data.courseLessons.map((lesson, idx) => (
+                      <div key={lesson.id} className={`border-l-4 ${idx < 3 ? 'border-blue-600' : 'border-gray-300'} pl-4`}>
+                        <div className="flex items-start gap-2">
+                          <CheckCircle className={`w-4 h-4 ${idx < 3 ? 'text-blue-600' : 'text-gray-400'} mt-0.5 flex-shrink-0`} />
+                          <div>
+                            <span className="font-medium text-gray-900">{lesson.title}</span>
+                            {lesson.description && (
+                              <p className="text-sm text-gray-500 mt-1">{lesson.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="border-l-4 border-gray-300 pl-4">
+                      <p className="text-gray-500">
+                        Nội dung sẽ được cập nhật bởi giáo viên
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -484,12 +566,34 @@ export default function ClassDetail() {
 
                   {/* Enrollment Section */}
                   <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-gray-700">Tổng học phí:</span>
+                    {/* Giá mỗi buổi */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-gray-600 text-sm">Giá mỗi buổi:</span>
+                      <span className="text-gray-900 font-medium">
+                        {data.pricePerSession
+                          ? `${data.pricePerSession.toLocaleString()}đ`
+                          : "Liên hệ"}
+                      </span>
+                    </div>
+                    
+                    {/* Số buổi học */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-gray-600 text-sm">Số buổi học:</span>
+                      <span className="text-gray-900 font-medium">
+                        {data.totalSessions || data.sessionsGenerated || 0} buổi
+                      </span>
+                    </div>
+                    
+                    {/* Tổng học phí = pricePerSession * totalSessions */}
+                    <div className="flex items-center justify-between mb-4 pt-3 border-t border-dashed">
+                      <span className="text-gray-700 font-medium">Tổng học phí:</span>
                       <span className="text-2xl font-bold text-blue-600">
-                        {data.fee
-                          ? `${data.fee.toLocaleString()}đ`
-                          : "2.500.000đ"}
+                        {(() => {
+                          const price = data.pricePerSession || 0;
+                          const sessions = data.totalSessions || data.sessionsGenerated || 0;
+                          const total = price * sessions;
+                          return total > 0 ? `${total.toLocaleString()}đ` : "Liên hệ";
+                        })()}
                       </span>
                     </div>
 
@@ -528,6 +632,14 @@ export default function ClassDetail() {
           </div>
         </div>
       </div>
+
+      {/* Payment QR Modal */}
+      <PaymentQRModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        classId={classId}
+        className={data?.name}
+      />
     </div>
   );
 }

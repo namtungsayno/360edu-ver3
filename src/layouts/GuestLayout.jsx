@@ -36,8 +36,12 @@ export default function GuestLayout() {
       setCurrentPage({ type: "home" });
     } else if (path === "/home/profile") {
       setCurrentPage({ type: "profile" });
+    } else if (path === "/home/profile/student") {
+      setCurrentPage({ type: "student-profile" });
     } else if (path === "/home/my-classes" || path.startsWith("/home/my-classes/")) {
       setCurrentPage({ type: "my-classes" });
+    } else if (path === "/home/my-schedule") {
+      setCurrentPage({ type: "student-schedule" });
     } else if (path === "/home/classes" || path.startsWith("/home/classes/")) {
       setCurrentPage({ type: "classes" });
     } else if (path === "/home/teachers") {
@@ -106,8 +110,11 @@ export default function GuestLayout() {
       case "student-classes":
         navigate("/home/my-classes");
         break;
+      case "student-schedule":
+        navigate("/home/my-schedule");
+        break;
       case "student-profile":
-        navigate("/student/profile");
+        navigate("/home/profile/student");
         break;
       case "my-classes":
         navigate("/home/my-classes");

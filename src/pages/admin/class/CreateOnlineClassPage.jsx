@@ -4,7 +4,7 @@
  * - Có Link Meet thay vì Phòng học
  * - Capacity giới hạn tối đa 30
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
@@ -16,17 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/Select";
-import {
-  Loader2,
-  CalendarCheck2,
-  Users,
-  Link2,
-  Eye,
-  ArrowLeft,
-  CheckCircle2,
-} from "lucide-react";
+import { Loader2, CalendarCheck2, Eye, ArrowLeft } from "lucide-react";
 
 import ScheduleGrid from "../schedule/ScheduleGrid";
+import ClassPreview from "../../../components/admin/ClassPreview";
 
 import { classService } from "../../../services/class/class.service";
 import { subjectService } from "../../../services/subject/subject.service";
@@ -34,6 +27,7 @@ import { teacherService } from "../../../services/teacher/teacher.service";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
 import { courseApi } from "../../../services/course/course.api";
 import { useToast } from "../../../hooks/use-toast";
+import { formatCurrency } from "../../../helper/formatters";
 
 export default function CreateOnlineClassPage() {
   const navigate = useNavigate();
@@ -44,6 +38,7 @@ export default function CreateOnlineClassPage() {
   const [courseId, setCourseId] = useState(""); // Khóa học của môn (tùy chọn)
   const [desc, setDesc] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [pricePerSession, setPricePerSession] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [meetingLink, setMeetingLink] = useState("");
   const [totalSessions, setTotalSessions] = useState("");
@@ -55,6 +50,8 @@ export default function CreateOnlineClassPage() {
   const [courses, setCourses] = useState([]); // Danh sách khóa học theo môn
   const [teachers, setTeachers] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
+  // Random code for class name (1 letter + 1 digit)
+  const [randomCode, setRandomCode] = useState("");
 
   const [weekStart] = useState(() => {
     const now = new Date();
@@ -69,9 +66,52 @@ export default function CreateOnlineClassPage() {
   const [pickedSlots, setPickedSlots] = useState([]);
   const { error, success } = useToast();
 
+  // Helpers: giữ state dạng số (digits-only), hiển thị dạng có dấu . theo VN
+  const digitsOnly = (val) => (val || "").replace(/\D/g, "");
+  const formatVNNumber = (digits) =>
+    (digits || "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
   useEffect(() => {
     loadSubjects();
     loadTimeSlots();
+  }, []);
+
+  // Helpers for alias + random code (FE only)
+  const makeTeacherAlias = useCallback((fullName) => {
+    const removeDiacritics = (s) =>
+      (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (!fullName) return "";
+    const parts = fullName.trim().split(/\s+/);
+    const last = removeDiacritics(parts[parts.length - 1] || "");
+    if (!last) return "";
+    return "GV" + last.charAt(0).toUpperCase() + last.slice(1).toLowerCase();
+  }, []);
+  const generateRandomCode = () => {
+    try {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      const arr = new Uint8Array(2);
+      if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(arr);
+      } else {
+        arr[0] = Math.floor(Math.random() * 256);
+        arr[1] = Math.floor(Math.random() * 256);
+      }
+      const ch = letters[arr[0] % letters.length];
+      const dg = nums[arr[1] % nums.length];
+      return `${ch}${dg}`;
+    } catch {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const nums = "0123456789";
+      return (
+        letters[Math.floor(Math.random() * letters.length)] +
+        nums[Math.floor(Math.random() * nums.length)]
+      );
+    }
+  };
+  // Generate once per page open
+  useEffect(() => {
+    setRandomCode(generateRandomCode());
   }, []);
 
   useEffect(() => {
@@ -211,9 +251,14 @@ export default function CreateOnlineClassPage() {
     const teacher = teachers.find(
       (t) => String(t.userId || t.id) === String(teacherId)
     );
-    if (subj && teacher) return `${subj.name} - ${teacher.fullName}`;
+    if (subj && teacher && randomCode) {
+      const alias = makeTeacherAlias(teacher.fullName);
+      if (!alias) return "";
+      // Format: <TÊN_MÔN> - <GV_ALIAS> - <RANDOM_CODE>
+      return `${subj.name} - ${alias} - ${randomCode}`;
+    }
     return "";
-  }, [subjectId, teacherId, subjects, teachers]);
+  }, [subjectId, teacherId, subjects, teachers, randomCode, makeTeacherAlias]);
 
   const todayStr = useMemo(() => {
     const now = new Date();
@@ -278,6 +323,8 @@ export default function CreateOnlineClassPage() {
       capacity &&
       parseInt(capacity) > 0 &&
       parseInt(capacity) <= 30 &&
+      pricePerSession !== "" &&
+      parseInt(pricePerSession) >= 0 &&
       teacherId &&
       className &&
       totalSessions &&
@@ -291,6 +338,7 @@ export default function CreateOnlineClassPage() {
   }, [
     subjectId,
     capacity,
+    pricePerSession,
     teacherId,
     className,
     totalSessions,
@@ -388,6 +436,7 @@ export default function CreateOnlineClassPage() {
       }
 
       const payload = {
+        // BE có thể nối thêm ID lớp sau khi tạo
         name: className,
         subjectId: parseInt(subjectId),
         courseId: courseId ? parseInt(courseId) : null,
@@ -395,6 +444,7 @@ export default function CreateOnlineClassPage() {
         roomId: null,
         maxStudents: parseInt(capacity),
         totalSessions: parseInt(totalSessions),
+        pricePerSession: parseInt(pricePerSession),
         description: desc,
         startDate,
         endDate,
@@ -676,6 +726,29 @@ export default function CreateOnlineClassPage() {
                   </div>
                 </div>
 
+                {/* Giá tiền mỗi buổi học (VNĐ) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Giá tiền mỗi buổi học (VNĐ){" "}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={formatVNNumber(pricePerSession)}
+                    onChange={(e) =>
+                      setPricePerSession(digitsOnly(e.target.value))
+                    }
+                    placeholder="Ví dụ: 150.000"
+                    className="h-10 text-sm"
+                  />
+                  {pricePerSession !== "" && parseInt(pricePerSession) < 0 && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Giá tiền mỗi buổi học phải ≥ 0
+                    </p>
+                  )}
+                </div>
+
                 {/* Tên lớp */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
@@ -745,133 +818,25 @@ export default function CreateOnlineClassPage() {
         )}
 
         {currentStep === 2 && (
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              {/* Header */}
-              <div className="text-center py-8 px-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Xem trước lớp học
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Kiểm tra thông tin trước khi tạo
-                </p>
-              </div>
-
-              {/* Content */}
-              <div className="px-8 pb-8">
-                {/* Blue card with class info */}
-                <div className="bg-blue-50 rounded-xl border border-blue-200 p-6 mb-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center text-white text-2xl flex-shrink-0">
-                      🌐
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-xl font-bold text-gray-900">
-                          {className || "Tên lớp"}
-                        </h3>
-                        <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
-                          Online
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Học từ xa qua Internet
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Info Grid */}
-                <div className="space-y-4 mb-6">
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Môn học:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {selectedSubject?.name || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Giáo viên:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {selectedTeacher?.fullName || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Link Meet:
-                      </label>
-                      <a
-                        href={meetingLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm font-semibold text-blue-600 hover:underline block truncate"
-                      >
-                        {meetingLink}
-                      </a>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Sĩ số:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {capacity} học sinh
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-500 block mb-1">
-                        Thời gian:
-                      </label>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {startDate} đến {endDate}
-                      </p>
-                    </div>
-                    {desc && (
-                      <div className="col-span-2">
-                        <label className="text-xs font-medium text-gray-500 block mb-1">
-                          Mô tả:
-                        </label>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {desc}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Schedule Summary */}
-                <div className="bg-blue-50 rounded-xl border border-blue-200 p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CalendarCheck2 className="h-5 w-5 text-blue-600" />
-                    <h4 className="text-sm font-semibold text-gray-900">
-                      Lịch học ({pickedSlots.length} buổi)
-                    </h4>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {pickedSlots.map((slot, idx) => {
-                      const d = new Date(slot.isoStart);
-                      const days = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-                      const timeStr = d.toLocaleTimeString("vi-VN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      return (
-                        <div
-                          key={idx}
-                          className="px-3 py-1.5 bg-white border border-blue-200 text-blue-700 rounded-lg text-sm font-medium"
-                        >
-                          {days[d.getDay()]} - {timeStr}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ClassPreview
+            name={className}
+            description={desc}
+            isOnline={true}
+            subjectName={selectedSubject?.name}
+            courseName={
+              courses.find((c) => String(c.id) === String(courseId))?.title
+            }
+            teacherFullName={selectedTeacher?.fullName}
+            teacherAvatarUrl={selectedTeacher?.avatarUrl}
+            teacherBio={selectedTeacher?.bio}
+            pickedSlots={pickedSlots}
+            startDate={startDate}
+            endDate={endDate}
+            totalSessions={totalSessions}
+            maxStudents={capacity}
+            pricePerSession={pricePerSession}
+            meetingLink={meetingLink}
+          />
         )}
 
         {/* Footer Actions */}

@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Badge } from "../../../components/ui/Badge";
-import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { Switch } from "../../../components/ui/Switch";
+import { Label } from "../../../components/ui/Label";
 import {
   Layers,
   FileText,
@@ -12,10 +13,33 @@ import {
   XCircle,
   AlertCircle,
   Eye,
+  ArrowLeft,
+  Edit,
+  Plus,
+  Users,
+  Calendar,
+  Save,
+  X,
 } from "lucide-react";
-import { getAllSubjects } from "../../../services/subject/subject.api";
+import {
+  getAllSubjects,
+  updateSubject,
+  enableSubject,
+  disableSubject,
+} from "../../../services/subject/subject.api";
 import { courseApi } from "../../../services/course/course.api";
 import { useToast } from "../../../hooks/use-toast";
+import {
+  DetailPageWrapper,
+  DetailHeader,
+  DetailSection,
+  DetailField,
+  DetailFieldGrid,
+  DetailHighlightCard,
+  DetailLoading,
+  DetailError,
+  DetailEmpty,
+} from "../../../components/common/DetailPageLayout";
 
 export default function SubjectDetail() {
   const { id } = useParams();
@@ -27,7 +51,9 @@ export default function SubjectDetail() {
   const [error, setError] = useState("");
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
-  // modal removed; use route navigation to create page
+  const [editMode, setEditMode] = useState(false);
+  const [tempStatusActive, setTempStatusActive] = useState(false);
+  const [tempDescription, setTempDescription] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -35,7 +61,6 @@ export default function SubjectDetail() {
 
     const normalize = (dataObj) => {
       if (!dataObj) return null;
-      // Determine active/inactive robustly
       let isActive = false;
       if (dataObj.active !== undefined && dataObj.active !== null) {
         if (typeof dataObj.active === "string") {
@@ -108,7 +133,6 @@ export default function SubjectDetail() {
     (async () => {
       try {
         setLoadingCourses(true);
-        // Chỉ hiển thị khóa học do Admin tạo và đã duyệt
         const list = await courseApi.list({
           subjectId: Number(id),
           status: "APPROVED",
@@ -135,556 +159,357 @@ export default function SubjectDetail() {
   }, [id, showError, location.state]);
 
   const handleEdit = () => {
-    navigate(`/home/admin/subject/${id}/edit`);
+    if (subject) {
+      setTempStatusActive(subject.status === "active");
+      setTempDescription(subject.description || "");
+    }
+    setEditMode(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditMode(false);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      if (!tempStatusActive && (subject?.numClasses ?? 0) > 0) {
+        showError?.("Không thể vô hiệu hóa. Môn này đang có lớp học.");
+        return;
+      }
+
+      const nextStatusEnum = tempStatusActive ? "AVAILABLE" : "UNAVAILABLE";
+      const resp = await updateSubject(subject.id, {
+        name: subject.name,
+        status: nextStatusEnum,
+        description: tempDescription,
+      });
+      if (tempStatusActive && subject.status !== "active") {
+        await enableSubject(subject.id);
+      } else if (!tempStatusActive && subject.status !== "inactive") {
+        await disableSubject(subject.id);
+      }
+
+      const serverData = resp?.data || resp;
+      const updated = {
+        ...subject,
+        status: tempStatusActive ? "active" : "inactive",
+        description: serverData?.description ?? tempDescription,
+        updatedAt: serverData?.updatedAt || new Date().toISOString(),
+      };
+      setSubject(updated);
+      setEditMode(false);
+    } catch (e) {
+      console.error("Failed to save subject edits", e);
+      showError?.("Không thể lưu thay đổi. Vui lòng thử lại.");
+    }
+  };
+
+  const handleToggleStatus = (next) => {
+    if (!next && (subject?.numClasses ?? 0) > 0) {
+      showError?.("Không thể vô hiệu hóa. Môn này đang có lớp học.");
+      return;
+    }
+    setTempStatusActive(next);
   };
 
   const handleBack = () => {
     navigate("/home/admin/subject");
   };
+
   const handleOpenCreateCourse = () =>
     navigate(`/home/admin/subject/${id}/courses/create`);
 
+  const handleViewCourse = (courseId) => {
+    navigate(`/home/admin/courses/${courseId}`);
+  };
+
+  // Loading state
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="flex items-center space-x-3">
-          <svg
-            className="animate-spin h-8 w-8 text-blue-600"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          <span className="text-lg text-gray-600">Đang tải...</span>
-        </div>
-      </div>
-    );
+    return <DetailLoading message="Đang tải thông tin môn học..." />;
   }
 
+  // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="p-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-              <div className="flex">
-                <svg
-                  className="w-6 h-6 text-red-400 mr-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <div>
-                  <h3 className="text-lg font-medium text-red-800">
-                    Có lỗi xảy ra
-                  </h3>
-                  <p className="text-red-700 mt-1">{error}</p>
-                  <div className="mt-4">
-                    <Button variant="outline" onClick={handleBack}>
-                      Quay lại danh sách
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DetailError
+        title="Không thể tải thông tin môn học"
+        message={error}
+        onBack={handleBack}
+        backLabel="Quay lại danh sách"
+      />
     );
   }
 
+  // No data state
+  if (!subject) {
+    return (
+      <DetailEmpty
+        title="Không tìm thấy môn học"
+        message="Môn học này không tồn tại hoặc đã bị xóa."
+        onAction={handleBack}
+        actionLabel="Quay lại danh sách"
+      />
+    );
+  }
+
+  // Stats data
+  const statsData = [
+    {
+      icon: BookOpen,
+      label: "Khóa học",
+      value: courses.length,
+      color: "purple",
+    },
+    {
+      icon: Users,
+      label: "Lớp học",
+      value: subject.numClasses,
+      color: "orange",
+    },
+  ];
+
+  // Course status helper
+  const getCourseStatusInfo = (status) => {
+    const statusMap = {
+      APPROVED: { label: "Đã duyệt", variant: "success", icon: CheckCircle2 },
+      PENDING: { label: "Chờ duyệt", variant: "warning", icon: Clock },
+      REJECTED: { label: "Từ chối", variant: "destructive", icon: XCircle },
+    };
+    return (
+      statusMap[status] || {
+        label: status,
+        variant: "secondary",
+        icon: AlertCircle,
+      }
+    );
+  };
+
   return (
-    <>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-4 mb-4">
+    <DetailPageWrapper>
+      {/* Header */}
+      <DetailHeader
+        title={subject?.name || "Chi tiết môn học"}
+        subtitle={`Mã môn: ${subject?.code}`}
+        onBack={handleBack}
+        status={
+          !editMode
+            ? {
+                label:
+                  subject.status === "active" ? "Hoạt động" : "Không hoạt động",
+                variant:
+                  subject.status === "active" ? "success" : "destructive",
+              }
+            : null
+        }
+        actions={
+          !editMode ? (
+            <Button
+              variant="default"
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={handleEdit}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Chỉnh sửa
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                className="text-gray-600 hover:text-gray-800"
+                variant="outline"
+                className="border-gray-300"
+                onClick={handleCancelEdit}
               >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                  />
-                </svg>
-                Quay lại
+                <X className="w-4 h-4 mr-2" />
+                Hủy
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleSaveEdit}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Lưu thay đổi
               </Button>
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                  Chi tiết môn học
-                </h1>
-                <p className="text-gray-600">
-                  Thông tin chi tiết về môn học trong hệ thống
-                </p>
-              </div>
-              <Button
-                variant="default"
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={handleEdit}
-              >
-                <svg
-                  className="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-                Chỉnh sửa
-              </Button>
-            </div>
-          </div>
+          )
+        }
+      />
 
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Main Content */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Basic Information */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-6">
-                    Thông tin cơ bản
-                  </h2>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Mã môn học
-                      </div>
-                      <p className="text-lg font-semibold text-blue-600">
-                        {subject.code}
-                      </p>
-                    </div>
-
-                    <div>
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Số tín chỉ
-                      </div>
-                      <p className="text-lg font-semibold text-gray-800">
-                        {subject.credits}
-                      </p>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Tên môn học
-                      </div>
-                      <p className="text-lg font-semibold text-gray-800">
-                        {subject.name}
-                      </p>
-                    </div>
-
-                    <div>
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Khoa/Bộ môn
-                      </div>
-                      <p className="text-lg text-gray-800">
-                        {subject.department}
-                      </p>
-                    </div>
-
-                    <div>
-                      <div className="block text-sm font-medium text-gray-500 mb-1">
-                        Trạng thái
-                      </div>
-                      <Badge
-                        variant={
-                          subject.status === "active"
-                            ? "success"
-                            : "destructive"
-                        }
-                      >
-                        {subject.status === "active"
-                          ? "Hoạt động"
-                          : "Không hoạt động"}
-                      </Badge>
-                    </div>
-
-                    {subject.prerequisite && (
-                      <div className="md:col-span-2">
-                        <div className="block text-sm font-medium text-gray-500 mb-1">
-                          Môn học tiên quyết
-                        </div>
-                        <p className="text-lg text-gray-800">
-                          {subject.prerequisite}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                    Mô tả môn học
-                  </h2>
-                  <p className="text-gray-700 leading-relaxed">
-                    {subject.description || "Chưa có mô tả cho môn học này."}
-                  </p>
-                </div>
-              </div>
-
-              {/* Sidebar */}
-              <div className="space-y-6">
-                {/* Statistics */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                    Thống kê
-                  </h3>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                      <div className="flex items-center">
-                        <div className="bg-purple-100 p-2 rounded-lg mr-3">
-                          <svg
-                            className="w-5 h-5 text-purple-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                            />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Khóa học</p>
-                          <p className="font-semibold text-gray-800">
-                            {subject.numCourses}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                      <div className="flex items-center">
-                        <div className="bg-orange-100 p-2 rounded-lg mr-3">
-                          <svg
-                            className="w-5 h-5 text-orange-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                            />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Lớp học</p>
-                          <p className="font-semibold text-gray-800">
-                            {subject.numClasses}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Meta Information */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                    Thông tin khác
-                  </h3>
-
-                  <div className="space-y-3">
-                    <div>
-                      <div className="block text-xs font-medium text-gray-500 mb-1">
-                        Ngày tạo
-                      </div>
-                      <p className="text-sm text-gray-800">
-                        {new Date(subject.createdAt).toLocaleDateString(
-                          "vi-VN"
-                        )}
-                      </p>
-                    </div>
-
-                    <div>
-                      <div className="block text-xs font-medium text-gray-500 mb-1">
-                        Cập nhật lần cuối
-                      </div>
-                      <p className="text-sm text-gray-800">
-                        {new Date(subject.updatedAt).toLocaleDateString(
-                          "vi-VN"
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                    Hành động
-                  </h3>
-
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-blue-600 border-blue-200 hover:bg-blue-50"
-                      onClick={handleEdit}
-                    >
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                      Chỉnh sửa môn học
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-green-600 border-green-200 hover:bg-green-50"
-                      onClick={handleOpenCreateCourse}
-                    >
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                        />
-                      </svg>
-                      Tạo khóa học mới
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-purple-600 border-purple-200 hover:bg-purple-50"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                        />
-                      </svg>
-                      Xem báo cáo
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {statsData.map((stat, index) => (
+          <DetailHighlightCard
+            key={index}
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+          />
+        ))}
+        <DetailHighlightCard
+          icon={Calendar}
+          label="Ngày tạo"
+          value={new Date(subject.createdAt).toLocaleDateString("vi-VN")}
+          color="blue"
+        />
+        <DetailHighlightCard
+          icon={Clock}
+          label="Cập nhật"
+          value={new Date(subject.updatedAt).toLocaleDateString("vi-VN")}
+          color="green"
+        />
       </div>
-      {/* COURSES OF SUBJECT */}
-      <div className="max-w-6xl mx-auto px-8 pb-10">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Khóa học của môn ({courses.length})
-          </h2>
+
+      {/* Edit Mode - Status Toggle */}
+      {editMode && (
+        <DetailSection title="Cập nhật trạng thái">
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+            <div className="flex items-center gap-3">
+              <Label className="text-sm font-medium text-gray-700">
+                Trạng thái môn học
+              </Label>
+              <Badge variant={tempStatusActive ? "success" : "destructive"}>
+                {tempStatusActive ? "Hoạt động" : "Không hoạt động"}
+              </Badge>
+            </div>
+            <Switch
+              checked={tempStatusActive}
+              onCheckedChange={handleToggleStatus}
+            />
+          </div>
+          {!tempStatusActive && (subject?.numClasses ?? 0) > 0 && (
+            <p className="text-sm text-amber-600 mt-2">
+              ⚠️ Không thể vô hiệu hóa môn học đang có lớp học.
+            </p>
+          )}
+        </DetailSection>
+      )}
+
+      {/* Subject Information */}
+      <DetailSection title="Thông tin môn học">
+        <DetailFieldGrid columns={2}>
+          <DetailField label="Mã môn học" value={subject.code} />
+          <DetailField label="Tên môn học" value={subject.name} />
+          <DetailField
+            label="Trạng thái"
+            value={
+              <Badge
+                variant={
+                  subject.status === "active" ? "success" : "destructive"
+                }
+              >
+                {subject.status === "active" ? "Hoạt động" : "Không hoạt động"}
+              </Badge>
+            }
+          />
+          <DetailField
+            label="Mô tả"
+            value={subject.description || "Chưa có mô tả"}
+          />
+        </DetailFieldGrid>
+      </DetailSection>
+
+      {/* Courses Section */}
+      <DetailSection
+        title="Danh sách khóa học"
+        action={
           <Button
-            className="bg-green-600 hover:bg-green-700 text-white"
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700"
             onClick={handleOpenCreateCourse}
           >
-            Thêm khóa học
+            <Plus className="w-4 h-4 mr-2" />
+            Tạo khóa học
           </Button>
-        </div>
-
-        {loadingCourses && (
-          <Card className="rounded-xl border border-gray-200">
-            <CardContent className="p-6 text-[#62748e]">
-              Đang tải danh sách khóa học...
-            </CardContent>
-          </Card>
-        )}
-
-        {!loadingCourses && courses.length === 0 && (
-          <Card className="rounded-xl border border-dashed border-gray-300 bg-gray-50">
-            <CardContent className="p-10 text-center">
-              <div className="w-16 h-16 rounded-full border border-gray-300 flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="w-7 h-7 text-[#62748e]" />
-              </div>
-              <p className="text-lg font-semibold text-neutral-950 mb-1">
-                Chưa có khóa học nào cho môn này
-              </p>
-              <p className="text-sm text-[#45556c]">
-                Hãy tạo khóa học đầu tiên để bắt đầu.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {!loadingCourses && courses.length > 0 && (
+        }
+      >
+        {loadingCourses ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Đang tải khóa học...</span>
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-xl">
+            <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Chưa có khóa học
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Môn học này chưa có khóa học nào. Tạo khóa học mới để bắt đầu.
+            </p>
+            <Button
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={handleOpenCreateCourse}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Tạo khóa học đầu tiên
+            </Button>
+          </div>
+        ) : (
           <div className="space-y-4">
             {courses.map((course) => {
-              const status = String(course.status || "").toUpperCase();
-              const statusCfg =
-                status === "APPROVED"
-                  ? {
-                      label: "Đã phê duyệt",
-                      className:
-                        "bg-green-50 text-green-700 border border-green-200",
-                      Icon: CheckCircle2,
-                    }
-                  : status === "PENDING"
-                  ? {
-                      label: "Chờ phê duyệt",
-                      className:
-                        "bg-yellow-50 text-yellow-700 border border-yellow-300",
-                      Icon: Clock,
-                    }
-                  : status === "REJECTED"
-                  ? {
-                      label: "Đã từ chối",
-                      className: "bg-red-50 text-red-700 border border-red-200",
-                      Icon: XCircle,
-                    }
-                  : {
-                      label: "Không xác định",
-                      className:
-                        "bg-gray-50 text-gray-600 border border-gray-200",
-                      Icon: AlertCircle,
-                    };
-
-              const chapterCount =
-                course.chapterCount ??
-                (course.chapters ? course.chapters.length : 0);
+              const statusInfo = getCourseStatusInfo(course.status);
+              const StatusIcon = statusInfo.icon;
+              const chapterCount = course.chapters?.length || 0;
               const lessonCount =
-                course.lessonCount ??
-                (course.chapters
-                  ? course.chapters.reduce(
-                      (sum, ch) => sum + (ch.lessons?.length || 0),
-                      0
-                    )
-                  : 0);
+                course.chapters?.reduce(
+                  (sum, ch) => sum + (ch.lessons?.length || 0),
+                  0
+                ) || 0;
 
               return (
-                <Card
-                  key={course.id}
-                  className="rounded-xl border-2 border-gray-200 hover:border-blue-300 transition-colors"
+                <div
+                  key={course.courseId || course.id}
+                  className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
                 >
-                  <CardContent className="p-5 flex flex-col md:flex-row md:items-start md:justify-between gap-5">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-                        <BookOpen className="w-8 h-8 text-white" />
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h4 className="font-semibold text-gray-900">
+                          {course.courseName || course.name}
+                        </h4>
+                        <Badge variant={statusInfo.variant} className="text-xs">
+                          <StatusIcon className="w-3 h-3 mr-1" />
+                          {statusInfo.label}
+                        </Badge>
                       </div>
-                      <div className="space-y-1">
-                        <h3 className="text-lg font-semibold text-neutral-950">
-                          {course.title}
-                        </h3>
-                        {course.description && (
-                          <p className="text-sm text-[#45556c] line-clamp-2">
-                            {course.description}
-                          </p>
+                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+                        {course.description || "Không có mô tả"}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <Layers className="w-4 h-4 text-purple-500" />
+                          {chapterCount} chương
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-4 h-4 text-blue-500" />
+                          {lessonCount} bài học
+                        </span>
+                        {course.version && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4 text-gray-500" />v
+                            {course.version}
+                          </span>
                         )}
-                        <div
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${statusCfg.className}`}
-                        >
-                          <statusCfg.Icon className="w-3 h-3" />
-                          <span>{statusCfg.label}</span>
-                        </div>
                       </div>
                     </div>
-
-                    <div className="flex gap-6">
-                      <div className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                          <Layers className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-[#62748e]">Số chương</p>
-                          <p className="text-sm font-semibold text-neutral-950">
-                            {chapterCount}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center">
-                          <FileText className="w-4 h-4 text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-[#62748e]">Số bài học</p>
-                          <p className="text-sm font-semibold text-neutral-950">
-                            {lessonCount}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                        onClick={() =>
-                          navigate(
-                            `/home/admin/subject/${id}/courses/${course.id}`
-                          )
-                        }
-                      >
-                        <Eye className="w-4 h-4 mr-2" /> Xem chi tiết
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      onClick={() =>
+                        handleViewCourse(course.courseId || course.id)
+                      }
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      Xem
+                    </Button>
+                  </div>
+                </div>
               );
             })}
           </div>
         )}
-      </div>
-      {/* End courses section */}
-    </>
+      </DetailSection>
+    </DetailPageWrapper>
   );
 }

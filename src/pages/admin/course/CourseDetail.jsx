@@ -2,14 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "../../../components/ui/Card.jsx";
-
 import { Button } from "../../../components/ui/Button.jsx";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import { Textarea } from "../../../components/ui/Textarea.jsx";
@@ -19,7 +11,6 @@ import {
   DialogTitle,
   DialogContent,
 } from "../../../components/ui/Dialog.jsx";
-
 import {
   BookOpen,
   CheckCircle2,
@@ -33,10 +24,25 @@ import {
   ChevronRight,
   AlertTriangle,
   EyeOff,
+  ArrowLeft,
+  Check,
+  X,
+  Calendar,
 } from "lucide-react";
-
 import { courseService } from "../../../services/course/course.service.js";
+import { classService } from "../../../services/class/class.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
+import {
+  DetailPageWrapper,
+  DetailHeader,
+  DetailSection,
+  DetailField,
+  DetailFieldGrid,
+  DetailHighlightCard,
+  DetailLoading,
+  DetailError,
+  DetailEmpty,
+} from "../../../components/common/DetailPageLayout";
 
 // =========================
 // STATUS CONFIG
@@ -48,31 +54,31 @@ function getStatusConfig(status) {
     case "APPROVED":
       return {
         label: "Đã phê duyệt",
-        className: "bg-green-50 border border-green-200 text-green-700",
+        variant: "success",
         icon: CheckCircle2,
       };
     case "PENDING":
       return {
         label: "Chờ phê duyệt",
-        className: "bg-yellow-50 border border-yellow-200 text-yellow-700",
+        variant: "warning",
         icon: Clock,
       };
     case "REJECTED":
       return {
         label: "Đã từ chối",
-        className: "bg-red-50 border border-red-200 text-red-700",
+        variant: "destructive",
         icon: XCircle,
       };
     case "DRAFT":
       return {
         label: "Nháp",
-        className: "bg-gray-100 border border-gray-300 text-gray-600",
+        variant: "secondary",
         icon: FileText,
       };
     default:
       return {
         label: "Không xác định",
-        className: "bg-gray-100 border border-gray-200 text-gray-600",
+        variant: "secondary",
         icon: FileText,
       };
   }
@@ -85,6 +91,8 @@ export default function AdminCourseDetail() {
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [adminTitle, setAdminTitle] = useState(null);
+  const [className, setClassName] = useState(null);
 
   // reject dialog
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -98,8 +106,37 @@ export default function AdminCourseDetail() {
     async function load() {
       try {
         const data = await courseService.getCourseDetail(id);
-        console.log("📚 Course Detail Loaded:", data);
         if (!ignore) setCourse(data);
+        // Enrich title parts
+        try {
+          const desc = String(data?.description || "");
+          const sm = desc.match(/\[\[SOURCE:([^\]]+)\]\]/);
+          if (sm && sm[1]) {
+            const sid = sm[1].trim();
+            if (sid) {
+              const src = await courseService.getCourseDetail(sid);
+              if (src?.title) setAdminTitle(src.title);
+            }
+          }
+        } catch (e) {
+          console.warn("[AdminCourseDetail] fetch SOURCE title failed:", e);
+        }
+
+        try {
+          const classId = data?.classId || data?.clazzId || data?.classID;
+          if (classId) {
+            const cls = await classService.getById(classId);
+            if (cls?.name) setClassName(cls.name);
+          } else if (id) {
+            const list = await classService.list({ courseId: id });
+            if (Array.isArray(list) && list.length > 0) {
+              const first = list[0];
+              if (first?.name) setClassName(first.name);
+            }
+          }
+        } catch (e) {
+          console.warn("[AdminCourseDetail] fetch class name failed:", e);
+        }
       } catch (e) {
         console.error("❌ Error loading course:", e);
         error("Không tải được thông tin khóa học");
@@ -113,30 +150,39 @@ export default function AdminCourseDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Loading state
   if (loading) {
-    return (
-      <div className="p-8 text-lg text-neutral-600">
-        Đang tải thông tin khóa học...
-      </div>
-    );
+    return <DetailLoading message="Đang tải thông tin khóa học..." />;
   }
 
+  // Error/Empty state
   if (!course) {
     return (
-      <div className="p-8 text-lg text-red-600">Không tìm thấy khóa học.</div>
+      <DetailError
+        title="Không tìm thấy khóa học"
+        message="Khóa học này không tồn tại hoặc đã bị xóa."
+        onBack={() => navigate(-1)}
+        backLabel="Quay lại"
+      />
     );
   }
 
   const statusCfg = getStatusConfig(course.status);
   const StatusIcon = statusCfg.icon;
 
+  // Compose display title
+  const rawTitle = String(course.title || "");
+  const idx = rawTitle.indexOf(" - ");
+  const sliced = idx > -1 ? rawTitle.slice(0, idx) : rawTitle;
+  const displayTitle = className
+    ? `${adminTitle || sliced} - ${className}`
+    : adminTitle || sliced;
+
   const handleApprove = async () => {
     try {
       await courseService.approveCourse(course.id);
       success("Đã phê duyệt khoá học!");
-
       setCourse((prev) => ({ ...prev, status: "APPROVED" }));
-      // eslint-disable-next-line no-unused-vars
     } catch (e) {
       error("Không thể phê duyệt khóa học");
     }
@@ -151,16 +197,13 @@ export default function AdminCourseDetail() {
     setRejecting(true);
     try {
       await courseService.rejectCourse(course.id);
-
       success("Đã gửi từ chối khóa học");
       setCourse((prev) => ({
         ...prev,
         status: "REJECTED",
         rejectionReason: rejectReason,
       }));
-
       setRejectOpen(false);
-      // eslint-disable-next-line no-unused-vars
     } catch (e) {
       error("Không thể từ chối khóa học");
     } finally {
@@ -169,203 +212,213 @@ export default function AdminCourseDetail() {
   };
 
   const handleHide = () => {
-    // CHƯA CÓ BE, DEMO FE
     setCourse((prev) => ({ ...prev, status: "ARCHIVED" }));
     success("Đã ẩn khóa học (demo)");
   };
+
+  // Stats data
+  const chapterCount = course.chapters?.length || 0;
+  const lessonCount =
+    course.chapters?.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0) ||
+    0;
+
+  const statsData = [
+    {
+      icon: Layers,
+      label: "Số chương",
+      value: chapterCount,
+      color: "blue",
+    },
+    {
+      icon: FileText,
+      label: "Số bài học",
+      value: lessonCount,
+      color: "purple",
+    },
+  ];
 
   // ======================
   // RENDER
   // ======================
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-neutral-950">
-            Chi tiết khóa học
-          </h1>
-          <p className="text-base text-neutral-600 mt-2">
-            Xem thông tin đầy đủ về khóa học và phê duyệt nội dung.
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          {/* back */}
-          <Button
-            variant="outline"
-            className="h-12 px-6 rounded-xl text-base"
-            onClick={() => navigate(-1)}
-          >
-            ← Quay lại
-          </Button>
-
-          {/* actions based on status */}
-          {course.status === "PENDING" && (
-            <>
-              <Button
-                className="h-12 px-6 rounded-xl bg-green-600 text-white text-base hover:bg-green-700"
-                onClick={handleApprove}
-              >
-                ✔ Phê duyệt
+    <DetailPageWrapper>
+      {/* Header */}
+      <DetailHeader
+        title={displayTitle}
+        subtitle="Xem thông tin đầy đủ về khóa học và phê duyệt nội dung"
+        onBack={() => navigate(-1)}
+        status={{
+          label: statusCfg.label,
+          variant: statusCfg.variant,
+        }}
+        actions={
+          <div className="flex gap-3">
+            {course.status === "PENDING" && (
+              <>
+                <Button
+                  className="bg-green-600 text-white hover:bg-green-700"
+                  onClick={handleApprove}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  Phê duyệt
+                </Button>
+                <Button
+                  className="bg-red-600 text-white hover:bg-red-700"
+                  onClick={() => setRejectOpen(true)}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Từ chối
+                </Button>
+              </>
+            )}
+            {course.status === "APPROVED" && (
+              <Button variant="outline" onClick={handleHide}>
+                <EyeOff className="w-4 h-4 mr-2" />
+                Ẩn khóa học
               </Button>
-              <Button
-                className="h-12 px-6 rounded-xl bg-red-600 text-white text-base hover:bg-red-700"
-                onClick={() => setRejectOpen(true)}
-              >
-                ✖ Từ chối
-              </Button>
-            </>
-          )}
-
-          {course.status === "APPROVED" && (
-            <Button
-              variant="outline"
-              className="h-12 px-6 rounded-xl text-base"
-              onClick={handleHide}
-            >
-              <EyeOff className="w-5 h-5" /> Ẩn khóa học
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* STATUS */}
-      <Badge
-        className={`${statusCfg.className} px-4 py-2 text-sm rounded-full`}
-      >
-        <StatusIcon className="w-4 h-4 inline-block mr-1" />
-        {statusCfg.label}
-      </Badge>
-
-      {/* MAIN INFO */}
-      <Card className="rounded-2xl border-2">
-        <CardHeader>
-          <CardTitle className="text-2xl">{course.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex gap-6">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white">
-              <BookOpen className="w-8 h-8" />
-            </div>
-
-            <div className="flex-1 space-y-3">
-              <p className="text-base text-neutral-700">
-                {course.description || "Chưa có mô tả"}
-              </p>
-
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-neutral-500">Môn học:</span>
-                  <span className="font-semibold text-neutral-900">
-                    {course.subjectName || "—"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-neutral-500">Người tạo:</span>
-                  <span className="font-semibold text-neutral-900">
-                    {course.createdByName || "—"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-neutral-500">ID:</span>
-                  <span className="font-mono text-blue-600">{course.id}</span>
-                </div>
-              </div>
-
-              {/* Stats Summary */}
-              <div className="flex gap-4 pt-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Layers className="w-4 h-4 text-blue-600" />
-                  <span className="text-neutral-600">
-                    {course.chapters?.length || 0} chương
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <FileText className="w-4 h-4 text-purple-600" />
-                  <span className="text-neutral-600">
-                    {course.chapters?.reduce(
-                      (sum, ch) => sum + (ch.lessons?.length || 0),
-                      0
-                    ) || 0}{" "}
-                    bài học
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* teacher info */}
-          <div className="bg-indigo-50 rounded-2xl p-5 space-y-2 border border-indigo-100">
-            <div className="flex gap-3 items-center">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                <User className="w-5 h-5 text-indigo-700" />
-              </div>
-              <div>
-                <p className="text-sm text-indigo-700">Giảng viên phụ trách</p>
-                <p className="text-lg font-semibold text-indigo-900">
-                  {course.ownerTeacherName || course.createdByName}
-                </p>
-              </div>
-            </div>
-
-            {course.teacherEmail && (
-              <div className="flex items-center gap-2 text-sm text-indigo-800">
-                <Mail className="w-4 h-4" />
-                {course.teacherEmail}
-              </div>
             )}
           </div>
+        }
+      />
 
-          {/* timeline */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-            <Timeline label="Ngày tạo" value={course.createdAt} />
-            <Timeline label="Ngày gửi duyệt" value={course.submittedAt} />
-            <Timeline label="Ngày duyệt" value={course.reviewedAt} />
-          </div>
-
-          {course.status === "REJECTED" && course.rejectionReason && (
-            <div className="bg-red-50 border border-red-200 p-4 rounded-xl">
-              <p className="text-red-900 font-semibold mb-1">Lý do từ chối:</p>
-              <p className="text-red-800 text-sm whitespace-pre-line">
+      {/* Rejection Warning */}
+      {course.status === "REJECTED" && course.rejectionReason && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-900">Lý do từ chối:</p>
+              <p className="text-red-800 text-sm whitespace-pre-line mt-1">
                 {course.rejectionReason}
               </p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      )}
 
-      {/* CHAPTERS + LESSONS */}
-      <Card className="rounded-2xl border-2">
-        <CardHeader>
-          <CardTitle className="text-xl">Nội dung khóa học</CardTitle>
-          <p className="text-sm text-gray-500 mt-1">
-            {course.chapters?.length || 0} chương ·{" "}
-            {course.chapters?.reduce(
-              (sum, ch) => sum + (ch.lessons?.length || 0),
-              0
-            ) || 0}{" "}
-            bài học
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {(!course.chapters || course.chapters.length === 0) && (
-            <div className="text-center py-8">
-              <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500">Khóa học chưa có nội dung</p>
-            </div>
-          )}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {statsData.map((stat, index) => (
+          <DetailHighlightCard
+            key={index}
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+          />
+        ))}
+        <DetailHighlightCard
+          icon={BookOpen}
+          label="Môn học"
+          value={course.subjectName || "—"}
+          color="green"
+        />
+        <DetailHighlightCard
+          icon={User}
+          label="Người tạo"
+          value={course.createdByName || "—"}
+          color="orange"
+        />
+      </div>
 
-          {course.chapters && course.chapters.length > 0 && (
-            <div className="space-y-3">
-              {course.chapters.map((ch, idx) => (
-                <ChapterItem key={ch.id} chapter={ch} index={idx + 1} />
-              ))}
+      {/* Course Info */}
+      <DetailSection title="Thông tin khóa học">
+        <DetailFieldGrid columns={2}>
+          <DetailField label="ID khóa học" value={course.id} />
+          <DetailField label="Tên khóa học" value={displayTitle} />
+          <DetailField label="Môn học" value={course.subjectName || "—"} />
+          <DetailField
+            label="Trạng thái"
+            value={
+              <Badge variant={statusCfg.variant}>
+                <StatusIcon className="w-3 h-3 mr-1" />
+                {statusCfg.label}
+              </Badge>
+            }
+          />
+          <DetailField
+            label="Mô tả"
+            value={course.description || "Chưa có mô tả"}
+            className="md:col-span-2"
+          />
+        </DetailFieldGrid>
+      </DetailSection>
+
+      {/* Teacher Info */}
+      <DetailSection title="Thông tin giảng viên">
+        <div className="bg-indigo-50 rounded-xl p-5 border border-indigo-100">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+              <User className="w-6 h-6 text-indigo-700" />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div className="flex-1">
+              <p className="text-sm text-indigo-600">Giảng viên phụ trách</p>
+              <p className="text-lg font-semibold text-indigo-900">
+                {course.ownerTeacherName || course.createdByName || "—"}
+              </p>
+              {course.teacherEmail && (
+                <div className="flex items-center gap-2 text-sm text-indigo-700 mt-1">
+                  <Mail className="w-4 h-4" />
+                  {course.teacherEmail}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </DetailSection>
+
+      {/* Timeline */}
+      <DetailSection title="Lịch sử">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-50 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+              <Calendar className="w-4 h-4" />
+              Ngày tạo
+            </div>
+            <p className="font-medium text-gray-900">
+              {course.createdAt || "—"}
+            </p>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+              <Clock className="w-4 h-4" />
+              Ngày gửi duyệt
+            </div>
+            <p className="font-medium text-gray-900">
+              {course.submittedAt || "—"}
+            </p>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+              <CheckCircle2 className="w-4 h-4" />
+              Ngày duyệt
+            </div>
+            <p className="font-medium text-gray-900">
+              {course.reviewedAt || "—"}
+            </p>
+          </div>
+        </div>
+      </DetailSection>
+
+      {/* Chapters + Lessons */}
+      <DetailSection
+        title="Nội dung khóa học"
+        subtitle={`${chapterCount} chương · ${lessonCount} bài học`}
+      >
+        {chapterCount === 0 ? (
+          <div className="text-center py-12 bg-gray-50 rounded-xl">
+            <FileText className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p className="text-gray-500">Khóa học chưa có nội dung</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {course.chapters.map((ch, idx) => (
+              <ChapterItem key={ch.id} chapter={ch} index={idx + 1} />
+            ))}
+          </div>
+        )}
+      </DetailSection>
 
       {/* REJECT MODAL */}
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
@@ -379,7 +432,7 @@ export default function AdminCourseDetail() {
 
           <div className="mt-3 space-y-4">
             <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-xl text-sm flex gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-700" />
+              <AlertTriangle className="w-5 h-5 text-yellow-700 flex-shrink-0" />
               Giáo viên sẽ nhận thông báo với lý do từ chối. Hãy ghi rõ ràng và
               mang tính góp ý.
             </div>
@@ -411,22 +464,13 @@ export default function AdminCourseDetail() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </DetailPageWrapper>
   );
 }
 
 // ===========================
-// SMALL COMPONENTS
+// CHAPTER ITEM COMPONENT
 // ===========================
-
-function Timeline({ label, value }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-sm text-neutral-600">{label}</p>
-      <p className="text-base font-medium">{value || "—"}</p>
-    </div>
-  );
-}
 
 function ChapterItem({ chapter, index }) {
   const [open, setOpen] = useState(true);

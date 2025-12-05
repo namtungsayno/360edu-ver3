@@ -1,39 +1,42 @@
 // src/pages/teacher/TeacherCourseEdit.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
-import { Input } from "../../components/ui/Input.jsx";
-import { Textarea } from "../../components/ui/Textarea.jsx";
+} from "../../../components/ui/Card.jsx";
+import { Button } from "../../../components/ui/Button.jsx";
+import { Input } from "../../../components/ui/Input.jsx";
+import { Textarea } from "../../../components/ui/Textarea.jsx";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/Select.jsx";
+} from "../../../components/ui/Select.jsx";
 
 import {
   ArrowLeft,
   Info,
   Plus,
   Trash2,
-  BookOpen,
   Layers,
   FileText,
   Save,
+  Paperclip,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
-import { courseService } from "../../services/course/course.service.js";
-import { teacherApi } from "../../services/teacher/teacher.api.js";
-import { useToast } from "../../hooks/use-toast.js";
-import { useAuth } from "../../hooks/useAuth.js";
+import { courseService } from "../../../services/course/course.service.js";
+import { teacherApi } from "../../../services/teacher/teacher.api.js";
+import { useToast } from "../../../hooks/use-toast.js";
+import { useAuth } from "../../../hooks/useAuth.js";
+import LessonMaterialUpload from "../../../components/teacher/LessonMaterialUpload.jsx";
 
 function createLocalId() {
   return Math.random().toString(36).slice(2, 9);
@@ -42,14 +45,11 @@ function createLocalId() {
 export default function TeacherCourseEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const isContentEdit = location.pathname.includes("/home/teacher/content/");
   const { success, error } = useToast();
   const { user } = useAuth();
 
   // ====== LOADING STATE ======
   const [loading, setLoading] = useState(true);
-  const [originalCourse, setOriginalCourse] = useState(null);
   const [sourceTagInOriginal, setSourceTagInOriginal] = useState("");
 
   // ====== BASIC FORM STATE ======
@@ -64,6 +64,8 @@ export default function TeacherCourseEdit() {
   // ====== CHAPTERS & LESSONS (LOCAL ONLY) ======
   const [chapters, setChapters] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [expandedLessonMaterials, setExpandedLessonMaterials] = useState({});
+  // Không còn ráp title ở FE; hiển thị trực tiếp từ DB
 
   // Derived counts
   const totalChapters = chapters.length;
@@ -82,7 +84,6 @@ export default function TeacherCourseEdit() {
     try {
       setLoading(true);
       const course = await courseService.getCourseDetail(id);
-      setOriginalCourse(course);
 
       // Populate form
       setTitle(course.title || "");
@@ -117,6 +118,8 @@ export default function TeacherCourseEdit() {
       }
 
       setLoading(false);
+
+      // Không cần enrich: UI dùng trực tiếp `course.title`
     } catch (err) {
       console.error("Load course detail error:", err);
       error("Không thể tải thông tin khóa học");
@@ -263,6 +266,14 @@ export default function TeacherCourseEdit() {
     );
   };
 
+  // Toggle lesson materials panel
+  const toggleLessonMaterials = (lessonId) => {
+    setExpandedLessonMaterials((prev) => ({
+      ...prev,
+      [lessonId]: !prev[lessonId],
+    }));
+  };
+
   // ====== SUBMIT ======
 
   const validateForm = () => {
@@ -296,64 +307,43 @@ export default function TeacherCourseEdit() {
 
     setSubmitting(true);
     try {
-      if (isContentEdit) {
-        // PERSONALIZE from Admin content: create a new personal course and submit for approval
-        const sourceTag = `[[SOURCE:${originalCourse?.id || id}]]`;
-        const ownerTag = `[[OWNER:${user?.id}]]`;
-        const created = await courseService.createCourse({
-          subjectId: Number(subjectId),
-          title: title.trim(),
-          description: `${description.trim()}\n${sourceTag}\n${ownerTag}`,
-          status: "PENDING",
-        });
+      // EDIT existing personal course: update and re-create content
+      const latest = await courseService.getCourseDetail(id);
+      // Ensure OWNER tag exists for legacy items, và giữ lại SOURCE tag nếu khóa học gốc là bản cá nhân hóa
+      const ownerTag = `[[OWNER:${user?.id}]]`;
+      let nextDescription = description.trim();
+      if (!nextDescription.includes(ownerTag)) {
+        nextDescription += `\n${ownerTag}`;
+      }
+      if (
+        sourceTagInOriginal &&
+        !nextDescription.includes(sourceTagInOriginal)
+      ) {
+        nextDescription += `\n${sourceTagInOriginal}`;
+      }
 
-        // Create chapters & lessons for new course using current edited structure
-        for (const ch of chapters) {
-          const newCh = await courseService.addChapter(created.id, {
-            title: ch.title.trim(),
-            description: ch.description.trim(),
-            orderIndex: ch.orderIndex,
-          });
-          for (const ls of ch.lessons) {
-            await courseService.addLesson(newCh.id, {
-              title: ls.title.trim(),
-              description: ls.description.trim(),
-              orderIndex: ls.orderIndex,
-            });
-          }
+      await courseService.updateCourse(id, {
+        subjectId: Number(subjectId),
+        title: title.trim(),
+        description: nextDescription,
+      });
+
+      // Collect existing chapter/lesson IDs that we want to KEEP
+      const keepChapterIds = new Set();
+      const keepLessonIds = new Set();
+      for (const ch of chapters) {
+        if (ch.id) keepChapterIds.add(ch.id);
+        for (const ls of ch.lessons) {
+          if (ls.id) keepLessonIds.add(ls.id);
         }
+      }
 
-        success(
-          "Đã gửi yêu cầu phê duyệt. Bạn có thể xem trong 'Quản lý khóa học cá nhân'.",
-          "Thành công"
-        );
-        // Ở luồng Nội dung giảng dạy: không điều hướng tự động sang danh sách cá nhân
-      } else {
-        // EDIT existing personal course: update and re-create content
-        const latest = await courseService.getCourseDetail(id);
-        // Ensure OWNER tag exists for legacy items, và giữ lại SOURCE tag nếu khóa học gốc là bản cá nhân hóa
-        const ownerTag = `[[OWNER:${user?.id}]]`;
-        let nextDescription = description.trim();
-        if (!nextDescription.includes(ownerTag)) {
-          nextDescription += `\n${ownerTag}`;
-        }
-        if (
-          sourceTagInOriginal &&
-          !nextDescription.includes(sourceTagInOriginal)
-        ) {
-          nextDescription += `\n${sourceTagInOriginal}`;
-        }
-
-        await courseService.updateCourse(id, {
-          subjectId: Number(subjectId),
-          title: title.trim(),
-          description: nextDescription,
-        });
-
-        if (latest?.chapters && latest.chapters.length > 0) {
-          for (const ch of latest.chapters) {
-            if (ch.lessons && ch.lessons.length > 0) {
-              for (const ls of ch.lessons) {
+      // Delete lessons and chapters that are NOT in our current list
+      if (latest?.chapters && latest.chapters.length > 0) {
+        for (const ch of latest.chapters) {
+          if (ch.lessons && ch.lessons.length > 0) {
+            for (const ls of ch.lessons) {
+              if (!keepLessonIds.has(ls.id)) {
                 try {
                   await courseService.removeLesson(ls.id);
                 } catch (lessonErr) {
@@ -361,6 +351,8 @@ export default function TeacherCourseEdit() {
                 }
               }
             }
+          }
+          if (!keepChapterIds.has(ch.id)) {
             try {
               await courseService.removeChapter(ch.id);
             } catch (chapterErr) {
@@ -368,16 +360,41 @@ export default function TeacherCourseEdit() {
             }
           }
         }
+      }
 
-        for (const ch of chapters) {
+      // Update existing chapters/lessons OR create new ones
+      for (const ch of chapters) {
+        let chapterId = ch.id;
+
+        if (chapterId) {
+          // Update existing chapter
+          await courseService.updateChapter(chapterId, {
+            title: ch.title.trim(),
+            description: ch.description.trim(),
+            orderIndex: ch.orderIndex,
+          });
+        } else {
+          // Create new chapter
           const createdChapter = await courseService.addChapter(id, {
             title: ch.title.trim(),
             description: ch.description.trim(),
             orderIndex: ch.orderIndex,
           });
-          const chapterId = createdChapter?.id;
-          if (!chapterId) continue;
-          for (const ls of ch.lessons) {
+          chapterId = createdChapter?.id;
+        }
+
+        if (!chapterId) continue;
+
+        for (const ls of ch.lessons) {
+          if (ls.id) {
+            // Update existing lesson
+            await courseService.updateLesson(ls.id, {
+              title: ls.title.trim(),
+              description: ls.description.trim(),
+              orderIndex: ls.orderIndex,
+            });
+          } else {
+            // Create new lesson
             await courseService.addLesson(chapterId, {
               title: ls.title.trim(),
               description: ls.description.trim(),
@@ -385,10 +402,10 @@ export default function TeacherCourseEdit() {
             });
           }
         }
-
-        success("Đã cập nhật khóa học thành công!", "Thành công");
-        navigate(`/home/teacher/courses/${id}`);
       }
+
+      success("Đã cập nhật khóa học thành công!", "Thành công");
+      navigate(`/home/teacher/courses/${id}`);
     } catch (err) {
       console.error("Update course failed:", err);
       const errorMsg =
@@ -426,13 +443,7 @@ export default function TeacherCourseEdit() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() =>
-              navigate(
-                isContentEdit
-                  ? `/home/teacher/content/${id}`
-                  : `/home/teacher/courses/${id}`
-              )
-            }
+            onClick={() => navigate(`/home/teacher/courses/${id}`)}
             className="inline-flex items-center gap-2 text-sm text-[#62748e] hover:text-neutral-950"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -494,7 +505,7 @@ export default function TeacherCourseEdit() {
                   Tên khóa học
                 </label>
                 <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-neutral-950">
-                  {title}
+                  {title || ""}
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1">
                   ℹ️ Không thể thay đổi tên khóa học
@@ -645,56 +656,97 @@ export default function TeacherCourseEdit() {
                           </label>
                         </div>
 
-                        {chapter.lessons.map((lesson, lIdx) => (
-                          <div
-                            key={lesson._id}
-                            className="flex items-start gap-2 mb-2 p-3 bg-gray-50 rounded-lg"
-                          >
-                            <div className="w-6 h-6 rounded-md bg-purple-100 flex items-center justify-center flex-shrink-0 mt-1">
-                              <span className="text-[11px] font-medium text-purple-600">
-                                {lIdx + 1}
-                              </span>
-                            </div>
-                            <div className="flex-1 space-y-2">
-                              <Input
-                                placeholder="Tên bài học"
-                                value={lesson.title}
-                                onChange={(e) =>
-                                  handleChangeLessonField(
-                                    chapter._id,
-                                    lesson._id,
-                                    "title",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                              <Textarea
-                                rows={2}
-                                placeholder="Giới thiệu ngắn gọn về bài học..."
-                                value={lesson.description}
-                                onChange={(e) =>
-                                  handleChangeLessonField(
-                                    chapter._id,
-                                    lesson._id,
-                                    "description",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </div>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              onClick={() =>
-                                handleRemoveLesson(chapter._id, lesson._id)
-                              }
-                              className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                        {chapter.lessons.map((lesson, lIdx) => {
+                          const isExpanded = expandedLessonMaterials[lesson.id];
+                          const hasBackendId = !!lesson.id; // Chỉ có id nếu đã lưu vào DB
+
+                          return (
+                            <div
+                              key={lesson._id}
+                              className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
                             >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
+                              <div className="flex items-start gap-2">
+                                <div className="w-6 h-6 rounded-md bg-purple-100 flex items-center justify-center flex-shrink-0 mt-1">
+                                  <span className="text-[11px] font-medium text-purple-600">
+                                    {lIdx + 1}
+                                  </span>
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                  <Input
+                                    placeholder="Tên bài học"
+                                    value={lesson.title}
+                                    onChange={(e) =>
+                                      handleChangeLessonField(
+                                        chapter._id,
+                                        lesson._id,
+                                        "title",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                  <Textarea
+                                    rows={2}
+                                    placeholder="Giới thiệu ngắn gọn về bài học..."
+                                    value={lesson.description}
+                                    onChange={(e) =>
+                                      handleChangeLessonField(
+                                        chapter._id,
+                                        lesson._id,
+                                        "description",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+
+                                  {/* Button to toggle materials */}
+                                  {hasBackendId && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        toggleLessonMaterials(lesson.id)
+                                      }
+                                      className="flex items-center gap-2 text-[12px] text-blue-600 hover:text-blue-700 font-medium mt-2"
+                                    >
+                                      <Paperclip className="w-3.5 h-3.5" />
+                                      <span>Quản lý tài liệu bài học</span>
+                                      {isExpanded ? (
+                                        <ChevronDown className="w-3.5 h-3.5" />
+                                      ) : (
+                                        <ChevronRight className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                  )}
+
+                                  {!hasBackendId && (
+                                    <p className="text-[11px] text-amber-600 mt-2 flex items-center gap-1">
+                                      <Info className="w-3.5 h-3.5" />
+                                      Lưu khóa học trước để thêm tài liệu cho
+                                      bài học này
+                                    </p>
+                                  )}
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    handleRemoveLesson(chapter._id, lesson._id)
+                                  }
+                                  className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+
+                              {/* Lesson Materials Upload Panel */}
+                              {hasBackendId && isExpanded && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <LessonMaterialUpload lessonId={lesson.id} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
 
                         <Button
                           type="button"
