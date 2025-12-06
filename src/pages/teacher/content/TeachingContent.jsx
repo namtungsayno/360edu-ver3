@@ -25,8 +25,6 @@ import {
   Layers,
   FileText,
   CheckCircle2,
-  Clock,
-  XCircle,
   AlertCircle,
   Search,
 } from "lucide-react";
@@ -35,26 +33,20 @@ function statusCfgOf(status) {
   const s = String(status || "").toUpperCase();
   if (s === "APPROVED")
     return {
-      label: "Đã phê duyệt",
+      label: "Đang hoạt động",
       className: "bg-green-50 text-green-700 border border-green-200",
       Icon: CheckCircle2,
     };
-  if (s === "PENDING")
+  if (s === "ARCHIVED")
     return {
-      label: "Chờ phê duyệt",
-      className: "bg-yellow-50 text-yellow-700 border border-yellow-300",
-      Icon: Clock,
-    };
-  if (s === "REJECTED")
-    return {
-      label: "Đã từ chối",
-      className: "bg-red-50 text-red-700 border border-red-200",
-      Icon: XCircle,
+      label: "Đã lưu trữ",
+      className: "bg-gray-100 text-gray-600 border border-gray-200",
+      Icon: AlertCircle,
     };
   return {
-    label: "Không xác định",
-    className: "bg-gray-50 text-gray-600 border border-gray-200",
-    Icon: AlertCircle,
+    label: "Đang hoạt động",
+    className: "bg-green-50 text-green-700 border border-green-200",
+    Icon: CheckCircle2,
   };
 }
 
@@ -135,11 +127,9 @@ export default function TeachingContent() {
         }
         setSubjectOptions(opts);
 
-        // Fetch courses đã APPROVED theo từng subjectId song song
+        // Fetch courses theo từng subjectId song song
         const results = await Promise.all(
-          subjectIds.map((sid) =>
-            courseService.getApprovedCoursesBySubject(sid)
-          )
+          subjectIds.map((sid) => courseService.getCoursesBySubject(sid))
         );
 
         const merged = [];

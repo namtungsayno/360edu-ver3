@@ -26,10 +26,7 @@ import {
   Filter,
   Users,
   CheckCircle2,
-  Clock,
-  XCircle,
   FileText,
-  AlertTriangle,
   AlertCircle,
   Eye,
   User as UserIcon,
@@ -54,21 +51,9 @@ function getStatusConfig(status) {
   switch (normalized) {
     case "APPROVED":
       return {
-        label: "Đã phê duyệt",
+        label: "Đang hoạt động",
         className: "bg-green-50 text-green-700 border border-green-200",
         icon: CheckCircle2,
-      };
-    case "PENDING":
-      return {
-        label: "Chờ phê duyệt",
-        className: "bg-yellow-50 text-yellow-700 border border-yellow-300",
-        icon: Clock,
-      };
-    case "REJECTED":
-      return {
-        label: "Đã từ chối",
-        className: "bg-red-50 text-red-700 border border-red-200",
-        icon: XCircle,
       };
     case "DRAFT":
       return {
@@ -78,24 +63,23 @@ function getStatusConfig(status) {
       };
     case "ARCHIVED":
       return {
-        label: "Đã ẩn",
+        label: "Đã lưu trữ",
         className: "bg-gray-100 text-gray-600 border border-gray-200",
         icon: AlertCircle,
       };
     default:
       return {
-        label: "Không xác định",
-        className: "bg-gray-50 text-gray-600 border border-gray-200",
-        icon: AlertCircle,
+        label: "Đang hoạt động",
+        className: "bg-green-50 text-green-700 border border-green-200",
+        icon: CheckCircle2,
       };
   }
 }
 
 const STATUS_FILTER_OPTIONS = [
   { value: "ALL", label: "Tất cả trạng thái" },
-  { value: "PENDING", label: "Chờ phê duyệt" },
-  { value: "APPROVED", label: "Đã phê duyệt" },
-  { value: "REJECTED", label: "Đã từ chối" },
+  { value: "APPROVED", label: "Đang hoạt động" },
+  { value: "ARCHIVED", label: "Đã lưu trữ" },
   { value: "DRAFT", label: "Nháp" },
 ];
 
@@ -385,16 +369,12 @@ export default function AdminCourseList() {
 
     return {
       total,
-      pending: countByStatus("PENDING"),
       approved: countByStatus("APPROVED"),
-      rejected: countByStatus("REJECTED"),
       draft: countByStatus("DRAFT"),
       archived: countByStatus("ARCHIVED"),
       teacherCount: teacherOptions.length,
     };
   }, [teacherCourses, teacherOptions]);
-
-  const hasPending = stats.pending > 0;
 
   // ====== ACTION HANDLERS ======
 
@@ -403,10 +383,6 @@ export default function AdminCourseList() {
     setSelectedTeacherId("ALL");
     setSelectedSubjectId("ALL");
     setStatusFilter("ALL");
-  };
-
-  const handleQuickPendingFilter = () => {
-    setStatusFilter("PENDING");
   };
 
   const handleViewDetail = (courseId) => {
@@ -428,14 +404,14 @@ export default function AdminCourseList() {
               Quản lý khóa học
             </h1>
             <p className="text-sm text-gray-500">
-              Xem, phê duyệt và quản lý tất cả khóa học do giáo viên biên soạn
+              Xem và quản lý tất cả khóa học do giáo viên biên soạn
             </p>
           </div>
         </div>
       </div>
 
       {/* ============ STATS CARDS ============ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -451,46 +427,18 @@ export default function AdminCourseList() {
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-white/80">Chờ phê duyệt</p>
-              <p className="text-2xl font-bold text-white mt-1">
-                {stats.pending}
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <Clock className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
-        </div>
-
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white/80">Đã phê duyệt</p>
+              <p className="text-sm font-medium text-white/80">
+                Đang hoạt động
+              </p>
               <p className="text-2xl font-bold text-white mt-1">
                 {stats.approved}
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
-        </div>
-
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-white/80">Đã từ chối</p>
-              <p className="text-2xl font-bold text-white mt-1">
-                {stats.rejected}
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <XCircle className="w-6 h-6 text-white" />
             </div>
           </div>
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
@@ -511,6 +459,21 @@ export default function AdminCourseList() {
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
         </div>
 
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-500 to-slate-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Đã lưu trữ</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {stats.archived}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -526,33 +489,6 @@ export default function AdminCourseList() {
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
         </div>
       </div>
-
-      {/* QUICK PENDING BANNER */}
-      {hasPending && (
-        <div className="mb-6 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-amber-700" />
-            </div>
-            <div>
-              <p className="text-base font-semibold text-amber-900">
-                Có {stats.pending} khóa học đang chờ phê duyệt
-              </p>
-              <p className="text-sm text-amber-800">
-                Hãy xử lý sớm để giáo viên có thể sử dụng trong lớp học.
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            onClick={handleQuickPendingFilter}
-            className="h-11 px-5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl inline-flex items-center gap-2"
-          >
-            <Clock className="w-4 h-4" />
-            Xem khóa học chờ duyệt
-          </Button>
-        </div>
-      )}
 
       {/* ============ TOOLBAR ============ */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
@@ -697,10 +633,6 @@ export default function AdminCourseList() {
               course.ownerTeacherName || course.createdByName || "Không rõ";
             const teacherEmail = course.teacherEmail || ""; // hiện BE chưa có
 
-            const isPending = String(course.status).toUpperCase() === "PENDING";
-            const isRejected =
-              String(course.status).toUpperCase() === "REJECTED";
-
             return (
               <div
                 key={course.id}
@@ -807,16 +739,6 @@ export default function AdminCourseList() {
                       <p className="text-xs text-gray-500">ID: {course.id}</p>
                     </div>
 
-                    {/* Rejection reason */}
-                    {isRejected && course.rejectionReason && (
-                      <div className="bg-red-50 border border-red-200 rounded-2xl p-3 text-xs text-red-800">
-                        <p className="font-semibold mb-1">Lý do từ chối:</p>
-                        <p className="whitespace-pre-line">
-                          {course.rejectionReason}
-                        </p>
-                      </div>
-                    )}
-
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 mt-1">
                       <Button
@@ -827,12 +749,6 @@ export default function AdminCourseList() {
                         <Eye className="w-4 h-4" />
                         Xem chi tiết
                       </Button>
-                      {isPending && (
-                        <Badge className="h-10 px-4 rounded-xl text-sm inline-flex items-center gap-2 bg-orange-100 text-orange-700 border border-orange-300">
-                          <Clock className="w-4 h-4" />
-                          Cần phê duyệt
-                        </Badge>
-                      )}
                     </div>
                   </div>
                 </div>

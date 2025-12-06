@@ -276,13 +276,12 @@ export default function ClassDetail() {
             }
           }
 
-          // 3. Fallback: Nếu không tìm được từ SOURCE tag, thử lấy từ Subject's approved courses
+          // 3. Fallback: Nếu không tìm được từ SOURCE tag, thử lấy từ Subject's courses
           if (!loadedAdminCourse && classInfo.subjectId) {
             try {
-              const subjectCourses =
-                await courseService.getApprovedCoursesBySubject(
-                  classInfo.subjectId
-                );
+              const subjectCourses = await courseService.getCoursesBySubject(
+                classInfo.subjectId
+              );
               // Tìm course KHÔNG phải clone (không chứa " - " theo pattern clone title)
               const adminCourse = subjectCourses.find((c) => {
                 // Course clone có title format: "BaseCourseTitle - ClassName"

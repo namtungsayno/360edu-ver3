@@ -33,9 +33,8 @@ import { useAuth } from "../../../hooks/useAuth.js";
 
 const STATUS_OPTIONS = [
   { value: "ALL", label: "Tất cả trạng thái" },
-  { value: "APPROVED", label: "Đã phê duyệt" },
-  { value: "PENDING", label: "Chờ phê duyệt" },
-  { value: "REJECTED", label: "Bị từ chối" },
+  { value: "APPROVED", label: "Đang hoạt động" },
+  { value: "ARCHIVED", label: "Đã lưu trữ" },
 ];
 
 function getStatusConfig(status) {
@@ -44,34 +43,22 @@ function getStatusConfig(status) {
   switch (normalized) {
     case "APPROVED":
       return {
-        label: "Đã phê duyệt",
+        label: "Đang hoạt động",
         className: "bg-green-50 text-green-700 border border-green-200",
         icon: CheckCircle2,
-      };
-    case "PENDING":
-      return {
-        label: "Chờ phê duyệt",
-        className: "bg-orange-50 text-orange-700 border border-orange-200",
-        icon: Clock,
-      };
-    case "REJECTED":
-      return {
-        label: "Bị từ chối",
-        className: "bg-red-50 text-red-700 border border-red-200",
-        icon: AlertCircle,
       };
     case "DISABLED":
     case "ARCHIVED":
       return {
-        label: "Ngừng sử dụng",
+        label: "Đã lưu trữ",
         className: "bg-gray-50 text-gray-600 border border-gray-200",
         icon: AlertCircle,
       };
     default:
       return {
-        label: "Không xác định",
-        className: "bg-gray-50 text-gray-600 border border-gray-200",
-        icon: AlertCircle,
+        label: "Đang hoạt động",
+        className: "bg-green-50 text-green-700 border border-green-200",
+        icon: CheckCircle2,
       };
   }
 }
@@ -222,13 +209,13 @@ export default function TeacherCourseList() {
   const stats = useMemo(() => {
     const total = courses.length;
     const approved = courses.filter(
-      (c) => String(c.status).toUpperCase() === "APPROVED"
+      (c) => String(c.status).toUpperCase() === "APPROVED" || !c.status
     ).length;
-    const pending = courses.filter(
-      (c) => String(c.status).toUpperCase() === "PENDING"
+    const archived = courses.filter(
+      (c) => String(c.status).toUpperCase() === "ARCHIVED"
     ).length;
 
-    return { total, approved, pending };
+    return { total, approved, archived };
   }, [courses]);
 
   // Filtered courses on FE (search by title/subject)
@@ -292,7 +279,7 @@ export default function TeacherCourseList() {
               <CheckCircle2 className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-[12px] text-[#62748e]">Đã phê duyệt</p>
+              <p className="text-[12px] text-[#62748e]">Đang hoạt động</p>
               <p className="text-neutral-950 text-base font-semibold">
                 {stats.approved}
               </p>
@@ -302,13 +289,13 @@ export default function TeacherCourseList() {
 
         <Card className="p-4 rounded-[14px]">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-orange-600" />
+            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-gray-600" />
             </div>
             <div>
-              <p className="text-[12px] text-[#62748e]">Chờ phê duyệt</p>
+              <p className="text-[12px] text-[#62748e]">Đã lưu trữ</p>
               <p className="text-neutral-950 text-base font-semibold">
-                {stats.pending}
+                {stats.archived}
               </p>
             </div>
           </div>
