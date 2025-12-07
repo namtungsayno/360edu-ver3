@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Search,
   Filter,
@@ -15,6 +15,7 @@ import { useToast } from "../../../hooks/use-toast";
 import { teacherService } from "../../../services/teacher/teacher.service";
 import { teacherApi } from "../../../services/teacher/teacher.api";
 import { getAllSubjects } from "../../../services/subject/subject.api";
+import useDebounce from "../../../hooks/useDebounce";
 
 const SubjectChip = ({ label, color = "bg-indigo-100 text-indigo-700" }) => (
   <span
@@ -42,11 +43,21 @@ const getSubjectColor = (name) => {
 
 const TeacherManagement = () => {
   const { error, success } = useToast();
+  const toastRef = useRef({ error, success });
+  useEffect(() => {
+    toastRef.current = { error, success };
+  }, [error, success]);
+
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [subjectFilter, setSubjectFilter] = useState(""); // subject id or empty
-  const [page, setPage] = useState(1);
-  const pageSize = 8;
+
+  // Server-side pagination
+  const [page, setPage] = useState(0);
+  const pageSize = 5;
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [editing, setEditing] = useState(null); // teacher object or null
   const [selectedSubjects, setSelectedSubjects] = useState([]); // subject ids
@@ -112,106 +123,110 @@ const TeacherManagement = () => {
         const data = await getAllSubjects();
         setSubjects(Array.isArray(data) ? data : []);
       } catch (e) {
-        error("Không tải được danh sách môn học", "Môn học");
+        toastRef.current.error("Không tải được danh sách môn học", "Môn học");
         console.error(e);
       }
     })();
-  }, [error]);
+  }, []);
 
-  React.useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const subjectId = subjectFilter ? Number(subjectFilter) : null;
-        const data = await teacherService.list(subjectId);
-        const base = normalizeTeachers(data);
-        // Enrich subjects: ưu tiên teacher_id, fallback by-user nếu route chưa có
-        const enriched = await Promise.all(
-          base.map(async (t) => {
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, subjectFilter]);
+
+  // Fetch teachers with server-side pagination
+  const fetchTeachers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const subjectId = subjectFilter ? Number(subjectFilter) : null;
+      console.log("📡 Fetching teachers:", {
+        search: debouncedSearch,
+        subjectId,
+        page,
+        size: pageSize,
+      });
+
+      const response = await teacherApi.listPaginated({
+        search: debouncedSearch,
+        subjectId,
+        page,
+        size: pageSize,
+        sortBy: "id",
+        order: "asc",
+      });
+
+      console.log("📊 BE Response:", response);
+
+      const content = response.content || [];
+      const base = normalizeTeachers(content);
+
+      // Enrich subjects: ưu tiên teacher_id, fallback by-user nếu route chưa có
+      const enriched = await Promise.all(
+        base.map(async (t) => {
+          try {
+            const resp = await teacherApi.getSubjects(t.id);
+            const normalized = (Array.isArray(resp) ? resp : [])
+              .map((s) => {
+                if (!s) return null;
+                if (typeof s === "string") return { id: s, name: s };
+                const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
+                const name = s.name ?? s.subjectName ?? s.nameSubject ?? null;
+                return id || name ? { id, name } : null;
+              })
+              .filter(Boolean);
+            return { ...t, subjects: normalized };
+          } catch (e) {
+            console.error(e);
+            // Fallback by-user
             try {
-              const resp = await teacherApi.getSubjects(t.id);
-              const normalized = (Array.isArray(resp) ? resp : [])
-                .map((s) => {
-                  if (!s) return null;
-                  if (typeof s === "string") return { id: s, name: s };
-                  const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
-                  const name = s.name ?? s.subjectName ?? s.nameSubject ?? null;
-                  return id || name ? { id, name } : null;
-                })
-                .filter(Boolean);
-              return { ...t, subjects: normalized };
-            } catch (e) {
-              console.error(e);
-              // Fallback by-user
-              try {
-                const userId = t._raw?.userId ?? t.userId;
-                if (userId) {
-                  const detail = await teacherApi.getByUserId(userId);
-                  const rawSubjects = Array.isArray(detail?.subjects)
-                    ? detail.subjects
-                    : Array.isArray(detail?.teacherSubjects)
-                    ? detail.teacherSubjects
-                    : Array.isArray(detail?.subjectList)
-                    ? detail.subjectList
-                    : [];
-                  const normalized = rawSubjects
-                    .map((s) => {
-                      if (!s) return null;
-                      if (typeof s === "string") return { id: s, name: s };
-                      const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
-                      const name =
-                        s.name ?? s.subjectName ?? s.nameSubject ?? null;
-                      return id || name ? { id, name } : null;
-                    })
-                    .filter(Boolean);
-                  return { ...t, subjects: normalized };
-                }
-              } catch (e2) {
-                console.error(e2);
+              const userId = t._raw?.userId ?? t.userId;
+              if (userId) {
+                const detail = await teacherApi.getByUserId(userId);
+                const rawSubjects = Array.isArray(detail?.subjects)
+                  ? detail.subjects
+                  : Array.isArray(detail?.teacherSubjects)
+                  ? detail.teacherSubjects
+                  : Array.isArray(detail?.subjectList)
+                  ? detail.subjectList
+                  : [];
+                const normalized = rawSubjects
+                  .map((s) => {
+                    if (!s) return null;
+                    if (typeof s === "string") return { id: s, name: s };
+                    const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
+                    const name =
+                      s.name ?? s.subjectName ?? s.nameSubject ?? null;
+                    return id || name ? { id, name } : null;
+                  })
+                  .filter(Boolean);
+                return { ...t, subjects: normalized };
               }
-              return t;
+            } catch (e2) {
+              console.error(e2);
             }
-          })
-        );
-        setTeachers(enriched);
-      } catch (e) {
-        error("Không tải được danh sách giáo viên", "Giáo viên");
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [subjectFilter, error]);
+            return t;
+          }
+        })
+      );
 
-  const filtered = useMemo(() => {
-    return (teachers || []).filter((t) => {
-      const query = search.trim().toLowerCase();
-      const matchQuery =
-        !query ||
-        (t.name || "").toLowerCase().includes(query) ||
-        (t.code || "").toLowerCase().includes(query) ||
-        (t.email || "").toLowerCase().includes(query) ||
-        (t.phone || "").toLowerCase().includes(query);
+      setTeachers(enriched);
+      setTotalElements(response.totalElements || 0);
+      setTotalPages(response.totalPages || 0);
+    } catch (e) {
+      toastRef.current.error("Không tải được danh sách giáo viên", "Giáo viên");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, subjectFilter, page, pageSize]);
 
-      const currentSubjects = Array.isArray(t.subjects) ? t.subjects : [];
+  useEffect(() => {
+    fetchTeachers();
+  }, [fetchTeachers]);
 
-      const matchSubject =
-        !subjectFilter ||
-        currentSubjects.some((s) =>
-          typeof s === "string"
-            ? String(s) === String(subjectFilter)
-            : Number(s?.id) === Number(subjectFilter)
-        );
-      return matchQuery && matchSubject;
-    });
-  }, [teachers, search, subjectFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const paged = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, currentPage]);
+  // Data for rendering
+  const paged = teachers;
+  const currentPage = page + 1;
 
   const openEdit = async (teacher) => {
     try {
@@ -310,20 +325,7 @@ const TeacherManagement = () => {
               // BE trả lỗi dạng SubjectResponse placeholder
               throw { response: { data: [resp] } };
             }
-            // Cập nhật lại dữ liệu hiển thị môn chính
-            setTeachers((prev) =>
-              (prev || []).map((t) =>
-                t.id === editing.id
-                  ? {
-                      ...t,
-                      primarySubjectId: Number(primarySubjectId),
-                      primarySubjectName: subjects.find(
-                        (s) => Number(s.id) === Number(primarySubjectId)
-                      )?.name,
-                    }
-                  : t
-              )
-            );
+            // Will reload from server after all changes
           } catch (e) {
             let msg = "Không thể đổi môn chính";
             try {
@@ -345,26 +347,8 @@ const TeacherManagement = () => {
         }
         await teacherApi.updateSubjects(editing.id, selectedSubjects);
         success("Đã lưu danh sách môn dạy", "Chỉnh sửa môn dạy");
-        // Cập nhật lại bản ghi giáo viên vừa lưu mà không cần reload toàn bộ
-        try {
-          const latest = await teacherApi.getSubjects(editing.id);
-          const normalized = (Array.isArray(latest) ? latest : [])
-            .map((s) => {
-              if (!s) return null;
-              if (typeof s === "string") return { id: s, name: s };
-              const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
-              const name = s.name ?? s.subjectName ?? s.nameSubject ?? null;
-              return id || name ? { id, name } : null;
-            })
-            .filter(Boolean);
-          setTeachers((prev) =>
-            (prev || []).map((t) =>
-              t.id === editing.id ? { ...t, subjects: normalized } : t
-            )
-          );
-        } catch (e) {
-          console.error(e);
-        }
+        // Reload data from server
+        fetchTeachers();
         closeEdit();
       } catch (e) {
         // Hiển thị thông điệp nghiệp vụ từ backend nếu có (400 Bad Request)
@@ -603,23 +587,23 @@ const TeacherManagement = () => {
           <div className="text-sm text-gray-600">
             {loading
               ? "Đang tải..."
-              : `Hiển thị ${paged.length} / ${filtered.length} giáo viên`}
+              : `Hiển thị ${paged.length} / ${totalElements} giáo viên`}
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
               className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
-              disabled={currentPage === 1}
+              disabled={page === 0}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="text-sm text-gray-700 px-3">
-              {currentPage} / {totalPages}
+              {currentPage} / {Math.max(1, totalPages)}
             </span>
             <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
-              disabled={currentPage === totalPages}
+              disabled={page >= totalPages - 1}
             >
               <ChevronRight className="h-4 w-4" />
             </button>

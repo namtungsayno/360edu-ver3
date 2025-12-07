@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -20,6 +20,8 @@ import {
   Loader2,
   FileText,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Tabs,
@@ -27,9 +29,17 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../../components/ui/Tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/Select";
 import Modal from "../../../components/ui/Modal";
 import { newsService } from "../../../services/news/news.service";
 import { useToast } from "../../../hooks/use-toast";
+import useDebounce from "../../../hooks/useDebounce";
 
 export default function NewsList() {
   const navigate = useNavigate();
@@ -40,33 +50,106 @@ export default function NewsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Server-side pagination state
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(5);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Stats for tab badges (loaded once)
+  const [stats, setStats] = useState({
+    total: 0,
+    published: 0,
+    draft: 0,
+    hidden: 0,
+  });
+
+  // Debounced search query for API calls
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
   // Dữ liệu tin tức từ API
   const [news, setNews] = useState([]);
 
-  // Fetch danh sách tin tức khi component mount
-  useEffect(() => {
-    fetchNews();
+  // Fetch stats for tab badges (load once)
+  const fetchStats = useCallback(async () => {
+    try {
+      const [allRes, publishedRes, draftRes, hiddenRes] = await Promise.all([
+        newsService.getNews({ page: 0, size: 1 }),
+        newsService.getNews({ page: 0, size: 1, status: "published" }),
+        newsService.getNews({ page: 0, size: 1, status: "draft" }),
+        newsService.getNews({ page: 0, size: 1, status: "hidden" }),
+      ]);
+      setStats({
+        total: allRes.data?.totalElements || 0,
+        published: publishedRes.data?.totalElements || 0,
+        draft: draftRes.data?.totalElements || 0,
+        hidden: hiddenRes.data?.totalElements || 0,
+      });
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+    }
   }, []);
 
-  const fetchNews = async () => {
+  // Fetch danh sách tin tức với server-side pagination
+  const fetchNews = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
+      // Build params for API call
+      const params = {
+        page,
+        size,
+      };
+
+      // Add search if provided
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      // Add status filter if not "all"
+      if (statusFilter !== "all") {
+        params.status = statusFilter;
+      }
+
       // Real API call
-      const response = await newsService.getNews({
-        page: 0,
-        size: 100,
-      });
-      const newsData = response.content || response.data || response || [];
+      const response = await newsService.getNews(params);
+      const pageData = response.data || response;
+      const newsData = pageData.content || [];
       setNews(newsData);
+      setTotalElements(pageData.totalElements || 0);
+      setTotalPages(pageData.totalPages || 0);
     } catch (err) {
       console.error("Failed to fetch news:", err);
       setError(err.displayMessage || "Không thể tải danh sách tin tức");
       setNews([]);
+      setTotalElements(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
+  }, [page, size, debouncedSearch, statusFilter]);
+
+  // Reset page when search or filter changes
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, statusFilter]);
+
+  // Fetch news when pagination/filter changes
+  useEffect(() => {
+    fetchNews();
+  }, [fetchNews]);
+
+  // Fetch stats once on mount
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // Handle tab change
+  const handleTabChange = (value) => {
+    setStatusFilter(value);
+    setPage(0);
   };
 
   const getStatusBadge = (status) => {
@@ -120,9 +203,9 @@ export default function NewsList() {
       const currentStatus = news.find((n) => n.id === id)?.status;
       const newStatus = currentStatus === "published" ? "hidden" : "published";
       await newsService.updateStatus(id, newStatus);
-      setNews((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, status: newStatus } : n))
-      );
+      // Refresh data and stats after status change
+      fetchNews();
+      fetchStats();
       success(
         newStatus === "published" ? "Đã hiển thị tin tức" : "Đã ẩn tin tức"
       );
@@ -131,12 +214,6 @@ export default function NewsList() {
       showError(err.displayMessage || "Không thể cập nhật trạng thái");
     }
   };
-
-  const filteredNews = news.filter(
-    (item) =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.excerpt.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <div className="p-6 min-h-screen">
@@ -173,7 +250,7 @@ export default function NewsList() {
             <div>
               <p className="text-sm font-medium text-white/80">Tổng tin tức</p>
               <p className="text-2xl font-bold text-white mt-1">
-                {news.length}
+                {stats.total}
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
@@ -188,7 +265,7 @@ export default function NewsList() {
             <div>
               <p className="text-sm font-medium text-white/80">Đã đăng</p>
               <p className="text-2xl font-bold text-white mt-1">
-                {news.filter((n) => n.status === "published").length}
+                {stats.published}
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
@@ -203,7 +280,7 @@ export default function NewsList() {
             <div>
               <p className="text-sm font-medium text-white/80">Bản nháp</p>
               <p className="text-2xl font-bold text-white mt-1">
-                {news.filter((n) => n.status === "draft").length}
+                {stats.draft}
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
@@ -242,177 +319,178 @@ export default function NewsList() {
               <h2 className="text-lg font-semibold text-gray-900">
                 Danh sách tin tức
               </h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Tìm kiếm tin tức..."
-                  className="pl-10 w-80 rounded-xl"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+              <div className="flex items-center gap-3">
+                <Select
+                  value={String(size)}
+                  onValueChange={(v) => {
+                    setSize(Number(v));
+                    setPage(0);
+                  }}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5 / trang</SelectItem>
+                    <SelectItem value="10">10 / trang</SelectItem>
+                    <SelectItem value="20">20 / trang</SelectItem>
+                    <SelectItem value="50">50 / trang</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Tìm kiếm tin tức..."
+                    className="pl-10 w-80 rounded-xl"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           {/* Content */}
           <div className="p-4">
-            <Tabs defaultValue="all" className="space-y-4">
+            <Tabs
+              value={statusFilter}
+              onValueChange={handleTabChange}
+              className="space-y-4"
+            >
               <TabsList>
-                <TabsTrigger value="all">Tất cả ({news.length})</TabsTrigger>
+                <TabsTrigger value="all">Tất cả ({stats.total})</TabsTrigger>
                 <TabsTrigger value="published">
-                  Đã đăng ({news.filter((n) => n.status === "published").length}
-                  )
+                  Đã đăng ({stats.published})
                 </TabsTrigger>
-                <TabsTrigger value="draft">
-                  Nháp ({news.filter((n) => n.status === "draft").length})
-                </TabsTrigger>
-                <TabsTrigger value="hidden">
-                  Đã ẩn ({news.filter((n) => n.status === "hidden").length})
-                </TabsTrigger>
+                <TabsTrigger value="draft">Nháp ({stats.draft})</TabsTrigger>
+                <TabsTrigger value="hidden">Đã ẩn ({stats.hidden})</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="all" className="space-y-4">
-                {filteredNews.map((item) => (
-                  <Card
-                    key={item.id}
-                    className="hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => navigate(`/home/admin/news/${item.id}`)}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex gap-6">
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.title}
-                            className="h-64 w-64 rounded-lg object-cover flex-shrink-0 self-center"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-64 w-64 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white flex-shrink-0 self-center">
-                            <Newspaper className="h-24 w-24" />
-                          </div>
-                        )}
-
-                        <div className="flex-1 space-y-3">
-                          <h3 className="text-lg font-semibold mb-2">
-                            {item.title}
-                          </h3>
-                          <p className="text-sm text-slate-600">
-                            {item.excerpt}
-                          </p>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {(typeof item.tags === "string"
-                              ? item.tags
-                                  .split(",")
-                                  .map((tag) => tag.trim())
-                                  .filter(Boolean)
-                              : item.tags || []
-                            ).map((tag, index) => (
-                              <Badge
-                                key={index}
-                                variant="outline"
-                                className="text-xs border border-slate-200 bg-slate-50 text-slate-700"
-                              >
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-slate-600 mt-2">
-                            <span>{item.date}</span>
-                            <span>{item.views} lượt xem</span>
-                            <span>Bởi: {item.author}</span>
-                          </div>
-                          <div className="flex gap-2 mt-2">
-                            {item.status === "published" ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleStatus(item.id);
-                                }}
-                              >
-                                Ẩn
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleStatus(item.id);
-                                }}
-                              >
-                                Hiện
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </TabsContent>
-
-              <TabsContent value="published" className="space-y-4">
-                {filteredNews
-                  .filter((n) => n.status === "published")
-                  .map((item) => (
+              {/* Single content for all tabs - data is filtered by server */}
+              <div className="space-y-4">
+                {news.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Newspaper className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>Không có tin tức nào</p>
+                  </div>
+                ) : (
+                  news.map((item) => (
                     <Card
                       key={item.id}
-                      className="hover:shadow-md transition-shadow"
+                      className="hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => navigate(`/home/admin/news/${item.id}`)}
                     >
                       <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-2">
-                          {item.title}
-                        </h3>
-                        <p className="text-sm text-slate-600 mb-3">
-                          {item.excerpt}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm text-slate-600">
-                          <span>{item.date}</span>
-                          <span>{item.views} lượt xem</span>
+                        <div className="flex gap-6">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.title}
+                              className="h-64 w-64 rounded-lg object-cover flex-shrink-0 self-center"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-64 w-64 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white flex-shrink-0 self-center">
+                              <Newspaper className="h-24 w-24" />
+                            </div>
+                          )}
+
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-lg font-semibold">
+                                {item.title}
+                              </h3>
+                              {getStatusBadge(item.status)}
+                            </div>
+                            <p className="text-sm text-slate-600">
+                              {item.excerpt}
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {(typeof item.tags === "string"
+                                ? item.tags
+                                    .split(",")
+                                    .map((tag) => tag.trim())
+                                    .filter(Boolean)
+                                : item.tags || []
+                              ).map((tag, index) => (
+                                <Badge
+                                  key={index}
+                                  variant="outline"
+                                  className="text-xs border border-slate-200 bg-slate-50 text-slate-700"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-slate-600 mt-2">
+                              <span>{item.date}</span>
+                              <span>{item.views} lượt xem</span>
+                              <span>Bởi: {item.author}</span>
+                            </div>
+                            <div className="flex gap-2 mt-2">
+                              {item.status === "published" ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleStatus(item.id);
+                                  }}
+                                >
+                                  Ẩn
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleStatus(item.id);
+                                  }}
+                                >
+                                  Hiện
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-              </TabsContent>
-
-              <TabsContent value="draft" className="space-y-4">
-                {filteredNews
-                  .filter((n) => n.status === "draft")
-                  .map((item) => (
-                    <Card
-                      key={item.id}
-                      className="hover:shadow-md transition-shadow"
-                    >
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-2">
-                          {item.title}
-                        </h3>
-                        <p className="text-sm text-slate-600">{item.excerpt}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </TabsContent>
-
-              <TabsContent value="hidden" className="space-y-4">
-                {filteredNews
-                  .filter((n) => n.status === "hidden")
-                  .map((item) => (
-                    <Card
-                      key={item.id}
-                      className="hover:shadow-md transition-shadow"
-                    >
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold mb-2">
-                          {item.title}
-                        </h3>
-                        <p className="text-sm text-slate-600">{item.excerpt}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </TabsContent>
+                  ))
+                )}
+              </div>
             </Tabs>
+
+            {/* Pagination */}
+            {totalPages > 0 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                <p className="text-sm text-gray-500">
+                  Hiển thị {news.length} / {totalElements} tin tức
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-gray-600 px-3">
+                    Trang {page + 1} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages - 1, p + 1))
+                    }
+                    disabled={page >= totalPages - 1}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

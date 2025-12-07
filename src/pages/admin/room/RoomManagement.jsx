@@ -1,7 +1,9 @@
 // src/pages/admin/room/RoomManagement.jsx
 // ✨ INLINE EXPANSION - Click row để mở rộng thành form tại chỗ
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+// 🔄 SERVER-SIDE PAGINATION
+import { useEffect, useState, useCallback, useRef } from "react";
 import { classroomService } from "../../../services/classrooms/classroom.service";
+import { classroomApi } from "../../../services/classrooms/classroom.api";
 import { useToast } from "../../../hooks/use-toast";
 import {
   Building,
@@ -23,6 +25,13 @@ import { Switch } from "../../../components/ui/Switch";
 
 const STATUS_FILTERS = ["ALL", "ACTIVE", "INACTIVE"];
 
+// Map FE status to BE status
+const mapStatusToBE = (feStatus) => {
+  if (feStatus === "ACTIVE") return "AVAILABLE";
+  if (feStatus === "INACTIVE") return "UNAVAILABLE";
+  return "ALL";
+};
+
 export default function ClassroomList() {
   const toast = useToast();
   const toastRef = useRef(toast);
@@ -30,21 +39,20 @@ export default function ClassroomList() {
   // Filter & Search
   const [tab, setTab] = useState("ALL");
   const [query, setQuery] = useState("");
-  const q = useDebounce(query, 300);
+  const debouncedQuery = useDebounce(query, 300);
 
-  // Pagination per tab
-  const [pageByTab, setPageByTab] = useState({
-    ALL: 0,
-    ACTIVE: 0,
-    INACTIVE: 0,
-  });
-  const sizeByTab = { ALL: 8, ACTIVE: 8, INACTIVE: 8 };
-  const curPage = pageByTab[tab] ?? 0;
-  const curSize = sizeByTab[tab] ?? 8;
+  // Server-side pagination
+  const [page, setPage] = useState(0);
+  const [size] = useState(5);
 
-  // Data
-  const [allRooms, setAllRooms] = useState([]);
+  // Server response data
+  const [rooms, setRooms] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // Stats counts (load all once for tabs)
+  const [counts, setCounts] = useState({ ALL: 0, ACTIVE: 0, INACTIVE: 0 });
 
   // Inline Expansion states
   const [expandedId, setExpandedId] = useState(null); // ID of expanded row
@@ -82,61 +90,94 @@ export default function ClassroomList() {
         : false,
   });
 
+  // Load counts once for stats
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await classroomService.list();
+        const items = Array.isArray(data)
+          ? data
+          : data?.items ?? data?.content ?? [];
+        const normalized = items.map(normalizeRoom);
+        const active = normalized.filter((r) => r.enabled).length;
+        setCounts({
+          ALL: normalized.length,
+          ACTIVE: active,
+          INACTIVE: normalized.length - active,
+        });
+      } catch (e) {
+        console.error("Failed to load counts:", e);
+      }
+    })();
+  }, []);
+
+  // Server-side fetch with pagination
   const fetchClassrooms = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await classroomService.list();
-      const items = Array.isArray(data)
-        ? data
-        : data?.items ?? data?.content ?? [];
-      setAllRooms(items.map(normalizeRoom));
-    } catch {
+      const beStatus = mapStatusToBE(tab);
+      console.log("📡 Fetching rooms:", {
+        search: debouncedQuery,
+        status: beStatus,
+        page,
+        size,
+      });
+
+      const response = await classroomApi.listPaginated({
+        search: debouncedQuery,
+        status: beStatus,
+        page,
+        size,
+        sortBy: "id",
+        order: "asc",
+      });
+
+      console.log("📊 BE Response:", response);
+
+      const content = response.content || [];
+      setRooms(content.map(normalizeRoom));
+      setTotalElements(response.totalElements || 0);
+      setTotalPages(response.totalPages || 0);
+    } catch (e) {
+      console.error("Error fetching rooms:", e);
       toastRef.current?.error?.("Lỗi tải danh sách phòng học");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tab, debouncedQuery, page, size]);
 
   useEffect(() => {
     fetchClassrooms();
   }, [fetchClassrooms]);
 
-  // Counts
-  const counts = useMemo(() => {
-    const active = allRooms.filter((r) => r.enabled).length;
-    const inactive = allRooms.filter((r) => !r.enabled).length;
-    return { ALL: allRooms.length, ACTIVE: active, INACTIVE: inactive };
-  }, [allRooms]);
-
-  // Filter + paginate
-  const filtered = useMemo(() => {
-    let list = allRooms;
-    if (tab === "ACTIVE") list = allRooms.filter((r) => r.enabled);
-    else if (tab === "INACTIVE") list = allRooms.filter((r) => !r.enabled);
-
-    if (!q) return list;
-    const kw = q.toLowerCase();
-    return list.filter(
-      (r) =>
-        (r.name || "").toLowerCase().includes(kw) ||
-        String(r.id || "")
-          .toLowerCase()
-          .includes(kw) ||
-        String(r.capacity || "").includes(kw)
-    );
-  }, [allRooms, tab, q]);
-
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / curSize));
-  const pageSafe = Math.min(curPage, totalPages - 1);
-  const pageItems = filtered.slice(
-    pageSafe * curSize,
-    pageSafe * curSize + curSize
-  );
+  // Reset page when tab or search changes
+  useEffect(() => {
+    setPage(0);
+  }, [tab, debouncedQuery]);
 
   // Helpers
-  const setPage = (p) =>
-    setPageByTab((prev) => ({ ...prev, [tab]: Math.max(0, p) }));
+  const curPage = page;
+  const curSize = size;
+  const pageItems = rooms;
+
+  // Reload counts after changes
+  const reloadCounts = async () => {
+    try {
+      const data = await classroomService.list();
+      const items = Array.isArray(data)
+        ? data
+        : data?.items ?? data?.content ?? [];
+      const normalized = items.map(normalizeRoom);
+      const active = normalized.filter((r) => r.enabled).length;
+      setCounts({
+        ALL: normalized.length,
+        ACTIVE: active,
+        INACTIVE: normalized.length - active,
+      });
+    } catch (e) {
+      console.error("Failed to reload counts:", e);
+    }
+  };
 
   // Toggle status
   const handleToggleStatus = async (room, e) => {
@@ -157,10 +198,10 @@ export default function ClassroomList() {
       else if (classroomService.update)
         await classroomService.update(room.id, { enabled: nextEnabled });
 
-      setAllRooms((prev) =>
-        prev.map((r) => (r.id === room.id ? { ...r, enabled: nextEnabled } : r))
-      );
       toast?.success?.(nextEnabled ? "Đã bật phòng học" : "Đã tắt phòng học");
+      // Reload data and counts
+      fetchClassrooms();
+      reloadCounts();
     } catch {
       toast?.error?.("Cập nhật thất bại");
     }
@@ -234,6 +275,7 @@ export default function ClassroomList() {
       }
       collapseRow();
       fetchClassrooms();
+      reloadCounts();
     } catch {
       toast?.error?.("Lưu thất bại");
     } finally {
@@ -243,7 +285,7 @@ export default function ClassroomList() {
 
   // Get current room data
   const currentRoom = expandedId
-    ? allRooms.find((r) => r.id === expandedId)
+    ? rooms.find((r) => r.id === expandedId)
     : null;
 
   return (
@@ -457,7 +499,7 @@ export default function ClassroomList() {
           ) : (
             pageItems.map((room, idx) => {
               const isExpanded = expandedId === room.id;
-              const rowNum = pageSafe * curSize + idx + 1;
+              const rowNum = page * curSize + idx + 1;
 
               return (
                 <div key={room.id} className="group">
@@ -737,12 +779,12 @@ export default function ClassroomList() {
         {/* ============ PAGINATION ============ */}
         <div className="flex items-center justify-between px-6 py-4 bg-gray-50/50 border-t border-gray-100">
           <div className="text-sm text-gray-500">
-            Hiển thị {pageItems.length} / {total} phòng học
+            Hiển thị {pageItems.length} / {totalElements} phòng học
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setPage(pageSafe - 1)}
-              disabled={pageSafe === 0}
+              onClick={() => setPage(page - 1)}
+              disabled={page === 0}
               className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -752,19 +794,19 @@ export default function ClassroomList() {
                 let pageNum;
                 if (totalPages <= 5) {
                   pageNum = i;
-                } else if (pageSafe < 3) {
+                } else if (page < 3) {
                   pageNum = i;
-                } else if (pageSafe > totalPages - 4) {
+                } else if (page > totalPages - 4) {
                   pageNum = totalPages - 5 + i;
                 } else {
-                  pageNum = pageSafe - 2 + i;
+                  pageNum = page - 2 + i;
                 }
                 return (
                   <button
                     key={pageNum}
                     onClick={() => setPage(pageNum)}
                     className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
-                      pageSafe === pageNum
+                      page === pageNum
                         ? "bg-gray-900 text-white shadow-lg"
                         : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                     }`}
@@ -775,8 +817,8 @@ export default function ClassroomList() {
               })}
             </div>
             <button
-              onClick={() => setPage(pageSafe + 1)}
-              disabled={pageSafe >= totalPages - 1}
+              onClick={() => setPage(page + 1)}
+              disabled={page >= totalPages - 1}
               className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-4 h-4" />

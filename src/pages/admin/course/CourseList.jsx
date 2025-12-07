@@ -1,6 +1,7 @@
 // src/pages/admin/course/AdminCourseList.jsx
+// 🔄 SERVER-SIDE PAGINATION
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -34,6 +35,8 @@ import {
   Layers,
   CalendarClock,
   GraduationCap,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { courseApi } from "../../../services/course/course.api.js";
@@ -41,6 +44,7 @@ import { courseService } from "../../../services/course/course.service.js";
 import { classService } from "../../../services/class/class.service.js";
 import { subjectService } from "../../../services/subject/subject.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
+import useDebounce from "../../../hooks/useDebounce.js";
 
 /**
  * Map màu + nhãn status
@@ -86,6 +90,10 @@ const STATUS_FILTER_OPTIONS = [
 export default function AdminCourseList() {
   const navigate = useNavigate();
   const { error } = useToast();
+  const toastRef = useRef(error);
+  useEffect(() => {
+    toastRef.current = error;
+  }, [error]);
 
   // ====== DATA STATE ======
   const [courses, setCourses] = useState([]);
@@ -95,8 +103,24 @@ export default function AdminCourseList() {
   const [sourceCourseMap, setSourceCourseMap] = useState({}); // { [sourceId]: courseDetail }
   const [courseIdToClass, setCourseIdToClass] = useState({}); // { [courseId]: classDetail }
 
+  // Server-side pagination
+  const [page, setPage] = useState(0);
+  const [size] = useState(5);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Stats (load all once)
+  const [stats, setStats] = useState({
+    total: 0,
+    approved: 0,
+    draft: 0,
+    archived: 0,
+    teacherCount: 0,
+  });
+
   // ====== FILTERS ======
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [selectedTeacherId, setSelectedTeacherId] = useState("ALL");
   const [selectedSubjectId, setSelectedSubjectId] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -109,47 +133,107 @@ export default function AdminCourseList() {
         setSubjects(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error("Failed to load subjects:", e);
-        error("Không thể tải danh sách môn học");
+        toastRef.current("Không thể tải danh sách môn học");
       }
     })();
-  }, [error]);
+  }, []);
 
-  // ====== LOAD COURSES (ADMIN VIEW) ======
+  // Load stats once
   useEffect(() => {
-    let ignore = false;
-
-    async function fetchCourses() {
-      setLoading(true);
+    (async () => {
       try {
-        // Gửi subject + status cho BE, các filter khác xử lý ở FE
-        const params = {};
-        if (selectedSubjectId !== "ALL") {
-          params.subjectId = Number(selectedSubjectId);
-        }
-        if (statusFilter !== "ALL") {
-          params.status = statusFilter;
-        }
+        const data = await courseApi.list({});
+        const allCourses = Array.isArray(data) ? data : [];
+        const teacherCourses = allCourses.filter((c) => !!c.ownerTeacherId);
 
-        const data = await courseApi.list(params);
-        if (!ignore) {
-          setCourses(Array.isArray(data) ? data : []);
-        }
+        const countByStatus = (st) =>
+          teacherCourses.filter((c) => String(c.status).toUpperCase() === st)
+            .length;
+
+        // Get unique teacher count
+        const teacherMap = new Map();
+        teacherCourses.forEach((c) => {
+          const id = c.ownerTeacherId ?? c.createdByUserId;
+          if (id && !teacherMap.has(id)) {
+            teacherMap.set(id, true);
+          }
+        });
+
+        setStats({
+          total: teacherCourses.length,
+          approved: countByStatus("APPROVED"),
+          draft: countByStatus("DRAFT"),
+          archived: countByStatus("ARCHIVED"),
+          teacherCount: teacherMap.size,
+        });
       } catch (e) {
-        console.error("Failed to load courses (admin):", e);
-        if (!ignore) {
-          error("Không thể tải danh sách khóa học");
-        }
-      } finally {
-        if (!ignore) setLoading(false);
+        console.error("Failed to load stats:", e);
       }
+    })();
+  }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, selectedTeacherId, selectedSubjectId, statusFilter]);
+
+  // Map FE status to BE
+  const mapStatusToBE = (status) => {
+    if (status === "APPROVED" || status === "DRAFT" || status === "ARCHIVED")
+      return status;
+    return "ALL";
+  };
+
+  // ====== LOAD COURSES WITH SERVER-SIDE PAGINATION ======
+  const fetchCourses = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {
+        search: debouncedSearch,
+        status: mapStatusToBE(statusFilter),
+        page,
+        size,
+        sortBy: "id",
+        order: "desc",
+      };
+
+      if (selectedSubjectId !== "ALL") {
+        params.subjectId = Number(selectedSubjectId);
+      }
+      if (selectedTeacherId !== "ALL") {
+        params.teacherUserId = Number(selectedTeacherId);
+      }
+
+      console.log("📡 Fetching courses:", params);
+
+      const response = await courseApi.listPaginated(params);
+      console.log("📊 BE Response:", response);
+
+      const content = response.content || [];
+      // Filter only teacher courses (có ownerTeacherId)
+      const teacherCourses = content.filter((c) => !!c.ownerTeacherId);
+      setCourses(teacherCourses);
+      setTotalElements(response.totalElements || 0);
+      setTotalPages(response.totalPages || 0);
+    } catch (e) {
+      console.error("Failed to load courses (admin):", e);
+      toastRef.current("Không thể tải danh sách khóa học");
+      setCourses([]);
+    } finally {
+      setLoading(false);
     }
+  }, [
+    debouncedSearch,
+    selectedSubjectId,
+    selectedTeacherId,
+    statusFilter,
+    page,
+    size,
+  ]);
 
+  useEffect(() => {
     fetchCourses();
-
-    return () => {
-      ignore = true;
-    };
-  }, [selectedSubjectId, statusFilter, error]);
+  }, [fetchCourses]);
 
   // ====== ENRICH: fetch class names by classId across loaded courses ======
   useEffect(() => {
@@ -300,15 +384,9 @@ export default function AdminCourseList() {
   }, [courses, courseIdToClass]);
 
   // ====== TEACHER OPTIONS (từ dữ liệu course hiện có) ======
-  // Chỉ hiển thị khóa học do giáo viên gửi lên (có ownerTeacherId)
-  const teacherCourses = useMemo(
-    () => courses.filter((c) => !!c.ownerTeacherId),
-    [courses]
-  );
-
   const teacherOptions = useMemo(() => {
     const map = new Map();
-    teacherCourses.forEach((c) => {
+    courses.forEach((c) => {
       const id = c.ownerTeacherId ?? c.createdByUserId;
       const name = c.ownerTeacherName ?? c.createdByName ?? "Không rõ";
       if (id && !map.has(id)) {
@@ -316,65 +394,10 @@ export default function AdminCourseList() {
       }
     });
     return Array.from(map.values());
-  }, [teacherCourses]);
+  }, [courses]);
 
-  // ====== VISIBLE COURSES (FILTER CLIENT) ======
-  const visibleCourses = useMemo(() => {
-    // Module "Khóa học" chỉ hiển thị khóa học do giáo viên tạo/gửi lên
-    let list = [...teacherCourses];
-
-    // search: title, code, teacher name
-    if (search.trim()) {
-      const keyword = search.trim().toLowerCase();
-      list = list.filter((c) => {
-        const title = String(c.title || "").toLowerCase();
-        const code = String(c.code || "").toLowerCase();
-        const teacherName = String(
-          c.ownerTeacherName || c.createdByName || ""
-        ).toLowerCase();
-        return (
-          title.includes(keyword) ||
-          code.includes(keyword) ||
-          teacherName.includes(keyword)
-        );
-      });
-    }
-
-    // teacher
-    if (selectedTeacherId !== "ALL") {
-      const tid = Number(selectedTeacherId);
-      list = list.filter(
-        (c) =>
-          c.ownerTeacherId === tid ||
-          (!c.ownerTeacherId && c.createdByUserId === tid)
-      );
-    }
-
-    // status (đã phần nào lọc ở BE, nhưng giữ lại để chắc)
-    if (statusFilter !== "ALL") {
-      list = list.filter(
-        (c) => String(c.status).toUpperCase() === statusFilter
-      );
-    }
-
-    return list;
-  }, [teacherCourses, search, selectedTeacherId, statusFilter]);
-
-  // ====== STATS (theo toàn bộ danh sách) ======
-  const stats = useMemo(() => {
-    const total = teacherCourses.length;
-    const countByStatus = (st) =>
-      teacherCourses.filter((c) => String(c.status).toUpperCase() === st)
-        .length;
-
-    return {
-      total,
-      approved: countByStatus("APPROVED"),
-      draft: countByStatus("DRAFT"),
-      archived: countByStatus("ARCHIVED"),
-      teacherCount: teacherOptions.length,
-    };
-  }, [teacherCourses, teacherOptions]);
+  // ====== VISIBLE COURSES (now directly from server) ======
+  const visibleCourses = courses;
 
   // ====== ACTION HANDLERS ======
 
@@ -383,6 +406,7 @@ export default function AdminCourseList() {
     setSelectedTeacherId("ALL");
     setSelectedSubjectId("ALL");
     setStatusFilter("ALL");
+    setPage(0);
   };
 
   const handleViewDetail = (courseId) => {
@@ -755,6 +779,32 @@ export default function AdminCourseList() {
               </div>
             );
           })}
+      </div>
+
+      {/* ============ PAGINATION ============ */}
+      <div className="flex items-center justify-between px-6 py-4 bg-white rounded-2xl shadow-sm border border-gray-100 mt-4">
+        <div className="text-sm text-gray-500">
+          Hiển thị {visibleCourses.length} / {totalElements} khóa học
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm text-gray-700 px-3">
+            {page + 1} / {Math.max(1, totalPages)}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

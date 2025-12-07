@@ -16,6 +16,27 @@ export const teacherApi = {
   },
 
   /**
+   * GET /teachers/paginated - Lấy teachers với phân trang từ server
+   * @param {Object} params - { search, subjectId, page, size, sortBy, order }
+   * @returns {Promise<{content: Array, totalElements: number, totalPages: number, ...}>}
+   */
+  listPaginated(params = {}) {
+    const {
+      search = "",
+      subjectId = null,
+      page = 0,
+      size = 10,
+      sortBy = "id",
+      order = "asc",
+    } = params;
+    const queryParams = { search, page, size, sortBy, order };
+    if (subjectId) queryParams.subjectId = subjectId;
+    return http
+      .get("/teachers/paginated", { params: queryParams })
+      .then((r) => r.data);
+  },
+
+  /**
    * Get teacher's busy slots in date range
    * @param {number} userId - User ID of the teacher
    * @param {string} from - Start datetime ISO string

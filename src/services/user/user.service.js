@@ -34,6 +34,34 @@ export const userService = {
     }));
   },
 
+  /**
+   * ✅ Server-side pagination với normalize data
+   * @param {Object} params - { search, role, page, size, sortBy, order }
+   * @returns {Promise<{content: Array, totalElements: number, totalPages: number}>}
+   */
+  async listPaginated(params = {}) {
+    const rawData = await userApi.listPaginated(params);
+
+    // Normalize content array
+    const normalizedContent = (rawData.content || []).map((u) => ({
+      id: u.id,
+      fullName: u.fullName || u.full_name || u.username || `User #${u.id}`,
+      email: u.email || "",
+      phone: u.phoneNumber || u.phone_number || "",
+      role: u.role || normalizeRole(u.roles || []),
+      active: typeof u.active === "boolean" ? u.active : false,
+      joinDate: u.joinDate || u.createdAt || u.created_at || "",
+    }));
+
+    return {
+      content: normalizedContent,
+      totalElements: rawData.totalElements || 0,
+      totalPages: rawData.totalPages || 0,
+      number: rawData.number || 0,
+      size: rawData.size || 10,
+    };
+  },
+
   // ✅ tạo giáo viên đúng luồng auth (khác với create generic)
   async createTeacher(payload) {
     // Validate subjectIds presence before calling API

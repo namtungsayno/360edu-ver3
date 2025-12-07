@@ -1,7 +1,7 @@
 // src/pages/admin/TeacherAttendanceList.jsx
 // Trang danh sách giáo viên và chấm công
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -13,6 +13,13 @@ import { Button } from "../../components/ui/Button.jsx";
 import { Input } from "../../components/ui/Input.jsx";
 import { Badge } from "../../components/ui/Badge.jsx";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/Select.jsx";
+import {
   Search,
   Users,
   BookOpen,
@@ -20,6 +27,7 @@ import {
   Clock,
   TrendingUp,
   ChevronRight,
+  ChevronLeft,
   GraduationCap,
   Calendar,
   AlertCircle,
@@ -27,6 +35,7 @@ import {
 
 import { teacherAttendanceService } from "../../services/teacher-attendance/teacher-attendance.service";
 import { useToast } from "../../hooks/use-toast.js";
+import useDebounce from "../../hooks/useDebounce";
 
 export default function TeacherAttendanceList() {
   const navigate = useNavigate();
@@ -36,37 +45,52 @@ export default function TeacherAttendanceList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  useEffect(() => {
-    loadTeachers();
-  }, []);
+  // Server-side pagination state
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(5);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  async function loadTeachers() {
+  // Debounced search
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
+
+  const loadTeachers = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await teacherAttendanceService.getTeacherList();
-      setTeachers(data);
+      const params = {
+        page,
+        size,
+      };
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      const data = await teacherAttendanceService.getTeacherList(params);
+      setTeachers(data.content || []);
+      setTotalElements(data.totalElements || 0);
+      setTotalPages(data.totalPages || 0);
     } catch (e) {
       console.error("Load teachers error:", e);
       error("Không thể tải danh sách giáo viên");
+      setTeachers([]);
+      setTotalElements(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
-  }
+  }, [page, size, debouncedSearch, error]);
 
-  // Filter teachers by search
-  const filteredTeachers = teachers.filter((t) => {
-    if (!searchTerm) return true;
-    const kw = searchTerm.toLowerCase();
-    return (
-      t.fullName?.toLowerCase().includes(kw) ||
-      t.email?.toLowerCase().includes(kw) ||
-      t.phone?.includes(kw) ||
-      t.subjectNames?.some((s) => s.toLowerCase().includes(kw))
-    );
-  });
+  useEffect(() => {
+    loadTeachers();
+  }, [loadTeachers]);
 
-  // Stats
-  const totalTeachers = teachers.length;
+  // Stats (calculate from current page data - for display only)
+  const totalTeachers = totalElements;
   const teachersWithClasses = teachers.filter(
     (t) => t.assignedClasses > 0
   ).length;
@@ -103,17 +127,6 @@ export default function TeacherAttendanceList() {
       label: "Cần cải thiện",
       className: "bg-red-100 text-red-700 border-red-200",
     };
-  }
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <Card className="rounded-[14px] p-6 text-center text-[#62748e]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          Đang tải danh sách giáo viên...
-        </Card>
-      </div>
-    );
   }
 
   return (
@@ -196,14 +209,33 @@ export default function TeacherAttendanceList() {
 
       {/* Search */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Tìm kiếm theo tên, email, số điện thoại hoặc môn học..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 rounded-xl border-gray-200"
-          />
+        <div className="flex items-center gap-3">
+          <Select
+            value={String(size)}
+            onValueChange={(v) => {
+              setSize(Number(v));
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5 / trang</SelectItem>
+              <SelectItem value="10">10 / trang</SelectItem>
+              <SelectItem value="20">20 / trang</SelectItem>
+              <SelectItem value="50">50 / trang</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Tìm kiếm theo tên, email, số điện thoại hoặc môn học..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 rounded-xl border-gray-200"
+            />
+          </div>
         </div>
       </div>
 
@@ -211,18 +243,23 @@ export default function TeacherAttendanceList() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-900">
-            Danh sách giáo viên ({filteredTeachers.length})
+            Danh sách giáo viên ({totalElements})
           </h2>
         </div>
         <div className="p-0">
-          {filteredTeachers.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12 text-gray-500">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              Đang tải danh sách giáo viên...
+            </div>
+          ) : teachers.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
               <p>Không tìm thấy giáo viên nào</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {filteredTeachers.map((teacher) => {
+              {teachers.map((teacher) => {
                 const badge = getAttendanceBadge(
                   teacher.attendanceRateThisMonth || 0
                 );
@@ -317,6 +354,36 @@ export default function TeacherAttendanceList() {
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 0 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+            <p className="text-sm text-gray-500">
+              Hiển thị {teachers.length} / {totalElements} giáo viên
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm text-gray-600 px-3">
+                Trang {page + 1} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

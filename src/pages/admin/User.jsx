@@ -1,5 +1,6 @@
 // src/pages/admin/User.jsx
-import { useEffect, useMemo, useState } from "react";
+// 🔄 SERVER-SIDE PAGINATION
+import { useEffect, useState, useCallback, useRef } from "react";
 import { UserPlus, Users, GraduationCap, UserCog, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "../../components/ui/Input";
@@ -31,91 +32,136 @@ const ROLES = ["ALL", "STUDENT", "TEACHER", "PARENT"];
 
 export default function UserManagement() {
   const { success, error } = useToast();
+  const toastRef = useRef({ success, error });
+  useEffect(() => {
+    toastRef.current = { success, error };
+  }, [success, error]);
+
   const navigate = useNavigate();
 
   // filter
   const [tab, setTab] = useState("ALL");
   const [query, setQuery] = useState("");
-  const q = useDebounce(query, 300);
+  const debouncedQuery = useDebounce(query, 300);
 
-  // per-tab pagination
-  const [pageByTab, setPageByTab] = useState({
+  // Server-side pagination
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(5);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Data
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Stats counts (load all once)
+  const [counts, setCounts] = useState({
     ALL: 0,
     STUDENT: 0,
     TEACHER: 0,
     PARENT: 0,
   });
-  const [sizeByTab, setSizeByTab] = useState({
-    ALL: 10,
-    STUDENT: 10,
-    TEACHER: 10,
-    PARENT: 10,
-  });
-  const curPage = pageByTab[tab] ?? 0;
-  const curSize = sizeByTab[tab] ?? 10;
-
-  // data loaded once (client-side mode). Nếu bạn dùng server-side, thay bằng listPage(...)
-  const [allUsers, setAllUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   // dialogs
   const [selected, setSelected] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailMode, setDetailMode] = useState("view"); // view | edit
 
-  // load data once
+  // Load stats once
   useEffect(() => {
     (async () => {
       try {
-        setLoading(true);
         const arr = await userService.list();
-        setAllUsers(Array.isArray(arr) ? arr : []);
+        const allUsers = Array.isArray(arr) ? arr : [];
+        const stu = allUsers.filter((u) => u.role === "STUDENT").length;
+        const tea = allUsers.filter((u) => u.role === "TEACHER").length;
+        const par = allUsers.filter((u) => u.role === "PARENT").length;
+        setCounts({
+          ALL: allUsers.length,
+          STUDENT: stu,
+          TEACHER: tea,
+          PARENT: par,
+        });
       } catch (e) {
-        console.error(e);
-        error("Không thể tải danh sách người dùng");
-      } finally {
-        setLoading(false);
+        console.error("Failed to load counts:", e);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // counts for tabs
-  const counts = useMemo(() => {
-    const stu = allUsers.filter((u) => u.role === "STUDENT").length;
-    const tea = allUsers.filter((u) => u.role === "TEACHER").length;
-    const par = allUsers.filter((u) => u.role === "PARENT").length;
-    return { ALL: allUsers.length, STUDENT: stu, TEACHER: tea, PARENT: par };
-  }, [allUsers]);
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [tab, debouncedQuery]);
 
-  // filter + paginate
-  const filtered = useMemo(() => {
-    const roleFiltered =
-      tab === "ALL" ? allUsers : allUsers.filter((u) => u.role === tab);
-    if (!q) return roleFiltered;
-    const kw = q.toLowerCase();
-    return roleFiltered.filter(
-      (u) =>
-        (u.fullName || "").toLowerCase().includes(kw) ||
-        (u.email || "").toLowerCase().includes(kw) ||
-        (u.phone || "").toLowerCase().includes(kw)
-    );
-  }, [allUsers, tab, q]);
+  // Fetch users with server-side pagination
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const role = tab === "ALL" ? "ALL" : tab;
+      console.log("📡 Fetching users:", {
+        search: debouncedQuery,
+        role,
+        page,
+        size,
+      });
 
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / curSize));
-  const pageSafe = Math.min(curPage, totalPages - 1);
-  const pageItems = filtered.slice(
-    pageSafe * curSize,
-    pageSafe * curSize + curSize
-  );
+      const response = await userService.listPaginated({
+        search: debouncedQuery,
+        role,
+        page,
+        size,
+        sortBy: "id",
+        order: "asc",
+      });
+
+      console.log("📊 BE Response:", response);
+
+      const content = response.content || [];
+      setUsers(content);
+      setTotalElements(response.totalElements || 0);
+      setTotalPages(response.totalPages || 0);
+    } catch (e) {
+      console.error(e);
+      toastRef.current.error("Không thể tải danh sách người dùng");
+    } finally {
+      setLoading(false);
+    }
+  }, [tab, debouncedQuery, page, size]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Reload stats after changes
+  const reloadCounts = async () => {
+    try {
+      const arr = await userService.list();
+      const allUsers = Array.isArray(arr) ? arr : [];
+      const stu = allUsers.filter((u) => u.role === "STUDENT").length;
+      const tea = allUsers.filter((u) => u.role === "TEACHER").length;
+      const par = allUsers.filter((u) => u.role === "PARENT").length;
+      setCounts({
+        ALL: allUsers.length,
+        STUDENT: stu,
+        TEACHER: tea,
+        PARENT: par,
+      });
+    } catch (e) {
+      console.error("Failed to reload counts:", e);
+    }
+  };
+
+  // Data for rendering
+  const pageItems = users;
+  const pageSafe = page;
+  const curSize = size;
+  const total = totalElements;
 
   // helpers
-  const setPageForCurrentTab = (p) =>
-    setPageByTab((prev) => ({ ...prev, [tab]: Math.max(0, p) }));
+  const setPageForCurrentTab = (p) => setPage(Math.max(0, p));
   const setSizeForCurrentTab = (s) => {
-    setSizeByTab((prev) => ({ ...prev, [tab]: s }));
-    setPageForCurrentTab(0);
+    setSize(s);
+    setPage(0);
   };
 
   const handleToggleStatus = async (u) => {
@@ -134,9 +180,9 @@ export default function UserManagement() {
       }
 
       await userService.updateStatus(u.id, !u.active);
-      setAllUsers((list) =>
-        list.map((x) => (x.id === u.id ? { ...x, active: !u.active } : x))
-      );
+      // Reload data from server
+      fetchUsers();
+      reloadCounts();
       success(
         u.active ? "Đã vô hiệu hóa người dùng" : "Đã kích hoạt người dùng"
       );
@@ -353,8 +399,8 @@ export default function UserManagement() {
               onClose={() => setDetailOpen(false)}
               onSuccess={async () => {
                 success("Đã cập nhật người dùng");
-                const arr = await userService.list();
-                setAllUsers(Array.isArray(arr) ? arr : []);
+                fetchUsers();
+                reloadCounts();
                 setDetailMode("view");
               }}
             />

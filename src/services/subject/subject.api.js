@@ -6,6 +6,27 @@ export const getAllSubjects = async () => {
   return response.data;
 };
 
+/**
+ * Lấy subjects với phân trang và filter từ server
+ * @param {Object} params - { search, status, page, size, sortBy, order }
+ * @returns {Promise<{content: Array, totalElements: number, totalPages: number, ...}>}
+ */
+export const getSubjectsPaginated = async (params = {}) => {
+  const {
+    search = "",
+    status = "ALL", // ALL, AVAILABLE, UNAVAILABLE
+    page = 0,
+    size = 10,
+    sortBy = "id",
+    order = "asc",
+  } = params;
+
+  const response = await http.get("/subjects/paginated", {
+    params: { search, status, page, size, sortBy, order },
+  });
+  return response.data;
+};
+
 // Lấy subject theo id
 export const getSubjectById = async (id) => {
   const response = await http.get(`/subjects/${id}`);
