@@ -19,15 +19,16 @@ import {
   SelectValue,
 } from "../../../components/ui/Select";
 import {
-  ArrowLeft,
   Plus,
   X,
   Loader2,
   Upload,
   Image as ImageIcon,
+  Newspaper,
 } from "lucide-react";
 import { newsService } from "../../../services/news/news.service";
 import { useToast } from "../../../hooks/use-toast";
+import { BackButton } from "../../../components/common/BackButton";
 
 export default function CreateNews() {
   const navigate = useNavigate();
@@ -188,19 +189,15 @@ export default function CreateNews() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate("/home/admin/news")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Quay lại
-        </Button>
+        <BackButton to="/home/admin/news" showLabel={false} />
+        <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+          <Newspaper className="h-7 w-7 text-white" />
+        </div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900">
             {isEditing ? "Chỉnh sửa tin tức" : "Tạo tin tức mới"}
           </h1>
-          <p className="text-slate-600 mt-1">
+          <p className="text-sm text-gray-500">
             {isEditing
               ? "Cập nhật nội dung và cài đặt của tin tức"
               : "Tạo và đăng tin tức cho học viên và phụ huynh"}

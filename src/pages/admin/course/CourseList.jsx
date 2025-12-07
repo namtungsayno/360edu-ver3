@@ -1,6 +1,7 @@
 // src/pages/admin/course/AdminCourseList.jsx
+// 🔄 SERVER-SIDE PAGINATION
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -26,16 +27,16 @@ import {
   Filter,
   Users,
   CheckCircle2,
-  Clock,
-  XCircle,
   FileText,
-  AlertTriangle,
   AlertCircle,
   Eye,
   User as UserIcon,
   Mail,
   Layers,
   CalendarClock,
+  GraduationCap,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { courseApi } from "../../../services/course/course.api.js";
@@ -43,6 +44,7 @@ import { courseService } from "../../../services/course/course.service.js";
 import { classService } from "../../../services/class/class.service.js";
 import { subjectService } from "../../../services/subject/subject.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
+import useDebounce from "../../../hooks/useDebounce.js";
 
 /**
  * Map màu + nhãn status
@@ -53,21 +55,9 @@ function getStatusConfig(status) {
   switch (normalized) {
     case "APPROVED":
       return {
-        label: "Đã phê duyệt",
+        label: "Đang hoạt động",
         className: "bg-green-50 text-green-700 border border-green-200",
         icon: CheckCircle2,
-      };
-    case "PENDING":
-      return {
-        label: "Chờ phê duyệt",
-        className: "bg-yellow-50 text-yellow-700 border border-yellow-300",
-        icon: Clock,
-      };
-    case "REJECTED":
-      return {
-        label: "Đã từ chối",
-        className: "bg-red-50 text-red-700 border border-red-200",
-        icon: XCircle,
       };
     case "DRAFT":
       return {
@@ -77,30 +67,33 @@ function getStatusConfig(status) {
       };
     case "ARCHIVED":
       return {
-        label: "Đã ẩn",
+        label: "Đã lưu trữ",
         className: "bg-gray-100 text-gray-600 border border-gray-200",
         icon: AlertCircle,
       };
     default:
       return {
-        label: "Không xác định",
-        className: "bg-gray-50 text-gray-600 border border-gray-200",
-        icon: AlertCircle,
+        label: "Đang hoạt động",
+        className: "bg-green-50 text-green-700 border border-green-200",
+        icon: CheckCircle2,
       };
   }
 }
 
 const STATUS_FILTER_OPTIONS = [
   { value: "ALL", label: "Tất cả trạng thái" },
-  { value: "PENDING", label: "Chờ phê duyệt" },
-  { value: "APPROVED", label: "Đã phê duyệt" },
-  { value: "REJECTED", label: "Đã từ chối" },
+  { value: "APPROVED", label: "Đang hoạt động" },
+  { value: "ARCHIVED", label: "Đã lưu trữ" },
   { value: "DRAFT", label: "Nháp" },
 ];
 
 export default function AdminCourseList() {
   const navigate = useNavigate();
   const { error } = useToast();
+  const toastRef = useRef(error);
+  useEffect(() => {
+    toastRef.current = error;
+  }, [error]);
 
   // ====== DATA STATE ======
   const [courses, setCourses] = useState([]);
@@ -110,8 +103,24 @@ export default function AdminCourseList() {
   const [sourceCourseMap, setSourceCourseMap] = useState({}); // { [sourceId]: courseDetail }
   const [courseIdToClass, setCourseIdToClass] = useState({}); // { [courseId]: classDetail }
 
+  // Server-side pagination
+  const [page, setPage] = useState(0);
+  const [size] = useState(5);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Stats (load all once)
+  const [stats, setStats] = useState({
+    total: 0,
+    approved: 0,
+    draft: 0,
+    archived: 0,
+    teacherCount: 0,
+  });
+
   // ====== FILTERS ======
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [selectedTeacherId, setSelectedTeacherId] = useState("ALL");
   const [selectedSubjectId, setSelectedSubjectId] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -124,47 +133,107 @@ export default function AdminCourseList() {
         setSubjects(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error("Failed to load subjects:", e);
-        error("Không thể tải danh sách môn học");
+        toastRef.current("Không thể tải danh sách môn học");
       }
     })();
-  }, [error]);
+  }, []);
 
-  // ====== LOAD COURSES (ADMIN VIEW) ======
+  // Load stats once
   useEffect(() => {
-    let ignore = false;
-
-    async function fetchCourses() {
-      setLoading(true);
+    (async () => {
       try {
-        // Gửi subject + status cho BE, các filter khác xử lý ở FE
-        const params = {};
-        if (selectedSubjectId !== "ALL") {
-          params.subjectId = Number(selectedSubjectId);
-        }
-        if (statusFilter !== "ALL") {
-          params.status = statusFilter;
-        }
+        const data = await courseApi.list({});
+        const allCourses = Array.isArray(data) ? data : [];
+        const teacherCourses = allCourses.filter((c) => !!c.ownerTeacherId);
 
-        const data = await courseApi.list(params);
-        if (!ignore) {
-          setCourses(Array.isArray(data) ? data : []);
-        }
+        const countByStatus = (st) =>
+          teacherCourses.filter((c) => String(c.status).toUpperCase() === st)
+            .length;
+
+        // Get unique teacher count
+        const teacherMap = new Map();
+        teacherCourses.forEach((c) => {
+          const id = c.ownerTeacherId ?? c.createdByUserId;
+          if (id && !teacherMap.has(id)) {
+            teacherMap.set(id, true);
+          }
+        });
+
+        setStats({
+          total: teacherCourses.length,
+          approved: countByStatus("APPROVED"),
+          draft: countByStatus("DRAFT"),
+          archived: countByStatus("ARCHIVED"),
+          teacherCount: teacherMap.size,
+        });
       } catch (e) {
-        console.error("Failed to load courses (admin):", e);
-        if (!ignore) {
-          error("Không thể tải danh sách khóa học");
-        }
-      } finally {
-        if (!ignore) setLoading(false);
+        console.error("Failed to load stats:", e);
       }
+    })();
+  }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, selectedTeacherId, selectedSubjectId, statusFilter]);
+
+  // Map FE status to BE
+  const mapStatusToBE = (status) => {
+    if (status === "APPROVED" || status === "DRAFT" || status === "ARCHIVED")
+      return status;
+    return "ALL";
+  };
+
+  // ====== LOAD COURSES WITH SERVER-SIDE PAGINATION ======
+  const fetchCourses = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {
+        search: debouncedSearch,
+        status: mapStatusToBE(statusFilter),
+        page,
+        size,
+        sortBy: "id",
+        order: "desc",
+      };
+
+      if (selectedSubjectId !== "ALL") {
+        params.subjectId = Number(selectedSubjectId);
+      }
+      if (selectedTeacherId !== "ALL") {
+        params.teacherUserId = Number(selectedTeacherId);
+      }
+
+      console.log("📡 Fetching courses:", params);
+
+      const response = await courseApi.listPaginated(params);
+      console.log("📊 BE Response:", response);
+
+      const content = response.content || [];
+      // Filter only teacher courses (có ownerTeacherId)
+      const teacherCourses = content.filter((c) => !!c.ownerTeacherId);
+      setCourses(teacherCourses);
+      setTotalElements(response.totalElements || 0);
+      setTotalPages(response.totalPages || 0);
+    } catch (e) {
+      console.error("Failed to load courses (admin):", e);
+      toastRef.current("Không thể tải danh sách khóa học");
+      setCourses([]);
+    } finally {
+      setLoading(false);
     }
+  }, [
+    debouncedSearch,
+    selectedSubjectId,
+    selectedTeacherId,
+    statusFilter,
+    page,
+    size,
+  ]);
 
+  useEffect(() => {
     fetchCourses();
-
-    return () => {
-      ignore = true;
-    };
-  }, [selectedSubjectId, statusFilter, error]);
+  }, [fetchCourses]);
 
   // ====== ENRICH: fetch class names by classId across loaded courses ======
   useEffect(() => {
@@ -315,15 +384,9 @@ export default function AdminCourseList() {
   }, [courses, courseIdToClass]);
 
   // ====== TEACHER OPTIONS (từ dữ liệu course hiện có) ======
-  // Chỉ hiển thị khóa học do giáo viên gửi lên (có ownerTeacherId)
-  const teacherCourses = useMemo(
-    () => courses.filter((c) => !!c.ownerTeacherId),
-    [courses]
-  );
-
   const teacherOptions = useMemo(() => {
     const map = new Map();
-    teacherCourses.forEach((c) => {
+    courses.forEach((c) => {
       const id = c.ownerTeacherId ?? c.createdByUserId;
       const name = c.ownerTeacherName ?? c.createdByName ?? "Không rõ";
       if (id && !map.has(id)) {
@@ -331,69 +394,10 @@ export default function AdminCourseList() {
       }
     });
     return Array.from(map.values());
-  }, [teacherCourses]);
+  }, [courses]);
 
-  // ====== VISIBLE COURSES (FILTER CLIENT) ======
-  const visibleCourses = useMemo(() => {
-    // Module "Khóa học" chỉ hiển thị khóa học do giáo viên tạo/gửi lên
-    let list = [...teacherCourses];
-
-    // search: title, code, teacher name
-    if (search.trim()) {
-      const keyword = search.trim().toLowerCase();
-      list = list.filter((c) => {
-        const title = String(c.title || "").toLowerCase();
-        const code = String(c.code || "").toLowerCase();
-        const teacherName = String(
-          c.ownerTeacherName || c.createdByName || ""
-        ).toLowerCase();
-        return (
-          title.includes(keyword) ||
-          code.includes(keyword) ||
-          teacherName.includes(keyword)
-        );
-      });
-    }
-
-    // teacher
-    if (selectedTeacherId !== "ALL") {
-      const tid = Number(selectedTeacherId);
-      list = list.filter(
-        (c) =>
-          c.ownerTeacherId === tid ||
-          (!c.ownerTeacherId && c.createdByUserId === tid)
-      );
-    }
-
-    // status (đã phần nào lọc ở BE, nhưng giữ lại để chắc)
-    if (statusFilter !== "ALL") {
-      list = list.filter(
-        (c) => String(c.status).toUpperCase() === statusFilter
-      );
-    }
-
-    return list;
-  }, [teacherCourses, search, selectedTeacherId, statusFilter]);
-
-  // ====== STATS (theo toàn bộ danh sách) ======
-  const stats = useMemo(() => {
-    const total = teacherCourses.length;
-    const countByStatus = (st) =>
-      teacherCourses.filter((c) => String(c.status).toUpperCase() === st)
-        .length;
-
-    return {
-      total,
-      pending: countByStatus("PENDING"),
-      approved: countByStatus("APPROVED"),
-      rejected: countByStatus("REJECTED"),
-      draft: countByStatus("DRAFT"),
-      archived: countByStatus("ARCHIVED"),
-      teacherCount: teacherOptions.length,
-    };
-  }, [teacherCourses, teacherOptions]);
-
-  const hasPending = stats.pending > 0;
+  // ====== VISIBLE COURSES (now directly from server) ======
+  const visibleCourses = courses;
 
   // ====== ACTION HANDLERS ======
 
@@ -402,10 +406,7 @@ export default function AdminCourseList() {
     setSelectedTeacherId("ALL");
     setSelectedSubjectId("ALL");
     setStatusFilter("ALL");
-  };
-
-  const handleQuickPendingFilter = () => {
-    setStatusFilter("PENDING");
+    setPage(0);
   };
 
   const handleViewDetail = (courseId) => {
@@ -415,210 +416,224 @@ export default function AdminCourseList() {
   // ====== RENDER ======
 
   return (
-    <div className="p-6 space-y-6">
-      {/* HEADER */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-neutral-950">
-            Quản lý khóa học (Admin)
-          </h1>
-          <p className="text-base text-[#62748e] mt-2 max-w-2xl">
-            Xem, phê duyệt và quản lý tất cả khóa học do giáo viên biên soạn.
-          </p>
+    <div className="p-6 min-h-screen">
+      {/* ============ HEADER ============ */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
+            <GraduationCap className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Quản lý khóa học
+            </h1>
+            <p className="text-sm text-gray-500">
+              Xem và quản lý tất cả khóa học do giáo viên biên soạn
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* QUICK PENDING BANNER */}
-      {hasPending && (
-        <Card className="rounded-2xl border-2 border-yellow-300 bg-yellow-50">
-          <CardContent className="py-4 px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-yellow-700" />
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-yellow-900">
-                  Có {stats.pending} khóa học đang chờ phê duyệt
-                </p>
-                <p className="text-sm text-yellow-800">
-                  Hãy xử lý sớm để giáo viên có thể sử dụng trong lớp học.
-                </p>
-              </div>
+      {/* ============ STATS CARDS ============ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Tổng khóa học</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {stats.total}
+              </p>
             </div>
-            <Button
-              type="button"
-              onClick={handleQuickPendingFilter}
-              className="h-12 px-6 bg-yellow-500 hover:bg-yellow-600 text-white text-base rounded-xl inline-flex items-center gap-2"
-            >
-              <Clock className="w-5 h-5" />
-              Xem khóa học chờ duyệt
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* DASHBOARD STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-6">
-        <StatsCard
-          title="Tổng khóa học"
-          value={stats.total}
-          icon={BookOpen}
-          className="bg-blue-50 text-blue-900"
-        />
-        <StatsCard
-          title="Chờ phê duyệt"
-          value={stats.pending}
-          icon={Clock}
-          className="bg-yellow-50 text-yellow-900"
-        />
-        <StatsCard
-          title="Đã phê duyệt"
-          value={stats.approved}
-          icon={CheckCircle2}
-          className="bg-green-50 text-green-900"
-        />
-        <StatsCard
-          title="Đã từ chối"
-          value={stats.rejected}
-          icon={XCircle}
-          className="bg-red-50 text-red-900"
-        />
-        <StatsCard
-          title="Nháp"
-          value={stats.draft}
-          icon={FileText}
-          className="bg-gray-100 text-gray-800"
-        />
-        <StatsCard
-          title="Giáo viên"
-          value={stats.teacherCount}
-          icon={Users}
-          className="bg-indigo-50 text-indigo-900"
-        />
-      </div>
-
-      {/* FILTER BAR */}
-      <Card className="rounded-2xl border-2 border-gray-200">
-        <CardContent className="p-6 space-y-4">
-          <div className="flex flex-col lg:flex-row lg:items-end gap-6">
-            {/* Search */}
-            <div className="flex-1">
-              <label className="text-sm font-medium text-[#62748e] mb-2 block">
-                Tìm kiếm
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#62748e]" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tìm theo tên khóa học, mã khóa, hoặc tên giáo viên..."
-                  className="pl-10 h-12 text-base rounded-xl"
-                />
-              </div>
-            </div>
-
-            {/* Teacher filter */}
-            <div className="w-full lg:w-56">
-              <label className="text-sm font-medium text-[#62748e] mb-2 block">
-                Giáo viên
-              </label>
-              <Select
-                value={selectedTeacherId}
-                onValueChange={setSelectedTeacherId}
-              >
-                <SelectTrigger className="w-full h-12 rounded-xl text-base">
-                  <SelectValue placeholder="Lọc theo giáo viên" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Tất cả giáo viên</SelectItem>
-                  {teacherOptions.map((t) => (
-                    <SelectItem key={t.id} value={String(t.id)}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Subject filter */}
-            <div className="w-full lg:w-56">
-              <label className="text-sm font-medium text-[#62748e] mb-2 block">
-                Môn học
-              </label>
-              <Select
-                value={selectedSubjectId}
-                onValueChange={setSelectedSubjectId}
-              >
-                <SelectTrigger className="w-full h-12 rounded-xl text-base">
-                  <SelectValue placeholder="Lọc theo môn học" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Tất cả môn học</SelectItem>
-                  {subjects.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status filter */}
-            <div className="w-full lg:w-56">
-              <label className="text-sm font-medium text-[#62748e] mb-2 block">
-                Trạng thái
-              </label>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={statusFilter}
-                  onValueChange={(value) => setStatusFilter(value)}
-                >
-                  <SelectTrigger className="w-full h-12 rounded-xl text-base">
-                    <SelectValue placeholder="Lọc theo trạng thái" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_FILTER_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 rounded-xl"
-                  onClick={handleResetFilters}
-                >
-                  <Filter className="w-5 h-5" />
-                </Button>
-              </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-white" />
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
 
-      {/* COURSE LIST */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">
+                Đang hoạt động
+              </p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {stats.approved}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-500 to-gray-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Nháp</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {stats.draft}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <FileText className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-500 to-slate-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Đã lưu trữ</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {stats.archived}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Giáo viên</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {stats.teacherCount}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+      </div>
+
+      {/* ============ TOOLBAR ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+          {/* Search */}
+          <div className="flex-1">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">
+              Tìm kiếm
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm kiếm khóa học..."
+                className="pl-9 h-11 rounded-xl"
+              />
+            </div>
+          </div>
+
+          {/* Teacher filter */}
+          <div className="w-full lg:w-48">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">
+              Giáo viên
+            </label>
+            <Select
+              value={selectedTeacherId}
+              onValueChange={setSelectedTeacherId}
+            >
+              <SelectTrigger className="w-full h-11 rounded-xl">
+                <SelectValue placeholder="Lọc theo giáo viên" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tất cả giáo viên</SelectItem>
+                {teacherOptions.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Subject filter */}
+          <div className="w-full lg:w-48">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">
+              Môn học
+            </label>
+            <Select
+              value={selectedSubjectId}
+              onValueChange={setSelectedSubjectId}
+            >
+              <SelectTrigger className="w-full h-11 rounded-xl">
+                <SelectValue placeholder="Lọc theo môn học" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Tất cả môn học</SelectItem>
+                {subjects.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Status filter */}
+          <div className="w-full lg:w-48">
+            <label className="text-sm font-medium text-gray-600 mb-2 block">
+              Trạng thái
+            </label>
+            <div className="flex items-center gap-2">
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => setStatusFilter(value)}
+              >
+                <SelectTrigger className="w-full h-11 rounded-xl">
+                  <SelectValue placeholder="Lọc theo trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_FILTER_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-11 w-11 rounded-xl"
+                onClick={handleResetFilters}
+              >
+                <Filter className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ============ COURSE LIST ============ */}
       <div className="space-y-4">
         {loading && (
-          <Card className="rounded-2xl border-2 border-gray-200 p-6 text-base text-[#62748e]">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-base text-gray-500">
             Đang tải danh sách khóa học...
-          </Card>
+          </div>
         )}
 
         {!loading && visibleCourses.length === 0 && (
-          <Card className="rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 py-10 flex flex-col items-center justify-center text-center">
+          <div className="bg-white rounded-2xl shadow-sm border border-dashed border-gray-300 py-10 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 rounded-full border border-gray-300 flex items-center justify-center mb-4">
-              <BookOpen className="w-7 h-7 text-[#62748e]" />
+              <BookOpen className="w-7 h-7 text-gray-400" />
             </div>
-            <p className="text-lg font-semibold text-neutral-950 mb-2">
+            <p className="text-lg font-semibold text-gray-900 mb-2">
               Không tìm thấy khóa học nào
             </p>
-            <p className="text-sm text-[#45556c] max-w-md">
+            <p className="text-sm text-gray-500 max-w-md">
               Hãy thay đổi bộ lọc hoặc yêu cầu giáo viên tạo thêm khóa học mới.
             </p>
-          </Card>
+          </div>
         )}
 
         {!loading &&
@@ -642,156 +657,154 @@ export default function AdminCourseList() {
               course.ownerTeacherName || course.createdByName || "Không rõ";
             const teacherEmail = course.teacherEmail || ""; // hiện BE chưa có
 
-            const isPending = String(course.status).toUpperCase() === "PENDING";
-            const isRejected =
-              String(course.status).toUpperCase() === "REJECTED";
-
             return (
-              <Card
+              <div
                 key={course.id}
-                className="rounded-2xl border-2 border-gray-200 hover:border-blue-300 hover:shadow-lg transition-colors"
+                className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-blue-300 hover:shadow-md transition-all p-6"
               >
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
-                    {/* LEFT MAIN CONTENT */}
-                    <div className="flex-1 flex gap-4">
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0">
-                        <BookOpen className="w-8 h-8 text-white" />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <h2 className="text-xl font-semibold text-neutral-950">
-                            {course.title}
-                          </h2>
-                          {course.code && (
-                            <span className="text-sm text-gray-500">
-                              Mã: {course.code}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-[#62748e]">
-                          {course.subjectName || "Chưa có môn học"}
-                        </p>
-                        {course.description && (
-                          <p className="text-sm text-[#45556c] line-clamp-3">
-                            {course.description}
-                          </p>
-                        )}
-                      </div>
+                <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6">
+                  {/* LEFT MAIN CONTENT */}
+                  <div className="flex-1 flex gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-200">
+                      <BookOpen className="w-7 h-7 text-white" />
                     </div>
-
-                    {/* MIDDLE INFO */}
-                    <div className="flex flex-col gap-3 min-w-[220px]">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                          <Layers className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-[#62748e]">Số chương</p>
-                          <p className="text-lg font-semibold text-neutral-950">
-                            {chapterCount}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-[#62748e]">Số bài học</p>
-                          <p className="text-lg font-semibold text-neutral-950">
-                            {lessonCount}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
-                          <CalendarClock className="w-5 h-5 text-gray-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-[#62748e]">
-                            Ngày tạo (FE demo)
-                          </p>
-                          <p className="text-sm text-neutral-950">
-                            {course.createdAt || "—"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RIGHT SIDEBAR: TEACHER + STATUS + ACTIONS */}
-                    <div className="flex flex-col items-stretch gap-3 min-w-[260px]">
-                      {/* Teacher box */}
-                      <div className="bg-indigo-50 rounded-2xl p-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <UserIcon className="w-5 h-5 text-indigo-700" />
-                          </div>
-                          <div>
-                            <p className="text-xs text-indigo-700">
-                              Giảng viên phụ trách
-                            </p>
-                            <p className="text-sm font-semibold text-indigo-900">
-                              {teacherName}
-                            </p>
-                          </div>
-                        </div>
-                        {teacherEmail && (
-                          <div className="flex items-center gap-2 text-xs text-indigo-800 mt-1">
-                            <Mail className="w-4 h-4" />
-                            <span>{teacherEmail}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Status + ID */}
-                      <div className="flex items-center justify-between gap-2">
-                        <Badge
-                          className={`text-xs px-3 py-1 rounded-full ${statusCfg.className}`}
-                        >
-                          <StatusIcon className="w-3 h-3 mr-1 inline-block align-middle" />
-                          <span className="align-middle">
-                            {statusCfg.label}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          {course.title}
+                        </h2>
+                        {course.code && (
+                          <span className="text-sm text-gray-500">
+                            Mã: {course.code}
                           </span>
-                        </Badge>
-                        <p className="text-xs text-[#62748e]">
-                          ID: {course.id}
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {course.subjectName || "Chưa có môn học"}
+                      </p>
+                      {course.description && (
+                        <p className="text-sm text-gray-600 line-clamp-3">
+                          {course.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* MIDDLE INFO */}
+                  <div className="flex flex-col gap-3 min-w-[200px]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                        <Layers className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Số chương</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          {chapterCount}
                         </p>
                       </div>
-
-                      {/* Rejection reason */}
-                      {isRejected && course.rejectionReason && (
-                        <div className="bg-red-50 border border-red-200 rounded-2xl p-3 text-xs text-red-800">
-                          <p className="font-semibold mb-1">Lý do từ chối:</p>
-                          <p className="whitespace-pre-line">
-                            {course.rejectionReason}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        <Button
-                          type="button"
-                          className="h-11 px-4 rounded-xl text-sm inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                          onClick={() => handleViewDetail(course.id)}
-                        >
-                          <Eye className="w-4 h-4" />
-                          Xem chi tiết
-                        </Button>
-                        {isPending && (
-                          <Badge className="h-11 px-4 rounded-xl text-sm inline-flex items-center gap-2 bg-orange-100 text-orange-700 border border-orange-300">
-                            <Clock className="w-4 h-4" />
-                            Cần phê duyệt
-                          </Badge>
-                        )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Số bài học</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          {lessonCount}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
+                        <CalendarClock className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Ngày tạo</p>
+                        <p className="text-sm text-gray-900">
+                          {course.createdAt || "—"}
+                        </p>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+
+                  {/* RIGHT SIDEBAR: TEACHER + STATUS + ACTIONS */}
+                  <div className="flex flex-col items-stretch gap-3 min-w-[240px]">
+                    {/* Teacher box */}
+                    <div className="bg-indigo-50 rounded-2xl p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
+                          <UserIcon className="w-5 h-5 text-indigo-700" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-indigo-700">
+                            Giảng viên phụ trách
+                          </p>
+                          <p className="text-sm font-semibold text-indigo-900">
+                            {teacherName}
+                          </p>
+                        </div>
+                      </div>
+                      {teacherEmail && (
+                        <div className="flex items-center gap-2 text-xs text-indigo-800 mt-1">
+                          <Mail className="w-4 h-4" />
+                          <span>{teacherEmail}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Status + ID */}
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge
+                        className={`text-xs px-3 py-1 rounded-full ${statusCfg.className}`}
+                      >
+                        <StatusIcon className="w-3 h-3 mr-1 inline-block align-middle" />
+                        <span className="align-middle">{statusCfg.label}</span>
+                      </Badge>
+                      <p className="text-xs text-gray-500">ID: {course.id}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <Button
+                        type="button"
+                        className="h-10 px-4 rounded-xl text-sm inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() => handleViewDetail(course.id)}
+                      >
+                        <Eye className="w-4 h-4" />
+                        Xem chi tiết
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             );
           })}
+      </div>
+
+      {/* ============ PAGINATION ============ */}
+      <div className="flex items-center justify-between px-6 py-4 bg-white rounded-2xl shadow-sm border border-gray-100 mt-4">
+        <div className="text-sm text-gray-500">
+          Hiển thị {visibleCourses.length} / {totalElements} khóa học
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm text-gray-700 px-3">
+            {page + 1} / {Math.max(1, totalPages)}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

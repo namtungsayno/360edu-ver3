@@ -220,7 +220,7 @@ export default function SubjectDetail() {
     navigate(`/home/admin/subject/${id}/courses/create`);
 
   const handleViewCourse = (courseId) => {
-    navigate(`/home/admin/courses/${courseId}`);
+    navigate(`/home/admin/subject/${id}/courses/${courseId}`);
   };
 
   // Loading state
@@ -271,15 +271,22 @@ export default function SubjectDetail() {
   // Course status helper
   const getCourseStatusInfo = (status) => {
     const statusMap = {
-      APPROVED: { label: "Đã duyệt", variant: "success", icon: CheckCircle2 },
-      PENDING: { label: "Chờ duyệt", variant: "warning", icon: Clock },
-      REJECTED: { label: "Từ chối", variant: "destructive", icon: XCircle },
+      APPROVED: {
+        label: "Đang hoạt động",
+        variant: "success",
+        icon: CheckCircle2,
+      },
+      ARCHIVED: {
+        label: "Đã lưu trữ",
+        variant: "secondary",
+        icon: AlertCircle,
+      },
     };
     return (
       statusMap[status] || {
-        label: status,
-        variant: "secondary",
-        icon: AlertCircle,
+        label: "Đang hoạt động",
+        variant: "success",
+        icon: CheckCircle2,
       }
     );
   };
@@ -291,6 +298,8 @@ export default function SubjectDetail() {
         title={subject?.name || "Chi tiết môn học"}
         subtitle={`Mã môn: ${subject?.code}`}
         onBack={handleBack}
+        icon={BookOpen}
+        iconColor="indigo"
         status={
           !editMode
             ? {
@@ -410,10 +419,10 @@ export default function SubjectDetail() {
       {/* Courses Section */}
       <DetailSection
         title="Danh sách khóa học"
-        action={
+        headerActions={
           <Button
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={handleOpenCreateCourse}
           >
             <Plus className="w-4 h-4 mr-2" />

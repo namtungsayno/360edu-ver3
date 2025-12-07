@@ -9,6 +9,27 @@ export const userApi = {
     return http.get("/users", { params }).then((r) => r.data);
   },
 
+  /**
+   * GET /users/paginated - Lấy users với phân trang từ server
+   * @param {Object} params - { search, role, page, size, sortBy, order }
+   * @returns {Promise<{content: Array, totalElements: number, totalPages: number, ...}>}
+   */
+  listPaginated(params = {}) {
+    const {
+      search = "",
+      role = "ALL", // ALL, ADMIN, TEACHER, STUDENT, PARENT
+      page = 0,
+      size = 10,
+      sortBy = "id",
+      order = "asc",
+    } = params;
+    return http
+      .get("/users/paginated", {
+        params: { search, role, page, size, sortBy, order },
+      })
+      .then((r) => r.data);
+  },
+
   create(payload) {
     return http.post("/users", payload).then((r) => r.data);
   },

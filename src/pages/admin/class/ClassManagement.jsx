@@ -1,14 +1,25 @@
 // src/pages/admin/class/ClassManagement.jsx
 // ✨ MASTER-DETAIL SPLIT VIEW - Xem list và chi tiết cùng lúc
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+// 🔄 SERVER-SIDE PAGINATION
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { dayLabelVi, formatCurrency } from "../../../helper/formatters";
 import { classService } from "../../../services/class/class.service";
+import { classApi } from "../../../services/class/class.api";
+import { useToast } from "../../../hooks/use-toast";
+import useDebounce from "../../../hooks/useDebounce";
 import {
   Search,
   Plus,
   Filter,
   ChevronRight,
+  ChevronLeft,
   Users,
   Clock,
   MapPin,
@@ -31,6 +42,8 @@ import {
   GraduationCap,
   Layers,
   ChevronDown,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 // ============ HELPER FUNCTIONS ============
@@ -198,7 +211,14 @@ function ClassListItem({ cls, isSelected, onClick }) {
 }
 
 // ============ DETAIL PANEL ============
-function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
+function DetailPanel({
+  cls,
+  onClose,
+  onPublish,
+  onDelete,
+  updating,
+  deleting,
+}) {
   const navigate = useNavigate();
   const timeStatus = getDerivedStatus(cls);
   const statusBadge = getStatusBadge(cls.status);
@@ -233,37 +253,16 @@ function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
   })();
 
   const totalSessions = (() => {
-    // Thử lấy từ backend trước
-    let v =
+    // Ưu tiên lấy từ backend - đây là giá trị chính xác nhất
+    const v =
       cls?.totalSessions ??
       cls?.numberOfSessions ??
       cls?.sessionCount ??
       cls?.total_sessions ??
+      cls?.sessions ??
       null;
 
-    // Nếu backend trả về 0 hoặc null, thử tính từ schedule + duration
-    if (!v || v === 0) {
-      const scheduleLength = Array.isArray(cls?.schedule)
-        ? cls.schedule.length
-        : 0;
-      if (scheduleLength > 0 && cls?.startDate && cls?.endDate) {
-        try {
-          const start = new Date(cls.startDate);
-          const end = new Date(cls.endDate);
-          const diffTime = Math.abs(end - start);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          const weeks = Math.ceil(diffDays / 7);
-          v = scheduleLength * weeks;
-          console.log(
-            `📊 Calculated totalSessions from schedule: ${scheduleLength} sessions/week × ${weeks} weeks = ${v}`
-          );
-        } catch (e) {
-          console.error("Error calculating sessions:", e);
-        }
-      }
-    }
-
-    console.log("📊 totalSessions:", v);
+    console.log("📊 totalSessions from BE:", v);
     return v;
   })();
 
@@ -519,6 +518,41 @@ function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
               : "✅ Lớp học đã được xuất bản. Bạn có thể chuyển về Bản nháp nếu cần chỉnh sửa thêm."}
           </p>
         </div>
+
+        {/* Delete notice for DRAFT */}
+        {cls.status === "DRAFT" && (
+          <div className="p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-200">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-700 flex items-center gap-1.5">
+                  <Trash2 className="w-4 h-4" />
+                  Có thể xóa lớp
+                </p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  Lớp đang ở trạng thái <strong>DRAFT</strong> nên có thể xóa
+                  vĩnh viễn.
+                </p>
+              </div>
+              <button
+                onClick={onDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors flex-shrink-0"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Xóa lớp
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer Actions */}
@@ -531,7 +565,7 @@ function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
             <Edit className="w-4 h-4" />
             Sửa
           </button>
-          {cls.status === "DRAFT" ? (
+          {cls.status === "DRAFT" && (
             <button
               onClick={onPublish}
               disabled={updating}
@@ -540,17 +574,13 @@ function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
               <CheckCircle className="w-4 h-4" />
               {updating ? "Đang xử lý..." : "Xuất bản"}
             </button>
-          ) : (
-            <button
-              onClick={onRevert}
-              disabled={updating}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 disabled:opacity-50 transition-colors"
-            >
-              <AlertCircle className="w-4 h-4" />
-              {updating ? "Đang xử lý..." : "Về nháp"}
-            </button>
           )}
         </div>
+        {cls.status === "PUBLIC" && (
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            ℹ️ Lớp đã xuất bản không thể chuyển về bản nháp
+          </p>
+        )}
       </div>
     </div>
   );
@@ -577,70 +607,143 @@ function EmptyDetail() {
 // ============ MAIN COMPONENT ============
 export default function ClassManagementV2() {
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
+  const toastRef = useRef({ success, showError });
+  useEffect(() => {
+    toastRef.current = { success, showError };
+  }, [success, showError]);
 
   // Filters
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 300);
   const [classType, setClassType] = useState(""); // "", "online", "offline"
   const [statusFilter, setStatusFilter] = useState(""); // "", "DRAFT", "PUBLIC"
   const [showFilters, setShowFilters] = useState(false);
+
+  // Server-side pagination
+  const [page, setPage] = useState(0);
+  const [size] = useState(5);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   // Data
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Stats counts (load all once)
+  const [stats, setStats] = useState({
+    total: 0,
+    online: 0,
+    offline: 0,
+    draft: 0,
+    published: 0,
+  });
+
   // Selection
   const [selectedId, setSelectedId] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // Load classes
+  // Load stats once
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await classService.list({});
+        const allClasses = Array.isArray(data) ? data : [];
+        const online = allClasses.filter((c) => c.online === true).length;
+        const offline = allClasses.filter((c) => c.online === false).length;
+        const draft = allClasses.filter((c) => c.status === "DRAFT").length;
+        const published = allClasses.filter(
+          (c) => c.status === "PUBLIC"
+        ).length;
+        setStats({
+          total: allClasses.length,
+          online,
+          offline,
+          draft,
+          published,
+        });
+      } catch (e) {
+        console.error("Failed to load stats:", e);
+      }
+    })();
+  }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedQuery, classType, statusFilter]);
+
+  // Map FE filters to BE params
+  const mapStatusToBE = (status) => {
+    if (status === "DRAFT") return "DRAFT";
+    if (status === "PUBLIC") return "PUBLIC";
+    return "ALL";
+  };
+
+  // Load classes with server-side pagination
   const loadClasses = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await classService.list({});
-      setClasses(Array.isArray(data) ? data : []);
+      // Map classType to isOnline param
+      let isOnline = null;
+      if (classType === "online") isOnline = true;
+      else if (classType === "offline") isOnline = false;
+
+      console.log("📡 Fetching classes:", {
+        search: debouncedQuery,
+        status: mapStatusToBE(statusFilter),
+        isOnline,
+        page,
+        size,
+      });
+
+      const response = await classApi.listPaginated({
+        search: debouncedQuery,
+        status: mapStatusToBE(statusFilter),
+        isOnline,
+        page,
+        size,
+        sortBy: "id",
+        order: "desc",
+      });
+
+      console.log("📊 BE Response:", response);
+
+      const content = response.content || [];
+      setClasses(content);
+      setTotalElements(response.totalElements || 0);
+      setTotalPages(response.totalPages || 0);
     } catch (e) {
       console.error(e);
       setClasses([]);
+      toastRef.current.showError("Không thể tải danh sách lớp học");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [debouncedQuery, classType, statusFilter, page, size]);
 
   useEffect(() => {
     loadClasses();
   }, [loadClasses]);
 
-  // Stats
-  const stats = useMemo(() => {
-    const online = classes.filter((c) => c.online === true).length;
-    const offline = classes.filter((c) => c.online === false).length;
-    const draft = classes.filter((c) => c.status === "DRAFT").length;
-    const published = classes.filter((c) => c.status === "PUBLIC").length;
-    return { total: classes.length, online, offline, draft, published };
-  }, [classes]);
-
-  // Filter
-  const filtered = useMemo(() => {
-    let result = classes;
-
-    if (classType === "online")
-      result = result.filter((c) => c.online === true);
-    else if (classType === "offline")
-      result = result.filter((c) => c.online === false);
-
-    if (statusFilter) result = result.filter((c) => c.status === statusFilter);
-
-    const q = query.trim().toLowerCase();
-    if (q) {
-      result = result.filter((c) =>
-        [c.name, c.subjectName, c.teacherFullName, c.roomName]
-          .filter(Boolean)
-          .some((s) => s.toLowerCase().includes(q))
-      );
+  // Reload stats after changes
+  const reloadStats = async () => {
+    try {
+      const data = await classService.list({});
+      const allClasses = Array.isArray(data) ? data : [];
+      const online = allClasses.filter((c) => c.online === true).length;
+      const offline = allClasses.filter((c) => c.online === false).length;
+      const draft = allClasses.filter((c) => c.status === "DRAFT").length;
+      const published = allClasses.filter((c) => c.status === "PUBLIC").length;
+      setStats({ total: allClasses.length, online, offline, draft, published });
+    } catch (e) {
+      console.error("Failed to reload stats:", e);
     }
+  };
 
-    return result;
-  }, [classes, query, classType, statusFilter]);
+  // Data for rendering
+  const filtered = classes;
 
   // Selected class
   const selectedClass = useMemo(() => {
@@ -655,23 +758,36 @@ export default function ClassManagementV2() {
     try {
       await classService.publish(selectedClass.id);
       await loadClasses();
+      await reloadStats();
+      success("Đã xuất bản lớp học thành công");
     } catch (e) {
       console.error(e);
+      showError("Không thể xuất bản lớp học");
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleRevert = async () => {
-    if (!selectedClass) return;
-    setUpdating(true);
+  const handleDelete = async () => {
+    if (!selectedClass || selectedClass.status !== "DRAFT") return;
+
+    const confirmMsg = `Bạn có chắc chắn muốn XÓA VĨNH VIỄN lớp "${selectedClass.name}"?\n\nLưu ý: Tất cả dữ liệu liên quan (buổi học, lịch học, học viên đăng ký,...) sẽ bị xóa và KHÔNG THỂ KHÔI PHỤC.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeleting(true);
     try {
-      await classService.revertDraft(selectedClass.id);
+      await classService.delete(selectedClass.id);
+      setSelectedId(null);
       await loadClasses();
+      await reloadStats();
+      success("Đã xóa lớp học thành công");
     } catch (e) {
       console.error(e);
+      let msg = "Không thể xóa lớp học";
+      if (e.response?.data?.message) msg = e.response.data.message;
+      showError(msg);
     } finally {
-      setUpdating(false);
+      setDeleting(false);
     }
   };
 
@@ -680,9 +796,9 @@ export default function ClassManagementV2() {
       {/* ============ HEADER ============ */}
       <div className="flex-shrink-0 p-6 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
-              <GraduationCap className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
+              <GraduationCap className="h-7 w-7 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -821,11 +937,34 @@ export default function ClassManagementV2() {
             )}
           </div>
 
-          {/* Footer */}
+          {/* Footer with Pagination */}
           <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-            <p className="text-xs text-gray-500 text-center">
-              Hiển thị {filtered.length} / {classes.length} lớp học
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500">
+                Hiển thị {filtered.length} / {totalElements} lớp học
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-gray-600 px-2">
+                  {page + 1} / {Math.max(1, totalPages)}
+                </span>
+                <button
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                  disabled={page >= totalPages - 1}
+                  className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -836,8 +975,9 @@ export default function ClassManagementV2() {
               cls={selectedClass}
               onClose={() => setSelectedId(null)}
               onPublish={handlePublish}
-              onRevert={handleRevert}
+              onDelete={handleDelete}
               updating={updating}
+              deleting={deleting}
             />
           ) : (
             <EmptyDetail />
@@ -857,8 +997,9 @@ export default function ClassManagementV2() {
               cls={selectedClass}
               onClose={() => setSelectedId(null)}
               onPublish={handlePublish}
-              onRevert={handleRevert}
+              onDelete={handleDelete}
               updating={updating}
+              deleting={deleting}
             />
           </div>
         </div>

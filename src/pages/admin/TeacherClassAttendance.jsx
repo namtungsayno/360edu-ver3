@@ -28,6 +28,7 @@ import {
 
 import { teacherAttendanceService } from "../../services/teacher-attendance/teacher-attendance.service";
 import { useToast } from "../../hooks/use-toast.js";
+import { BackButton } from "../../components/common/BackButton";
 
 const DAYS_OF_WEEK = [
   "",
@@ -137,13 +138,12 @@ export default function TeacherClassAttendance() {
         <Card className="rounded-[14px] p-6 text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-400" />
           <p className="text-red-600 mb-4">Không tìm thấy thông tin lớp học</p>
-          <Button
-            onClick={() =>
-              navigate(`/home/admin/teacher-attendance/${teacherId}`)
-            }
-          >
-            Quay lại
-          </Button>
+          <BackButton
+            to={`/home/admin/teacher-attendance/${teacherId}`}
+            variant="outline"
+            showLabel={false}
+            className="ml-0"
+          />
         </Card>
       </div>
     );
@@ -153,21 +153,18 @@ export default function TeacherClassAttendance() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() =>
-            navigate(`/home/admin/teacher-attendance/${teacherId}`)
-          }
-          className="rounded-full"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+        <BackButton
+          to={`/home/admin/teacher-attendance/${teacherId}`}
+          showLabel={false}
+        />
+        <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+          <BookOpen className="h-7 w-7 text-white" />
+        </div>
         <div className="flex-1">
-          <h1 className="text-xl font-semibold text-neutral-950">
+          <h1 className="text-2xl font-bold text-gray-900">
             Chi tiết chấm công lớp
           </h1>
-          <p className="text-[13px] text-[#62748e] mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             Xem chi tiết điểm danh từng buổi học của lớp
           </p>
         </div>
@@ -459,19 +456,6 @@ export default function TeacherClassAttendance() {
           )}
         </CardContent>
       </Card>
-
-      {/* Back Button */}
-      <div className="flex justify-start">
-        <Button
-          variant="outline"
-          onClick={() =>
-            navigate(`/home/admin/teacher-attendance/${teacherId}`)
-          }
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Quay lại
-        </Button>
-      </div>
     </div>
   );
 }

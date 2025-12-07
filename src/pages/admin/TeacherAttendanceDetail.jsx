@@ -36,6 +36,7 @@ import {
 
 import { teacherAttendanceService } from "../../services/teacher-attendance/teacher-attendance.service";
 import { useToast } from "../../hooks/use-toast.js";
+import { BackButton } from "../../components/common/BackButton";
 
 export default function TeacherAttendanceDetail() {
   const { teacherId } = useParams();
@@ -126,9 +127,12 @@ export default function TeacherAttendanceDetail() {
           <p className="text-red-600 mb-4">
             Không tìm thấy thông tin giáo viên
           </p>
-          <Button onClick={() => navigate("/home/admin/teacher-attendance")}>
-            Quay lại danh sách
-          </Button>
+          <BackButton
+            to="/home/admin/teacher-attendance"
+            variant="outline"
+            showLabel={false}
+            className="ml-0"
+          />
         </Card>
       </div>
     );
@@ -138,19 +142,15 @@ export default function TeacherAttendanceDetail() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/home/admin/teacher-attendance")}
-          className="rounded-full"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+        <BackButton to="/home/admin/teacher-attendance" showLabel={false} />
+        <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
+          <CheckCircle2 className="h-7 w-7 text-white" />
+        </div>
         <div className="flex-1">
-          <h1 className="text-xl font-semibold text-neutral-950">
+          <h1 className="text-2xl font-bold text-gray-900">
             Chi tiết chấm công
           </h1>
-          <p className="text-[13px] text-[#62748e] mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             Theo dõi tiến độ làm việc và chấm công của giáo viên
           </p>
         </div>
@@ -424,17 +424,6 @@ export default function TeacherAttendanceDetail() {
           )}
         </CardContent>
       </Card>
-
-      {/* Back Button */}
-      <div className="flex justify-start">
-        <Button
-          variant="outline"
-          onClick={() => navigate("/home/admin/teacher-attendance")}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Quay lại danh sách
-        </Button>
-      </div>
     </div>
   );
 }

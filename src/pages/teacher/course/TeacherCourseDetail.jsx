@@ -40,24 +40,10 @@ function getStatusConfig(status) {
   switch (normalized) {
     case "APPROVED":
       return {
-        label: "Đã phê duyệt",
+        label: "Đang hoạt động",
         className: "bg-emerald-50 text-emerald-700 border border-emerald-200",
         icon: CheckCircle2,
         type: "success",
-      };
-    case "PENDING":
-      return {
-        label: "Chờ phê duyệt",
-        className: "bg-amber-50 text-amber-700 border border-amber-200",
-        icon: Clock,
-        type: "warning",
-      };
-    case "REJECTED":
-      return {
-        label: "Bị từ chối",
-        className: "bg-red-50 text-red-700 border border-red-200",
-        icon: AlertCircle,
-        type: "error",
       };
     case "DRAFT":
       return {
@@ -66,12 +52,19 @@ function getStatusConfig(status) {
         icon: Edit,
         type: "info",
       };
-    default:
+    case "ARCHIVED":
       return {
-        label: "Không xác định",
+        label: "Đã lưu trữ",
         className: "bg-gray-50 text-gray-600 border border-gray-200",
         icon: AlertCircle,
         type: "info",
+      };
+    default:
+      return {
+        label: "Đang hoạt động",
+        className: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+        icon: CheckCircle2,
+        type: "success",
       };
   }
 }
@@ -139,7 +132,6 @@ export default function TeacherCourseDetail() {
     ? course.chapters.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0)
     : 0;
 
-  const isPending = String(course.status).toUpperCase() === "PENDING";
   const displayTitle = String(course.title || "");
 
   return (
@@ -164,16 +156,6 @@ export default function TeacherCourseDetail() {
           </Button>
         }
       />
-
-      {/* Pending Banner */}
-      {isPending && (
-        <DetailStatusBanner
-          icon={Clock}
-          title="Khóa học đang chờ Admin phê duyệt"
-          description="Sau khi được phê duyệt, khóa học sẽ có thể sử dụng trong lớp học. Thời gian xử lý trung bình: 24-48 giờ."
-          type="warning"
-        />
-      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

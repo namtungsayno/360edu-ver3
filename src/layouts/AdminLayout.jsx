@@ -3,9 +3,10 @@
 // // AdminLayout: Có navbar, menu, hiển thị nội dung chính bằng <Outlet />.
 
 import { useEffect, useState } from "react";
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useLocation } from "react-router-dom";
 import Navigation from "../components/common/Navigation";
 import Sidebar from "../components/common/Sidebar";
+import PageTransition from "../components/common/PageTransition";
 import { Menu, X } from "lucide-react";
 
 export default function AdminLayout() {
@@ -23,8 +24,8 @@ export default function AdminLayout() {
   // ];
 
   return (
-    // Toàn bộ nền sáng
-    <div className="min-h-screen bg-gray-50">
+    // Toàn bộ nền sáng - với min-width để đảm bảo layout không vỡ khi zoom
+    <div className="min-h-screen bg-gray-50 min-w-[1024px]">
       {/* MOBILE SIDEBAR (sáng) */}
       <div className="lg:hidden">
         {mobileOpen && (
@@ -55,18 +56,20 @@ export default function AdminLayout() {
         </aside>
       </div>
 
-      {/* DESKTOP SIDEBAR (sáng) */}
-      <aside className="hidden lg:block fixed inset-y-0 left-0 z-30 w-72">
+      {/* DESKTOP SIDEBAR (sáng) - flex-shrink-0 để không bị co lại */}
+      <aside className="hidden lg:block fixed inset-y-0 left-0 z-30 w-72 flex-shrink-0">
         <div className="h-full bg-white text-slate-900 border-r">
           <Sidebar />
         </div>
       </aside>
 
-      {/* MAIN */}
-      <div className="lg:pl-72 min-h-screen flex flex-col">
-        {/* Content LIGHT - No padding for full-screen pages */}
-        <main className="flex-1 text-slate-900">
-          <Outlet />
+      {/* MAIN - overflow-x-auto để có scroll ngang khi cần */}
+      <div className="lg:pl-72 min-h-screen flex flex-col overflow-x-auto">
+        {/* Content LIGHT - với Page Transition */}
+        <main className="flex-1 text-slate-900 min-w-0">
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
         </main>
       </div>
     </div>

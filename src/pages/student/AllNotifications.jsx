@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, CheckCheck, Trash2, Loader2, ArrowLeft } from "lucide-react";
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  Trash2,
+  Loader2,
+  ArrowLeft,
+} from "lucide-react";
 import NotificationService from "../../services/notification/notification.service";
 import { useToast } from "../../hooks/use-toast";
 import { Button } from "../../components/ui/Button";
@@ -12,7 +19,7 @@ const AllNotifications = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { success, error: showError } = useToast();
 
   useEffect(() => {
     fetchNotifications(true);
@@ -40,11 +47,7 @@ const AllNotifications = () => {
       setHasMore(!data.last);
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      toast({
-        variant: "destructive",
-        title: "Lỗi",
-        description: "Không thể tải thông báo",
-      });
+      showError("Không thể tải thông báo");
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -66,12 +69,10 @@ const AllNotifications = () => {
     try {
       await NotificationService.markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      toast({
-        title: "Thành công",
-        description: "Đã đánh dấu tất cả đã đọc",
-      });
+      success("Đã đánh dấu tất cả đã đọc");
     } catch (error) {
       console.error("Error marking all as read:", error);
+      showError("Không thể đánh dấu đã đọc");
     }
   };
 
@@ -89,12 +90,10 @@ const AllNotifications = () => {
     try {
       await NotificationService.deleteNotification(id);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
-      toast({
-        title: "Đã xóa",
-        description: "Thông báo đã được xóa",
-      });
+      success("Thông báo đã được xóa");
     } catch (error) {
       console.error("Error deleting notification:", error);
+      showError("Không thể xóa thông báo");
     }
   };
 

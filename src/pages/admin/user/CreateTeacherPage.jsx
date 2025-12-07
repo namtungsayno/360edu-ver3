@@ -1,15 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ArrowLeft,
-  GraduationCap,
-  User,
-  Mail,
-  Phone,
-  BookOpen,
-} from "lucide-react";
+import { GraduationCap, User, Mail, Phone, BookOpen } from "lucide-react";
 import CreateTeacherForm from "./CreateTeacherForm.jsx";
 import { subjectService } from "../../../services/subject/subject.service";
+import { BackButton } from "../../../components/common/BackButton";
 
 // Trang tạo giáo viên - Thiết kế theo Figma với glassmorphism & gradient
 export default function CreateTeacherPage() {
@@ -42,18 +36,13 @@ export default function CreateTeacherPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-6 flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors group"
-        >
-          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Quay lại</span>
-        </button>
-
         {/* Header Card with Gradient */}
         <div className="mb-8 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-3xl p-8 shadow-xl shadow-indigo-500/30">
           <div className="flex items-center gap-5">
+            <BackButton
+              showLabel={false}
+              className="text-white hover:bg-white/20"
+            />
             <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-xl border border-white/40 flex items-center justify-center shadow-lg">
               <GraduationCap className="w-8 h-8 text-white" strokeWidth={2.5} />
             </div>

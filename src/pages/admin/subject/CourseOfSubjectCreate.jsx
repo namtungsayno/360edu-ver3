@@ -11,7 +11,6 @@ import { Input } from "../../../components/ui/Input.jsx";
 import { Textarea } from "../../../components/ui/Textarea.jsx";
 import {
   BookOpen,
-  ArrowLeft,
   Save,
   Plus,
   Trash2,
@@ -20,6 +19,7 @@ import {
   Info,
 } from "lucide-react";
 import { courseService } from "../../../services/course/course.service";
+import { BackButton } from "../../../components/common/BackButton";
 
 export default function CourseOfSubjectCreate() {
   const navigate = useNavigate();
@@ -174,25 +174,16 @@ export default function CourseOfSubjectCreate() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-2 text-sm text-[#45556c] hover:text-neutral-950 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại môn học</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-            <BookOpen className="w-7 h-7 text-white" />
+        <div className="flex items-center gap-4">
+          <BackButton onClick={handleBack} showLabel={false} />
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
+            <BookOpen className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-neutral-950">
+            <h1 className="text-2xl font-bold text-gray-900">
               Tạo khóa học mới
             </h1>
-            <p className="text-sm text-[#45556c]">Thuộc môn ID #{subjectId}</p>
+            <p className="text-sm text-gray-500">Thuộc môn ID #{subjectId}</p>
           </div>
         </div>
 

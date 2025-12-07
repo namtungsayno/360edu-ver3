@@ -22,6 +22,31 @@ export const classApi = {
       return r.data;
     });
   },
+
+  /**
+   * GET /classes/paginated - Lấy classes với phân trang từ server
+   * @param {Object} params - { search, status, isOnline, teacherUserId, page, size, sortBy, order }
+   * @returns {Promise<{content: Array, totalElements: number, totalPages: number, ...}>}
+   */
+  listPaginated: (params = {}) => {
+    const {
+      search = "",
+      status = "ALL", // ALL, DRAFT, PUBLIC, ARCHIVED
+      isOnline = null, // null = all, true = online, false = offline
+      teacherUserId = null,
+      page = 0,
+      size = 10,
+      sortBy = "id",
+      order = "asc",
+    } = params;
+    const queryParams = { search, status, page, size, sortBy, order };
+    if (isOnline !== null) queryParams.isOnline = isOnline;
+    if (teacherUserId) queryParams.teacherUserId = teacherUserId;
+    return http
+      .get(`/classes/paginated`, { params: queryParams })
+      .then((r) => r.data);
+  },
+
   publish: (id) => http.post(`/classes/${id}/publish`).then((r) => r.data),
   revertDraft: (id) =>
     http.post(`/classes/${id}/revert-draft`).then((r) => r.data),
@@ -45,4 +70,6 @@ export const classApi = {
     http.get(`/classes/${id}/public`).then((r) => r.data),
   update: (id, payload) =>
     http.put(`/classes/${id}`, payload).then((r) => r.data),
+  // Delete a DRAFT class permanently
+  delete: (id) => http.delete(`/classes/${id}`).then((r) => r.data),
 };
