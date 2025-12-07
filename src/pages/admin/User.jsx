@@ -188,7 +188,7 @@ export default function UserManagement() {
       );
     } catch (e) {
       console.error(e);
-      error(e.response?.data?.message || "Cập nhật trạng thái thất bại");
+      error(e.displayMessage || "Cập nhật trạng thái thất bại");
     }
   };
 

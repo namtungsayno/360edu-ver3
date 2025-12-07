@@ -87,7 +87,7 @@ export default function StudentPicker({
       onAdd?.(s);
       setCode("");
     } catch (err) {
-      setError(err.message || "Không tìm thấy học sinh với mã này");
+      setError(err.displayMessage || "Không tìm thấy học sinh với mã này");
     } finally {
       setLoading(false);
     }

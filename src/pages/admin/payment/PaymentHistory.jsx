@@ -141,7 +141,7 @@ export default function PaymentHistory() {
       loadData();
     } catch (e) {
       console.error("Confirm payment error:", e);
-      showError(e?.response?.data?.message || "Xác nhận thất bại", "Lỗi");
+      showError(e?.displayMessage || "Xác nhận thất bại", "Lỗi");
     }
   };
 

@@ -170,7 +170,7 @@ export default function TeacherProfileEdit() {
       await teacherProfileService.saveProfile(payload);
       setSaved(true);
     } catch (err) {
-      setError(err?.message || "Không thể lưu. Vui lòng thử lại.");
+      setError(err?.displayMessage || "Không thể lưu. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -196,7 +196,7 @@ export default function TeacherProfileEdit() {
       });
       setShowCertForm(false);
     } catch (err) {
-      showError(err?.message || "Không thể lưu chứng chỉ");
+      showError(err?.displayMessage || "Không thể lưu chứng chỉ");
     }
   };
 
@@ -212,7 +212,7 @@ export default function TeacherProfileEdit() {
       await loadCertificates();
       success("Xóa chứng chỉ thành công");
     } catch (err) {
-      showError(err?.message || "Không thể xóa chứng chỉ");
+      showError(err?.displayMessage || "Không thể xóa chứng chỉ");
     }
   };
 
@@ -237,7 +237,7 @@ export default function TeacherProfileEdit() {
       });
       setShowExpForm(false);
     } catch (err) {
-      showError(err?.message || "Không thể lưu kinh nghiệm");
+      showError(err?.displayMessage || "Không thể lưu kinh nghiệm");
     }
   };
 
@@ -253,7 +253,7 @@ export default function TeacherProfileEdit() {
       await loadExperiences();
       success("Xóa kinh nghiệm thành công");
     } catch (err) {
-      showError(err?.message || "Không thể xóa kinh nghiệm");
+      showError(err?.displayMessage || "Không thể xóa kinh nghiệm");
     }
   };
 
@@ -277,7 +277,7 @@ export default function TeacherProfileEdit() {
       });
       setShowEduForm(false);
     } catch (err) {
-      showError(err?.message || "Không thể lưu học vấn");
+      showError(err?.displayMessage || "Không thể lưu học vấn");
     }
   };
 
@@ -293,7 +293,7 @@ export default function TeacherProfileEdit() {
       await loadEducations();
       success("Xóa học vấn thành công");
     } catch (err) {
-      showError(err?.message || "Không thể xóa học vấn");
+      showError(err?.displayMessage || "Không thể xóa học vấn");
     }
   };
 

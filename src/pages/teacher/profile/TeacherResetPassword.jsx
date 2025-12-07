@@ -40,7 +40,7 @@ export default function TeacherResetPassword() {
       success("Đổi mật khẩu thành công", "Thành công");
       setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (err) {
-      error(err?.message || "Không thể đổi mật khẩu");
+      error(err?.displayMessage || "Không thể đổi mật khẩu");
     } finally {
       setSubmitting(false);
     }

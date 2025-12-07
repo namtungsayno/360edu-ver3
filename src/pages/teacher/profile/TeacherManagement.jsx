@@ -208,8 +208,9 @@ export default function TeacherManagement() {
       setSaved(true);
       success("Lưu thông tin thành công!");
     } catch (err) {
-      setError(err?.message || "Không thể lưu. Vui lòng thử lại.");
-      showError(err?.message || "Không thể lưu thông tin");
+      const msg = err?.displayMessage || "Không thể lưu thông tin";
+      setError(msg);
+      showError(msg);
     } finally {
       setLoading(false);
     }
