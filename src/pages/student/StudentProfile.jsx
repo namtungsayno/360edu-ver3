@@ -108,7 +108,7 @@ export default function StudentProfile() {
       success("Cập nhật profile thành công");
     } catch (e) {
       console.error("Save profile error:", e);
-      showError(e.response?.data?.message || e.message || "Cập nhật thất bại");
+      showError(e.displayMessage || "Cập nhật thất bại");
     } finally {
       setSaving(false);
     }
@@ -121,18 +121,18 @@ export default function StudentProfile() {
     try {
       setUploadingAvatar(true);
       const result = await studentProfileService.uploadAvatar(file);
-      const newAvatarUrl = result.url + '?t=' + Date.now(); // Add timestamp to force reload
+      const newAvatarUrl = result.url + "?t=" + Date.now(); // Add timestamp to force reload
       setProfile((prev) => ({ ...prev, avatarUrl: newAvatarUrl }));
-      
+
       // Update user context to refresh Header avatar immediately
       if (user) {
         setUser((prevUser) => ({ ...prevUser, avatarUrl: newAvatarUrl }));
       }
-      
+
       success("Cập nhật ảnh đại diện thành công");
     } catch (e) {
       console.error("Upload avatar error:", e);
-      showError(e.response?.data?.error || e.message || "Upload ảnh thất bại");
+      showError(e.displayMessage || "Upload ảnh thất bại");
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) {
@@ -153,20 +153,20 @@ export default function StudentProfile() {
       const updated = await studentProfileService.updateProfile({
         avatarUrl: avatarUrlInput.trim(),
       });
-      const newAvatarUrl = updated.avatarUrl + '?t=' + Date.now(); // Add timestamp to force reload
-      setProfile({...updated, avatarUrl: newAvatarUrl});
+      const newAvatarUrl = updated.avatarUrl + "?t=" + Date.now(); // Add timestamp to force reload
+      setProfile({ ...updated, avatarUrl: newAvatarUrl });
       setShowAvatarUrlModal(false);
       setAvatarUrlInput("");
-      
+
       // Update user context to refresh Header avatar immediately
       if (user) {
         setUser((prevUser) => ({ ...prevUser, avatarUrl: newAvatarUrl }));
       }
-      
+
       success("Cập nhật ảnh đại diện thành công");
     } catch (e) {
       console.error("Save avatar URL error:", e);
-      showError(e.response?.data?.message || e.message || "Cập nhật thất bại");
+      showError(e.displayMessage || "Cập nhật thất bại");
     } finally {
       setSavingAvatarUrl(false);
     }
@@ -185,7 +185,7 @@ export default function StudentProfile() {
       });
     } catch (e) {
       console.error("Change password error:", e);
-      showError(e.response?.data?.error || e.message || "Đổi mật khẩu thất bại");
+      showError(e.displayMessage || "Đổi mật khẩu thất bại");
     } finally {
       setChangingPassword(false);
     }
@@ -208,7 +208,10 @@ export default function StudentProfile() {
     if (profile?.avatarUrl) {
       // Handle relative URLs
       if (profile.avatarUrl.startsWith("/")) {
-        return `${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:8080"}${profile.avatarUrl}`;
+        return `${
+          import.meta.env.VITE_API_URL?.replace("/api", "") ||
+          "http://localhost:8080"
+        }${profile.avatarUrl}`;
       }
       return profile.avatarUrl;
     }
@@ -812,7 +815,8 @@ export default function StudentProfile() {
                   placeholder="https://example.com/image.jpg"
                 />
                 <p className="text-xs text-[#62748e]">
-                  Nhập đường dẫn URL đến ảnh của bạn (hỗ trợ JPEG, PNG, GIF, WebP)
+                  Nhập đường dẫn URL đến ảnh của bạn (hỗ trợ JPEG, PNG, GIF,
+                  WebP)
                 </p>
               </div>
 

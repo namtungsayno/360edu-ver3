@@ -89,7 +89,7 @@ export function Select({ value, defaultValue, onValueChange, children }) {
   );
 
   return (
-    <div ref={rootRef} className="relative inline-block min-w-[8rem]">
+    <div ref={rootRef} className="relative w-full">
       <Ctx.Provider value={api}>{children}</Ctx.Provider>
     </div>
   );
@@ -124,21 +124,27 @@ export function SelectTrigger({
       )}
       {...props}
     >
-      <span className="flex-1 min-w-0 text-left truncate">{children}</span>
+      <span className="flex-1 min-w-0 text-left">{children}</span>
       <IconChevronDown
-        className={cn("ml-2 opacity-60 text-gray-500", iconCls)}
+        className={cn("ml-2 opacity-60 text-gray-500 flex-shrink-0", iconCls)}
       />
     </button>
   );
 }
 
-export function SelectValue({ placeholder }) {
+export function SelectValue({ placeholder, className = "" }) {
   const { value, getLabel, getImmediateLabel } = useContext(Ctx);
   const label = value
     ? getLabel?.(String(value)) || getImmediateLabel?.()
     : undefined;
   return (
-    <span className={cn("block truncate", value ? "" : "text-gray-400")}>
+    <span
+      className={cn(
+        "block",
+        value ? "" : "text-gray-400",
+        className || "truncate"
+      )}
+    >
       {label || placeholder}
     </span>
   );

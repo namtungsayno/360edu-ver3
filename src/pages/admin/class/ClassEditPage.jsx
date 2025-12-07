@@ -18,8 +18,9 @@ import { teacherService } from "../../../services/teacher/teacher.service";
 import { classroomService } from "../../../services/classrooms/classroom.service";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
 import { courseApi } from "../../../services/course/course.api";
-import { Loader2, ArrowLeft, Eye } from "lucide-react";
+import { Loader2, Eye } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
+import { BackButton } from "../../../components/common/BackButton";
 
 /**
  * ClassEditPage
@@ -695,17 +696,13 @@ export default function ClassEditPage() {
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
+                <BackButton
                   onClick={() => {
                     if (currentStep === 2) setCurrentStep(1);
                     else navigate(`/home/admin/class/${cls.id}`);
                   }}
-                  className="flex items-center gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Quay lại
-                </Button>
+                  showLabel={false}
+                />
                 <div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1
@@ -762,59 +759,48 @@ export default function ClassEditPage() {
           </div>
         </div>
 
-        <div className="max-w-[1400px] mx-auto px-6 py-8">
+        <div className="max-w-[1600px] mx-auto px-6 py-4">
           {currentStep === 1 && (
-            <div className="grid grid-cols-[380px_1fr] gap-6 items-stretch">
+            <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-4 items-start">
               {/* Left form */}
               <div
-                className={`rounded-2xl p-5 h-[calc(100vh-250px)] overflow-y-auto sticky top-24 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg ${
+                className={`rounded-2xl p-4 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg ${
                   isOnline ? "shadow-indigo-500/20" : "shadow-green-500/20"
                 }`}
               >
-                <div className="mb-5">
+                <div className="mb-3">
                   <div
-                    className={`flex items-center gap-3 p-4 ${accentBlockGradient} text-white rounded-2xl shadow-lg w-full ${accentShadowStrong}`}
+                    className={`flex items-center gap-3 p-3 ${accentBlockGradient} text-white rounded-xl shadow-lg w-full ${accentShadowStrong}`}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center text-lg flex-shrink-0">
                       {isOnline ? "🌐" : "🏫"}
                     </div>
                     <div>
-                      <h2 className="text-base font-semibold">
+                      <h2 className="text-sm font-semibold">
                         {isOnline ? "Lớp học Online" : "Lớp học Offline"}
                       </h2>
-                      <p className="text-xs text-white/80">
+                      <p className="text-[10px] text-white/80">
                         Chỉnh sửa thông tin lớp
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {isPublic && (
-                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[13px] text-amber-700 leading-relaxed">
-                      <div className="font-semibold mb-1">
-                        Lớp đã ở trạng thái Public
-                      </div>
-                      {isOnline ? (
-                        <p>
-                          Chỉ được phép cập nhật{" "}
-                          <span className="font-medium">Link Meet</span> và{" "}
-                          <span className="font-medium">Sĩ số</span>. Các thông
-                          tin khác đã bị khóa.
-                        </p>
-                      ) : (
-                        <p>
-                          Chỉ được phép cập nhật{" "}
-                          <span className="font-medium">Phòng học</span> và{" "}
-                          <span className="font-medium">Sĩ số</span>. Các thông
-                          tin khác đã bị khóa.
-                        </p>
-                      )}
+                    <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed">
+                      <div className="font-semibold">⚠️ Lớp đã Public</div>
+                      <p className="mt-0.5">
+                        {isOnline
+                          ? "Chỉ sửa được Link Meet và Sĩ số"
+                          : "Chỉ sửa được Phòng học và Sĩ số"}
+                      </p>
                     </div>
                   )}
-                  {/* Dates */}
+
+                  {/* Row 1: Ngày bắt đầu + Ngày kết thúc */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Ngày bắt đầu <span className="text-red-500">*</span>
                       </label>
                       <Input
@@ -822,54 +808,77 @@ export default function ClassEditPage() {
                         value={startDate}
                         min={todayStr}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="h-10 text-sm"
+                        className="h-9 text-sm"
                         disabled={isPublic}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Ngày kết thúc
                       </label>
                       <Input
                         type="date"
                         value={endDate}
                         readOnly
-                        className="h-10 text-sm bg-gray-50"
+                        className="h-9 text-sm bg-gray-50"
                       />
                     </div>
                   </div>
-                  {/* Subject */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Môn học <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      key={`subject-${subjectId}-${subjects.length}`}
-                      value={String(subjectId)}
-                      onValueChange={setSubjectId}
-                      disabled={isPublic}
-                    >
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Chọn môn" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.map((s) => (
-                          <SelectItem key={s.id} value={String(s.id)}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* Cho phép đổi môn khi DRAFT; chỉ khóa khi PUBLIC */}
+
+                  {/* Row 2: Môn học + Giáo viên */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Môn học <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        key={`subject-${subjectId}-${subjects.length}`}
+                        value={String(subjectId)}
+                        onValueChange={setSubjectId}
+                        disabled={isPublic}
+                      >
+                        <SelectTrigger className="h-9 text-sm w-full">
+                          <SelectValue placeholder="Chọn môn" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subjects.map((s) => (
+                            <SelectItem key={s.id} value={String(s.id)}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Giáo viên <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        key={`teacher-${teacherId}-${teachers.length}`}
+                        value={String(teacherId)}
+                        onValueChange={setTeacherId}
+                        disabled={isPublic}
+                      >
+                        <SelectTrigger className="h-9 text-sm w-full">
+                          <SelectValue placeholder="Chọn GV" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teachers.map((t) => (
+                            <SelectItem key={t.userId} value={String(t.userId)}>
+                              {t.fullName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  {/* Course optional */}
+
+                  {/* Row 3: Khóa học (optional) */}
                   {subjectId && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Khóa học{" "}
-                        <span className="text-xs text-gray-500">
-                          (tùy chọn)
-                        </span>
+                        <span className="text-gray-400">(Tùy chọn)</span>
                       </label>
                       <Select
                         key={`course-${courseId}-${courses.length}`}
@@ -877,8 +886,11 @@ export default function ClassEditPage() {
                         onValueChange={setCourseId}
                         disabled={isPublic}
                       >
-                        <SelectTrigger className="h-10 text-sm">
-                          <SelectValue placeholder="Chọn khóa học" />
+                        <SelectTrigger className="h-auto min-h-[36px] text-sm py-2">
+                          <SelectValue
+                            placeholder="Chọn khóa học"
+                            className="whitespace-normal line-clamp-2"
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="">-- Không chọn --</SelectItem>
@@ -889,200 +901,154 @@ export default function ClassEditPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {/* Cho phép đổi khóa học khi DRAFT; chỉ khóa khi PUBLIC */}
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Giáo viên <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      key={`teacher-${teacherId}-${teachers.length}`}
-                      value={String(teacherId)}
-                      onValueChange={setTeacherId}
-                      disabled={isPublic}
-                    >
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Chọn GV" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teachers.map((t) => (
-                          <SelectItem key={t.userId} value={String(t.userId)}>
-                            {t.fullName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* Cho phép đổi giáo viên khi DRAFT; chỉ khóa khi PUBLIC */}
-                  </div>
-                  {/* Total sessions */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Số buổi <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={totalSessions}
-                      onChange={(e) => {
-                        // prevTotalSessions không còn dùng
-                        setTotalSessions(e.target.value);
-                        // endDate sẽ tự động cập nhật
-                      }}
-                      className="h-10 text-sm"
-                      disabled={isPublic}
-                    />
-                    {isPublic && (
-                      <p className="text-[10px] text-amber-600 mt-1">
-                        Số buổi đã bị khóa ở trạng thái Public.
-                      </p>
-                    )}
-                  </div>
-                  {/* Giá tiền mỗi buổi học */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Giá tiền mỗi buổi học (VNĐ){" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={formatVNNumber(pricePerSession)}
-                      onChange={(e) =>
-                        setPricePerSession(digitsOnly(e.target.value))
-                      }
-                      className="h-10 text-sm"
-                      disabled={isPublic}
-                    />
-                    {pricePerSession !== "" &&
-                      parseInt(pricePerSession) < 0 && (
-                        <p className="text-xs text-red-600 mt-1">
-                          Giá tiền mỗi buổi học phải ≥ 0
-                        </p>
-                      )}
-                    {isPublic && (
-                      <p className="text-[10px] text-amber-600 mt-1">
-                        Giá tiền mỗi buổi bị khóa ở trạng thái Public.
-                      </p>
-                    )}
-                  </div>
-                  {/* Offline room or online link + Capacity */}
+                  {/* Row 4: Phòng học/Link Meet + Số buổi */}
                   <div className="grid grid-cols-2 gap-3">
                     {isOnline ? (
-                      <>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                            Link Meet <span className="text-red-500">*</span>
-                          </label>
-                          <Input
-                            value={meetingLink}
-                            onChange={(e) => setMeetingLink(e.target.value)}
-                            placeholder="https://"
-                            className="h-10 text-sm"
-                          />
-                          {meetingLink && !isValidUrl(meetingLink) && (
-                            <p className="text-xs text-red-600 mt-1">
-                              Link không hợp lệ
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                            Sĩ số <span className="text-red-500">*</span>
-                          </label>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={30}
-                            value={capacity}
-                            onChange={(e) => setCapacity(e.target.value)}
-                            className="h-10 text-sm"
-                          />
-                          {capacity && parseInt(capacity) > 30 && (
-                            <p className="text-xs text-red-600 mt-1">
-                              Tối đa 30
-                            </p>
-                          )}
-                        </div>
-                      </>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Link Meet <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          value={meetingLink}
+                          onChange={(e) => setMeetingLink(e.target.value)}
+                          placeholder="https://"
+                          className="h-9 text-sm"
+                        />
+                        {meetingLink && !isValidUrl(meetingLink) && (
+                          <p className="text-[10px] text-red-600 mt-0.5">
+                            Link không hợp lệ
+                          </p>
+                        )}
+                      </div>
                     ) : (
-                      <>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                            Phòng học <span className="text-red-500">*</span>
-                          </label>
-                          <Select
-                            key={`room-${roomId}-${rooms.length}`}
-                            value={String(roomId)}
-                            onValueChange={setRoomId}
-                          >
-                            <SelectTrigger className="h-10 text-sm">
-                              <SelectValue placeholder="Chọn phòng" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {rooms.map((r) => (
-                                <SelectItem key={r.id} value={String(r.id)}>
-                                  {r.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                            Sĩ số <span className="text-red-500">*</span>
-                          </label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={capacity}
-                            onChange={(e) => setCapacity(e.target.value)}
-                            className="h-10 text-sm"
-                          />
-                          {selectedRoom && selectedRoom.capacity && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Tối đa: {selectedRoom.capacity}
-                            </p>
-                          )}
-                        </div>
-                      </>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Phòng học <span className="text-red-500">*</span>
+                        </label>
+                        <Select
+                          key={`room-${roomId}-${rooms.length}`}
+                          value={String(roomId)}
+                          onValueChange={setRoomId}
+                        >
+                          <SelectTrigger className="h-9 text-sm">
+                            <SelectValue placeholder="Chọn phòng" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rooms.map((r) => (
+                              <SelectItem key={r.id} value={String(r.id)}>
+                                {r.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     )}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Số buổi <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={totalSessions}
+                        onChange={(e) => setTotalSessions(e.target.value)}
+                        className="h-9 text-sm"
+                        disabled={isPublic}
+                      />
+                    </div>
                   </div>
-                  {/* Class name readonly */}
+
+                  {/* Row 5: Sĩ số + Giá/buổi */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Sĩ số <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={isOnline ? 30 : undefined}
+                        value={capacity}
+                        onChange={(e) => setCapacity(e.target.value)}
+                        className="h-9 text-sm"
+                      />
+                      {!isOnline && selectedRoom?.capacity && (
+                        <p className="text-[10px] text-gray-500 mt-0.5">
+                          Tối đa: {selectedRoom.capacity}
+                        </p>
+                      )}
+                      {isOnline && capacity && parseInt(capacity) > 30 && (
+                        <p className="text-[10px] text-red-600 mt-0.5">
+                          Tối đa 30
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Giá/buổi (VNĐ) <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatVNNumber(pricePerSession)}
+                        onChange={(e) =>
+                          setPricePerSession(digitsOnly(e.target.value))
+                        }
+                        className="h-9 text-sm"
+                        disabled={isPublic}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 6: Tên lớp */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Tên lớp
                     </label>
                     <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="h-10 text-sm"
+                      className="h-9 text-sm bg-gray-50 font-medium"
                       disabled={isPublic}
                     />
                   </div>
+
+                  {/* Row 7: Mô tả */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Mô tả
                     </label>
                     <Textarea
                       rows={2}
                       value={desc}
                       onChange={(e) => setDesc(e.target.value)}
+                      placeholder="Mô tả về lớp..."
                       className="resize-none text-sm"
                       disabled={isPublic}
                     />
                   </div>
+
+                  {/* Action Button */}
+                  <Button
+                    onClick={() => setCurrentStep(2)}
+                    disabled={!step1Valid}
+                    className={`w-full h-10 rounded-xl ${accentGradient} text-white shadow-lg ${accentShadowStrong} hover:brightness-105 mt-2`}
+                  >
+                    Xem trước
+                  </Button>
                 </div>
               </div>
               {/* Right schedule grid */}
               <div
-                className={`rounded-2xl p-5 h-[calc(100vh-250px)] bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg ${
+                className={`rounded-2xl p-4 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg ${
                   isOnline ? "shadow-indigo-500/20" : "shadow-green-500/20"
                 }`}
               >
                 <div
-                  className={`sticky top-0 z-10 -mx-5 px-5 py-3 rounded-xl text-white ${accentStepGradient} shadow-md flex items-center justify-between`}
+                  className={`-mx-4 px-4 py-2.5 rounded-xl text-white ${accentStepGradient} shadow-md flex items-center justify-between`}
                 >
                   <h2 className="text-lg font-bold">Lịch học</h2>
                   {!isEditingSchedule ? (
@@ -1206,47 +1172,32 @@ export default function ClassEditPage() {
               roomName={selectedRoom?.name}
             />
           )}
-          {/* Footer actions */}
-          <div className="mt-8 flex items-center justify-between">
-            <div>
-              {currentStep === 2 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep(1)}
-                  className="px-6 h-11 rounded-xl"
-                >
-                  Quay lại bước 1
-                </Button>
-              )}
+          {/* Footer actions - only for step 2 */}
+          {currentStep === 2 && (
+            <div className="mt-6 flex items-center justify-between">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentStep(1)}
+                className="px-6 h-10 rounded-xl"
+              >
+                Quay lại bước 1
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className={`px-8 h-10 rounded-xl ${accentGradient} text-white shadow-lg ${accentShadowStrong} hover:brightness-105`}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  "Lưu thay đổi"
+                )}
+              </Button>
             </div>
-            <div className="flex items-center gap-3">
-              {currentStep === 1 && (
-                <Button
-                  onClick={() => setCurrentStep(2)}
-                  disabled={!step1Valid}
-                  className={`px-8 h-11 rounded-xl ${accentGradient} text-white shadow-lg ${accentShadowStrong} hover:brightness-105`}
-                >
-                  Xem trước
-                </Button>
-              )}
-              {currentStep === 2 && (
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className={`px-8 h-11 rounded-xl ${accentGradient} text-white shadow-lg ${accentShadowStrong} hover:brightness-105`}
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Đang lưu...
-                    </>
-                  ) : (
-                    "Lưu thay đổi"
-                  )}
-                </Button>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
       {/* Modal xác nhận ngày kết thúc đã được bỏ. */}

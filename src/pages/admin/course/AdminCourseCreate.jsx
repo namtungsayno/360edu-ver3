@@ -13,19 +13,12 @@ import { Input } from "../../../components/ui/Input.jsx";
 import { Textarea } from "../../../components/ui/Textarea.jsx";
 import { Badge } from "../../../components/ui/Badge.jsx";
 
-import {
-  ArrowLeft,
-  Info,
-  Plus,
-  Trash2,
-  BookOpen,
-  Layers,
-  FileText,
-} from "lucide-react";
+import { Info, Plus, Trash2, BookOpen, Layers, FileText } from "lucide-react";
 
 import { getSubjectById } from "../../../services/subject/subject.api";
 import { courseService } from "../../../services/course/course.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
+import { BackButton } from "../../../components/common/BackButton";
 
 function createLocalId() {
   return Math.random().toString(36).slice(2, 9);
@@ -243,20 +236,16 @@ export default function AdminCourseCreate() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 text-sm text-[#62748e] hover:text-neutral-950"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Quay lại
-          </button>
+        <div className="flex items-center gap-4">
+          <BackButton showLabel={false} />
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
+            <BookOpen className="h-7 w-7 text-white" />
+          </div>
           <div>
-            <h1 className="text-xl font-semibold text-neutral-950">
+            <h1 className="text-2xl font-bold text-gray-900">
               Tạo khóa học mới
             </h1>
-            <p className="text-[12px] text-[#62748e] mt-1">
+            <p className="text-sm text-gray-500">
               Điền thông tin để tạo khóa học mới cho học viên
             </p>
           </div>

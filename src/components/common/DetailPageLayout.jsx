@@ -3,9 +3,9 @@
  * Giúp đồng nhất UI giữa các trang detail trong hệ thống
  */
 import React from "react";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
+import { BackButton } from "./BackButton";
 
 /**
  * Header cho trang detail
@@ -14,37 +14,61 @@ import { Badge } from "../ui/Badge";
  * @param {function} onBack - Hàm xử lý khi click nút quay lại
  * @param {React.ReactNode} actions - Các nút hành động bên phải
  * @param {object} status - { label, className, icon: IconComponent }
+ * @param {React.ComponentType} icon - Icon component hiển thị bên cạnh title
+ * @param {string} iconColor - Màu gradient cho icon (blue, green, purple, orange, red, indigo)
  */
-export function DetailHeader({ title, subtitle, onBack, actions, status }) {
+export function DetailHeader({
+  title,
+  subtitle,
+  onBack,
+  actions,
+  status,
+  icon: Icon,
+  iconColor = "blue",
+}) {
+  const iconColorClasses = {
+    blue: "from-blue-500 to-blue-600 shadow-blue-200",
+    green: "from-emerald-500 to-emerald-600 shadow-emerald-200",
+    purple: "from-purple-500 to-purple-600 shadow-purple-200",
+    orange: "from-orange-500 to-orange-600 shadow-orange-200",
+    red: "from-red-500 to-red-600 shadow-red-200",
+    indigo: "from-indigo-500 to-indigo-600 shadow-indigo-200",
+    amber: "from-amber-500 to-amber-600 shadow-amber-200",
+    cyan: "from-cyan-500 to-cyan-600 shadow-cyan-200",
+    teal: "from-teal-500 to-teal-600 shadow-teal-200",
+  };
+
   return (
     <div className="mb-6">
-      {/* Breadcrumb / Back button */}
-      {onBack && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="mb-3 -ml-2 text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          Quay lại
-        </Button>
-      )}
-
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-            {status && (
-              <Badge className={`${status.className} px-3 py-1`}>
-                {status.icon && (
-                  <status.icon className="w-3.5 h-3.5 mr-1.5 inline-block" />
-                )}
-                {status.label}
-              </Badge>
+        <div className="flex items-center gap-4">
+          {/* Back button - inline with header */}
+          {onBack && <BackButton onClick={onBack} showLabel={false} />}
+          {Icon && (
+            <div
+              className={`p-3 bg-gradient-to-br ${
+                iconColorClasses[iconColor] || iconColorClasses.blue
+              } rounded-xl shadow-lg`}
+            >
+              <Icon className="h-7 w-7 text-white" />
+            </div>
+          )}
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+              {status && (
+                <Badge className={`${status.className} px-3 py-1`}>
+                  {status.icon && (
+                    <status.icon className="w-3.5 h-3.5 mr-1.5 inline-block" />
+                  )}
+                  {status.label}
+                </Badge>
+              )}
+            </div>
+            {subtitle && (
+              <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
             )}
           </div>
-          {subtitle && <p className="text-gray-500 text-sm mt-1">{subtitle}</p>}
         </div>
         {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
       </div>
@@ -327,10 +351,7 @@ export function DetailError({ message, onBack, onRetry }) {
         <p className="text-gray-500 mb-6 max-w-md">{message}</p>
         <div className="flex gap-3">
           {onBack && (
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Quay lại
-            </Button>
+            <BackButton onClick={onBack} variant="outline" className="ml-0" />
           )}
           {onRetry && <Button onClick={onRetry}>Thử lại</Button>}
         </div>

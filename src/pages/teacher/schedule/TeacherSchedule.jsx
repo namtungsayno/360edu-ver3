@@ -1,67 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import {
-  ChevronLeft,
-  ChevronRight,
   Calendar,
   Check,
   Clock,
   Users,
   BookOpen,
+  MapPin,
+  ArrowRight,
 } from "lucide-react";
 import { scheduleService } from "../../../services/schedule/schedule.service";
 import { attendanceService } from "../../../services/attendance/attendance.service";
 import { useAuth } from "../../../hooks/useAuth";
 import { useToast } from "../../../hooks/use-toast";
-
-// Lightweight date helpers
-// tính toán hiển thị lịch
-function startOfWeek(d) {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  date.setDate(date.getDate() + diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-function addDays(d, n) {
-  const nd = new Date(d);
-  nd.setDate(nd.getDate() + n);
-  return nd;
-}
-function addWeeks(d, n) {
-  return addDays(d, n * 7);
-}
-function subWeeks(d, n) {
-  return addDays(d, -n * 7);
-}
-function fmt(date, pattern) {
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  if (pattern === "dd/MM") return `${dd}/${mm}`;
-  if (pattern === "dd/MM/yyyy") return `${dd}/${mm}/${yyyy}`;
-  if (pattern === "yyyy-MM-dd") return `${yyyy}-${mm}-${dd}`;
-  return date.toISOString();
-}
-
-// Static week day meta (1-7 Mon-Sun)
-const WEEK_DAYS = [
-  { id: 1, name: "MON" },
-  { id: 2, name: "TUE" },
-  { id: 3, name: "WED" },
-  { id: 4, name: "THU" },
-  { id: 5, name: "FRI" },
-  { id: 6, name: "SAT" },
-  { id: 7, name: "SUN" },
-];
+import ModernWeekCalendar, {
+  CalendarEventCard,
+  CalendarStatusBadge,
+} from "../../../components/common/ModernWeekCalendar";
+import {
+  startOfWeek,
+  addDays,
+  addWeeks,
+  subWeeks,
+  fmt,
+  WEEK_DAYS,
+} from "../../../utils/date-helpers";
 
 function TeacherSchedule() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { error: showError } = useToast();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [timeSlots, setTimeSlots] = useState([]);
   const [weekSchedule, setWeekSchedule] = useState([]);
@@ -131,7 +100,9 @@ function TeacherSchedule() {
         setTimeSlots(slots);
       } catch (e) {
         console.error("Failed to load time slots:", e);
-        alert("Không thể tải dữ liệu slot. Vui lòng kiểm tra kết nối backend.");
+        showError(
+          "Không thể tải dữ liệu slot. Vui lòng kiểm tra kết nối backend."
+        );
       }
     })();
   }, []);
@@ -149,7 +120,7 @@ function TeacherSchedule() {
         await loadAttendanceStatuses(data);
       } catch (e) {
         console.error("Failed to load teacher schedule:", e);
-        alert(
+        showError(
           "Không thể tải lịch dạy của bạn. Vui lòng kiểm tra kết nối backend."
         );
         setWeekSchedule([]);
@@ -269,378 +240,231 @@ function TeacherSchedule() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekSchedule, attendanceMap, weekStart]);
 
+  // Render event card cho calendar
+  const renderScheduleEvent = (classData, dayId, slotId) => {
+    const key = `${classData.classId}-${classData.day}`;
+    const attendance = attendanceMap[key];
+    const isMarked = attendance?.isMarked || false;
+
+    const classDate = getDateForClass(classData.day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    classDate.setHours(0, 0, 0, 0);
+
+    const isFuture = classDate > today;
+    const isPast = classDate < today;
+
+    // Determine variant
+    let variant = "default";
+    let statusType = "default";
+    let statusText = "";
+
+    if (isFuture) {
+      variant = "default";
+      statusType = "default";
+      statusText = "Sắp tới";
+    } else if (isMarked) {
+      variant = "success";
+      statusType = "success";
+      statusText = "Đã ĐD";
+    } else {
+      variant = "warning";
+      statusType = "warning";
+      statusText = "Chưa ĐD";
+    }
+
+    return (
+      <CalendarEventCard
+        key={classData.id}
+        variant={variant}
+        onClick={() => handleClassClick(classData, "view")}
+      >
+        {/* Header with Status Badge */}
+        <div className="flex items-center justify-end mb-1.5">
+          <CalendarStatusBadge status={statusType}>
+            {isFuture ? (
+              <Clock className="h-3 w-3" />
+            ) : isMarked ? (
+              <Check className="h-3 w-3" />
+            ) : (
+              <Clock className="h-3 w-3" />
+            )}
+            <span>{statusText}</span>
+          </CalendarStatusBadge>
+        </div>
+
+        {/* Class Name - Full display */}
+        <div
+          className="font-bold text-sm text-gray-800 leading-snug mb-1.5"
+          title={classData.className || classData.classCode}
+        >
+          {classData.className || classData.classCode}
+        </div>
+
+        {/* Subject */}
+        <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2">
+          <BookOpen className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate">{classData.subjectName}</span>
+        </div>
+
+        {/* Info Row */}
+        <div className="flex items-center gap-3 text-[11px] text-gray-500">
+          <span className="flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            {attendance?.actualStudentCount || classData.studentCount || 0}
+          </span>
+          <span className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
+            {classData.isOnline
+              ? "Online"
+              : classData.room || classData.roomName || "TBD"}
+          </span>
+        </div>
+
+        {/* Attendance Stats */}
+        {isMarked && attendance?.stats && (
+          <div className="mt-2 pt-2 border-t border-emerald-200/50 flex items-center gap-3 text-[10px]">
+            <span className="text-emerald-600 font-semibold">
+              ✓ {attendance.stats.present}
+            </span>
+            <span className="text-red-500 font-semibold">
+              ✗ {attendance.stats.absent}
+            </span>
+            <span className="text-amber-500 font-semibold">
+              ⏱ {attendance.stats.late}
+            </span>
+          </div>
+        )}
+
+        {/* Quick Action */}
+        {!isFuture && (
+          <div className="mt-3">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClassClick(classData, isMarked ? "edit" : "mark");
+              }}
+              disabled={isPast && !isMarked}
+              className={`w-full flex items-center justify-center gap-1.5 text-xs py-2 px-3 rounded-lg font-semibold transition-all ${
+                isPast && !isMarked
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : isMarked
+                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
+                  : "bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+              }`}
+            >
+              {isPast && !isMarked ? (
+                "Đã qua"
+              ) : isMarked ? (
+                <>
+                  Xem chi tiết <ArrowRight className="h-3 w-3" />
+                </>
+              ) : (
+                <>
+                  Điểm danh ngay <ArrowRight className="h-3 w-3" />
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </CalendarEventCard>
+    );
+  };
+
+  // Stats content for calendar
+  const StatsContent = (
+    <div className="grid grid-cols-4 gap-4">
+      <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-blue-200">
+          <Calendar className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <div className="text-xs text-blue-600 font-medium">Tổng buổi</div>
+          <div className="text-xl font-bold text-blue-700">
+            {stats.totalClasses}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border border-emerald-100">
+        <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-200">
+          <Check className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <div className="text-xs text-emerald-600 font-medium">Đã ĐD</div>
+          <div className="text-xl font-bold text-emerald-700">
+            {stats.marked}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100">
+        <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center shadow-lg shadow-amber-200">
+          <Clock className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <div className="text-xs text-amber-600 font-medium">Chưa ĐD</div>
+          <div className="text-xl font-bold text-amber-700">
+            {stats.unmarked}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl border border-purple-100">
+        <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-200">
+          <Users className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <div className="text-xs text-purple-600 font-medium">Học viên</div>
+          <div className="text-xl font-bold text-purple-700">
+            {stats.totalStudents}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="p-6 space-y-4">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Lịch dạy</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Quản lý lịch giảng dạy buổi tối của bạn (16:00 - 22:00)
-        </p>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-4 gap-4">
-        {/* Tổng buổi học */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Calendar className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Tổng buổi học</div>
-              <div className="text-2xl font-bold text-blue-600">
-                {stats.totalClasses} buổi
-              </div>
-            </div>
-          </div>
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
+          <Calendar className="h-7 w-7 text-white" />
         </div>
-
-        {/* Đã điểm danh */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <Check className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Đã điểm danh</div>
-              <div className="text-2xl font-bold text-green-600">
-                {stats.marked} buổi
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Chưa điểm danh */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Clock className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Chưa điểm danh</div>
-              <div className="text-2xl font-bold text-orange-600">
-                {stats.unmarked} buổi
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tổng học viên */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Users className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Tổng học viên</div>
-              <div className="text-2xl font-bold text-purple-600">
-                {stats.totalStudents} HV
-              </div>
-            </div>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Lịch dạy</h1>
+          <p className="text-sm text-gray-500">
+            Quản lý lịch giảng dạy buổi tối của bạn (16:00 - 22:00)
+          </p>
         </div>
       </div>
 
-      {/* Navigation Bar */}
-      <div className="flex items-center justify-between gap-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePreviousWeek}
-            className="h-8 px-3"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNextWeek}
-            className="h-8 px-3"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-
-          <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 rounded border border-blue-200">
-            <Calendar className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-gray-800">
-              {fmt(weekStart, "dd/MM/yyyy")} -{" "}
-              {fmt(addDays(weekStart, 6), "dd/MM/yyyy")}
-            </span>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentWeek(new Date())}
-            className="h-8 px-3 ml-2"
-          >
-            Tuần hiện tại
-          </Button>
-        </div>
-      </div>
-
-      {/* Schedule Table */}
-      <Card>
-        <CardContent className="p-0">
-          {weekSchedule.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <Calendar className="h-20 w-20 mb-4 opacity-30" />
-              <p className="text-lg font-medium">
-                Không có lịch dạy trong tuần này
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1400px]">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="sticky left-0 z-10 bg-gradient-to-r from-slate-100 to-slate-50 p-3 text-left border-r border-gray-200">
-                      <div className="text-xs font-bold text-gray-700">
-                        Slot
-                      </div>
-                      <div className="text-xs text-gray-500">Thời gian</div>
-                    </th>
-                    {WEEK_DAYS.map((day, index) => {
-                      const date = weekDates[index];
-                      const isToday =
-                        fmt(date, "yyyy-MM-dd") ===
-                        fmt(new Date(), "yyyy-MM-dd");
-                      return (
-                        <th
-                          key={day.id}
-                          className={`p-3 text-center ${
-                            isToday
-                              ? "bg-gradient-to-br from-blue-600 to-blue-700"
-                              : "bg-gradient-to-br from-blue-500 to-indigo-600"
-                          }`}
-                        >
-                          <div className="text-white font-bold text-sm">
-                            {day.name}
-                          </div>
-                          <div className="text-white text-xs opacity-90 mt-1">
-                            {fmt(date, "dd/MM")}
-                          </div>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {timeSlots.map((slot, slotIndex) => (
-                    <tr key={slot.id} className="border-b border-gray-200">
-                      <td className="sticky left-0 z-10 bg-gradient-to-r from-slate-50 to-white p-3 border-r border-gray-200">
-                        <div className="font-bold text-xs text-gray-800">
-                          {slot.label}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          {slot.time}
-                        </div>
-                      </td>
-                      {WEEK_DAYS.map((day) => {
-                        const classes = getClassesForSlot(day.id, slot.id);
-                        return (
-                          <td
-                            key={day.id}
-                            className={`p-2 align-top ${
-                              slotIndex % 2 === 0 ? "bg-gray-50" : "bg-white"
-                            }`}
-                          >
-                            {classes.length > 0 ? (
-                              <div className="space-y-2">
-                                {classes.map((classData) => {
-                                  const key = `${classData.classId}-${classData.day}`;
-                                  const attendance = attendanceMap[key];
-                                  const isMarked =
-                                    attendance?.isMarked || false;
-
-                                  const classDate = getDateForClass(
-                                    classData.day
-                                  );
-                                  const today = new Date();
-                                  today.setHours(0, 0, 0, 0);
-                                  classDate.setHours(0, 0, 0, 0);
-
-                                  const isFuture = classDate > today;
-                                  const isPast = classDate < today;
-
-                                  return (
-                                    <div
-                                      key={classData.id}
-                                      onClick={() =>
-                                        handleClassClick(classData, "view")
-                                      }
-                                      className={`relative rounded-lg p-3 transition-all duration-200 border-2 ${
-                                        isFuture
-                                          ? "bg-gray-100 border-gray-300 opacity-60 cursor-pointer"
-                                          : isPast && isMarked
-                                          ? "bg-green-50 border-green-300 opacity-75 cursor-pointer"
-                                          : isMarked
-                                          ? "bg-green-50 border-green-400 hover:shadow-md hover:border-green-500 cursor-pointer"
-                                          : "bg-orange-50 border-orange-400 hover:shadow-md hover:border-orange-500 cursor-pointer"
-                                      }`}
-                                    >
-                                      {/* Status Badge */}
-                                      {!isFuture && (
-                                        <div
-                                          className={`absolute -top-2 -right-2 rounded-full px-2 py-0.5 text-xs font-bold flex items-center gap-1 shadow-sm ${
-                                            isMarked
-                                              ? "bg-green-500 text-white"
-                                              : "bg-orange-500 text-white"
-                                          }`}
-                                        >
-                                          {isMarked ? (
-                                            <>
-                                              <Check className="h-3 w-3" />
-                                              Đã ĐD
-                                            </>
-                                          ) : (
-                                            <>
-                                              <Clock className="h-3 w-3" />
-                                              Chưa ĐD
-                                            </>
-                                          )}
-                                        </div>
-                                      )}
-
-                                      {/* Class Info */}
-                                      <div className="space-y-1">
-                                        <div className="font-bold text-sm text-gray-800">
-                                          {classData.className ||
-                                            classData.classCode}
-                                        </div>
-                                        <div className="text-xs text-gray-600">
-                                          {classData.subjectName}
-                                        </div>
-                                        {/* Course Info */}
-                                        {classData.courseTitle && (
-                                          <div className="flex items-center gap-1 text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded mt-1">
-                                            <BookOpen className="h-3 w-3" />
-                                            <span className="font-medium">
-                                              {classData.courseTitle}
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
-                                          <span>
-                                            📍 Phòng:{" "}
-                                            {classData.isOnline
-                                              ? "Phòng Online"
-                                              : classData.room ||
-                                                classData.roomName ||
-                                                "Chưa xếp phòng"}
-                                          </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                                          <Users className="h-3 w-3" />
-                                          <span>
-                                            SV:{" "}
-                                            {attendance?.actualStudentCount ||
-                                              classData.studentCount ||
-                                              0}
-                                            /{classData.maxStudents || 0}
-                                          </span>
-                                        </div>
-
-                                        {/* Attendance Details */}
-                                        {isMarked && attendance?.stats && (
-                                          <div className="mt-2 pt-2 border-t border-green-200 flex items-center gap-2 text-xs">
-                                            <span className="text-green-700 font-semibold">
-                                              ✓ {attendance.stats.present}
-                                            </span>
-                                            <span className="text-gray-400">
-                                              |
-                                            </span>
-                                            <span className="text-red-600">
-                                              ✗ {attendance.stats.absent}
-                                            </span>
-                                            <span className="text-gray-400">
-                                              |
-                                            </span>
-                                            <span className="text-orange-600">
-                                              ⏱ {attendance.stats.late}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      {/* Action Buttons */}
-                                      <div className="mt-3 flex gap-2">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (isFuture) return;
-                                            handleClassClick(
-                                              classData,
-                                              isMarked ? "edit" : "mark"
-                                            );
-                                          }}
-                                          disabled={isFuture || isPast}
-                                          className={`flex-1 text-xs py-1.5 px-2 rounded font-medium transition-colors ${
-                                            isFuture || isPast
-                                              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                              : isMarked
-                                              ? "bg-blue-600 text-white hover:bg-blue-700"
-                                              : "bg-orange-600 text-white hover:bg-orange-700"
-                                          }`}
-                                        >
-                                          {isFuture
-                                            ? "Đang mở"
-                                            : isPast
-                                            ? isMarked
-                                              ? "🔒 Đã khóa"
-                                              : "❌ Đã qua"
-                                            : isMarked
-                                            ? "📝 Sửa ĐD"
-                                            : "⚡ Điểm danh"}
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleClassClick(classData, "view");
-                                          }}
-                                          className={`text-xs py-1.5 px-2 rounded font-medium transition-colors bg-gray-200 hover:bg-gray-300 text-gray-700`}
-                                        >
-                                          👁 Chi tiết
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div className="text-center text-gray-400 text-xs py-8">
-                                Trống
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Modern Calendar */}
+      <ModernWeekCalendar
+        currentWeek={currentWeek}
+        onWeekChange={setCurrentWeek}
+        timeSlots={timeSlots}
+        getEventsForSlot={getClassesForSlot}
+        renderEvent={renderScheduleEvent}
+        accentColor="indigo"
+        showStats={true}
+        statsContent={StatsContent}
+      />
 
       {/* Legend */}
-      <div className="flex items-center gap-6 text-sm bg-gray-50 rounded-lg p-4 border border-gray-200">
+      <div className="flex items-center gap-6 text-sm bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
         <span className="font-semibold text-gray-700">Chú thích:</span>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-500 rounded"></div>
+          <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-sm"></div>
           <span className="text-gray-600">Đã điểm danh</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-500 rounded"></div>
+          <div className="w-3 h-3 bg-amber-500 rounded-full shadow-sm"></div>
           <span className="text-gray-600">Chưa điểm danh</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-gray-300 rounded"></div>
-          <span className="text-gray-600">Chưa đến ngày dạy</span>
+          <div className="w-3 h-3 bg-gray-300 rounded-full shadow-sm"></div>
+          <span className="text-gray-600">Sắp tới</span>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import SidebarTeacher from "../components/common/SideBarTeacher";
+import PageTransition from "../components/common/PageTransition";
 import { Menu, X } from "lucide-react";
 
 export default function TeacherLayout() {
@@ -60,9 +61,11 @@ export default function TeacherLayout() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"></div>
         </header>
 
-        {/* Content LIGHT - No padding for full-screen pages */}
+        {/* Content LIGHT - với Page Transition */}
         <main className="flex-1 text-slate-900">
-          <Outlet />
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
         </main>
       </div>
     </div>

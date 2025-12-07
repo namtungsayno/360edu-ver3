@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "../../../hooks/use-toast";
-import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { useToast } from "../../../hooks/use-toast";
 import { Button } from "../../../components/ui/Button.jsx";
 import {
   Select,
@@ -10,72 +9,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/Select.jsx";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  Monitor,
+  MapPin,
+  BookOpen,
+  User,
+  ExternalLink,
+} from "lucide-react";
 import { scheduleService } from "../../../services/schedule/schedule.service";
-import ClassCard from "./ClassCard.jsx";
-
-// Lightweight date helpers
-function startOfWeek(d) {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  date.setDate(date.getDate() + diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-function addDays(d, n) {
-  const nd = new Date(d);
-  nd.setDate(nd.getDate() + n);
-  return nd;
-}
-function addWeeks(d, n) {
-  return addDays(d, n * 7);
-}
-function subWeeks(d, n) {
-  return addDays(d, -n * 7);
-}
-function fmt(date, pattern) {
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  if (pattern === "dd/MM") return `${dd}/${mm}`;
-  if (pattern === "dd/MM/yyyy") return `${dd}/${mm}/${yyyy}`;
-  if (pattern === "yyyy-MM-dd") return `${yyyy}-${mm}-${dd}`;
-  return date.toISOString();
-}
-
-// Static week day meta (1-7 Mon-Sun)
-const WEEK_DAYS = [
-  { id: 1, name: "MON" },
-  { id: 2, name: "TUE" },
-  { id: 3, name: "WED" },
-  { id: 4, name: "THU" },
-  { id: 5, name: "FRI" },
-  { id: 6, name: "SAT" },
-  { id: 7, name: "SUN" },
-];
+import ModernWeekCalendar, {
+  CalendarEventCard,
+  CalendarStatusBadge,
+} from "../../../components/common/ModernWeekCalendar";
+import {
+  startOfWeek,
+  addDays,
+  fmt,
+  WEEK_DAYS,
+} from "../../../utils/date-helpers";
 
 function ScheduleManagement() {
   const navigate = useNavigate();
-  const [currentWeek, setCurrentWeek] = useState(new Date()); // Current week state
+  const { error: showError } = useToast();
+  const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [classTypeFilter, setClassTypeFilter] = useState("all");
   const [teachers, setTeachers] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [weekSchedule, setWeekSchedule] = useState([]);
 
-  // Calculate week dates based on currentWeek
+  // Calculate week start based on currentWeek
   const weekStart = useMemo(() => {
     return startOfWeek(currentWeek);
   }, [currentWeek]);
-
-  const weekDates = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
-    [weekStart]
-  );
-
-  const canGoPrevWeek = true;
-  const canGoNextWeek = true;
 
   useEffect(() => {
     (async () => {
@@ -89,7 +57,7 @@ function ScheduleManagement() {
         setTimeSlots(slots);
       } catch (e) {
         console.error("Failed to load initial data:", e);
-        alert("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối backend.");
+        showError("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối backend.");
       }
     })();
   }, []);
@@ -101,7 +69,7 @@ function ScheduleManagement() {
         setWeekSchedule(data);
       } catch (e) {
         console.error("Failed to load schedule data:", e);
-        alert(
+        showError(
           "Không thể tải dữ liệu lịch học. Vui lòng kiểm tra kết nối backend."
         );
         setWeekSchedule([]);
@@ -166,19 +134,6 @@ function ScheduleManagement() {
     return scheduleLookup?.[dayId]?.[slotId] || [];
   };
 
-  // Week navigation handlers
-  const handlePreviousWeek = () => {
-    if (canGoPrevWeek) {
-      setCurrentWeek((prev) => subWeeks(prev, 1));
-    }
-  };
-
-  const handleNextWeek = () => {
-    if (canGoNextWeek) {
-      setCurrentWeek((prev) => addWeeks(prev, 1));
-    }
-  };
-
   const openClassDetail = (classData) => {
     console.log("🎯 Opening class detail:", classData);
 
@@ -203,282 +158,218 @@ function ScheduleManagement() {
     });
   };
 
+  // Convert timeSlots to ModernWeekCalendar format
+  const calendarTimeSlots = useMemo(() => {
+    return timeSlots.map((slot) => ({
+      id: slot.id,
+      label: slot.label || `Slot ${slot.id}`,
+      time: slot.time || `${slot.startTime || ""} - ${slot.endTime || ""}`,
+    }));
+  }, [timeSlots]);
+
+  // Render class card for calendar
+  const renderClassEvent = (classData, dayId, slotId) => {
+    return (
+      <CalendarEventCard
+        key={classData.id}
+        variant={classData.isOnline ? "info" : "warning"}
+        onClick={() => openClassDetail(classData)}
+        className="cursor-pointer"
+      >
+        {/* Class name */}
+        <div
+          className="font-semibold text-xs truncate mb-1"
+          title={classData.className}
+        >
+          {classData.className}
+        </div>
+
+        {/* Teacher name */}
+        <div className="flex items-center gap-1 text-[10px] text-gray-600 mb-1.5">
+          <User className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate">{classData.teacherName}</span>
+        </div>
+
+        {/* Class type badge */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <CalendarStatusBadge status={classData.isOnline ? "info" : "warning"}>
+            {classData.isOnline ? (
+              <>
+                <Monitor className="h-2.5 w-2.5" />
+                Online
+              </>
+            ) : (
+              <>
+                <MapPin className="h-2.5 w-2.5" />
+                Offline
+              </>
+            )}
+          </CalendarStatusBadge>
+
+          {/* Room/Meet link */}
+          {classData.isOnline && classData.meetLink && (
+            <a
+              href={classData.meetLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
+            >
+              <ExternalLink className="h-2 w-2" />
+              Meet
+            </a>
+          )}
+          {!classData.isOnline && classData.room && (
+            <span
+              className="text-[9px] text-gray-500 truncate max-w-[60px]"
+              title={classData.room}
+            >
+              {classData.room}
+            </span>
+          )}
+        </div>
+      </CalendarEventCard>
+    );
+  };
+
+  // Stats content for calendar header
+  const StatsContent = () => (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* Total Classes Card */}
+      <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg shadow-cyan-200/50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className="text-cyan-100 text-sm font-medium">
+              Tổng lớp trong tuần
+            </p>
+            <p className="text-3xl font-bold mt-1">{filteredSchedule.length}</p>
+          </div>
+          <div className="p-3 bg-white/20 rounded-xl">
+            <Calendar className="h-6 w-6" />
+          </div>
+        </div>
+      </div>
+
+      {/* Online Classes Card */}
+      <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg shadow-violet-200/50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className="text-violet-100 text-sm font-medium">Lớp Online</p>
+            <p className="text-3xl font-bold mt-1">
+              {filteredSchedule.filter((s) => s.isOnline === true).length}
+            </p>
+          </div>
+          <div className="p-3 bg-white/20 rounded-xl">
+            <Monitor className="h-6 w-6" />
+          </div>
+        </div>
+      </div>
+
+      {/* Offline Classes Card */}
+      <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-200/50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className="text-emerald-100 text-sm font-medium">Lớp Offline</p>
+            <p className="text-3xl font-bold mt-1">
+              {filteredSchedule.filter((s) => s.isOnline === false).length}
+            </p>
+          </div>
+          <div className="p-3 bg-white/20 rounded-xl">
+            <MapPin className="h-6 w-6" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header với gradient */}
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-200">
+          <Calendar className="h-7 w-7 text-white" />
+        </div>
         <div>
-          <h1 className="text-3xl font-bold">Quản lý lịch học</h1>
-          <p className="text-slate-600 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900">Quản lý lịch học</h1>
+          <p className="text-gray-500 text-sm">
             Xem lịch giảng dạy của tất cả giáo viên theo tuần
           </p>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6 pb-6">
-          <div className="space-y-4">
-            {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Giáo viên */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  <div className="w-1 h-5 bg-green-600 rounded"></div>
-                  Giáo viên
-                </label>
-                <Select
-                  value={selectedTeacher || "all"}
-                  onValueChange={(value) =>
-                    setSelectedTeacher(value === "all" ? null : value)
-                  }
-                >
-                  <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-green-500 transition-colors [&>svg]:h-4 [&>svg]:w-4">
-                    <SelectValue placeholder="Tất cả giáo viên" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả giáo viên</SelectItem>
-                    {teachers.map((teacher) => (
-                      <SelectItem key={teacher.id} value={String(teacher.id)}>
-                        {teacher.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      {/* Stats Cards */}
+      <StatsContent />
 
-              {/* Loại lớp */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  <div className="w-1 h-5 bg-purple-600 rounded"></div>
-                  Loại lớp
-                </label>
-                <Select
-                  value={classTypeFilter}
-                  onValueChange={setClassTypeFilter}
-                >
-                  <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-purple-500 transition-colors [&>svg]:h-4 [&>svg]:w-4">
-                    <SelectValue placeholder="Tất cả" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả</SelectItem>
-                    <SelectItem value="online">Online</SelectItem>
-                    <SelectItem value="offline">Offline</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Week Navigation */}
-            <div className="flex items-center justify-center gap-3 pt-2 border-t border-gray-200">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePreviousWeek}
-                disabled={!canGoPrevWeek}
-                className="h-9 px-3 hover:bg-blue-50 disabled:opacity-50"
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Tuần trước
-              </Button>
-
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold text-blue-900">
-                  {fmt(weekStart, "dd/MM/yyyy")} -{" "}
-                  {fmt(addDays(weekStart, 6), "dd/MM/yyyy")}
-                </span>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextWeek}
-                disabled={!canGoNextWeek}
-                className="h-9 px-3 hover:bg-blue-50 disabled:opacity-50"
-              >
-                Tuần sau
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-
-              {/* Today button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const today = new Date();
-                  setCurrentWeek(today);
-                  console.log("Reset to today:", fmt(today, "yyyy-MM-dd"));
-                }}
-                className="h-9 px-3 hover:bg-green-50 border-green-300 text-green-700"
-              >
-                <Calendar className="h-4 w-4 mr-1" />
-                Hôm nay
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="p-4">
-          {/* Show stats */}
-          <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                <span className="font-semibold text-gray-700">
-                  Tổng lớp trong tuần:
-                </span>
-                <span className="text-blue-700 font-bold">
-                  {filteredSchedule.length}
-                </span>
-              </div>
-              {selectedTeacher && (
-                <div className="flex items-center gap-2 text-green-700">
-                  <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                  <span>Lọc theo giáo viên</span>
-                </div>
-              )}
-            </div>
+      {/* Filter Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Giáo viên */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <div className="w-1 h-5 bg-cyan-500 rounded"></div>
+              Giáo viên
+            </label>
+            <Select
+              value={selectedTeacher || "all"}
+              onValueChange={(value) =>
+                setSelectedTeacher(value === "all" ? null : value)
+              }
+            >
+              <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-cyan-400 transition-colors">
+                <SelectValue placeholder="Tất cả giáo viên" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả giáo viên</SelectItem>
+                {teachers.map((teacher) => (
+                  <SelectItem key={teacher.id} value={String(teacher.id)}>
+                    {teacher.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {filteredSchedule.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-              <Calendar className="h-16 w-16 mb-4 opacity-50" />
-              <p className="text-lg font-medium">
-                Không có lịch học trong tuần này
-              </p>
-              <p className="text-sm mt-2">
-                Hãy thử chọn tuần khác hoặc thay đổi bộ lọc
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-[1100px]">
-                <div className="grid grid-cols-8 gap-2 mb-3">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-2 font-medium text-center">
-                    <div className="text-xs text-blue-900 font-bold">Slot</div>
-                    <div className="text-xs text-blue-600 mt-1">Thời gian</div>
-                  </div>
-                  {weekDates.map((date, index) => {
-                    const dayInfo = WEEK_DAYS[index];
-                    return (
-                      <div
-                        key={fmt(date, "yyyy-MM-dd")}
-                        className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-md p-2 text-center shadow-sm"
-                      >
-                        <div className="font-bold text-sm">{dayInfo.name}</div>
-                        <div className="text-xs mt-1 opacity-90">
-                          {fmt(date, "dd/MM")}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+          {/* Loại lớp */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <div className="w-1 h-5 bg-purple-500 rounded"></div>
+              Loại lớp
+            </label>
+            <Select value={classTypeFilter} onValueChange={setClassTypeFilter}>
+              <SelectTrigger className="w-full h-10 text-sm bg-white border-gray-300 hover:border-purple-400 transition-colors">
+                <SelectValue placeholder="Tất cả" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="online">Online</SelectItem>
+                <SelectItem value="offline">Offline</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-                <div className="space-y-2">
-                  {timeSlots.map((slot) => (
-                    <div key={slot.id} className="grid grid-cols-8 gap-2">
-                      <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-md p-2 flex flex-col justify-center">
-                        <div className="font-bold text-xs text-gray-800">
-                          {slot.label}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          {slot.time}
-                        </div>
-                      </div>
+        {/* Filter indicator */}
+        {selectedTeacher && (
+          <div className="mt-4 flex items-center gap-2 text-sm text-cyan-700 bg-cyan-50 rounded-xl px-3 py-2 border border-cyan-200">
+            <Users className="h-4 w-4" />
+            <span>Đang lọc theo giáo viên</span>
+          </div>
+        )}
+      </div>
 
-                      {WEEK_DAYS.map((day) => {
-                        const classes = getClassesForSlot(day.id, slot.id);
-
-                        return (
-                          <div
-                            key={day.id}
-                            className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50"
-                          >
-                            {classes.length > 0 ? (
-                              <div className="space-y-2">
-                                {classes.map((classData) => (
-                                  <div
-                                    key={classData.id}
-                                    className="rounded-lg bg-white border border-gray-200 shadow-sm px-2 py-2 flex flex-col gap-1 min-h-[60px] hover:shadow-md transition cursor-pointer"
-                                    onClick={() => openClassDetail(classData)}
-                                    title={classData.className}
-                                  >
-                                    {/* Tên lớp */}
-                                    <div
-                                      className="font-semibold text-sm text-blue-900 truncate"
-                                      style={{ maxWidth: "140px" }}
-                                    >
-                                      {classData.className}
-                                    </div>
-                                    {/* Giáo viên */}
-                                    <div
-                                      className="text-xs text-gray-600 truncate"
-                                      style={{ maxWidth: "140px" }}
-                                    >
-                                      {classData.teacherName}
-                                    </div>
-                                    {/* Loại lớp + Phòng/Meet */}
-                                    <div className="flex items-center gap-2 mt-1">
-                                      {classData.isOnline ? (
-                                        <>
-                                          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200">
-                                            Online
-                                          </span>
-                                          {classData.meetLink && (
-                                            <a
-                                              href={classData.meetLink}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="ml-1 px-2 py-0.5 rounded bg-green-50 text-green-700 text-xs font-medium border border-green-200 hover:bg-green-100"
-                                              onClick={(e) =>
-                                                e.stopPropagation()
-                                              }
-                                            >
-                                              Meet
-                                            </a>
-                                          )}
-                                        </>
-                                      ) : (
-                                        <span className="px-2 py-0.5 rounded bg-orange-50 text-orange-700 text-xs font-medium border border-orange-200">
-                                          Offline
-                                          {classData.room
-                                            ? ` • ${classData.room}`
-                                            : ""}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {/* Nút chi tiết */}
-                                    <div className="mt-1 flex justify-end">
-                                      <button
-                                        className="text-xs px-2 py-1 rounded bg-gray-100 border border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openClassDetail(classData);
-                                        }}
-                                      >
-                                        Chi tiết
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-center h-full text-gray-400 text-xs">
-                                Trống
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Modern Week Calendar */}
+      <ModernWeekCalendar
+        currentWeek={currentWeek}
+        onWeekChange={setCurrentWeek}
+        timeSlots={calendarTimeSlots}
+        getEventsForSlot={getClassesForSlot}
+        renderEvent={renderClassEvent}
+        accentColor="cyan"
+        showStats={false}
+      />
     </div>
   );
 }

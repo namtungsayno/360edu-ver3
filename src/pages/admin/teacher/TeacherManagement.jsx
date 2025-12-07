@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Search,
   Filter,
@@ -7,11 +7,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Users,
+  UserCog,
+  BookOpen,
 } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 import { teacherService } from "../../../services/teacher/teacher.service";
 import { teacherApi } from "../../../services/teacher/teacher.api";
 import { getAllSubjects } from "../../../services/subject/subject.api";
+import useDebounce from "../../../hooks/useDebounce";
 
 const SubjectChip = ({ label, color = "bg-indigo-100 text-indigo-700" }) => (
   <span
@@ -39,11 +43,21 @@ const getSubjectColor = (name) => {
 
 const TeacherManagement = () => {
   const { error, success } = useToast();
+  const toastRef = useRef({ error, success });
+  useEffect(() => {
+    toastRef.current = { error, success };
+  }, [error, success]);
+
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [subjectFilter, setSubjectFilter] = useState(""); // subject id or empty
-  const [page, setPage] = useState(1);
-  const pageSize = 8;
+
+  // Server-side pagination
+  const [page, setPage] = useState(0);
+  const pageSize = 5;
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [editing, setEditing] = useState(null); // teacher object or null
   const [selectedSubjects, setSelectedSubjects] = useState([]); // subject ids
@@ -109,106 +123,110 @@ const TeacherManagement = () => {
         const data = await getAllSubjects();
         setSubjects(Array.isArray(data) ? data : []);
       } catch (e) {
-        error("Không tải được danh sách môn học", "Môn học");
+        toastRef.current.error("Không tải được danh sách môn học", "Môn học");
         console.error(e);
       }
     })();
-  }, [error]);
+  }, []);
 
-  React.useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const subjectId = subjectFilter ? Number(subjectFilter) : null;
-        const data = await teacherService.list(subjectId);
-        const base = normalizeTeachers(data);
-        // Enrich subjects: ưu tiên teacher_id, fallback by-user nếu route chưa có
-        const enriched = await Promise.all(
-          base.map(async (t) => {
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, subjectFilter]);
+
+  // Fetch teachers with server-side pagination
+  const fetchTeachers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const subjectId = subjectFilter ? Number(subjectFilter) : null;
+      console.log("📡 Fetching teachers:", {
+        search: debouncedSearch,
+        subjectId,
+        page,
+        size: pageSize,
+      });
+
+      const response = await teacherApi.listPaginated({
+        search: debouncedSearch,
+        subjectId,
+        page,
+        size: pageSize,
+        sortBy: "id",
+        order: "asc",
+      });
+
+      console.log("📊 BE Response:", response);
+
+      const content = response.content || [];
+      const base = normalizeTeachers(content);
+
+      // Enrich subjects: ưu tiên teacher_id, fallback by-user nếu route chưa có
+      const enriched = await Promise.all(
+        base.map(async (t) => {
+          try {
+            const resp = await teacherApi.getSubjects(t.id);
+            const normalized = (Array.isArray(resp) ? resp : [])
+              .map((s) => {
+                if (!s) return null;
+                if (typeof s === "string") return { id: s, name: s };
+                const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
+                const name = s.name ?? s.subjectName ?? s.nameSubject ?? null;
+                return id || name ? { id, name } : null;
+              })
+              .filter(Boolean);
+            return { ...t, subjects: normalized };
+          } catch (e) {
+            console.error(e);
+            // Fallback by-user
             try {
-              const resp = await teacherApi.getSubjects(t.id);
-              const normalized = (Array.isArray(resp) ? resp : [])
-                .map((s) => {
-                  if (!s) return null;
-                  if (typeof s === "string") return { id: s, name: s };
-                  const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
-                  const name = s.name ?? s.subjectName ?? s.nameSubject ?? null;
-                  return id || name ? { id, name } : null;
-                })
-                .filter(Boolean);
-              return { ...t, subjects: normalized };
-            } catch (e) {
-              console.error(e);
-              // Fallback by-user
-              try {
-                const userId = t._raw?.userId ?? t.userId;
-                if (userId) {
-                  const detail = await teacherApi.getByUserId(userId);
-                  const rawSubjects = Array.isArray(detail?.subjects)
-                    ? detail.subjects
-                    : Array.isArray(detail?.teacherSubjects)
-                    ? detail.teacherSubjects
-                    : Array.isArray(detail?.subjectList)
-                    ? detail.subjectList
-                    : [];
-                  const normalized = rawSubjects
-                    .map((s) => {
-                      if (!s) return null;
-                      if (typeof s === "string") return { id: s, name: s };
-                      const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
-                      const name =
-                        s.name ?? s.subjectName ?? s.nameSubject ?? null;
-                      return id || name ? { id, name } : null;
-                    })
-                    .filter(Boolean);
-                  return { ...t, subjects: normalized };
-                }
-              } catch (e2) {
-                console.error(e2);
+              const userId = t._raw?.userId ?? t.userId;
+              if (userId) {
+                const detail = await teacherApi.getByUserId(userId);
+                const rawSubjects = Array.isArray(detail?.subjects)
+                  ? detail.subjects
+                  : Array.isArray(detail?.teacherSubjects)
+                  ? detail.teacherSubjects
+                  : Array.isArray(detail?.subjectList)
+                  ? detail.subjectList
+                  : [];
+                const normalized = rawSubjects
+                  .map((s) => {
+                    if (!s) return null;
+                    if (typeof s === "string") return { id: s, name: s };
+                    const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
+                    const name =
+                      s.name ?? s.subjectName ?? s.nameSubject ?? null;
+                    return id || name ? { id, name } : null;
+                  })
+                  .filter(Boolean);
+                return { ...t, subjects: normalized };
               }
-              return t;
+            } catch (e2) {
+              console.error(e2);
             }
-          })
-        );
-        setTeachers(enriched);
-      } catch (e) {
-        error("Không tải được danh sách giáo viên", "Giáo viên");
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [subjectFilter, error]);
+            return t;
+          }
+        })
+      );
 
-  const filtered = useMemo(() => {
-    return (teachers || []).filter((t) => {
-      const query = search.trim().toLowerCase();
-      const matchQuery =
-        !query ||
-        (t.name || "").toLowerCase().includes(query) ||
-        (t.code || "").toLowerCase().includes(query) ||
-        (t.email || "").toLowerCase().includes(query) ||
-        (t.phone || "").toLowerCase().includes(query);
+      setTeachers(enriched);
+      setTotalElements(response.totalElements || 0);
+      setTotalPages(response.totalPages || 0);
+    } catch (e) {
+      toastRef.current.error("Không tải được danh sách giáo viên", "Giáo viên");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, subjectFilter, page, pageSize]);
 
-      const currentSubjects = Array.isArray(t.subjects) ? t.subjects : [];
+  useEffect(() => {
+    fetchTeachers();
+  }, [fetchTeachers]);
 
-      const matchSubject =
-        !subjectFilter ||
-        currentSubjects.some((s) =>
-          typeof s === "string"
-            ? String(s) === String(subjectFilter)
-            : Number(s?.id) === Number(subjectFilter)
-        );
-      return matchQuery && matchSubject;
-    });
-  }, [teachers, search, subjectFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const paged = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, currentPage]);
+  // Data for rendering
+  const paged = teachers;
+  const currentPage = page + 1;
 
   const openEdit = async (teacher) => {
     try {
@@ -307,20 +325,7 @@ const TeacherManagement = () => {
               // BE trả lỗi dạng SubjectResponse placeholder
               throw { response: { data: [resp] } };
             }
-            // Cập nhật lại dữ liệu hiển thị môn chính
-            setTeachers((prev) =>
-              (prev || []).map((t) =>
-                t.id === editing.id
-                  ? {
-                      ...t,
-                      primarySubjectId: Number(primarySubjectId),
-                      primarySubjectName: subjects.find(
-                        (s) => Number(s.id) === Number(primarySubjectId)
-                      )?.name,
-                    }
-                  : t
-              )
-            );
+            // Will reload from server after all changes
           } catch (e) {
             let msg = "Không thể đổi môn chính";
             try {
@@ -342,26 +347,8 @@ const TeacherManagement = () => {
         }
         await teacherApi.updateSubjects(editing.id, selectedSubjects);
         success("Đã lưu danh sách môn dạy", "Chỉnh sửa môn dạy");
-        // Cập nhật lại bản ghi giáo viên vừa lưu mà không cần reload toàn bộ
-        try {
-          const latest = await teacherApi.getSubjects(editing.id);
-          const normalized = (Array.isArray(latest) ? latest : [])
-            .map((s) => {
-              if (!s) return null;
-              if (typeof s === "string") return { id: s, name: s };
-              const id = s.id ?? s.subjectId ?? s.idSubject ?? null;
-              const name = s.name ?? s.subjectName ?? s.nameSubject ?? null;
-              return id || name ? { id, name } : null;
-            })
-            .filter(Boolean);
-          setTeachers((prev) =>
-            (prev || []).map((t) =>
-              t.id === editing.id ? { ...t, subjects: normalized } : t
-            )
-          );
-        } catch (e) {
-          console.error(e);
-        }
+        // Reload data from server
+        fetchTeachers();
         closeEdit();
       } catch (e) {
         // Hiển thị thông điệp nghiệp vụ từ backend nếu có (400 Bad Request)
@@ -387,50 +374,119 @@ const TeacherManagement = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 min-h-screen">
+      {/* ============ HEADER ============ */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Quản lý giáo viên</h1>
-        <p className="text-sm text-gray-600">
-          Xem và chỉnh sửa danh sách môn dạy của giáo viên
-        </p>
-      </div>
-
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo tên, mã giáo viên, email hoặc số điện thoại"
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black text-sm"
-            />
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-200">
+            <UserCog className="h-7 w-7 text-white" />
           </div>
-        </div>
-        <div className="w-full md:w-64">
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <select
-              value={subjectFilter}
-              onChange={(e) => {
-                setSubjectFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black text-sm appearance-none"
-            >
-              <option value="">Lọc theo môn học</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Quản lý giáo viên
+            </h1>
+            <p className="text-sm text-gray-500">
+              Xem và chỉnh sửa danh sách môn dạy của giáo viên
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      {/* ============ STATS CARDS ============ */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">
+                Tổng giáo viên
+              </p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {teachers.length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">
+                Đang hoạt động
+              </p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {teachers.filter((t) => t.classCount > 0).length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <UserCog className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Số môn học</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {subjects.length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+      </div>
+
+      {/* ============ TOOLBAR ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Search */}
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm kiếm giáo viên..."
+                className="w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Filter */}
+          <div className="w-full lg:w-64">
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <select
+                value={subjectFilter}
+                onChange={(e) => {
+                  setSubjectFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-10 pr-8 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm appearance-none"
+              >
+                <option value="">Lọc theo môn học</option>
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ============ DATA TABLE ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -514,7 +570,7 @@ const TeacherManagement = () => {
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => openEdit(t)}
-                      className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-black text-white rounded-lg hover:bg-gray-800"
+                      className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                     >
                       <Pencil className="h-4 w-4" />
                       Sửa
@@ -526,25 +582,28 @@ const TeacherManagement = () => {
           </tbody>
         </table>
 
+        {/* Pagination */}
         <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-t border-gray-100">
           <div className="text-sm text-gray-600">
-            {loading ? "Đang tải..." : `Tổng ${filtered.length} giáo viên`}
+            {loading
+              ? "Đang tải..."
+              : `Hiển thị ${paged.length} / ${totalElements} giáo viên`}
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded-md bg-white hover:bg-gray-100"
-              disabled={currentPage === 1}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
+              disabled={page === 0}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="text-sm text-gray-700">
-              Trang {currentPage} / {totalPages}
+            <span className="text-sm text-gray-700 px-3">
+              {currentPage} / {Math.max(1, totalPages)}
             </span>
             <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded-md bg-white hover:bg-gray-100"
-              disabled={currentPage === totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
+              disabled={page >= totalPages - 1}
             >
               <ChevronRight className="h-4 w-4" />
             </button>

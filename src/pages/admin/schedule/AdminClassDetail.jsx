@@ -169,6 +169,8 @@ function AdminClassDetail() {
         title={`Chi tiết lớp ${classDetail.className}`}
         subtitle={`${classDetail.subjectName} • ${classDetail.teacherName}`}
         onBack={() => navigate(-1)}
+        icon={Users}
+        iconColor="blue"
         actions={
           classDetail.meetLink && (
             <Button

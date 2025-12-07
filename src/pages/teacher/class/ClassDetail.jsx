@@ -39,6 +39,7 @@ import { courseService } from "../../../services/course/course.service";
 import SessionMaterialUpload from "../../../components/teacher/SessionMaterialUpload.jsx";
 // Personal course versions flow removed per new business logic
 import { useAuth } from "../../../hooks/useAuth";
+import { BackButton } from "../../../components/common/BackButton";
 
 export default function ClassDetail() {
   // ═══════════════════════════════════════════════════════════════════════════
@@ -275,13 +276,12 @@ export default function ClassDetail() {
             }
           }
 
-          // 3. Fallback: Nếu không tìm được từ SOURCE tag, thử lấy từ Subject's approved courses
+          // 3. Fallback: Nếu không tìm được từ SOURCE tag, thử lấy từ Subject's courses
           if (!loadedAdminCourse && classInfo.subjectId) {
             try {
-              const subjectCourses =
-                await courseService.getApprovedCoursesBySubject(
-                  classInfo.subjectId
-                );
+              const subjectCourses = await courseService.getCoursesBySubject(
+                classInfo.subjectId
+              );
               // Tìm course KHÔNG phải clone (không chứa " - " theo pattern clone title)
               const adminCourse = subjectCourses.find((c) => {
                 // Course clone có title format: "BaseCourseTitle - ClassName"
@@ -614,10 +614,7 @@ export default function ClassDetail() {
   if (!classDetail) {
     return (
       <div className="p-6">
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Quay lại
-        </Button>
+        <BackButton onClick={() => navigate(-1)} showLabel={false} />
         <div className="flex items-center justify-center py-12">
           <p className="text-gray-500">Không tìm thấy thông tin lớp học</p>
         </div>
@@ -627,26 +624,19 @@ export default function ClassDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Breadcrumb Header */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-sm text-[#45556c] hover:text-neutral-950 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại</span>
-          </button>
-        </div>
-
-        {/* Page Title */}
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-950">
-            Chi tiết buổi học
-          </h1>
-          <p className="text-sm text-[#45556c] mt-1">
-            {classDetail.subjectName}
-          </p>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <BackButton onClick={() => navigate(-1)} showLabel={false} />
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
+            <BookOpen className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Chi tiết buổi học
+            </h1>
+            <p className="text-sm text-gray-500">{classDetail.subjectName}</p>
+          </div>
         </div>
 
         {/* Class Info Card */}

@@ -4,10 +4,13 @@ import { Input } from "../../../components/ui/Input";
 import Card from "../../../components/common/Card";
 import { teacherProfileService } from "../../../services/teacher/teacher.profile.service";
 import { teacherUploadApi } from "../../../services/teacher/teacher.upload.api";
+import { User } from "lucide-react";
+import { useToast } from "../../../hooks/use-toast";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
 export default function TeacherManagement() {
+  const { success, error: showError } = useToast();
   const [form, setForm] = useState({
     fullName: "",
     degree: "",
@@ -101,6 +104,7 @@ export default function TeacherManagement() {
       } catch (error) {
         console.error("Error loading teacher data:", error);
         setError("Không thể tải thông tin giáo viên. Vui lòng thử lại.");
+        showError("Không thể tải thông tin giáo viên");
       } finally {
         setLoading(false);
       }
@@ -191,6 +195,7 @@ export default function TeacherManagement() {
         } catch (uploadError) {
           console.error("Error uploading avatar:", uploadError);
           setError("Không thể upload ảnh. Vui lòng thử lại hoặc dùng URL ảnh.");
+          showError("Không thể upload ảnh đại diện");
           setLoading(false);
           setUploadingImage(false);
           return;
@@ -201,8 +206,11 @@ export default function TeacherManagement() {
 
       await teacherProfileService.saveProfile(payload);
       setSaved(true);
+      success("Lưu thông tin thành công!");
     } catch (err) {
-      setError(err?.message || "Không thể lưu. Vui lòng thử lại.");
+      const msg = err?.displayMessage || "Không thể lưu thông tin";
+      setError(msg);
+      showError(msg);
     } finally {
       setLoading(false);
     }
@@ -278,24 +286,41 @@ export default function TeacherManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
+            <User className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Quản lý hồ sơ giáo viên
+            </h1>
+            <p className="text-sm text-gray-500">
+              Cập nhật và quản lý thông tin cá nhân của bạn
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Loading state */}
       {loading && !form.fullName ? (
-        <div className="max-w-7xl mx-auto">
+        <div>
           <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Đang tải thông tin giáo viên...</p>
           </div>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* FORM NHẬP THÔNG TIN */}
           <div className="bg-white border border-gray-200 rounded-lg">
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900">
-                ⚙️ Quản lý hồ sơ giáo viên
+                ⚙️ Thông tin hồ sơ
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Cập nhật và quản lý thông tin cá nhân của bạn.
+                Điền đầy đủ thông tin cá nhân của bạn.
               </p>
 
               <form

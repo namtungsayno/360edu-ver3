@@ -5,10 +5,11 @@ import { http } from "../http";
 
 export const teacherAttendanceApi = {
   /**
-   * Lấy danh sách tất cả giáo viên với thống kê chấm công
+   * Lấy danh sách giáo viên với thống kê chấm công (có phân trang)
+   * @param {Object} params - { search, page, size }
    */
-  getAllTeachers: () => 
-    http.get("/teacher-attendance/teachers").then((r) => r.data),
+  getAllTeachers: (params = {}) =>
+    http.get("/teacher-attendance/teachers", { params }).then((r) => r.data),
 
   /**
    * Lấy thống kê chi tiết chấm công của một giáo viên
@@ -16,7 +17,9 @@ export const teacherAttendanceApi = {
    * @param {Object} params - { month, year } (optional)
    */
   getTeacherSummary: (teacherId, params = {}) =>
-    http.get(`/teacher-attendance/teachers/${teacherId}/summary`, { params }).then((r) => r.data),
+    http
+      .get(`/teacher-attendance/teachers/${teacherId}/summary`, { params })
+      .then((r) => r.data),
 
   /**
    * Lấy chi tiết chấm công theo lớp của giáo viên
@@ -24,5 +27,7 @@ export const teacherAttendanceApi = {
    * @param {number} classId - ID của lớp
    */
   getTeacherClassAttendance: (teacherId, classId) =>
-    http.get(`/teacher-attendance/teachers/${teacherId}/classes/${classId}`).then((r) => r.data),
+    http
+      .get(`/teacher-attendance/teachers/${teacherId}/classes/${classId}`)
+      .then((r) => r.data),
 };

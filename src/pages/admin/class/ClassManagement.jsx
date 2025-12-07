@@ -1,14 +1,25 @@
 // src/pages/admin/class/ClassManagement.jsx
 // ✨ MASTER-DETAIL SPLIT VIEW - Xem list và chi tiết cùng lúc
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+// 🔄 SERVER-SIDE PAGINATION
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { dayLabelVi, formatCurrency } from "../../../helper/formatters";
 import { classService } from "../../../services/class/class.service";
+import { classApi } from "../../../services/class/class.api";
+import { useToast } from "../../../hooks/use-toast";
+import useDebounce from "../../../hooks/useDebounce";
 import {
   Search,
   Plus,
   Filter,
   ChevronRight,
+  ChevronLeft,
   Users,
   Clock,
   MapPin,
@@ -577,70 +588,142 @@ function EmptyDetail() {
 // ============ MAIN COMPONENT ============
 export default function ClassManagementV2() {
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
+  const toastRef = useRef({ success, showError });
+  useEffect(() => {
+    toastRef.current = { success, showError };
+  }, [success, showError]);
 
   // Filters
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 300);
   const [classType, setClassType] = useState(""); // "", "online", "offline"
   const [statusFilter, setStatusFilter] = useState(""); // "", "DRAFT", "PUBLIC"
   const [showFilters, setShowFilters] = useState(false);
+
+  // Server-side pagination
+  const [page, setPage] = useState(0);
+  const [size] = useState(5);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   // Data
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Stats counts (load all once)
+  const [stats, setStats] = useState({
+    total: 0,
+    online: 0,
+    offline: 0,
+    draft: 0,
+    published: 0,
+  });
+
   // Selection
   const [selectedId, setSelectedId] = useState(null);
   const [updating, setUpdating] = useState(false);
 
-  // Load classes
+  // Load stats once
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await classService.list({});
+        const allClasses = Array.isArray(data) ? data : [];
+        const online = allClasses.filter((c) => c.online === true).length;
+        const offline = allClasses.filter((c) => c.online === false).length;
+        const draft = allClasses.filter((c) => c.status === "DRAFT").length;
+        const published = allClasses.filter(
+          (c) => c.status === "PUBLIC"
+        ).length;
+        setStats({
+          total: allClasses.length,
+          online,
+          offline,
+          draft,
+          published,
+        });
+      } catch (e) {
+        console.error("Failed to load stats:", e);
+      }
+    })();
+  }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedQuery, classType, statusFilter]);
+
+  // Map FE filters to BE params
+  const mapStatusToBE = (status) => {
+    if (status === "DRAFT") return "DRAFT";
+    if (status === "PUBLIC") return "PUBLIC";
+    return "ALL";
+  };
+
+  // Load classes with server-side pagination
   const loadClasses = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await classService.list({});
-      setClasses(Array.isArray(data) ? data : []);
+      // Map classType to isOnline param
+      let isOnline = null;
+      if (classType === "online") isOnline = true;
+      else if (classType === "offline") isOnline = false;
+
+      console.log("📡 Fetching classes:", {
+        search: debouncedQuery,
+        status: mapStatusToBE(statusFilter),
+        isOnline,
+        page,
+        size,
+      });
+
+      const response = await classApi.listPaginated({
+        search: debouncedQuery,
+        status: mapStatusToBE(statusFilter),
+        isOnline,
+        page,
+        size,
+        sortBy: "id",
+        order: "desc",
+      });
+
+      console.log("📊 BE Response:", response);
+
+      const content = response.content || [];
+      setClasses(content);
+      setTotalElements(response.totalElements || 0);
+      setTotalPages(response.totalPages || 0);
     } catch (e) {
       console.error(e);
       setClasses([]);
+      toastRef.current.showError("Không thể tải danh sách lớp học");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [debouncedQuery, classType, statusFilter, page, size]);
 
   useEffect(() => {
     loadClasses();
   }, [loadClasses]);
 
-  // Stats
-  const stats = useMemo(() => {
-    const online = classes.filter((c) => c.online === true).length;
-    const offline = classes.filter((c) => c.online === false).length;
-    const draft = classes.filter((c) => c.status === "DRAFT").length;
-    const published = classes.filter((c) => c.status === "PUBLIC").length;
-    return { total: classes.length, online, offline, draft, published };
-  }, [classes]);
-
-  // Filter
-  const filtered = useMemo(() => {
-    let result = classes;
-
-    if (classType === "online")
-      result = result.filter((c) => c.online === true);
-    else if (classType === "offline")
-      result = result.filter((c) => c.online === false);
-
-    if (statusFilter) result = result.filter((c) => c.status === statusFilter);
-
-    const q = query.trim().toLowerCase();
-    if (q) {
-      result = result.filter((c) =>
-        [c.name, c.subjectName, c.teacherFullName, c.roomName]
-          .filter(Boolean)
-          .some((s) => s.toLowerCase().includes(q))
-      );
+  // Reload stats after changes
+  const reloadStats = async () => {
+    try {
+      const data = await classService.list({});
+      const allClasses = Array.isArray(data) ? data : [];
+      const online = allClasses.filter((c) => c.online === true).length;
+      const offline = allClasses.filter((c) => c.online === false).length;
+      const draft = allClasses.filter((c) => c.status === "DRAFT").length;
+      const published = allClasses.filter((c) => c.status === "PUBLIC").length;
+      setStats({ total: allClasses.length, online, offline, draft, published });
+    } catch (e) {
+      console.error("Failed to reload stats:", e);
     }
+  };
 
-    return result;
-  }, [classes, query, classType, statusFilter]);
+  // Data for rendering
+  const filtered = classes;
 
   // Selected class
   const selectedClass = useMemo(() => {
@@ -655,8 +738,11 @@ export default function ClassManagementV2() {
     try {
       await classService.publish(selectedClass.id);
       await loadClasses();
+      await reloadStats();
+      success("Đã xuất bản lớp học thành công");
     } catch (e) {
       console.error(e);
+      showError("Không thể xuất bản lớp học");
     } finally {
       setUpdating(false);
     }
@@ -668,8 +754,11 @@ export default function ClassManagementV2() {
     try {
       await classService.revertDraft(selectedClass.id);
       await loadClasses();
+      await reloadStats();
+      success("Đã chuyển lớp về bản nháp");
     } catch (e) {
       console.error(e);
+      showError("Không thể chuyển về bản nháp");
     } finally {
       setUpdating(false);
     }
@@ -680,9 +769,9 @@ export default function ClassManagementV2() {
       {/* ============ HEADER ============ */}
       <div className="flex-shrink-0 p-6 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
-              <GraduationCap className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
+              <GraduationCap className="h-7 w-7 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -821,11 +910,34 @@ export default function ClassManagementV2() {
             )}
           </div>
 
-          {/* Footer */}
+          {/* Footer with Pagination */}
           <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-            <p className="text-xs text-gray-500 text-center">
-              Hiển thị {filtered.length} / {classes.length} lớp học
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500">
+                Hiển thị {filtered.length} / {totalElements} lớp học
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-gray-600 px-2">
+                  {page + 1} / {Math.max(1, totalPages)}
+                </span>
+                <button
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                  disabled={page >= totalPages - 1}
+                  className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
