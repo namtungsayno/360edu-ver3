@@ -29,9 +29,11 @@ import {
 } from "../../../components/ui/Tabs";
 import Modal from "../../../components/ui/Modal";
 import { newsService } from "../../../services/news/news.service";
+import { useToast } from "../../../hooks/use-toast";
 
 export default function NewsList() {
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selected, setSelected] = useState(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -121,9 +123,12 @@ export default function NewsList() {
       setNews((prev) =>
         prev.map((n) => (n.id === id ? { ...n, status: newStatus } : n))
       );
+      success(
+        newStatus === "published" ? "Đã hiển thị tin tức" : "Đã ẩn tin tức"
+      );
     } catch (err) {
       console.error("Failed to toggle status:", err);
-      alert(err.displayMessage || "Không thể cập nhật trạng thái");
+      showError(err.displayMessage || "Không thể cập nhật trạng thái");
     }
   };
 

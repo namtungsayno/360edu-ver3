@@ -5,10 +5,12 @@ import Card from "../../../components/common/Card";
 import { teacherProfileService } from "../../../services/teacher/teacher.profile.service";
 import { teacherUploadApi } from "../../../services/teacher/teacher.upload.api";
 import { User } from "lucide-react";
+import { useToast } from "../../../hooks/use-toast";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
 export default function TeacherManagement() {
+  const { success, error: showError } = useToast();
   const [form, setForm] = useState({
     fullName: "",
     degree: "",
@@ -102,6 +104,7 @@ export default function TeacherManagement() {
       } catch (error) {
         console.error("Error loading teacher data:", error);
         setError("Không thể tải thông tin giáo viên. Vui lòng thử lại.");
+        showError("Không thể tải thông tin giáo viên");
       } finally {
         setLoading(false);
       }
@@ -192,6 +195,7 @@ export default function TeacherManagement() {
         } catch (uploadError) {
           console.error("Error uploading avatar:", uploadError);
           setError("Không thể upload ảnh. Vui lòng thử lại hoặc dùng URL ảnh.");
+          showError("Không thể upload ảnh đại diện");
           setLoading(false);
           setUploadingImage(false);
           return;
@@ -202,8 +206,10 @@ export default function TeacherManagement() {
 
       await teacherProfileService.saveProfile(payload);
       setSaved(true);
+      success("Lưu thông tin thành công!");
     } catch (err) {
       setError(err?.message || "Không thể lưu. Vui lòng thử lại.");
+      showError(err?.message || "Không thể lưu thông tin");
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 /**
  * HEADER COMPONENT - Thanh điều hướng chính của website
- * 
+ *
  * Các trang được truy cập:
  * - /home (Trang chủ)
  * - /home/classes (Danh sách lớp học)
@@ -8,7 +8,7 @@
  * - /home/about (Giới thiệu)
  * - /home/login (Đăng nhập)
  * - /home/news (Tin tức - chưa implement)
- * 
+ *
  * Chức năng:
  * - Điều hướng giữa các trang
  * - Tìm kiếm khóa học/lớp học
@@ -17,16 +17,26 @@
  */
 
 import { useState, useContext, useEffect, useRef } from "react";
-import { Menu, X, User, GraduationCap, Search, LogOut, Calendar } from "lucide-react";
+import {
+  Menu,
+  X,
+  User,
+  GraduationCap,
+  Search,
+  LogOut,
+  Calendar,
+} from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { ImageWithFallback } from "../ui/ImageWithFallback.jsx";
 import Logo from "./Logo";
 import NotificationBell from "./NotificationBell";
 import AuthContext from "../../context/AuthContext";
+import { useToast } from "../../hooks/use-toast";
 
 export default function Header({ onNavigate, currentPage }) {
   const { user, logout } = useContext(AuthContext);
+  const { success, error: showError } = useToast();
   // State quản lý menu mobile (đóng/mở)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // State lưu từ khóa tìm kiếm
@@ -38,49 +48,59 @@ export default function Header({ onNavigate, currentPage }) {
 
   const handleLogout = async () => {
     try {
+      success("Đã đăng xuất thành công", "Hẹn gặp lại! 👋");
       await logout();
       setShowProfileMenu(false);
       onNavigate({ type: "home" });
     } catch (error) {
       console.error("Logout failed:", error);
+      showError("Không thể đăng xuất. Vui lòng thử lại.");
     }
   };
 
   // Hook để tự động đóng dropdown khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target)
+      ) {
         setShowProfileMenu(false);
       }
     };
 
     // Thêm event listener khi dropdown mở
     if (showProfileMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     // Cleanup event listener
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showProfileMenu]);
 
   // Hàm kiểm tra trang hiện tại để highlight navigation item
   const isActive = (pageType) => {
-    return currentPage.type === pageType || 
-           (pageType === "classes" && (currentPage.type === "class" || currentPage.type === "classes")) ||
-           (pageType === "teachers" && currentPage.type === "teacher") ||
-           (pageType === "my-classes" && (currentPage.type === "my-classes" || currentPage.type === "student-classes")) ||
-           (pageType === "student-schedule" && currentPage.type === "student-schedule");
+    return (
+      currentPage.type === pageType ||
+      (pageType === "classes" &&
+        (currentPage.type === "class" || currentPage.type === "classes")) ||
+      (pageType === "teachers" && currentPage.type === "teacher") ||
+      (pageType === "my-classes" &&
+        (currentPage.type === "my-classes" ||
+          currentPage.type === "student-classes")) ||
+      (pageType === "student-schedule" &&
+        currentPage.type === "student-schedule")
+    );
   };
 
   return (
     <header className="sticky top-0 z-50 shadow-lg header-gradient">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          
           {/* LOGO VÀ TÊN THƯƠNG HIỆU - Click để về trang chủ */}
-          <button 
+          <button
             onClick={() => onNavigate({ type: "home" })}
             className="flex items-center gap-3 hover:opacity-90 transition-opacity"
           >
@@ -113,23 +133,23 @@ export default function Header({ onNavigate, currentPage }) {
           {/* MENU ĐIỀU HƯỚNG DESKTOP - Chỉ hiển thị trên màn hình lớn */}
           <nav className="hidden lg:flex items-center gap-1">
             {/* Nút Trang chủ */}
-            <button 
+            <button
               onClick={() => onNavigate({ type: "home" })}
               className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
-                isActive("home") 
-                  ? "bg-white/20 text-white" 
+                isActive("home")
+                  ? "bg-white/20 text-white"
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
               }`}
             >
               Trang chủ
             </button>
-            
+
             {/* Nút Lớp học với icon */}
-            <button 
+            <button
               onClick={() => onNavigate({ type: "classes" })}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-sm ${
-                isActive("classes") 
-                  ? "bg-white/20 text-white" 
+                isActive("classes")
+                  ? "bg-white/20 text-white"
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
               }`}
             >
@@ -138,35 +158,35 @@ export default function Header({ onNavigate, currentPage }) {
             </button>
 
             {/* Nút Giáo viên */}
-            <button 
+            <button
               onClick={() => onNavigate({ type: "teachers" })}
               className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
-                isActive("teachers") 
-                  ? "bg-white/20 text-white" 
+                isActive("teachers")
+                  ? "bg-white/20 text-white"
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
               }`}
             >
               Giáo viên
             </button>
-            
+
             {/* Nút Tin tức */}
-            <button 
+            <button
               onClick={() => onNavigate({ type: "news" })}
               className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
-                isActive("news") 
-                  ? "bg-white/20 text-white" 
+                isActive("news")
+                  ? "bg-white/20 text-white"
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
               }`}
             >
               Tin tức
             </button>
-            
+
             {/* Nút Giới thiệu */}
-            <button 
+            <button
               onClick={() => onNavigate({ type: "about" })}
               className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
-                isActive("about") 
-                  ? "bg-white/20 text-white" 
+                isActive("about")
+                  ? "bg-white/20 text-white"
                   : "text-blue-50 hover:bg-white/10 hover:text-white"
               }`}
             >
@@ -174,23 +194,25 @@ export default function Header({ onNavigate, currentPage }) {
             </button>
 
             {/* Nếu đã đăng nhập với role student, hiển thị mục Lớp đã đăng ký */}
-            {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
+            {user?.roles?.some(
+              (r) => String(r).toLowerCase() === "student"
+            ) && (
               <>
-                <button 
+                <button
                   onClick={() => onNavigate({ type: "student-classes" })}
                   className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
                     isActive("my-classes")
-                      ? "bg-white/20 text-white" 
+                      ? "bg-white/20 text-white"
                       : "text-blue-50 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   Lớp đã đăng ký
                 </button>
-                <button 
+                <button
                   onClick={() => onNavigate({ type: "student-schedule" })}
                   className={`px-3 py-1.5 rounded-lg transition-all text-sm ${
                     isActive("student-schedule")
-                      ? "bg-white/20 text-white" 
+                      ? "bg-white/20 text-white"
                       : "text-blue-50 hover:bg-white/10 hover:text-white"
                   }`}
                 >
@@ -204,7 +226,7 @@ export default function Header({ onNavigate, currentPage }) {
           <div className="hidden lg:flex items-center gap-2">
             {/* Notification Bell - chỉ hiển thị khi đăng nhập */}
             {user && <NotificationBell variant="header" />}
-            
+
             {user ? (
               <div className="relative" ref={profileMenuRef}>
                 <button
@@ -221,7 +243,9 @@ export default function Header({ onNavigate, currentPage }) {
                       />
                     ) : (
                       <span>
-                        {user.username?.charAt(0).toUpperCase() || user.fullName?.charAt(0).toUpperCase() || "U"}
+                        {user.username?.charAt(0).toUpperCase() ||
+                          user.fullName?.charAt(0).toUpperCase() ||
+                          "U"}
                       </span>
                     )}
                   </div>
@@ -229,17 +253,21 @@ export default function Header({ onNavigate, currentPage }) {
                     {user.fullName || user.username}
                   </span>
                 </button>
-                
+
                 {showProfileMenu && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
                     <div className="px-4 py-2 border-b border-gray-100">
                       <p className="text-sm font-medium text-gray-900 truncate">
                         {user.fullName || user.username}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {user.email}
+                      </p>
                     </div>
                     {/* Link to Student Profile if user is a student */}
-                    {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
+                    {user?.roles?.some(
+                      (r) => String(r).toLowerCase() === "student"
+                    ) && (
                       <>
                         <button
                           onClick={() => {
@@ -284,7 +312,7 @@ export default function Header({ onNavigate, currentPage }) {
                 )}
               </div>
             ) : (
-              <Button 
+              <Button
                 onClick={() => onNavigate({ type: "login" })}
                 variant="ghost"
                 className="bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/30 gap-2 shadow-lg transition-all"
@@ -314,14 +342,14 @@ export default function Header({ onNavigate, currentPage }) {
           <div className="lg:hidden py-4 border-t border-blue-500/30">
             <nav className="flex flex-col gap-2">
               {/* Các nút navigation mobile - Đóng menu sau khi click */}
-              <button 
+              <button
                 onClick={() => {
                   onNavigate({ type: "home" });
                   setIsMenuOpen(false); // Đóng menu
                 }}
                 className={`text-left px-4 py-2 rounded-lg transition-all text-sm ${
-                  isActive("home") 
-                    ? "bg-white/20 text-white" 
+                  isActive("home")
+                    ? "bg-white/20 text-white"
                     : "text-blue-50 hover:bg-white/10"
                 }`}
               >
@@ -329,30 +357,32 @@ export default function Header({ onNavigate, currentPage }) {
               </button>
 
               {/* Mobile: Link Lớp đã đăng ký cho student */}
-              {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
-                <button 
+              {user?.roles?.some(
+                (r) => String(r).toLowerCase() === "student"
+              ) && (
+                <button
                   onClick={() => {
                     onNavigate({ type: "student-classes" });
                     setIsMenuOpen(false);
                   }}
                   className={`text-left px-4 py-2 rounded-lg transition-all text-sm ${
                     isActive("my-classes")
-                      ? "bg-white/20 text-white" 
+                      ? "bg-white/20 text-white"
                       : "text-blue-50 hover:bg-white/10"
                   }`}
                 >
                   Lớp đã đăng ký
                 </button>
               )}
-              
-              <button 
+
+              <button
                 onClick={() => {
                   onNavigate({ type: "classes" });
                   setIsMenuOpen(false);
                 }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all text-sm ${
-                  isActive("classes") 
-                    ? "bg-white/20 text-white" 
+                  isActive("classes")
+                    ? "bg-white/20 text-white"
                     : "text-blue-50 hover:bg-white/10"
                 }`}
               >
@@ -360,55 +390,59 @@ export default function Header({ onNavigate, currentPage }) {
                 Lớp học
               </button>
 
-              <button 
+              <button
                 onClick={() => {
                   onNavigate({ type: "teachers" });
                   setIsMenuOpen(false);
                 }}
                 className={`px-4 py-2 rounded-lg transition-all text-sm ${
-                  isActive("teachers") 
-                    ? "bg-white/20 text-white" 
+                  isActive("teachers")
+                    ? "bg-white/20 text-white"
                     : "text-blue-50 hover:bg-white/10"
                 }`}
               >
                 Giáo viên
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => {
                   onNavigate({ type: "news" });
                   setIsMenuOpen(false);
                 }}
                 className={`px-4 py-2 rounded-lg transition-all text-sm ${
-                  isActive("news") 
-                    ? "bg-white/20 text-white" 
+                  isActive("news")
+                    ? "bg-white/20 text-white"
                     : "text-blue-50 hover:bg-white/10"
                 }`}
               >
                 Tin tức
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => {
                   onNavigate({ type: "about" });
                   setIsMenuOpen(false);
                 }}
                 className={`px-4 py-2 rounded-lg transition-all text-sm ${
-                  isActive("about") 
-                    ? "bg-white/20 text-white" 
+                  isActive("about")
+                    ? "bg-white/20 text-white"
                     : "text-blue-50 hover:bg-white/10"
                 }`}
               >
                 Giới thiệu
               </button>
-              
+
               {/* Nút đăng nhập / profile mobile */}
               <div className="pt-4 border-t border-blue-500/30">
                 {user ? (
                   <div className="space-y-2">
-                    <button 
+                    <button
                       onClick={() => {
-                        if (user?.roles?.some(r => String(r).toLowerCase() === "student")) {
+                        if (
+                          user?.roles?.some(
+                            (r) => String(r).toLowerCase() === "student"
+                          )
+                        ) {
                           onNavigate({ type: "student-profile" });
                           setIsMenuOpen(false);
                         }
@@ -416,19 +450,25 @@ export default function Header({ onNavigate, currentPage }) {
                       className="w-full flex items-center gap-3 px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
                     >
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold">
-                        {user.username?.charAt(0).toUpperCase() || user.fullName?.charAt(0).toUpperCase() || "U"}
+                        {user.username?.charAt(0).toUpperCase() ||
+                          user.fullName?.charAt(0).toUpperCase() ||
+                          "U"}
                       </div>
                       <div className="flex-1 min-w-0 text-left">
                         <p className="text-white text-sm font-medium truncate">
                           {user.fullName || user.username}
                         </p>
-                        <p className="text-blue-100 text-xs truncate">{user.email}</p>
+                        <p className="text-blue-100 text-xs truncate">
+                          {user.email}
+                        </p>
                       </div>
                     </button>
                     {/* Student Profile Link for mobile */}
-                    {user?.roles?.some(r => String(r).toLowerCase() === "student") && (
+                    {user?.roles?.some(
+                      (r) => String(r).toLowerCase() === "student"
+                    ) && (
                       <>
-                        <Button 
+                        <Button
                           onClick={() => {
                             onNavigate({ type: "student-classes" });
                             setIsMenuOpen(false);
@@ -439,7 +479,7 @@ export default function Header({ onNavigate, currentPage }) {
                           <GraduationCap className="w-4 h-4" />
                           Lớp đã đăng ký
                         </Button>
-                        <Button 
+                        <Button
                           onClick={() => {
                             onNavigate({ type: "student-schedule" });
                             setIsMenuOpen(false);
@@ -450,7 +490,7 @@ export default function Header({ onNavigate, currentPage }) {
                           <Calendar className="w-4 h-4" />
                           Lịch học
                         </Button>
-                        <Button 
+                        <Button
                           onClick={() => {
                             onNavigate({ type: "student-profile" });
                             setIsMenuOpen(false);
@@ -463,7 +503,7 @@ export default function Header({ onNavigate, currentPage }) {
                         </Button>
                       </>
                     )}
-                    <Button 
+                    <Button
                       onClick={() => {
                         handleLogout();
                         setIsMenuOpen(false);
@@ -476,7 +516,7 @@ export default function Header({ onNavigate, currentPage }) {
                     </Button>
                   </div>
                 ) : (
-                  <Button 
+                  <Button
                     onClick={() => {
                       onNavigate({ type: "login" });
                       setIsMenuOpen(false);

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dayLabelVi, formatCurrency } from "../../../helper/formatters";
 import { classService } from "../../../services/class/class.service";
+import { useToast } from "../../../hooks/use-toast";
 import {
   Search,
   Plus,
@@ -591,6 +592,7 @@ export default function ClassManagementV2() {
   // Selection
   const [selectedId, setSelectedId] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const { success, error: showError } = useToast();
 
   // Load classes
   const loadClasses = useCallback(async () => {
@@ -601,10 +603,11 @@ export default function ClassManagementV2() {
     } catch (e) {
       console.error(e);
       setClasses([]);
+      showError("Không thể tải danh sách lớp học");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showError]);
 
   useEffect(() => {
     loadClasses();
@@ -655,8 +658,10 @@ export default function ClassManagementV2() {
     try {
       await classService.publish(selectedClass.id);
       await loadClasses();
+      success("Đã xuất bản lớp học thành công");
     } catch (e) {
       console.error(e);
+      showError("Không thể xuất bản lớp học");
     } finally {
       setUpdating(false);
     }
@@ -668,8 +673,10 @@ export default function ClassManagementV2() {
     try {
       await classService.revertDraft(selectedClass.id);
       await loadClasses();
+      success("Đã chuyển lớp về bản nháp");
     } catch (e) {
       console.error(e);
+      showError("Không thể chuyển về bản nháp");
     } finally {
       setUpdating(false);
     }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "../../../hooks/use-toast";
+import { useToast } from "../../../hooks/use-toast";
 import { Button } from "../../../components/ui/Button.jsx";
 import {
   Select,
@@ -32,6 +32,7 @@ import {
 
 function ScheduleManagement() {
   const navigate = useNavigate();
+  const { error: showError } = useToast();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [classTypeFilter, setClassTypeFilter] = useState("all");
@@ -56,7 +57,7 @@ function ScheduleManagement() {
         setTimeSlots(slots);
       } catch (e) {
         console.error("Failed to load initial data:", e);
-        alert("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối backend.");
+        showError("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối backend.");
       }
     })();
   }, []);
@@ -68,7 +69,7 @@ function ScheduleManagement() {
         setWeekSchedule(data);
       } catch (e) {
         console.error("Failed to load schedule data:", e);
-        alert(
+        showError(
           "Không thể tải dữ liệu lịch học. Vui lòng kiểm tra kết nối backend."
         );
         setWeekSchedule([]);

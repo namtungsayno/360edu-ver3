@@ -30,7 +30,7 @@ import {
 function TeacherSchedule() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { error: showError } = useToast();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [timeSlots, setTimeSlots] = useState([]);
   const [weekSchedule, setWeekSchedule] = useState([]);
@@ -100,7 +100,9 @@ function TeacherSchedule() {
         setTimeSlots(slots);
       } catch (e) {
         console.error("Failed to load time slots:", e);
-        alert("Không thể tải dữ liệu slot. Vui lòng kiểm tra kết nối backend.");
+        showError(
+          "Không thể tải dữ liệu slot. Vui lòng kiểm tra kết nối backend."
+        );
       }
     })();
   }, []);
@@ -118,7 +120,7 @@ function TeacherSchedule() {
         await loadAttendanceStatuses(data);
       } catch (e) {
         console.error("Failed to load teacher schedule:", e);
-        alert(
+        showError(
           "Không thể tải lịch dạy của bạn. Vui lòng kiểm tra kết nối backend."
         );
         setWeekSchedule([]);
