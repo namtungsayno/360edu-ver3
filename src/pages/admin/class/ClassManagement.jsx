@@ -244,37 +244,16 @@ function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
   })();
 
   const totalSessions = (() => {
-    // Thử lấy từ backend trước
-    let v =
+    // Ưu tiên lấy từ backend - đây là giá trị chính xác nhất
+    const v =
       cls?.totalSessions ??
       cls?.numberOfSessions ??
       cls?.sessionCount ??
       cls?.total_sessions ??
+      cls?.sessions ??
       null;
 
-    // Nếu backend trả về 0 hoặc null, thử tính từ schedule + duration
-    if (!v || v === 0) {
-      const scheduleLength = Array.isArray(cls?.schedule)
-        ? cls.schedule.length
-        : 0;
-      if (scheduleLength > 0 && cls?.startDate && cls?.endDate) {
-        try {
-          const start = new Date(cls.startDate);
-          const end = new Date(cls.endDate);
-          const diffTime = Math.abs(end - start);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          const weeks = Math.ceil(diffDays / 7);
-          v = scheduleLength * weeks;
-          console.log(
-            `📊 Calculated totalSessions from schedule: ${scheduleLength} sessions/week × ${weeks} weeks = ${v}`
-          );
-        } catch (e) {
-          console.error("Error calculating sessions:", e);
-        }
-      }
-    }
-
-    console.log("📊 totalSessions:", v);
+    console.log("📊 totalSessions from BE:", v);
     return v;
   })();
 

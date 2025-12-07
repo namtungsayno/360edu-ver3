@@ -70,7 +70,6 @@ import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 // tuấn test
 // FIXED: Import các component cho Class Management (Quản lý lớp học)
 import ClassManagement from "../pages/admin/class/ClassManagement.jsx";
-import ClassDetailPage from "../pages/admin/class/ClassDetailPage.jsx";
 import ClassEditPage from "../pages/admin/class/ClassEditPage.jsx";
 import CreateOfflineClassPage from "../pages/admin/class/CreateOfflineClassPage.jsx";
 import CreateOnlineClassPage from "../pages/admin/class/CreateOnlineClassPage.jsx";
@@ -179,7 +178,6 @@ function AppRouter() {
             {/* Tuấn test */}
             {/* FIXED: Thêm route cho Class Management - Quản lý lớp học */}
             <Route path="class" element={<ClassManagement />} />
-            <Route path="class/:id" element={<ClassDetailPage />} />
             <Route path="class/:id/edit" element={<ClassEditPage />} />
             <Route
               path="class/create-offline"

@@ -19,6 +19,9 @@ import {
   Check,
   Sparkles,
   DoorOpen,
+  Layers,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import useDebounce from "../../../hooks/useDebounce";
 import { Switch } from "../../../components/ui/Switch";
@@ -304,6 +307,61 @@ export default function ClassroomList() {
               Click vào dòng để xem chi tiết • Double-click để chỉnh sửa
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* ============ STATS CARDS ============ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Tổng số phòng */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg shadow-blue-500/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium mb-1">
+                Tổng số phòng
+              </p>
+              <p className="text-3xl font-bold">{counts.ALL}</p>
+            </div>
+            <div className="p-3 bg-white/20 rounded-xl">
+              <Layers className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          {/* Decorative circles */}
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="absolute -right-2 -bottom-2 w-16 h-16 bg-white/10 rounded-full" />
+        </div>
+
+        {/* Đang hoạt động */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-emerald-100 text-sm font-medium mb-1">
+                Đang hoạt động
+              </p>
+              <p className="text-3xl font-bold">{counts.ACTIVE}</p>
+            </div>
+            <div className="p-3 bg-white/20 rounded-xl">
+              <CheckCircle className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          {/* Decorative circles */}
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="absolute -right-2 -bottom-2 w-16 h-16 bg-white/10 rounded-full" />
+        </div>
+
+        {/* Tạm dừng */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-gray-500 to-gray-600 rounded-2xl p-5 text-white shadow-lg shadow-gray-500/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-200 text-sm font-medium mb-1">Tạm dừng</p>
+              <p className="text-3xl font-bold">{counts.INACTIVE}</p>
+            </div>
+            <div className="p-3 bg-white/20 rounded-xl">
+              <XCircle className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          {/* Decorative circles */}
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="absolute -right-2 -bottom-2 w-16 h-16 bg-white/10 rounded-full" />
         </div>
       </div>
 

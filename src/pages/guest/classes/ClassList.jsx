@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -6,149 +6,167 @@ import {
   BookOpen,
   SlidersHorizontal,
   ChevronDown,
-  ArrowUpDown,
   X,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
 } from "lucide-react";
-import { classService } from "../../../services/class/class.service";
+import { classApi } from "../../../services/class/class.api";
+import { subjectService } from "../../../services/subject/subject.service";
+import { teacherService } from "../../../services/teacher/teacher.service";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Input } from "../../../components/ui/Input.jsx";
 import { dayLabelVi } from "../../../helper/formatters";
+import useDebounce from "../../../hooks/useDebounce";
 
 export default function ClassList() {
-  const [loading, setLoading] = useState(false);
-  const [classes, setClasses] = useState([]);
-  const [filteredClasses, setFilteredClasses] = useState([]);
-  const [error, setError] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [selectedTeacher, setSelectedTeacher] = useState("");
-  const [selectedSlots, setSelectedSlots] = useState([]); // Slot 1, 2, 3
-  const [priceRange, setPriceRange] = useState([2000000, 10000000]); // Min 2 triệu, Max 10 triệu
-  const [priceSort, setPriceSort] = useState(""); // "asc" hoặc "desc"
   const navigate = useNavigate();
 
+  // === SERVER-SIDE PAGINATION STATE ===
+  const [loading, setLoading] = useState(false);
+  const [classes, setClasses] = useState([]);
+  const [error, setError] = useState("");
+
+  // Pagination
+  const [page, setPage] = useState(0);
+  const [size] = useState(12); // 12 cards per page (3x4 grid)
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+
+  // Filter states - sent to BE
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedQuery = useDebounce(searchQuery, 400);
+
+  const [selectedSubjectId, setSelectedSubjectId] = useState(""); // For BE filter
+  const [selectedTeacherId, setSelectedTeacherId] = useState(""); // For BE filter
+  const [isOnline, setIsOnline] = useState(null); // null = all, true = online, false = offline
+  const [selectedSlots, setSelectedSlots] = useState([]); // FE filter (BE doesn't support time slots)
+  const [priceRange, setPriceRange] = useState([2000000, 10000000]); // FE filter
+
+  // Dropdown data
+  const [subjects, setSubjects] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+
+  // === LOAD DROPDOWN DATA ===
   useEffect(() => {
     (async () => {
-      console.log(" Starting to load classes...");
-      setLoading(true);
-      setError("");
       try {
-        const data = await classService.list();
-        console.log(" Raw data from API:", data);
-        const classList = Array.isArray(data) ? data : [];
-        console.log(" Classes array:", classList);
-        console.log(" Total classes loaded:", classList.length);
-        setClasses(classList);
-        setFilteredClasses(classList);
+        const [subjectData, teacherData] = await Promise.all([
+          subjectService.all(),
+          teacherService.list(),
+        ]);
+        setSubjects(subjectData || []);
+        setTeachers(teacherData || []);
       } catch (e) {
-        console.error("❌ Failed to load classes", e);
-        setError("Không tải được danh sách lớp. Vui lòng thử lại.");
-      } finally {
-        setLoading(false);
-        console.log("✔️ Loading complete");
+        console.error("Failed to load filter data:", e);
       }
     })();
   }, []);
 
-  // Filter và search nâng cao
+  // === RESET PAGE WHEN FILTERS CHANGE ===
   useEffect(() => {
-    console.log(" Filter effect triggered");
-    console.log(" Classes to filter:", classes.length);
-    console.log(" Selected filters:", {
-      subject: selectedSubject,
-      teacher: selectedTeacher,
-      slots: selectedSlots,
-      priceRange,
-      searchQuery,
-    });
+    setPage(0);
+  }, [debouncedQuery, selectedSubjectId, selectedTeacherId, isOnline]);
 
-    let result = [...classes];
-    console.log("Initial result count:", result.length);
+  // === FETCH CLASSES WITH SERVER-SIDE PAGINATION ===
+  const fetchClasses = useCallback(async () => {
+    console.log("📡 Fetching classes with BE pagination...");
+    setLoading(true);
+    setError("");
 
-    // Apply search
-    if (searchQuery) {
-      result = result.filter(
-        (c) =>
-          c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.subjectName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.teacherFullName?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
+    try {
+      const response = await classApi.listPaginated({
+        search: debouncedQuery,
+        status: "ALL", // Guest always sees PUBLIC classes (BE filters DRAFT)
+        isOnline: isOnline,
+        teacherUserId: selectedTeacherId || null,
+        page,
+        size,
+        sortBy: "id",
+        order: "desc",
+      });
 
-    // Filter by subject
-    if (selectedSubject) {
-      result = result.filter((c) => c.subjectName === selectedSubject);
-    }
+      console.log("📊 BE Response:", response);
 
-    // Filter by teacher
-    if (selectedTeacher) {
-      result = result.filter((c) => c.teacherFullName === selectedTeacher);
-    }
+      let content = response.content || [];
 
-    // Filter by time slots
-    if (selectedSlots.length > 0) {
-      result = result.filter((c) => {
-        if (!Array.isArray(c.schedule) || c.schedule.length === 0) return false;
+      // === CLIENT-SIDE FILTERS (not supported by BE) ===
+      // 1. Filter by subject (if BE doesn't support subjectId filter)
+      if (selectedSubjectId) {
+        const subjectName = subjects.find(
+          (s) => String(s.id) === String(selectedSubjectId)
+        )?.name;
+        if (subjectName) {
+          content = content.filter((c) => c.subjectName === subjectName);
+        }
+      }
 
-        return c.schedule.some((sch) => {
-          const startTime = sch.startTime?.slice(0, 5); // "HH:MM"
-          if (!startTime) return false;
-
-          const hour = Number.parseInt(startTime.split(":")[0], 10);
-
-          return selectedSlots.some((slot) => {
-            if (slot === "slot1") return hour >= 16 && hour < 18; // 16h-18h
-            if (slot === "slot2") return hour >= 18 && hour < 20; // 18h-20h
-            if (slot === "slot3") return hour >= 20 && hour < 22; // 20h-22h
+      // 2. Filter by time slots
+      if (selectedSlots.length > 0) {
+        content = content.filter((c) => {
+          if (!Array.isArray(c.schedule) || c.schedule.length === 0)
             return false;
+          return c.schedule.some((sch) => {
+            const startTime = sch.startTime?.slice(0, 5);
+            if (!startTime) return false;
+            const hour = Number.parseInt(startTime.split(":")[0], 10);
+            return selectedSlots.some((slot) => {
+              if (slot === "slot1") return hour >= 16 && hour < 18;
+              if (slot === "slot2") return hour >= 18 && hour < 20;
+              if (slot === "slot3") return hour >= 20 && hour < 22;
+              return false;
+            });
           });
         });
+      }
+
+      // 3. Filter by price range
+      content = content.filter((c) => {
+        const price = c.price || 0;
+        if (price === 0) return true;
+        return price >= priceRange[0] && price <= priceRange[1];
       });
+
+      // 4. Always hide DRAFT classes for guests
+      content = content.filter((c) => c.status !== "DRAFT");
+
+      setClasses(content);
+      setTotalPages(response.totalPages || 0);
+      setTotalElements(response.totalElements || 0);
+    } catch (e) {
+      console.error("❌ Failed to load classes:", e);
+      setError("Không tải được danh sách lớp. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
     }
-
-    // Always hide DRAFT classes for guests (business rule)
-    result = result.filter((c) => c.status !== "DRAFT");
-
-    // Filter by price range - Only filter if class has price data
-    result = result.filter((c) => {
-      const price = c.price || 0;
-      // If price is 0 (not set), still show it
-      if (price === 0) return true;
-      return price >= priceRange[0] && price <= priceRange[1];
-    });
-    console.log("After price filter:", result.length);
-
-    console.log(" Final filtered results:", result.length);
-    setFilteredClasses(result);
   }, [
-    searchQuery,
-    selectedSubject,
-    selectedTeacher,
+    debouncedQuery,
+    selectedSubjectId,
+    selectedTeacherId,
+    isOnline,
     selectedSlots,
     priceRange,
-    classes,
+    page,
+    size,
+    subjects,
   ]);
 
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
+
+  // === NAVIGATION ===
   const goDetail = (id) => navigate(`/home/classes/${id}`);
 
-  // Lấy danh sách unique để tạo filters
-  const subjects = [
-    ...new Set(classes.map((c) => c.subjectName).filter(Boolean)),
-  ];
-  const teachers = [
-    ...new Set(classes.map((c) => c.teacherFullName).filter(Boolean)),
-  ];
-
-  // Danh sách các time slots
+  // === TIME SLOTS ===
   const timeSlots = [
     { label: "Slot 1 (16h-18h)", value: "slot1", time: "16:00 - 18:00" },
     { label: "Slot 2 (18h-20h)", value: "slot2", time: "18:00 - 20:00" },
     { label: "Slot 3 (20h-22h)", value: "slot3", time: "20:00 - 22:00" },
   ];
 
-  // Toggle slot selection
   const toggleSlot = (slot) => {
     setSelectedSlots((prev) =>
       prev.includes(slot) ? prev.filter((s) => s !== slot) : [...prev, slot]
@@ -165,20 +183,22 @@ export default function ClassList() {
 
   // Clear all filters
   const clearFilters = () => {
-    setSelectedSubject("");
-    setSelectedTeacher("");
+    setSearchQuery("");
+    setSelectedSubjectId("");
+    setSelectedTeacherId("");
+    setIsOnline(null);
     setSelectedSlots([]);
     setPriceRange([2000000, 10000000]);
-    setSearchQuery("");
   };
 
   // Count active filters
   const activeFiltersCount = [
-    selectedSubject,
-    selectedTeacher,
+    searchQuery,
+    selectedSubjectId,
+    selectedTeacherId,
+    isOnline !== null,
     selectedSlots.length > 0,
     priceRange[0] !== 2000000 || priceRange[1] !== 10000000,
-    searchQuery,
   ].filter(Boolean).length;
 
   // Gradient backgrounds cho các cards
@@ -197,7 +217,6 @@ export default function ClassList() {
     const sd = c?.startDate ? new Date(c.startDate) : null;
     const ed = c?.endDate ? new Date(c.endDate) : null;
     if (c?.status === "DRAFT") {
-      // Admin created but not public yet — still visible for preview
       if (sd && sd > today)
         return { label: "Sắp mở", className: "bg-sky-100 text-sky-700" };
       return { label: "Sắp diễn ra", className: "bg-amber-100 text-amber-700" };
@@ -212,13 +231,17 @@ export default function ClassList() {
     return null;
   }
 
-  console.log(" RENDER - Component state:", {
+  // === PAGINATION HELPERS ===
+  const canGoPrev = page > 0;
+  const canGoNext = page < totalPages - 1;
+
+  console.log("📊 RENDER - Component state:", {
     loading,
     error,
     totalClasses: classes.length,
-    filteredClasses: filteredClasses.length,
-    subjects: subjects.length,
-    teachers: teachers.length,
+    page,
+    totalPages,
+    totalElements,
   });
 
   return (
@@ -302,9 +325,7 @@ export default function ClassList() {
               {/* Quick Stats Cards - Same width as search */}
               <div className="w-full max-w-2xl flex gap-4 justify-center">
                 <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20">
-                  <div className="text-2xl font-bold mb-1">
-                    {filteredClasses.length}
-                  </div>
+                  <div className="text-2xl font-bold mb-1">{totalElements}</div>
                   <div className="text-xs text-blue-100">Lớp học</div>
                 </div>
                 <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20">
@@ -369,14 +390,14 @@ export default function ClassList() {
                       </label>
                       <div className="relative">
                         <select
-                          value={selectedSubject}
-                          onChange={(e) => setSelectedSubject(e.target.value)}
+                          value={selectedSubjectId}
+                          onChange={(e) => setSelectedSubjectId(e.target.value)}
                           className="w-full h-10 pl-3 pr-10 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition text-sm"
                         >
                           <option value="">Tất cả môn học</option>
                           {subjects.map((subject) => (
-                            <option key={subject} value={subject}>
-                              {subject}
+                            <option key={subject.id} value={subject.id}>
+                              {subject.name}
                             </option>
                           ))}
                         </select>
@@ -391,14 +412,14 @@ export default function ClassList() {
                       </label>
                       <div className="relative">
                         <select
-                          value={selectedTeacher}
-                          onChange={(e) => setSelectedTeacher(e.target.value)}
+                          value={selectedTeacherId}
+                          onChange={(e) => setSelectedTeacherId(e.target.value)}
                           className="w-full h-10 pl-3 pr-10 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition text-sm"
                         >
                           <option value="">Tất cả giáo viên</option>
                           {teachers.map((teacher) => (
-                            <option key={teacher} value={teacher}>
-                              {teacher}
+                            <option key={teacher.userId} value={teacher.userId}>
+                              {teacher.fullName}
                             </option>
                           ))}
                         </select>
@@ -406,7 +427,44 @@ export default function ClassList() {
                       </div>
                     </div>
 
-                    {/* Draft classes are always hidden for guests */}
+                    {/* Online/Offline Filter */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Hình thức học
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setIsOnline(null)}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            isOnline === null
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          Tất cả
+                        </button>
+                        <button
+                          onClick={() => setIsOnline(true)}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            isOnline === true
+                              ? "bg-green-600 text-white shadow-md"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          Online
+                        </button>
+                        <button
+                          onClick={() => setIsOnline(false)}
+                          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            isOnline === false
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          Offline
+                        </button>
+                      </div>
+                    </div>
 
                     {/* Time Slots Filter */}
                     <div className="mb-6">
@@ -514,21 +572,50 @@ export default function ClassList() {
                           Đang áp dụng
                         </label>
                         <div className="flex flex-wrap gap-2">
-                          {selectedSubject && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                              {selectedSubject}
+                          {searchQuery && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+                              "{searchQuery}"
                               <X
-                                className="w-3.5 h-3.5 cursor-pointer hover:text-blue-900"
-                                onClick={() => setSelectedSubject("")}
+                                className="w-3.5 h-3.5 cursor-pointer hover:text-gray-900"
+                                onClick={() => setSearchQuery("")}
                               />
                             </span>
                           )}
-                          {selectedTeacher && (
+                          {selectedSubjectId && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                              {
+                                subjects.find(
+                                  (s) =>
+                                    String(s.id) === String(selectedSubjectId)
+                                )?.name
+                              }
+                              <X
+                                className="w-3.5 h-3.5 cursor-pointer hover:text-blue-900"
+                                onClick={() => setSelectedSubjectId("")}
+                              />
+                            </span>
+                          )}
+                          {selectedTeacherId && (
                             <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                              {selectedTeacher}
+                              {
+                                teachers.find(
+                                  (t) =>
+                                    String(t.userId) ===
+                                    String(selectedTeacherId)
+                                )?.fullName
+                              }
                               <X
                                 className="w-3.5 h-3.5 cursor-pointer hover:text-purple-900"
-                                onClick={() => setSelectedTeacher("")}
+                                onClick={() => setSelectedTeacherId("")}
+                              />
+                            </span>
+                          )}
+                          {isOnline !== null && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                              {isOnline ? "Online" : "Offline"}
+                              <X
+                                className="w-3.5 h-3.5 cursor-pointer hover:text-green-900"
+                                onClick={() => setIsOnline(null)}
                               />
                             </span>
                           )}
@@ -539,11 +626,11 @@ export default function ClassList() {
                             return (
                               <span
                                 key={slot}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-medium"
+                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium"
                               >
                                 {slotInfo?.label}
                                 <X
-                                  className="w-3.5 h-3.5 cursor-pointer hover:text-green-900"
+                                  className="w-3.5 h-3.5 cursor-pointer hover:text-amber-900"
                                   onClick={() => toggleSlot(slot)}
                                 />
                               </span>
@@ -562,7 +649,6 @@ export default function ClassList() {
                               />
                             </span>
                           )}
-                          {/* Draft visibility pill removed: guests never see DRAFT */}
                         </div>
                       </div>
                     )}
@@ -582,12 +668,12 @@ export default function ClassList() {
                   {/* Results Count - Fixed at Bottom */}
                   <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-gray-200">
                     <p className="text-sm text-gray-700 text-center">
-                      Tìm thấy{" "}
+                      Hiển thị{" "}
                       <span className="font-bold text-blue-600">
-                        {filteredClasses.length}
+                        {classes.length}
                       </span>{" "}
-                      lớp học
-                      {activeFiltersCount > 0 && ` / ${classes.length} tổng`}
+                      / {totalElements} lớp học
+                      {totalPages > 1 && ` • Trang ${page + 1}/${totalPages}`}
                     </p>
                   </div>
                 </div>
@@ -603,169 +689,175 @@ export default function ClassList() {
                 </div>
               )}
 
-              {error && (
+              {error && !loading && (
                 <div className="text-center py-12">
                   <p className="text-red-600">{error}</p>
+                  <Button onClick={fetchClasses} className="mt-4">
+                    Thử lại
+                  </Button>
                 </div>
               )}
 
               {!loading && !error && (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredClasses.map((c, idx) => {
-                    const teacherInitial = (c.teacherFullName || "G")
-                      .charAt(0)
-                      .toUpperCase();
-                    const currentStudents = c.currentStudents || 0;
-                    const maxStudents = c.maxStudents || 30;
-                    const enrollmentPercentage =
-                      (currentStudents / maxStudents) * 100;
+                <>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {classes.map((c, idx) => {
+                      const teacherInitial = (c.teacherFullName || "G")
+                        .charAt(0)
+                        .toUpperCase();
+                      const currentStudents = c.currentStudents || 0;
+                      const maxStudents = c.maxStudents || 30;
+                      const enrollmentPercentage =
+                        (currentStudents / maxStudents) * 100;
 
-                    return (
-                      <Card
-                        key={c.id}
-                        className={`group overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border-2 flex flex-col h-full ${
-                          c.status === "DRAFT"
-                            ? "border-amber-300"
-                            : "border-transparent hover:border-blue-200"
-                        }`}
-                        onClick={() => goDetail(c.id)}
-                      >
-                        {/* Card Header với Gradient & Overlay */}
-                        <div
-                          className={`bg-gradient-to-br ${
-                            gradients[idx % gradients.length]
-                          } h-44 relative`}
+                      return (
+                        <Card
+                          key={c.id}
+                          className={`group overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border-2 flex flex-col h-full ${
+                            c.status === "DRAFT"
+                              ? "border-amber-300"
+                              : "border-transparent hover:border-blue-200"
+                          }`}
+                          onClick={() => goDetail(c.id)}
                         >
+                          {/* Card Header với Gradient & Overlay */}
                           <div
-                            className={`absolute inset-0 ${
-                              c.status === "DRAFT"
-                                ? "bg-white/30"
-                                : "bg-black/10 group-hover:bg-black/20"
-                            } transition-all`}
-                          ></div>
-                          <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
-                            <div className="flex flex-col gap-2">
-                              <Badge className="bg-white/95 text-gray-900 backdrop-blur-sm shadow-lg w-fit font-medium">
-                                {c.subjectName || "Môn học"}
-                              </Badge>
-                              <Badge
-                                className={
-                                  c.online
-                                    ? "bg-green-500/90 backdrop-blur-sm shadow-lg w-fit"
-                                    : "bg-blue-500/90 backdrop-blur-sm shadow-lg w-fit"
-                                }
-                              >
-                                {c.online ? " Online" : " Offline"}
-                              </Badge>
-                              {(() => {
-                                const b = getDerivedBadge(c);
-                                return b ? (
-                                  <span
-                                    className={`px-2 py-1 text-xs rounded-full ${b.className}`}
-                                  >
-                                    {b.label}
+                            className={`bg-gradient-to-br ${
+                              gradients[idx % gradients.length]
+                            } h-44 relative`}
+                          >
+                            <div
+                              className={`absolute inset-0 ${
+                                c.status === "DRAFT"
+                                  ? "bg-white/30"
+                                  : "bg-black/10 group-hover:bg-black/20"
+                              } transition-all`}
+                            ></div>
+                            <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
+                              <div className="flex flex-col gap-2">
+                                <Badge className="bg-white/95 text-gray-900 backdrop-blur-sm shadow-lg w-fit font-medium">
+                                  {c.subjectName || "Môn học"}
+                                </Badge>
+                                <Badge
+                                  className={
+                                    c.online
+                                      ? "bg-green-500/90 backdrop-blur-sm shadow-lg w-fit"
+                                      : "bg-blue-500/90 backdrop-blur-sm shadow-lg w-fit"
+                                  }
+                                >
+                                  {c.online ? " Online" : " Offline"}
+                                </Badge>
+                                {(() => {
+                                  const b = getDerivedBadge(c);
+                                  return b ? (
+                                    <span
+                                      className={`px-2 py-1 text-xs rounded-full ${b.className}`}
+                                    >
+                                      {b.label}
+                                    </span>
+                                  ) : null;
+                                })()}
+                                {c.startDate && (
+                                  <span className="px-2 py-1 text-xs rounded-full bg-white/90 text-gray-800 shadow-sm border border-gray-200">
+                                    Mở: {c.startDate}
                                   </span>
-                                ) : null;
-                              })()}
-                              {c.startDate && (
-                                <span className="px-2 py-1 text-xs rounded-full bg-white/90 text-gray-800 shadow-sm border border-gray-200">
-                                  Mở: {c.startDate}
-                                </span>
-                              )}
-                            </div>
-                            <div className="bg-white/20 backdrop-blur-md rounded-full p-2.5 shadow-lg">
-                              <BookOpen className="w-6 h-6 text-white" />
+                                )}
+                              </div>
+                              <div className="bg-white/20 backdrop-blur-md rounded-full p-2.5 shadow-lg">
+                                <BookOpen className="w-6 h-6 text-white" />
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <CardContent className="p-5 relative flex-1 flex flex-col">
-                          {/* Teacher Avatar - Overlapping */}
-                          <div className="absolute -top-10 right-4">
-                            <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
-                              {c.teacherAvatarUrl ? (
-                                <img
-                                  src={c.teacherAvatarUrl}
-                                  alt={c.teacherFullName}
-                                  className="w-full h-full object-cover"
-                                />
+                          <CardContent className="p-5 relative flex-1 flex flex-col">
+                            {/* Teacher Avatar - Overlapping */}
+                            <div className="absolute -top-10 right-4">
+                              <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
+                                {c.teacherAvatarUrl ? (
+                                  <img
+                                    src={c.teacherAvatarUrl}
+                                    alt={c.teacherFullName}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                                    <span className="text-2xl font-bold text-blue-600">
+                                      {teacherInitial}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Class Name */}
+                            <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors pr-24">
+                              {c.name || `Lớp ${c.subjectName || "học"}`}
+                            </h3>
+
+                            {/* Teacher Info */}
+                            <div className="flex items-center gap-2 mb-3">
+                              <Users className="w-4 h-4 text-blue-600" />
+                              <span className="text-sm font-medium text-gray-700">
+                                {c.teacherFullName || "Đang cập nhật"}
+                              </span>
+                            </div>
+
+                            {/* Schedule & Date Info */}
+                            <div className="space-y-2 mb-4">
+                              {Array.isArray(c.schedule) &&
+                              c.schedule.length > 0 ? (
+                                <div className="text-sm text-gray-600">
+                                  {dayLabelVi(c.schedule[0].dayOfWeek)} •{" "}
+                                  {c.schedule[0].startTime?.slice(0, 5)} -{" "}
+                                  {c.schedule[0].endTime?.slice(0, 5)}
+                                </div>
                               ) : (
-                                <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                                  <span className="text-2xl font-bold text-blue-600">
-                                    {teacherInitial}
-                                  </span>
+                                <div className="text-sm text-gray-600">
+                                  Thứ Hai, Tư, Sáu • 19:00 - 21:00
+                                </div>
+                              )}
+                              {c.startDate && (
+                                <div className="text-sm text-gray-600">
+                                  Khai giảng: {c.startDate}
                                 </div>
                               )}
                             </div>
-                          </div>
 
-                          {/* Class Name */}
-                          <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors pr-24">
-                            {c.name || `Lớp ${c.subjectName || "học"}`}
-                          </h3>
+                            {/* Spacer to push content below to bottom */}
+                            <div className="flex-1"></div>
 
-                          {/* Teacher Info */}
-                          <div className="flex items-center gap-2 mb-3">
-                            <Users className="w-4 h-4 text-blue-600" />
-                            <span className="text-sm font-medium text-gray-700">
-                              {c.teacherFullName || "Đang cập nhật"}
-                            </span>
-                          </div>
-
-                          {/* Schedule & Date Info */}
-                          <div className="space-y-2 mb-4">
-                            {Array.isArray(c.schedule) &&
-                            c.schedule.length > 0 ? (
-                              <div className="text-sm text-gray-600">
-                                {dayLabelVi(c.schedule[0].dayOfWeek)} •{" "}
-                                {c.schedule[0].startTime?.slice(0, 5)} -{" "}
-                                {c.schedule[0].endTime?.slice(0, 5)}
+                            {/* Enrollment Progress */}
+                            <div className="mb-4 bg-gray-50 rounded-lg p-3">
+                              <div className="flex items-center justify-between text-xs mb-2">
+                                <span className="text-gray-600 font-medium">
+                                  Đã đăng ký
+                                </span>
+                                <span className="font-bold text-blue-600">
+                                  {currentStudents}/{maxStudents}
+                                </span>
                               </div>
-                            ) : (
-                              <div className="text-sm text-gray-600">
-                                Thứ Hai, Tư, Sáu • 19:00 - 21:00
+                              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                                  style={{ width: `${enrollmentPercentage}%` }}
+                                />
                               </div>
-                            )}
-                            {c.startDate && (
-                              <div className="text-sm text-gray-600">
-                                Khai giảng: {c.startDate}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Spacer to push content below to bottom */}
-                          <div className="flex-1"></div>
-
-                          {/* Enrollment Progress */}
-                          <div className="mb-4 bg-gray-50 rounded-lg p-3">
-                            <div className="flex items-center justify-between text-xs mb-2">
-                              <span className="text-gray-600 font-medium">
-                                Đã đăng ký
-                              </span>
-                              <span className="font-bold text-blue-600">
-                                {currentStudents}/{maxStudents}
-                              </span>
                             </div>
-                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
-                                style={{ width: `${enrollmentPercentage}%` }}
-                              />
-                            </div>
-                          </div>
 
-                          {/* CTA Button */}
-                          <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all">
-                            <span className="font-medium">
-                              Xem chi tiết lớp học
-                            </span>
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                            {/* CTA Button */}
+                            <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all">
+                              <span className="font-medium">
+                                Xem chi tiết lớp học
+                              </span>
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
 
-                  {filteredClasses.length === 0 && (
+                  {/* Empty State */}
+                  {classes.length === 0 && (
                     <div className="col-span-full text-center py-12">
                       <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 text-lg">
@@ -776,7 +868,75 @@ export default function ClassList() {
                       </p>
                     </div>
                   )}
-                </div>
+
+                  {/* === PAGINATION === */}
+                  {totalPages > 1 && (
+                    <div className="mt-8 flex items-center justify-center gap-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                        disabled={!canGoPrev}
+                        className="flex items-center gap-2"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Trang trước
+                      </Button>
+
+                      <div className="flex items-center gap-2">
+                        {Array.from(
+                          { length: Math.min(5, totalPages) },
+                          (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i;
+                            } else if (page < 3) {
+                              pageNum = i;
+                            } else if (page > totalPages - 4) {
+                              pageNum = totalPages - 5 + i;
+                            } else {
+                              pageNum = page - 2 + i;
+                            }
+
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setPage(pageNum)}
+                                className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                                  page === pageNum
+                                    ? "bg-blue-600 text-white shadow-lg"
+                                    : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                                }`}
+                              >
+                                {pageNum + 1}
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          setPage((p) => Math.min(totalPages - 1, p + 1))
+                        }
+                        disabled={!canGoNext}
+                        className="flex items-center gap-2"
+                      >
+                        Trang sau
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Page Info */}
+                  {totalPages > 1 && (
+                    <div className="mt-4 text-center text-sm text-gray-500">
+                      Hiển thị {page * size + 1} -{" "}
+                      {Math.min((page + 1) * size, totalElements)} trong tổng số{" "}
+                      {totalElements} lớp học
+                    </div>
+                  )}
+                </>
               )}
             </main>
           </div>

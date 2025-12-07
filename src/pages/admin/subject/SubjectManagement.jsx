@@ -311,16 +311,6 @@ export default function SubjectManagement() {
               setPage(0);
             }}
           />
-
-          {/* Debug info */}
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500">
-            <strong>🔍 Server Pagination Debug:</strong>
-            <br />
-            Page: {page + 1} / {totalPages} | Size: {size} | Total:{" "}
-            {totalElements}
-            <br />
-            Search: &quot;{debouncedQuery}&quot; | Status: {mapStatusToBE(tab)}
-          </div>
         </div>
       </div>
     </div>
