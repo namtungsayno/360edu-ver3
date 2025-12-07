@@ -12,13 +12,20 @@ import { useNotification } from "./hooks/use-notification";
 import { setToastInstance } from "./hooks/use-toast";
 
 function App() {
-  const { toasts, removeToast, success, error, warning, info } =
-    useNotification();
+  const notification = useNotification();
+  const { toasts, removeToast } = notification;
 
-  // Set global toast instance để có thể sử dụng toast.success() ở bất kỳ đâu
+  // Set global toast instance MỘT LẦN khi mount
+  // Dùng ref để tránh re-render
   useEffect(() => {
-    setToastInstance({ success, error, warning, info });
-  }, [success, error, warning, info]);
+    setToastInstance({
+      success: notification.success,
+      error: notification.error,
+      warning: notification.warning,
+      info: notification.info,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>

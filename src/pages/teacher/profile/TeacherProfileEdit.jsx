@@ -6,6 +6,7 @@ import { teacherProfileService } from "../../../services/teacher/teacher.profile
 import { teacherProfileApi } from "../../../services/teacher/teacher.profile.detail.api";
 import { UserCog } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
+import RichTextEditor, { RichTextContent } from "../../../components/ui/RichTextEditor";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
@@ -558,15 +559,18 @@ export default function TeacherProfileEdit() {
                     setCertForm({ ...certForm, year: e.target.value })
                   }
                 />
-                <textarea
-                  placeholder="Mô tả"
-                  value={certForm.description}
-                  onChange={(e) =>
-                    setCertForm({ ...certForm, description: e.target.value })
-                  }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  rows="3"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                  <RichTextEditor
+                    value={certForm.description}
+                    onChange={(content) =>
+                      setCertForm({ ...certForm, description: content })
+                    }
+                    placeholder="Mô tả chứng chỉ..."
+                    simple
+                    minHeight="120px"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveCert}>Lưu</Button>
                   <Button
@@ -608,9 +612,9 @@ export default function TeacherProfileEdit() {
                       <p className="text-sm text-gray-500">Năm: {cert.year}</p>
                     )}
                     {cert.description && (
-                      <p className="text-sm text-gray-600 mt-2">
-                        {cert.description}
-                      </p>
+                      <div className="text-sm text-gray-600 mt-2">
+                        <RichTextContent content={cert.description} />
+                      </div>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -699,15 +703,18 @@ export default function TeacherProfileEdit() {
                     }
                   />
                 </div>
-                <textarea
-                  placeholder="Mô tả công việc"
-                  value={expForm.description}
-                  onChange={(e) =>
-                    setExpForm({ ...expForm, description: e.target.value })
-                  }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  rows="3"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả công việc</label>
+                  <RichTextEditor
+                    value={expForm.description}
+                    onChange={(content) =>
+                      setExpForm({ ...expForm, description: content })
+                    }
+                    placeholder="Mô tả công việc..."
+                    simple
+                    minHeight="120px"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveExp}>Lưu</Button>
                   <Button
@@ -752,9 +759,9 @@ export default function TeacherProfileEdit() {
                       </p>
                     )}
                     {exp.description && (
-                      <p className="text-sm text-gray-600 mt-2">
-                        {exp.description}
-                      </p>
+                      <div className="text-sm text-gray-600 mt-2">
+                        <RichTextContent content={exp.description} />
+                      </div>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -832,15 +839,18 @@ export default function TeacherProfileEdit() {
                     setEduForm({ ...eduForm, year: e.target.value })
                   }
                 />
-                <textarea
-                  placeholder="Mô tả"
-                  value={eduForm.description}
-                  onChange={(e) =>
-                    setEduForm({ ...eduForm, description: e.target.value })
-                  }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  rows="3"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                  <RichTextEditor
+                    value={eduForm.description}
+                    onChange={(content) =>
+                      setEduForm({ ...eduForm, description: content })
+                    }
+                    placeholder="Mô tả học vấn..."
+                    simple
+                    minHeight="120px"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button onClick={handleSaveEdu}>Lưu</Button>
                   <Button
@@ -882,9 +892,9 @@ export default function TeacherProfileEdit() {
                       <p className="text-sm text-gray-500">Năm: {edu.year}</p>
                     )}
                     {edu.description && (
-                      <p className="text-sm text-gray-600 mt-2">
-                        {edu.description}
-                      </p>
+                      <div className="text-sm text-gray-600 mt-2">
+                        <RichTextContent content={edu.description} />
+                      </div>
                     )}
                   </div>
                   <div className="flex gap-2">

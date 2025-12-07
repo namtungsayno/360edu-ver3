@@ -9,6 +9,7 @@ import {
 import { Button } from "../../../components/ui/Button.jsx";
 import { Input } from "../../../components/ui/Input.jsx";
 import { Textarea } from "../../../components/ui/Textarea.jsx";
+import RichTextEditor from "../../../components/ui/RichTextEditor";
 import {
   BookOpen,
   Save,
@@ -241,11 +242,13 @@ export default function CourseOfSubjectCreate() {
                   <label className="text-[12px] text-[#62748e] font-medium">
                     Mô tả khóa học <span className="text-red-500">*</span>
                   </label>
-                  <Textarea
-                    rows={4}
-                    placeholder="Mô tả chi tiết nội dung và mục tiêu khóa học..."
+                  <RichTextEditor
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={setDescription}
+                    placeholder="Mô tả chi tiết nội dung và mục tiêu khóa học..."
+                    simple
+                    minHeight="150px"
+                    maxHeight="300px"
                   />
                 </div>
               </CardContent>

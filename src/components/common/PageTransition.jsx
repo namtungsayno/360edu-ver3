@@ -6,21 +6,22 @@ import { useLocation } from "react-router-dom";
 
 export default function PageTransition({ children }) {
   const location = useLocation();
-  const [isVisible, setIsVisible] = useState(false);
-  const [displayChildren, setDisplayChildren] = useState(children);
+  const [isVisible, setIsVisible] = useState(true);
+  const [currentPath, setCurrentPath] = useState(location.pathname);
 
   useEffect(() => {
-    // Khi route thay đổi, bắt đầu animation
-    setIsVisible(false);
+    // Chỉ trigger animation khi PATHNAME thực sự thay đổi
+    if (location.pathname !== currentPath) {
+      setIsVisible(false);
 
-    // Đợi một chút rồi hiện nội dung mới với animation
-    const timer = setTimeout(() => {
-      setDisplayChildren(children);
-      setIsVisible(true);
-    }, 50);
+      const timer = setTimeout(() => {
+        setCurrentPath(location.pathname);
+        setIsVisible(true);
+      }, 50);
 
-    return () => clearTimeout(timer);
-  }, [location.pathname, children]);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, currentPath]);
 
   return (
     <div
@@ -28,7 +29,7 @@ export default function PageTransition({ children }) {
         isVisible ? "page-enter-active" : "page-enter"
       }`}
     >
-      {displayChildren}
+      {children}
     </div>
   );
 }

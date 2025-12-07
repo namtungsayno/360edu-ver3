@@ -14,6 +14,7 @@ import {
 import { courseService } from "../../../services/course/course.service";
 import { Input } from "../../../components/ui/Input.jsx";
 import { Textarea } from "../../../components/ui/Textarea.jsx";
+import RichTextEditor from "../../../components/ui/RichTextEditor";
 import { BackButton } from "../../../components/common/BackButton";
 
 export default function CourseOfSubjectDetail() {
@@ -411,12 +412,15 @@ export default function CourseOfSubjectDetail() {
                     <label className="block text-xs font-medium text-[#62748e] mb-1">
                       Mô tả khóa học
                     </label>
-                    <Textarea
-                      rows={6}
+                    <RichTextEditor
                       value={editableCourse.description || ""}
-                      onChange={handleDescriptionChange}
+                      onChange={(content) => {
+                        setEditableCourse((prev) => ({ ...prev, description: content }));
+                      }}
                       placeholder="Nhập mô tả khóa học"
-                      className="text-sm"
+                      simple
+                      minHeight="150px"
+                      maxHeight="300px"
                     />
                   </div>
                 </CardContent>

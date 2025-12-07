@@ -112,7 +112,35 @@ export const authService = {
 
   // ✅ Bắt đầu OAuth Google cho cả login/register
   startGoogleOAuth(mode = "login") {
+    // Clear all storage before redirecting to Google OAuth
+    // This ensures we don't have stale user data when coming back
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Clear all cookies
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+    
     window.location.assign(authApi.getGoogleOAuthUrl(mode));
+  },
+
+  // ✅ Alias cho startGoogleOAuth - được gọi từ Login.jsx
+  loginWithGoogle() {
+    // Clear all storage before redirecting to Google OAuth
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Clear all cookies
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+    
+    window.location.assign(authApi.getGoogleOAuthUrl());
   },
 
   // ✅ Dùng ở trang callback để lưu user (nếu BE trả về ?user=... hoặc ?token=...)

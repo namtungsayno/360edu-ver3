@@ -242,15 +242,14 @@ export default function CreateNews() {
 
               <div className="space-y-2">
                 <Label htmlFor="newsContent">Nội dung chi tiết *</Label>
-                <Textarea
-                  id="newsContent"
-                  placeholder="Nhập nội dung chi tiết tin tức..."
-                  rows={15}
-                  className="font-mono text-sm"
+                <RichTextEditor
                   value={formData.content}
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
+                  onChange={(content) =>
+                    setFormData({ ...formData, content: content })
                   }
+                  placeholder="Nhập nội dung chi tiết tin tức..."
+                  minHeight="350px"
+                  maxHeight="600px"
                 />
               </div>
 

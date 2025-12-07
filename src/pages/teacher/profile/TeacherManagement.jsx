@@ -4,8 +4,9 @@ import { Input } from "../../../components/ui/Input";
 import Card from "../../../components/common/Card";
 import { teacherProfileService } from "../../../services/teacher/teacher.profile.service";
 import { teacherUploadApi } from "../../../services/teacher/teacher.upload.api";
-import { User } from "lucide-react";
+import { User, Edit3, X, Lock } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
+import RichTextEditor, { RichTextContent } from "../../../components/ui/RichTextEditor";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
@@ -38,6 +39,7 @@ export default function TeacherManagement() {
   const [saved, setSaved] = useState(false); // đã lưu thành công
   const [error, setError] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false); // uploading avatar state
+  const [isEditing, setIsEditing] = useState(false); // chế độ chỉnh sửa
 
   // Load functions for certificates, experiences, educations
   const loadCertificates = async () => {
@@ -206,6 +208,7 @@ export default function TeacherManagement() {
 
       await teacherProfileService.saveProfile(payload);
       setSaved(true);
+      setIsEditing(false); // Tắt chế độ chỉnh sửa sau khi lưu thành công
       success("Lưu thông tin thành công!");
     } catch (err) {
       const msg = err?.displayMessage || "Không thể lưu thông tin";
@@ -316,12 +319,52 @@ export default function TeacherManagement() {
           {/* FORM NHẬP THÔNG TIN */}
           <div className="bg-white border border-gray-200 rounded-lg">
             <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900">
-                ⚙️ Thông tin hồ sơ
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Điền đầy đủ thông tin cá nhân của bạn.
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    ⚙️ Thông tin hồ sơ
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {isEditing ? "Đang chỉnh sửa thông tin cá nhân" : "Nhấn nút Sửa để chỉnh sửa thông tin"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isEditing ? (
+                    <Button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Sửa hồ sơ
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setSaved(false);
+                      }}
+                      variant="outline"
+                      className="flex items-center gap-2 border-gray-300"
+                    >
+                      <X className="w-4 h-4" />
+                      Hủy
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Overlay khi không ở chế độ chỉnh sửa */}
+              <div className={`relative ${!isEditing ? 'pointer-events-none' : ''}`}>
+                {!isEditing && (
+                  <div className="absolute inset-0 bg-gray-100/60 backdrop-blur-[1px] z-10 rounded-lg flex items-center justify-center">
+                    <div className="bg-white/90 px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-gray-600">
+                      <Lock className="w-5 h-5" />
+                      <span className="font-medium">Nhấn "Sửa hồ sơ" để chỉnh sửa</span>
+                    </div>
+                  </div>
+                )}
 
               <form
                 id="teacher-profile-form"
@@ -415,22 +458,16 @@ export default function TeacherManagement() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Giới thiệu bản thân
                       </label>
-                      <textarea
-                        name="bio"
+                      <RichTextEditor
                         value={form.bio}
-                        onChange={handleChange}
-                        rows={3}
-                        style={{ minHeight: "72px", resize: "none" }}
-                        onInput={(e) => {
-                          e.target.style.height = "auto";
-                          e.target.style.height =
-                            Math.max(72, e.target.scrollHeight) + "px";
-                        }}
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+                        onChange={(content) => setForm({ ...form, bio: content })}
                         placeholder="Giới thiệu ngắn gọn về bản thân, phương pháp dạy học..."
+                        simple
+                        minHeight="120px"
+                        maxHeight="300px"
                       />
                     </div>
 
@@ -622,24 +659,14 @@ export default function TeacherManagement() {
                             className="text-sm"
                           />
                         </div>
-                        <textarea
+                        <RichTextEditor
                           value={cert.description || ""}
-                          onChange={(e) =>
-                            updateCertificate(
-                              index,
-                              "description",
-                              e.target.value
-                            )
+                          onChange={(content) =>
+                            updateCertificate(index, "description", content)
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                          rows="2"
-                          style={{ minHeight: "56px", resize: "none" }}
-                          onInput={(e) => {
-                            e.target.style.height = "auto";
-                            e.target.style.height =
-                              Math.max(56, e.target.scrollHeight) + "px";
-                          }}
-                          placeholder="Mô tả"
+                          placeholder="Mô tả chứng chỉ..."
+                          simple
+                          minHeight="80px"
                         />
                       </div>
                     </div>
@@ -718,24 +745,14 @@ export default function TeacherManagement() {
                             className="text-sm"
                           />
                         </div>
-                        <textarea
+                        <RichTextEditor
                           value={edu.description || ""}
-                          onChange={(e) =>
-                            updateEducation(
-                              index,
-                              "description",
-                              e.target.value
-                            )
+                          onChange={(content) =>
+                            updateEducation(index, "description", content)
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                          rows="2"
-                          style={{ minHeight: "56px", resize: "none" }}
-                          onInput={(e) => {
-                            e.target.style.height = "auto";
-                            e.target.style.height =
-                              Math.max(56, e.target.scrollHeight) + "px";
-                          }}
-                          placeholder="Mô tả"
+                          placeholder="Mô tả học vấn..."
+                          simple
+                          minHeight="80px"
                         />
                       </div>
                     </div>
@@ -827,24 +844,14 @@ export default function TeacherManagement() {
                             className="text-sm"
                           />
                         </div>
-                        <textarea
+                        <RichTextEditor
                           value={exp.description || ""}
-                          onChange={(e) =>
-                            updateExperience(
-                              index,
-                              "description",
-                              e.target.value
-                            )
+                          onChange={(content) =>
+                            updateExperience(index, "description", content)
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                          rows="2"
-                          style={{ minHeight: "56px", resize: "none" }}
-                          onInput={(e) => {
-                            e.target.style.height = "auto";
-                            e.target.style.height =
-                              Math.max(56, e.target.scrollHeight) + "px";
-                          }}
-                          placeholder="Mô tả"
+                          placeholder="Mô tả công việc..."
+                          simple
+                          minHeight="80px"
                         />
                       </div>
                     </div>
@@ -857,6 +864,7 @@ export default function TeacherManagement() {
                 </div>
               </div>
             </div>
+              </div> {/* End of isEditing wrapper */}
           </div>
 
           {/* PREVIEW SECTION */}
@@ -986,7 +994,9 @@ export default function TeacherManagement() {
                     <p className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-2">
                       📝 Giới thiệu
                     </p>
-                    <p className="text-gray-700 leading-relaxed">{form.bio}</p>
+                    <div className="text-gray-700 leading-relaxed">
+                      <RichTextContent content={form.bio} />
+                    </div>
                   </div>
                 )}
 
@@ -1028,9 +1038,9 @@ export default function TeacherManagement() {
                                 </p>
                               )}
                               {cert.description && (
-                                <p className="text-sm text-gray-700 mt-1">
-                                  {cert.description}
-                                </p>
+                                <div className="text-sm text-gray-700 mt-1">
+                                  <RichTextContent content={cert.description} />
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1068,9 +1078,9 @@ export default function TeacherManagement() {
                                 </p>
                               )}
                               {edu.description && (
-                                <p className="text-sm text-gray-700 mt-1">
-                                  {edu.description}
-                                </p>
+                                <div className="text-sm text-gray-700 mt-1">
+                                  <RichTextContent content={edu.description} />
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1115,9 +1125,9 @@ export default function TeacherManagement() {
                                 ) : null}
                               </div>
                               {exp.description && (
-                                <p className="text-sm text-gray-700 mt-1">
-                                  {exp.description}
-                                </p>
+                                <div className="text-sm text-gray-700 mt-1">
+                                  <RichTextContent content={exp.description} />
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1140,30 +1150,43 @@ export default function TeacherManagement() {
             </div>
           </div>
 
-          {/* SAVE BUTTON - MOVED TO BOTTOM */}
-          <div className="mt-6 bg-white border border-gray-200 rounded-lg">
-            <div className="p-6">
-              <div className="flex items-center justify-center gap-3">
-                <Button
-                  type="submit"
-                  disabled={loading || uploadingImage || !valid}
-                  form="teacher-profile-form"
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                >
-                  {uploadingImage
-                    ? "📤 Đang upload ảnh..."
-                    : loading
-                    ? "⏳ Đang lưu..."
-                    : "💾 Lưu hồ sơ"}
-                </Button>
-                {saved && (
-                  <span className="text-lg text-green-700 font-medium">
-                    ✅ Đã lưu thành công!
-                  </span>
-                )}
+          {/* SAVE BUTTON - MOVED TO BOTTOM - Chỉ hiển thị khi đang chỉnh sửa */}
+          {isEditing && (
+            <div className="mt-6 bg-white border border-gray-200 rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center justify-center gap-3">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setSaved(false);
+                    }}
+                    variant="outline"
+                    className="px-6 py-3 border-gray-300"
+                  >
+                    ❌ Hủy
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading || uploadingImage || !valid}
+                    form="teacher-profile-form"
+                    className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                  >
+                    {uploadingImage
+                      ? "📤 Đang upload ảnh..."
+                      : loading
+                      ? "⏳ Đang lưu..."
+                      : "💾 Lưu hồ sơ"}
+                  </Button>
+                  {saved && (
+                    <span className="text-lg text-green-700 font-medium">
+                      ✅ Đã lưu thành công!
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

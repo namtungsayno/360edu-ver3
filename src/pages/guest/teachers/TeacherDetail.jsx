@@ -24,6 +24,7 @@ import { teacherService } from "../../../services/teacher/teacher.service";
 import { Card, CardContent, CardHeader } from "../../../components/ui/Card";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
+import { RichTextContent } from "../../../components/ui/RichTextEditor";
 
 export default function TeacherDetail() {
   const { id } = useParams();
@@ -110,7 +111,7 @@ export default function TeacherDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 max-w-7xl">
+      <div className="max-w-5xl mx-auto px-4">
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -158,18 +159,12 @@ export default function TeacherDetail() {
                       )}
                     </div>
                   </div>
-                  {/* Rating */}
-                  <div className="text-center bg-yellow-50 px-4 py-2 rounded-lg">
-                    <div className="flex items-center gap-1 mb-1">
-                      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                      <span className="text-2xl font-bold text-gray-900">{displayRating.toFixed(1)}</span>
-                    </div>
-                    <p className="text-xs text-gray-600">Đánh giá</p>
-                  </div>
                 </div>
 
                 {/* Bio */}
-                <p className="text-gray-600 mb-4 leading-relaxed">{displayBio}</p>
+                <div className="text-gray-600 mb-4 leading-relaxed">
+                  <RichTextContent content={displayBio} />
+                </div>
 
                 {/* Contact Info */}
                 <div className="flex flex-wrap gap-4 mb-4">
@@ -235,7 +230,7 @@ export default function TeacherDetail() {
         </Card>
 
         {/* Stats Grid */}
-        <div className="grid md:grid-cols-4 gap-4 mb-6">
+        <div className="grid md:grid-cols-3 gap-4 mb-6">
           <Card className="hover:shadow-lg transition-shadow">
             <CardContent className="p-6 text-center">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -265,22 +260,12 @@ export default function TeacherDetail() {
               <p className="text-sm text-gray-600">Năm kinh nghiệm</p>
             </CardContent>
           </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6 text-center">
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Star className="w-6 h-6 text-yellow-600" />
-              </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{displayRating.toFixed(1)}</p>
-              <p className="text-sm text-gray-600">Đánh giá</p>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
+        {/* Content Grid - 2 cột chia đôi màn hình */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Cột trái - Chứng chỉ & Thành tích */}
+          <div className="space-y-6">
             {/* Certifications */}
             {displayCertificates.length > 0 && (
               <Card>
@@ -310,66 +295,11 @@ export default function TeacherDetail() {
                             </div>
                           )}
                           {cert.description && (
-                            <p className="text-sm text-gray-500 mt-2">{cert.description}</p>
+                            <div className="text-sm text-gray-500 mt-2">
+                              <RichTextContent content={cert.description} />
+                            </div>
                           )}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Professional Experience */}
-            {displayExperiences.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-5 h-5 text-purple-600" />
-                    <h2 className="text-xl font-bold">Kinh nghiệm làm việc</h2>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {displayExperiences.map((exp, index) => (
-                      <div key={`exp-${exp.id || index}`} className="relative pl-6 pb-4 border-l-2 border-purple-200 last:pb-0">
-                        <div className="absolute -left-2 top-0 w-4 h-4 bg-purple-500 rounded-full border-2 border-white"></div>
-                        <h3 className="font-semibold text-gray-900 mb-1">{exp.position}</h3>
-                        <p className="text-sm text-purple-600 font-medium mb-1">{exp.company}</p>
-                        <p className="text-xs text-gray-500 mb-2">
-                          {exp.startYear} {exp.endYear ? `- ${exp.endYear}` : '- Hiện tại'}
-                        </p>
-                        {exp.description && (
-                          <p className="text-sm text-gray-600">{exp.description}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Education */}
-            {displayEducations.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5 text-purple-600" />
-                    <h2 className="text-xl font-bold">Học vấn</h2>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {displayEducations.map((edu, index) => (
-                      <div key={`edu-${edu.id || index}`} className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                        <h3 className="font-semibold text-gray-900 mb-1">{edu.degree}</h3>
-                        <p className="text-sm text-blue-600 font-medium mb-1">{edu.school}</p>
-                        {edu.year && (
-                          <p className="text-xs text-gray-500">Năm {edu.year}</p>
-                        )}
-                        {edu.description && (
-                          <p className="text-sm text-gray-600 mt-2">{edu.description}</p>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -398,11 +328,8 @@ export default function TeacherDetail() {
                 </CardContent>
               </Card>
             )}
-          </div>
 
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Teaching Schedule - Optional, hide if no schedule */}
+            {/* Teaching Schedule */}
             {teacher.schedule && teacher.schedule.length > 0 && (
               <Card>
                 <CardHeader>
@@ -422,6 +349,70 @@ export default function TeacherDetail() {
                             <span>{slot}</span>
                           </div>
                         ))}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Cột phải - Kinh nghiệm & Học vấn */}
+          <div className="space-y-6">
+            {/* Professional Experience */}
+            {displayExperiences.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-xl font-bold">Kinh nghiệm làm việc</h2>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {displayExperiences.map((exp, index) => (
+                      <div key={`exp-${exp.id || index}`} className="relative pl-6 pb-4 border-l-2 border-purple-200 last:pb-0">
+                        <div className="absolute -left-2 top-0 w-4 h-4 bg-purple-500 rounded-full border-2 border-white"></div>
+                        <h3 className="font-semibold text-gray-900 mb-1">{exp.position}</h3>
+                        <p className="text-sm text-purple-600 font-medium mb-1">{exp.company}</p>
+                        <p className="text-xs text-gray-500 mb-2">
+                          {exp.startYear} {exp.endYear ? `- ${exp.endYear}` : '- Hiện tại'}
+                        </p>
+                        {exp.description && (
+                          <div className="text-sm text-gray-600">
+                            <RichTextContent content={exp.description} />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Education */}
+            {displayEducations.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5 text-purple-600" />
+                    <h2 className="text-xl font-bold">Học vấn</h2>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {displayEducations.map((edu, index) => (
+                      <div key={`edu-${edu.id || index}`} className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <h3 className="font-semibold text-gray-900 mb-1">{edu.degree}</h3>
+                        <p className="text-sm text-blue-600 font-medium mb-1">{edu.school}</p>
+                        {edu.year && (
+                          <p className="text-xs text-gray-500">Năm {edu.year}</p>
+                        )}
+                        {edu.description && (
+                          <div className="text-sm text-gray-600 mt-2">
+                            <RichTextContent content={edu.description} />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
