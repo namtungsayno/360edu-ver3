@@ -218,27 +218,8 @@ export default function TeacherCourseList() {
     return { total, approved, archived };
   }, [courses]);
 
-  // Filtered courses on FE (search by title/subject)
-  const visibleCourses = useMemo(() => {
-    let list = [...courses];
-
-    if (search.trim()) {
-      const keyword = search.trim().toLowerCase();
-      list = list.filter((c) => {
-        const title = String(c.title || "").toLowerCase();
-        const subject = String(c.subjectName || "").toLowerCase();
-        return title.includes(keyword) || subject.includes(keyword);
-      });
-    }
-
-    if (statusFilter !== "ALL") {
-      list = list.filter(
-        (c) => String(c.status).toUpperCase() === statusFilter
-      );
-    }
-
-    return list;
-  }, [courses, search, statusFilter]);
+  // NOTE: Search and status filter are now handled by the BE API (courseService.listMyCourses)
+  // No additional FE filtering needed - just use 'courses' directly
 
   return (
     <div className="p-6 space-y-6">
@@ -368,7 +349,7 @@ export default function TeacherCourseList() {
           </Card>
         )}
 
-        {!loading && visibleCourses.length === 0 && (
+        {!loading && courses.length === 0 && (
           <Card className="rounded-[14px] border-2 border-dashed border-gray-200 bg-gray-50 py-10 flex flex-col items-center justify-center text-center">
             <div className="w-14 h-14 rounded-full border border-gray-200 flex items-center justify-center mb-4">
               <BookOpen className="w-6 h-6 text-[#62748e]" />
@@ -383,8 +364,8 @@ export default function TeacherCourseList() {
         )}
 
         {!loading &&
-          visibleCourses.length > 0 &&
-          visibleCourses.map((course) => {
+          courses.length > 0 &&
+          courses.map((course) => {
             const statusConfig = getStatusConfig(course.status);
             const StatusIcon = statusConfig.icon;
 

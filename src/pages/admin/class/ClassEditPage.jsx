@@ -641,7 +641,7 @@ export default function ClassEditPage() {
         }
       }
       success("Cập nhật lớp thành công");
-      navigate(`/home/admin/class/${cls.id}`);
+      navigate("/home/admin/class");
     } catch (e) {
       console.error(e);
       let msg = "Không thể cập nhật lớp";
@@ -699,7 +699,7 @@ export default function ClassEditPage() {
                 <BackButton
                   onClick={() => {
                     if (currentStep === 2) setCurrentStep(1);
-                    else navigate(`/home/admin/class/${cls.id}`);
+                    else navigate("/home/admin/class");
                   }}
                   showLabel={false}
                 />

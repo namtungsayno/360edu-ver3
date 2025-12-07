@@ -419,10 +419,10 @@ export default function SubjectDetail() {
       {/* Courses Section */}
       <DetailSection
         title="Danh sách khóa học"
-        action={
+        headerActions={
           <Button
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={handleOpenCreateCourse}
           >
             <Plus className="w-4 h-4 mr-2" />
