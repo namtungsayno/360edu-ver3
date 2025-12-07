@@ -42,6 +42,8 @@ import {
   GraduationCap,
   Layers,
   ChevronDown,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 
 // ============ HELPER FUNCTIONS ============
@@ -209,7 +211,14 @@ function ClassListItem({ cls, isSelected, onClick }) {
 }
 
 // ============ DETAIL PANEL ============
-function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
+function DetailPanel({
+  cls,
+  onClose,
+  onPublish,
+  onDelete,
+  updating,
+  deleting,
+}) {
   const navigate = useNavigate();
   const timeStatus = getDerivedStatus(cls);
   const statusBadge = getStatusBadge(cls.status);
@@ -509,6 +518,41 @@ function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
               : "✅ Lớp học đã được xuất bản. Bạn có thể chuyển về Bản nháp nếu cần chỉnh sửa thêm."}
           </p>
         </div>
+
+        {/* Delete notice for DRAFT */}
+        {cls.status === "DRAFT" && (
+          <div className="p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-200">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-700 flex items-center gap-1.5">
+                  <Trash2 className="w-4 h-4" />
+                  Có thể xóa lớp
+                </p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  Lớp đang ở trạng thái <strong>DRAFT</strong> nên có thể xóa
+                  vĩnh viễn.
+                </p>
+              </div>
+              <button
+                onClick={onDelete}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors flex-shrink-0"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Đang xóa...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Xóa lớp
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer Actions */}
@@ -521,7 +565,7 @@ function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
             <Edit className="w-4 h-4" />
             Sửa
           </button>
-          {cls.status === "DRAFT" ? (
+          {cls.status === "DRAFT" && (
             <button
               onClick={onPublish}
               disabled={updating}
@@ -530,17 +574,13 @@ function DetailPanel({ cls, onClose, onPublish, onRevert, updating }) {
               <CheckCircle className="w-4 h-4" />
               {updating ? "Đang xử lý..." : "Xuất bản"}
             </button>
-          ) : (
-            <button
-              onClick={onRevert}
-              disabled={updating}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 disabled:opacity-50 transition-colors"
-            >
-              <AlertCircle className="w-4 h-4" />
-              {updating ? "Đang xử lý..." : "Về nháp"}
-            </button>
           )}
         </div>
+        {cls.status === "PUBLIC" && (
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            ℹ️ Lớp đã xuất bản không thể chuyển về bản nháp
+          </p>
+        )}
       </div>
     </div>
   );
@@ -602,6 +642,7 @@ export default function ClassManagementV2() {
   // Selection
   const [selectedId, setSelectedId] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Load stats once
   useEffect(() => {
@@ -727,19 +768,26 @@ export default function ClassManagementV2() {
     }
   };
 
-  const handleRevert = async () => {
-    if (!selectedClass) return;
-    setUpdating(true);
+  const handleDelete = async () => {
+    if (!selectedClass || selectedClass.status !== "DRAFT") return;
+
+    const confirmMsg = `Bạn có chắc chắn muốn XÓA VĨNH VIỄN lớp "${selectedClass.name}"?\n\nLưu ý: Tất cả dữ liệu liên quan (buổi học, lịch học, học viên đăng ký,...) sẽ bị xóa và KHÔNG THỂ KHÔI PHỤC.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeleting(true);
     try {
-      await classService.revertDraft(selectedClass.id);
+      await classService.delete(selectedClass.id);
+      setSelectedId(null);
       await loadClasses();
       await reloadStats();
-      success("Đã chuyển lớp về bản nháp");
+      success("Đã xóa lớp học thành công");
     } catch (e) {
       console.error(e);
-      showError("Không thể chuyển về bản nháp");
+      let msg = "Không thể xóa lớp học";
+      if (e.response?.data?.message) msg = e.response.data.message;
+      showError(msg);
     } finally {
-      setUpdating(false);
+      setDeleting(false);
     }
   };
 
@@ -927,8 +975,9 @@ export default function ClassManagementV2() {
               cls={selectedClass}
               onClose={() => setSelectedId(null)}
               onPublish={handlePublish}
-              onRevert={handleRevert}
+              onDelete={handleDelete}
               updating={updating}
+              deleting={deleting}
             />
           ) : (
             <EmptyDetail />
@@ -948,8 +997,9 @@ export default function ClassManagementV2() {
               cls={selectedClass}
               onClose={() => setSelectedId(null)}
               onPublish={handlePublish}
-              onRevert={handleRevert}
+              onDelete={handleDelete}
               updating={updating}
+              deleting={deleting}
             />
           </div>
         </div>

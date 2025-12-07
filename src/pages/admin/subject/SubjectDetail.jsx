@@ -220,7 +220,7 @@ export default function SubjectDetail() {
     navigate(`/home/admin/subject/${id}/courses/create`);
 
   const handleViewCourse = (courseId) => {
-    navigate(`/home/admin/courses/${courseId}`);
+    navigate(`/home/admin/subject/${id}/courses/${courseId}`);
   };
 
   // Loading state

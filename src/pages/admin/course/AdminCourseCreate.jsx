@@ -49,9 +49,17 @@ export default function AdminCourseCreate() {
   // ====== INIT: LOAD SUBJECT BY subjectId QUERY ======
   useEffect(() => {
     const sid = searchParams.get("subjectId");
+    const sname = searchParams.get("subjectName");
     if (!sid) return;
     setSubjectId(String(sid));
 
+    // Nếu có subjectName từ params thì dùng luôn
+    if (sname) {
+      setSubjectName(decodeURIComponent(sname));
+      return;
+    }
+
+    // Nếu không có thì gọi API lấy tên môn
     (async () => {
       try {
         const subject = await getSubjectById(sid);

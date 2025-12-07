@@ -70,4 +70,6 @@ export const classApi = {
     http.get(`/classes/${id}/public`).then((r) => r.data),
   update: (id, payload) =>
     http.put(`/classes/${id}`, payload).then((r) => r.data),
+  // Delete a DRAFT class permanently
+  delete: (id) => http.delete(`/classes/${id}`).then((r) => r.data),
 };
