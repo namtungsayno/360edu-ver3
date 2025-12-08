@@ -45,6 +45,7 @@ import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
 import StudentProfile from "../pages/student/StudentProfile.jsx";
 import StudentSchedule from "../pages/student/StudentSchedule.jsx";
 import AllNotifications from "../pages/student/AllNotifications.jsx";
+import StudentPaymentHistory from "../pages/student/PaymentHistory.jsx";
 
 // GUEST PAGES - Các trang dành cho user chưa đăng nhập
 import Home from "../pages/guest/home/Home";
@@ -162,6 +163,11 @@ function AppRouter() {
             element={<AllNotifications />}
           />{" "}
           {/* Tất cả thông báo */}
+          <Route
+            path="/home/payment-history"
+            element={<StudentPaymentHistory />}
+          />{" "}
+          {/* Lịch sử thanh toán */}
         </Route>
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
         <Route element={<RequireRole allow={["admin"]} />}>

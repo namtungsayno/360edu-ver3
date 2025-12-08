@@ -53,4 +53,14 @@ export const paymentService = {
     if (!id) throw new Error("Payment ID is required");
     return paymentApi.confirmPayment(id);
   },
+
+  /**
+   * Student: Lấy lịch sử thanh toán của chính mình (phân trang)
+   * @param {number} page
+   * @param {number} size
+   * @returns {Promise<{content: Array, totalElements: number, totalPages: number, number: number}>}
+   */
+  async getMyHistory(page = 0, size = 10) {
+    return paymentApi.getMyHistory({ page, size });
+  },
 };

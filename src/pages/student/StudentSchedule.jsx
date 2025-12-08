@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Video,
+  ExternalLink,
 } from "lucide-react";
 import { studentScheduleService } from "../../services/student-schedule/student-schedule.service.js";
 import { useToast } from "../../hooks/use-toast";

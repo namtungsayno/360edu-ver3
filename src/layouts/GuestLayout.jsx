@@ -132,6 +132,9 @@ export default function GuestLayout() {
             navigate("/home/my-classes");
           }
           break;
+        case "payment-history":
+          navigate("/home/payment-history");
+          break;
         default:
           console.log("Unknown navigation:", page);
       }

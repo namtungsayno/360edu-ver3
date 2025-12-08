@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Users, BookOpen, SlidersHorizontal, ChevronDown, X } from "lucide-react";
+import { Search, Users, BookOpen, SlidersHorizontal, ChevronDown, X, Video, ExternalLink } from "lucide-react";
+import { useToast } from "../../hooks/use-toast";
 import { enrollmentService } from "../../services/enrollment/enrollment.service";
 import { Badge } from "../../components/ui/Badge.jsx";
 import { Button } from "../../components/ui/Button.jsx";
@@ -16,6 +17,7 @@ export default function Classes() {
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const navigate = useNavigate();
+  const { error: showError } = useToast();
 
   useEffect(() => {
     (async () => {
@@ -76,7 +78,32 @@ export default function Classes() {
     setFilteredClasses(result);
   }, [searchQuery, selectedSubject, selectedTeacher, classes]);
 
-  const goDetail = (id) => {
+  const isFirstSessionToday = (c) => {
+    const today = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    const firstDate = c.firstSessionDate || c.startDate;
+    if (!firstDate) return false;
+    return String(firstDate).slice(0, 10) === todayStr;
+  };
+
+  const goDetail = (id, c) => {
+    // Chặn lớp đầy slot (nếu dữ liệu có)
+    const current = Number(c.currentStudents || 0);
+    const max = Number(c.maxStudents || 0);
+    if (max > 0 && current >= max) {
+      showError("Lớp học đã đầy slot, vui lòng chọn lớp khác", "Lớp đầy");
+      return;
+    }
+
+    // Xác nhận nếu lớp bắt đầu hôm nay
+    if (isFirstSessionToday(c)) {
+      const ok = window.confirm(
+        `Lớp này bắt đầu học hôm nay. Bạn có muốn tiếp tục vào chi tiết lớp (đang học)?`
+      );
+      if (!ok) return;
+    }
+
     console.log("📍 Navigating to class detail:", id);
     navigate(`/home/my-classes/${id}`);
   };
@@ -326,40 +353,61 @@ export default function Classes() {
               <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredClasses.map((c, idx) => {
               const teacherInitial = (c.teacherName || "G").charAt(0).toUpperCase();
+              // Tính tiến độ lớp học
+              const totalSessions = c.totalSessions || 0;
+              const completedSessions = c.completedSessions || 0;
+              const progressPercent = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+              const isOnline = c.online || c.isOnline;
+              
               return (
                 <Card 
                   key={c.classId} 
-                  className="group overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border-2 border-transparent hover:border-blue-200"
-                  onClick={() => goDetail(c.classId)}
+                  className={`group overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 border-2 border-transparent hover:border-blue-200 flex flex-col ${
+                    (Number(c.maxStudents||0)>0 && Number(c.currentStudents||0)>=Number(c.maxStudents||0)) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                  }`}
+                  onClick={() => goDetail(c.classId, c)}
                 >
                   {/* Card Header với Gradient */}
-                  <div className={`bg-gradient-to-br ${gradients[idx % gradients.length]} h-44 relative`}>
+                  <div className={`bg-gradient-to-br ${gradients[idx % gradients.length]} h-36 relative`}>
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-all"></div>
-                    <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
-                      <div className="flex flex-col gap-2">
-                        <Badge className="bg-white/95 text-gray-900 backdrop-blur-sm shadow-lg w-fit font-medium">
+                    <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
+                      <div className="flex flex-col gap-1.5">
+                        <Badge className="bg-white/95 text-gray-900 backdrop-blur-sm shadow-lg w-fit font-medium text-xs">
                           {c.subjectName || "Môn học"}
                         </Badge>
-                        {c.status && (
-                          <Badge className={
-                            c.status === 'ACTIVE' 
-                              ? "bg-green-500/90 backdrop-blur-sm shadow-lg w-fit" 
-                              : "bg-gray-500/90 backdrop-blur-sm shadow-lg w-fit"
-                          }>
-                            {c.status === 'ACTIVE' ? '✓ Đang học' : c.status}
-                          </Badge>
-                        )}
+                        <div className="flex gap-1.5">
+                          {c.status && (
+                            <Badge className={
+                              c.status === 'ACTIVE' 
+                                ? "bg-green-500/90 backdrop-blur-sm shadow-lg w-fit text-xs" 
+                                : "bg-gray-500/90 backdrop-blur-sm shadow-lg w-fit text-xs"
+                            }>
+                              {c.status === 'ACTIVE' ? '✓ Đang học' : c.status}
+                            </Badge>
+                          )}
+                          {isOnline && (
+                            <Badge className="bg-blue-500/90 backdrop-blur-sm shadow-lg w-fit text-xs">
+                              <Video className="w-3 h-3 mr-1" />
+                              Online
+                            </Badge>
+                          )}
+                          {(Number(c.maxStudents||0)>0 && Number(c.currentStudents||0)>=Number(c.maxStudents||0)) && (
+                            <Badge className="bg-red-600/90 text-white backdrop-blur-sm shadow-lg w-fit text-xs">
+                              ⚠ Lớp đầy slot
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <div className="bg-white/20 backdrop-blur-md rounded-full p-2.5 shadow-lg">
-                        <BookOpen className="w-6 h-6 text-white" />
+                      <div className="bg-white/20 backdrop-blur-md rounded-full p-2 shadow-lg">
+                        <BookOpen className="w-5 h-5 text-white" />
                       </div>
                     </div>
                   </div>
 
-                  <CardContent className="p-5 relative">
+                  <CardContent className="p-4 relative flex-1 flex flex-col">
                     {/* Teacher Avatar - Overlapping */}
-                    <div className="absolute -top-10 right-4">
-                      <div className="w-20 h-20 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
+                    <div className="absolute -top-8 right-3">
+                      <div className="w-16 h-16 rounded-full bg-white ring-4 ring-white shadow-xl flex items-center justify-center overflow-hidden">
                         {c.teacherAvatarUrl ? (
                           <img 
                             src={c.teacherAvatarUrl} 
@@ -368,47 +416,76 @@ export default function Classes() {
                           />
                         ) : (
                           <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                            <span className="text-2xl font-bold text-blue-600">{teacherInitial}</span>
+                            <span className="text-xl font-bold text-blue-600">{teacherInitial}</span>
                           </div>
                         )}
                       </div>
                     </div>
 
-                  {/* Class Name */}
-                  <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors pr-24">
+                  {/* Class Name - Full display */}
+                  <h3 className="text-base font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors pr-20 min-h-[48px]" title={c.className}>
                     {c.className || `Lớp ${c.subjectName || 'học'}`}
                   </h3>
                   
                   {/* Teacher Info */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <Users className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-gray-700">{c.teacherName || "Đang cập nhật"}</span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <span className="text-sm font-medium text-gray-700 truncate">{c.teacherName || "Đang cập nhật"}</span>
                   </div>
 
                   {/* Schedule & Date Info */}
-                  <div className="space-y-2 mb-4">
+                  <div className="space-y-1 mb-3 text-xs text-gray-600">
                     {c.roomName && (
-                      <div className="text-sm text-gray-600">
-                        📍 Phòng: {c.roomName}
-                      </div>
+                      <div className="truncate">📍 Phòng: {c.roomName}</div>
                     )}
                     {c.semesterName && (
-                      <div className="text-sm text-gray-600">
-                        📅 Học kỳ: {c.semesterName}
-                      </div>
+                      <div className="truncate">📅 {c.semesterName}</div>
                     )}
                     {c.startDate && c.endDate && (
-                      <div className="text-sm text-gray-600">
-                        🕐 {c.startDate} → {c.endDate}
-                      </div>
+                      <div>🕐 {c.startDate} → {c.endDate}</div>
                     )}
                   </div>
 
+                  {/* Progress Bar for Active Classes */}
+                  {c.status === 'ACTIVE' && totalSessions > 0 && (
+                    <div className="mb-3">
+                      <div className="flex justify-between text-xs text-gray-600 mb-1">
+                        <span>Tiến độ</span>
+                        <span className="font-medium">{completedSessions}/{totalSessions} buổi</span>
+                      </div>
+                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Online Link */}
+                  {isOnline && c.onlineLink && (
+                    <a
+                      href={c.onlineLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="mb-3 flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      <Video className="w-4 h-4" />
+                      <span className="flex-1 truncate">Link học online</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+
+                  {/* Spacer */}
+                  <div className="flex-1"></div>
+
                   {/* CTA Button */}
                   <Button 
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all mt-auto"
+                    disabled={(Number(c.maxStudents||0)>0 && Number(c.currentStudents||0)>=Number(c.maxStudents||0))}
                   >
-                    <span className="font-medium">Xem chi tiết lớp học</span>
+                    <span className="font-medium text-sm">Xem chi tiết</span>
                   </Button>
                 </CardContent>
               </Card>

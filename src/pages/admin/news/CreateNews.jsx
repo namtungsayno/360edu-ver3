@@ -23,12 +23,12 @@ import {
   X,
   Loader2,
   Upload,
-  Image as ImageIcon,
   Newspaper,
 } from "lucide-react";
 import { newsService } from "../../../services/news/news.service";
 import { useToast } from "../../../hooks/use-toast";
 import { BackButton } from "../../../components/common/BackButton";
+import RichTextEditor from "../../../components/ui/RichTextEditor";
 
 export default function CreateNews() {
   const navigate = useNavigate();
@@ -426,8 +426,8 @@ export default function CreateNews() {
 
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="gap-1">
+                  {tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="gap-1">
                       {tag}
                       <button
                         type="button"

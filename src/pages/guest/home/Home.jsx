@@ -16,7 +16,7 @@
 
 import { useOutletContext } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Video, Users, Calendar, Book, Award, TrendingUp, BookOpen, Clock, MapPin, UserCheck, ArrowRight, GraduationCap, Star, TrendingUpIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Video, Users, Calendar, Book, Award, TrendingUp, BookOpen, Clock, UserCheck, ArrowRight, GraduationCap, ChevronLeft, ChevronRight } from "lucide-react";
 import Banner from "../../../components/common/Banner";
 import { Footer } from "../../../components/common/Footer";
 import { Card, CardContent } from "../../../components/ui/Card";
@@ -306,13 +306,6 @@ export default function Home() {
       description: "Học tập tại trung tâm với cơ sở vật chất hiện đại và môi trường học tập chuyên nghiệp"
     },
     {
-      icon: Video,
-      iconBg: "bg-green-100",
-      iconColor: "text-green-600",
-      title: "Khóa học Video",
-      description: "Học theo nhu cầu với khóa video bài giảng phong phú, xem lại không giới hạn"
-    },
-    {
       icon: Calendar,
       iconBg: "bg-orange-100",
       iconColor: "text-orange-600",
@@ -332,6 +325,13 @@ export default function Home() {
       iconColor: "text-indigo-600",
       title: "Theo dõi kết quả",
       description: "Xem điểm số, báo cáo học tập và tiến độ của bạn một cách chi tiết"
+    },
+    {
+      icon: TrendingUp,
+      iconBg: "bg-green-100",
+      iconColor: "text-green-600",
+      title: "Nâng cao kỹ năng",
+      description: "Phát triển kỹ năng toàn diện với chương trình đào tạo chuẩn quốc tế"
     }
   ];
 
@@ -543,11 +543,6 @@ export default function Home() {
                 {/* Header Background with Gradient */}
                 <div className="h-32 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 relative">
                   <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
-                  {/* Rating Badge */}
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-bold text-gray-900">{teacher.rating}</span>
-                  </div>
                 </div>
 
                 <CardContent className="p-5 text-center relative">
@@ -578,7 +573,7 @@ export default function Home() {
                     {teacher.experience}
                   </p>
 
-                  {/* Stats */}
+                  {/* Stats - Chỉ hiển thị số lớp học */}
                   <div className="flex items-center justify-center gap-4 mb-3 pb-3 border-b border-gray-100">
                     <div className="text-center">
                       <div className="flex items-center justify-center gap-1 mb-1">
@@ -586,13 +581,6 @@ export default function Home() {
                         <p className="text-base font-bold text-gray-900">{teacher.courses}</p>
                       </div>
                       <p className="text-xs text-gray-500">Lớp học</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-1 mb-1">
-                        <Star className="w-3 h-3 text-yellow-500" />
-                        <p className="text-base font-bold text-gray-900">{teacher.rating > 0 ? teacher.rating.toFixed(1) : 'N/A'}</p>
-                      </div>
-                      <p className="text-xs text-gray-500">Đánh giá</p>
                     </div>
                   </div>
 
@@ -770,7 +758,7 @@ export default function Home() {
                 {/* View All News Button */}
                 <div className="text-center mt-12">
                   <Button 
-                    onClick={() => navigate('/home/news')}
+                    onClick={() => onNavigate({ type: "news" })}
                     size="lg"
                     variant="outline"
                     className="border-2 border-pink-600 text-pink-600 hover:bg-pink-600 hover:text-white"

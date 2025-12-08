@@ -206,6 +206,14 @@ export default function Header({ onNavigate, currentPage }) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchResults && setShowSearchDropdown(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && searchQuery.trim()) {
+                    e.preventDefault();
+                    setShowSearchDropdown(false);
+                    onNavigate({ type: "classes", search: searchQuery.trim() });
+                    setSearchQuery("");
+                  }
+                }}
                 className="pl-10 pr-4 h-10 bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/70 focus:bg-white/20 focus:border-white/30 rounded-lg"
               />
               
@@ -477,6 +485,16 @@ export default function Header({ onNavigate, currentPage }) {
                         >
                           <User className="w-4 h-4" />
                           Thông tin cá nhân
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            onNavigate({ type: "payment-history" });
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                          Lịch sử thanh toán
                         </button>
                       </>
                     )}
