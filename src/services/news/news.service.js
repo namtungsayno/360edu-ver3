@@ -153,15 +153,72 @@ export const newsService = {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      
-      const response = await http.post(API_ENDPOINTS.NEWS.UPLOAD_IMAGE, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+
+      const response = await http.post(
+        API_ENDPOINTS.NEWS.UPLOAD_IMAGE,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
       return response.data;
     } catch (error) {
       console.error("Error uploading news image:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Hẹn giờ đăng tin tức
+   * @param {string|number} id - ID của tin tức
+   * @param {string} scheduledAt - Thời gian đăng (ISO format)
+   * @returns {Promise} Response chứa tin tức đã cập nhật
+   */
+  async schedulePublish(id, scheduledAt) {
+    try {
+      const response = await http.patch(API_ENDPOINTS.NEWS.UPDATE_STATUS(id), {
+        status: "scheduled",
+        scheduledAt,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error scheduling news ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Công bố tin tức (chuyển từ draft sang published)
+   * @param {string|number} id - ID của tin tức
+   * @returns {Promise} Response chứa tin tức đã cập nhật
+   */
+  async publishNews(id) {
+    try {
+      const response = await http.patch(API_ENDPOINTS.NEWS.UPDATE_STATUS(id), {
+        status: "published",
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error publishing news ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Chuyển tin tức về nháp
+   * @param {string|number} id - ID của tin tức
+   * @returns {Promise} Response chứa tin tức đã cập nhật
+   */
+  async unpublishNews(id) {
+    try {
+      const response = await http.patch(API_ENDPOINTS.NEWS.UPDATE_STATUS(id), {
+        status: "draft",
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error unpublishing news ${id}:`, error);
       throw error;
     }
   },

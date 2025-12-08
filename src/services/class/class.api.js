@@ -70,4 +70,10 @@ export const classApi = {
     http.get(`/classes/${id}/public`).then((r) => r.data),
   update: (id, payload) =>
     http.put(`/classes/${id}`, payload).then((r) => r.data),
+  // Delete a DRAFT class permanently
+  delete: (id) => http.delete(`/classes/${id}`).then((r) => r.data),
+
+  // Get DRAFT classes approaching start date (within 3 days) - for admin warning
+  getDraftApproaching: () =>
+    http.get(`/classes/draft-approaching`).then((r) => r.data),
 };

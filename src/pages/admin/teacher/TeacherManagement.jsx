@@ -10,7 +10,9 @@ import {
   Users,
   UserCog,
   BookOpen,
+  UserPlus,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "../../../hooks/use-toast";
 import { teacherService } from "../../../services/teacher/teacher.service";
 import { teacherApi } from "../../../services/teacher/teacher.api";
@@ -44,6 +46,8 @@ const getSubjectColor = (name) => {
 const TeacherManagement = () => {
   const { error, success } = useToast();
   const toastRef = useRef({ error, success });
+  const navigate = useNavigate();
+
   useEffect(() => {
     toastRef.current = { error, success };
   }, [error, success]);
@@ -482,6 +486,15 @@ const TeacherManagement = () => {
               </select>
             </div>
           </div>
+
+          {/* Nút thêm giáo viên */}
+          <button
+            onClick={() => navigate("/home/admin/teachers/create")}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl font-medium shadow-lg shadow-emerald-200 transition-all duration-200"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Thêm giáo viên</span>
+          </button>
         </div>
       </div>
 

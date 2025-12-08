@@ -16,7 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/Select";
-import { Loader2, CalendarCheck2, Eye } from "lucide-react";
+import {
+  Loader2,
+  CalendarCheck2,
+  Eye,
+  ExternalLink,
+  AlertTriangle,
+} from "lucide-react";
 import { BackButton } from "../../../components/common/BackButton";
 
 import ScheduleGrid from "../schedule/ScheduleGrid";
@@ -345,6 +351,7 @@ export default function CreateOfflineClassPage() {
   const step1Valid = useMemo(() => {
     return (
       subjectId &&
+      courseId && // Bắt buộc chọn khóa học
       capacity &&
       parseInt(capacity) > 0 &&
       (!roomCapacity || parseInt(capacity) <= roomCapacity) &&
@@ -362,6 +369,7 @@ export default function CreateOfflineClassPage() {
     );
   }, [
     subjectId,
+    courseId,
     capacity,
     roomCapacity,
     pricePerSession,
@@ -670,31 +678,71 @@ export default function CreateOfflineClassPage() {
                   </div>
                 </div>
 
-                {/* Row 3: Khóa học (optional) */}
+                {/* Row 3: Khóa học (bắt buộc) */}
                 {subjectId && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Khóa học <span className="text-gray-400">(Tùy chọn)</span>
+                      Khóa học <span className="text-red-500">*</span>
                     </label>
-                    <Select
-                      value={String(courseId)}
-                      onValueChange={setCourseId}
-                    >
-                      <SelectTrigger className="h-auto min-h-[36px] text-sm py-2">
-                        <SelectValue
-                          placeholder="Chọn khóa học"
-                          className="whitespace-normal line-clamp-2"
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">-- Không chọn --</SelectItem>
-                        {courses.map((c) => (
-                          <SelectItem key={c.id} value={String(c.id)}>
-                            {c.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {courses.length > 0 ? (
+                      <>
+                        <Select
+                          value={String(courseId)}
+                          onValueChange={setCourseId}
+                        >
+                          <SelectTrigger
+                            className={`h-auto min-h-[36px] text-sm py-2 ${
+                              !courseId ? "border-amber-300" : ""
+                            }`}
+                          >
+                            <SelectValue
+                              placeholder="Chọn khóa học"
+                              className="whitespace-normal line-clamp-2"
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {courses.map((c) => (
+                              <SelectItem key={c.id} value={String(c.id)}>
+                                {c.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {!courseId && (
+                          <p className="text-[10px] text-amber-600 mt-0.5">
+                            Vui lòng chọn khóa học
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-xs text-amber-700 font-medium">
+                              Môn học này chưa có khóa học nào
+                            </p>
+                            <p className="text-[10px] text-amber-600 mt-0.5">
+                              Vui lòng tạo khóa học trước khi tạo lớp
+                            </p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-2 h-7 text-xs border-amber-300 text-amber-700 hover:bg-amber-100"
+                              onClick={() => {
+                                navigate(
+                                  `/home/admin/subject/${subjectId}/courses/create`
+                                );
+                              }}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Tạo khóa học ngay
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

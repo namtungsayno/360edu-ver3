@@ -3,7 +3,7 @@ import { http } from "../http";
 
 export const teacherProfileApi = {
   // ==================== CERTIFICATES ====================
-  
+
   /**
    * Get all certificates của teacher đang login
    */
@@ -15,14 +15,18 @@ export const teacherProfileApi = {
    * Thêm certificate mới
    */
   addCertificate(data) {
-    return http.post("/teachers/profile/certificates", data).then((r) => r.data);
+    return http
+      .post("/teachers/profile/certificates", data)
+      .then((r) => r.data);
   },
 
   /**
    * Cập nhật certificate
    */
   updateCertificate(certId, data) {
-    return http.put(`/teachers/profile/certificates/${certId}`, data).then((r) => r.data);
+    return http
+      .put(`/teachers/profile/certificates/${certId}`, data)
+      .then((r) => r.data);
   },
 
   /**
@@ -33,7 +37,7 @@ export const teacherProfileApi = {
   },
 
   // ==================== EXPERIENCES ====================
-  
+
   /**
    * Get all experiences của teacher đang login
    */
@@ -52,7 +56,9 @@ export const teacherProfileApi = {
    * Cập nhật experience
    */
   updateExperience(expId, data) {
-    return http.put(`/teachers/profile/experiences/${expId}`, data).then((r) => r.data);
+    return http
+      .put(`/teachers/profile/experiences/${expId}`, data)
+      .then((r) => r.data);
   },
 
   /**
@@ -63,7 +69,7 @@ export const teacherProfileApi = {
   },
 
   // ==================== EDUCATIONS ====================
-  
+
   /**
    * Get all educations của teacher đang login
    */
@@ -82,7 +88,9 @@ export const teacherProfileApi = {
    * Cập nhật education
    */
   updateEducation(eduId, data) {
-    return http.put(`/teachers/profile/educations/${eduId}`, data).then((r) => r.data);
+    return http
+      .put(`/teachers/profile/educations/${eduId}`, data)
+      .then((r) => r.data);
   },
 
   /**
@@ -93,7 +101,7 @@ export const teacherProfileApi = {
   },
 
   // ==================== PROFILE ====================
-  
+
   /**
    * Get teacher profile (main info)
    */

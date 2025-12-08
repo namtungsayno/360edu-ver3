@@ -21,10 +21,12 @@ import {
 } from "lucide-react";
 import { courseService } from "../../../services/course/course.service";
 import { BackButton } from "../../../components/common/BackButton";
+import { useToast } from "../../../hooks/use-toast";
 
 export default function CourseOfSubjectCreate() {
   const navigate = useNavigate();
   const { id: subjectId } = useParams();
+  const { success, error: showError } = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
@@ -159,14 +161,20 @@ export default function CourseOfSubjectCreate() {
             });
           }
         }
+        // Hiển thị toast thành công
+        success("Tạo khóa học thành công!", "Thành công");
         // quay lại chi tiết môn học
-        navigate(`/home/admin/subject/${subjectId}`, { replace: true });
+        setTimeout(() => {
+          navigate(`/home/admin/subject/${subjectId}`, { replace: true });
+        }, 1000);
       } else {
         setErrorMsg("Không thể tạo khóa học. Vui lòng thử lại.");
+        showError("Không thể tạo khóa học. Vui lòng thử lại.", "Lỗi");
       }
     } catch (e) {
       console.error(e);
       setErrorMsg("Có lỗi khi tạo khóa học. Vui lòng thử lại.");
+      showError("Có lỗi khi tạo khóa học. Vui lòng thử lại.", "Lỗi");
     } finally {
       setSaving(false);
     }

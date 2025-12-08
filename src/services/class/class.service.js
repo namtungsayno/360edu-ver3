@@ -23,4 +23,8 @@ export const classService = {
   async update(id, payload) {
     return classApi.update(id, payload);
   },
+  // Delete a DRAFT class permanently
+  async delete(id) {
+    return classApi.delete(id);
+  },
 };
