@@ -33,8 +33,6 @@ import {
   Edit,
   CheckCircle,
   AlertCircle,
-  PlayCircle,
-  PauseCircle,
   X,
   Globe,
   Home,
@@ -44,29 +42,12 @@ import {
   ChevronDown,
   Trash2,
   Loader2,
+  UserCheck,
+  PlayCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 // ============ HELPER FUNCTIONS ============
-function getDerivedStatus(cls) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sd = cls?.startDate ? new Date(cls.startDate) : null;
-  const ed = cls?.endDate ? new Date(cls.endDate) : null;
-  if (sd) sd.setHours(0, 0, 0, 0);
-  if (ed) ed.setHours(0, 0, 0, 0);
-
-  if (sd && sd > today) {
-    return { label: "Sắp mở", color: "sky", icon: PauseCircle };
-  }
-  if (sd && ed && sd <= today && today <= ed) {
-    return { label: "Đang diễn ra", color: "emerald", icon: PlayCircle };
-  }
-  if (ed && ed < today) {
-    return { label: "Đã kết thúc", color: "gray", icon: CheckCircle };
-  }
-  return null;
-}
-
 function getStatusBadge(status) {
   if (status === "DRAFT") {
     return {
@@ -116,7 +97,6 @@ function StatCard({ icon: Icon, label, value, gradient, iconBg }) {
 
 // ============ CLASS LIST ITEM ============
 function ClassListItem({ cls, isSelected, onClick }) {
-  const timeStatus = getDerivedStatus(cls);
   const statusBadge = getStatusBadge(cls.status);
 
   return (
@@ -196,13 +176,41 @@ function ClassListItem({ cls, isSelected, onClick }) {
             >
               {statusBadge.label}
             </span>
-            {timeStatus && (
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-${timeStatus.color}-100 text-${timeStatus.color}-700`}
-              >
-                {timeStatus.label}
+            {cls.status === "PUBLIC" && cls.currentStudents > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                <UserCheck className="w-3 h-3" />
+                {cls.currentStudents} học sinh
               </span>
             )}
+            {cls.status === "PUBLIC" &&
+              cls.completedSessions > 0 &&
+              cls.totalSessions > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                  <PlayCircle className="w-3 h-3" />
+                  Buổi {cls.completedSessions}/{cls.totalSessions}
+                </span>
+              )}
+            {/* Warning for DRAFT classes approaching start date */}
+            {cls.status === "DRAFT" &&
+              cls.startDate &&
+              (() => {
+                const startDate = new Date(cls.startDate);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                startDate.setHours(0, 0, 0, 0);
+                const daysLeft = Math.ceil(
+                  (startDate - today) / (1000 * 60 * 60 * 24)
+                );
+                if (daysLeft >= 0 && daysLeft <= 3) {
+                  return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 animate-pulse">
+                      <AlertTriangle className="w-3 h-3" />
+                      Còn {daysLeft} ngày!
+                    </span>
+                  );
+                }
+                return null;
+              })()}
           </div>
         </div>
       </div>
@@ -220,7 +228,6 @@ function DetailPanel({
   deleting,
 }) {
   const navigate = useNavigate();
-  const timeStatus = getDerivedStatus(cls);
   const statusBadge = getStatusBadge(cls.status);
 
   // DEBUG: Log dữ liệu từ API
@@ -308,14 +315,6 @@ function DetailPanel({
                   <statusBadge.icon className="w-3.5 h-3.5" />
                   {statusBadge.label}
                 </span>
-                {timeStatus && (
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-${timeStatus.color}-100 text-${timeStatus.color}-700`}
-                  >
-                    <timeStatus.icon className="w-3.5 h-3.5" />
-                    {timeStatus.label}
-                  </span>
-                )}
                 <span
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${
                     cls.online
@@ -325,6 +324,12 @@ function DetailPanel({
                 >
                   {cls.online ? "Online" : "Offline"}
                 </span>
+                {cls.status === "PUBLIC" && cls.currentStudents > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-100 text-indigo-700">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    Đã có {cls.currentStudents} học sinh
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -353,11 +358,32 @@ function DetailPanel({
           <div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
             <div className="flex items-center gap-2 text-indigo-600 mb-1">
               <Clock className="w-4 h-4" />
-              <span className="text-xs font-medium">Tổng buổi</span>
+              <span className="text-xs font-medium">Tiến độ học</span>
             </div>
             <p className="text-xl font-bold text-gray-900">
-              {totalSessions || "—"} buổi
+              {cls.completedSessions || 0}/{totalSessions || "—"} buổi
             </p>
+            {cls.status === "PUBLIC" && totalSessions > 0 && (
+              <div className="mt-2">
+                <div className="w-full bg-indigo-200 rounded-full h-1.5">
+                  <div
+                    className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        ((cls.completedSessions || 0) / totalSessions) * 100
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-indigo-600 mt-1">
+                  {Math.round(
+                    ((cls.completedSessions || 0) / totalSessions) * 100
+                  )}
+                  % hoàn thành
+                </p>
+              </div>
+            )}
           </div>
           <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100">
             <div className="flex items-center gap-2 text-emerald-600 mb-1">
@@ -644,6 +670,9 @@ export default function ClassManagementV2() {
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Draft classes approaching start date (warning)
+  const [draftApproaching, setDraftApproaching] = useState([]);
+
   // Load stats once
   useEffect(() => {
     (async () => {
@@ -665,6 +694,18 @@ export default function ClassManagementV2() {
         });
       } catch (e) {
         console.error("Failed to load stats:", e);
+      }
+    })();
+  }, []);
+
+  // Load draft classes approaching start date
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await classApi.getDraftApproaching();
+        setDraftApproaching(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("Failed to load draft approaching:", e);
       }
     })();
   }, []);
@@ -858,6 +899,66 @@ export default function ClassManagementV2() {
             iconBg="bg-white/20"
           />
         </div>
+
+        {/* ⚠️ Warning: Draft classes approaching start date */}
+        {draftApproaching.length > 0 && (
+          <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-amber-800">
+                  ⚠️ Có {draftApproaching.length} lớp "Bản nháp" sắp đến ngày
+                  hoạt động
+                </h3>
+                <div className="mt-2 space-y-2">
+                  {draftApproaching.map((cls) => {
+                    const startDate = cls.startDate
+                      ? new Date(cls.startDate)
+                      : null;
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const daysLeft = startDate
+                      ? Math.ceil((startDate - today) / (1000 * 60 * 60 * 24))
+                      : null;
+                    return (
+                      <div
+                        key={cls.id}
+                        className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-amber-100"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            {cls.name}
+                          </span>
+                          <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                            Còn {daysLeft} ngày
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">
+                            Ngày bắt đầu: {cls.startDate}
+                          </span>
+                          <button
+                            onClick={() =>
+                              navigate(`/home/admin/class/${cls.id}/edit`)
+                            }
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            Chỉnh sửa
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-amber-700">
+                  Vui lòng xuất bản hoặc xóa các lớp này trước ngày bắt đầu.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ============ MAIN CONTENT - SPLIT VIEW ============ */}

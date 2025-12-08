@@ -186,6 +186,8 @@ export default function ClassEditPage() {
             // Deduplicate by (day, HH:mm) to avoid duplicates later
             const uniq = uniqByKey(mapped);
             setPickedSlots(uniq);
+            // Lưu prevPickedSlots để hỗ trợ nút Hủy cho lớp DRAFT
+            setPrevPickedSlots(uniq);
             // initialSlotsCount logic removed
             // originalPickedSlots removed
           }
@@ -1247,16 +1249,37 @@ export default function ClassEditPage() {
                   className={`-mx-4 px-4 py-2.5 rounded-xl text-white ${accentStepGradient} shadow-md flex items-center justify-between`}
                 >
                   <h2 className="text-lg font-bold">Lịch học</h2>
-                  {!isEditingSchedule ? (
-                    <Button
-                      variant="outline"
-                      onClick={startEditSchedule}
-                      className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
-                      disabled={isPublic}
-                    >
-                      Chỉnh sửa
-                    </Button>
-                  ) : (
+                  {/* Lớp PUBLIC: cần bấm Chỉnh sửa để sửa lịch */}
+                  {isPublic &&
+                    (!isEditingSchedule ? (
+                      <Button
+                        variant="outline"
+                        onClick={startEditSchedule}
+                        className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
+                        disabled={isPublic}
+                      >
+                        Chỉnh sửa
+                      </Button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={cancelEditSchedule}
+                          className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={doneEditSchedule}
+                          className="h-8 px-3 text-xs"
+                        >
+                          Xong
+                        </Button>
+                      </div>
+                    ))}
+                  {/* Lớp DRAFT: luôn có nút Hủy/Xong để quản lý thay đổi */}
+                  {isDraft && (
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
@@ -1276,56 +1299,47 @@ export default function ClassEditPage() {
                   )}
                 </div>
 
-                {!isEditingSchedule ? (
+                {/* Lớp DRAFT: hiện ScheduleGrid luôn để dễ xem phòng bận + lịch GV */}
+                {isDraft && (
                   <div className="mt-4">
-                    {pickedSlots.length === 0 ? (
-                      <p className="text-xs text-gray-500">Chưa có lịch học.</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {pickedSlots
-                          .slice()
-                          .sort(
-                            (a, b) =>
-                              new Date(a.isoStart) - new Date(b.isoStart)
-                          )
-                          .map((slot, idx) => {
-                            const d = new Date(slot.isoStart);
-                            const e = new Date(slot.isoEnd);
-                            const days = [
-                              "CN",
-                              "T2",
-                              "T3",
-                              "T4",
-                              "T5",
-                              "T6",
-                              "T7",
-                            ];
-                            const startStr = d.toLocaleTimeString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            });
-                            const endStr = e.toLocaleTimeString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            });
-                            return (
-                              <div
-                                key={idx}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
-                                  isOnline
-                                    ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                                    : "bg-emerald-50 border-emerald-200 text-emerald-700"
-                                }`}
-                              >
-                                {days[d.getDay()]} - {startStr}–{endStr}
-                              </div>
-                            );
-                          })}
+                    {/* Thông báo hướng dẫn */}
+                    <div className="mb-3 p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-700 leading-relaxed">
+                      <div className="font-semibold flex items-center gap-1">
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        Có thể chuyển slot cũ sang slot mới
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-4">
+                      <p className="mt-0.5">
+                        Click vào ô{" "}
+                        <span className="font-semibold text-blue-800">
+                          Slot cũ
+                        </span>{" "}
+                        để bỏ chọn, sau đó click vào ô{" "}
+                        <span className="font-semibold text-blue-800">
+                          Trống
+                        </span>{" "}
+                        để chọn slot mới. Các ô{" "}
+                        <span className="font-semibold text-orange-600">
+                          GV bận
+                        </span>{" "}
+                        và{" "}
+                        <span className="font-semibold text-gray-600">
+                          Phòng bận
+                        </span>{" "}
+                        không thể chọn.
+                      </p>
+                    </div>
                     <ScheduleGrid
                       timeSlots={timeSlots}
                       weekStart={weekStart}
@@ -1334,15 +1348,82 @@ export default function ClassEditPage() {
                       selected={pickedSlots}
                       originalSelected={prevPickedSlots}
                       onToggle={toggleSlot}
-                      disabled={
-                        isPublic ||
-                        !isEditingSchedule ||
-                        !teacherId ||
-                        (!isOnline && !roomId)
-                      }
+                      disabled={!teacherId || (!isOnline && !roomId)}
                     />
                   </div>
                 )}
+
+                {/* Lớp PUBLIC: giữ nguyên logic cũ - cần bấm Chỉnh sửa mới thấy grid */}
+                {isPublic &&
+                  (!isEditingSchedule ? (
+                    <div className="mt-4">
+                      {pickedSlots.length === 0 ? (
+                        <p className="text-xs text-gray-500">
+                          Chưa có lịch học.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {pickedSlots
+                            .slice()
+                            .sort(
+                              (a, b) =>
+                                new Date(a.isoStart) - new Date(b.isoStart)
+                            )
+                            .map((slot, idx) => {
+                              const d = new Date(slot.isoStart);
+                              const e = new Date(slot.isoEnd);
+                              const days = [
+                                "CN",
+                                "T2",
+                                "T3",
+                                "T4",
+                                "T5",
+                                "T6",
+                                "T7",
+                              ];
+                              const startStr = d.toLocaleTimeString("vi-VN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                              const endStr = e.toLocaleTimeString("vi-VN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
+                                    isOnline
+                                      ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                                      : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                  }`}
+                                >
+                                  {days[d.getDay()]} - {startStr}–{endStr}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4">
+                      <ScheduleGrid
+                        timeSlots={timeSlots}
+                        weekStart={weekStart}
+                        teacherBusy={teacherBusy}
+                        roomBusy={isOnline ? [] : roomBusy}
+                        selected={pickedSlots}
+                        originalSelected={prevPickedSlots}
+                        onToggle={toggleSlot}
+                        disabled={
+                          isPublic ||
+                          !isEditingSchedule ||
+                          !teacherId ||
+                          (!isOnline && !roomId)
+                        }
+                      />
+                    </div>
+                  ))}
               </div>
             </div>
           )}
