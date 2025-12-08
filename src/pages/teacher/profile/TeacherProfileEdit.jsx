@@ -30,6 +30,9 @@ export default function TeacherProfileEdit() {
   const [experiences, setExperiences] = useState([]);
   const [educations, setEducations] = useState([]);
 
+  // State cho danh sách môn học giáo viên đang dạy
+  const [subjects, setSubjects] = useState([]);
+
   // State cho edit/add forms
   const [certForm, setCertForm] = useState({
     id: null,
@@ -101,6 +104,13 @@ export default function TeacherProfileEdit() {
             workplace: data.workplace || "",
             avatarUrl: data.avatarUrl || "",
           }));
+          // Load danh sách môn học từ API response
+          if (data.subjects && Array.isArray(data.subjects)) {
+            setSubjects(data.subjects);
+          } else if (data.subject) {
+            // Fallback nếu chỉ có single subject
+            setSubjects([data.subject]);
+          }
           setSaved(true);
         }
       } catch {
@@ -134,13 +144,13 @@ export default function TeacherProfileEdit() {
   }, [form.avatarFile, form.avatarUrl]);
 
   const valid = useMemo(() => {
-    return form.fullName.trim() && form.subject.trim() && form.workplace.trim();
+    return form.fullName.trim() && form.workplace.trim();
   }, [form]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!valid) {
-      setError("Vui lòng nhập tối thiểu: Tên Giáo viên, Bộ môn, Nơi công tác.");
+      setError("Vui lòng nhập tối thiểu: Tên Giáo viên, Nơi công tác.");
       return;
     }
     setError("");
@@ -362,14 +372,16 @@ export default function TeacherProfileEdit() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Bộ môn *
+                    Bộ môn
                   </label>
-                  <Input
-                    name="subject"
-                    value={form.subject}
-                    onChange={handleChange}
-                    placeholder="VD: Toán, Văn, Lý..."
-                  />
+                  <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    {subjects.length > 0
+                      ? subjects.join(", ")
+                      : "Chưa được phân công môn học"}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Bộ môn được quản trị viên phân công, không thể tự chỉnh sửa
+                  </p>
                 </div>
 
                 <div>
@@ -475,7 +487,7 @@ export default function TeacherProfileEdit() {
                     </h3>
                     <p className="text-gray-600 mt-1">
                       {form.degree ? `${form.degree} • ` : ""}
-                      {form.subject || "Bộ môn"}
+                      {subjects.length > 0 ? subjects.join(", ") : "Bộ môn"}
                     </p>
 
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">

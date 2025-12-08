@@ -12,19 +12,18 @@ import { Badge } from "../../../components/ui/Badge";
 import { Label } from "../../../components/ui/Label";
 import { Textarea } from "../../../components/ui/Textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/Select";
-import {
   Plus,
   X,
   Loader2,
   Upload,
   Image as ImageIcon,
   Newspaper,
+  Clock,
+  Send,
+  Save,
+  Calendar,
+  Eye,
+  AlertCircle,
 } from "lucide-react";
 import { newsService } from "../../../services/news/news.service";
 import { useToast } from "../../../hooks/use-toast";
@@ -42,6 +41,9 @@ export default function CreateNews() {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageMode, setImageMode] = useState("upload"); // "upload" | "url"
   const [imageUrlInput, setImageUrlInput] = useState("");
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     excerpt: "",
@@ -50,6 +52,7 @@ export default function CreateNews() {
     status: "draft",
     author: "Admin",
     date: new Date().toISOString().split("T")[0],
+    scheduledAt: null,
   });
 
   const isEditing = Boolean(draft);
@@ -64,11 +67,18 @@ export default function CreateNews() {
         status: draft.status || "draft",
         author: draft.author || "Admin",
         date: draft.date || new Date().toISOString().split("T")[0],
+        scheduledAt: draft.scheduledAt || null,
       });
       setTags(draft.tags || []);
       if (draft.imageUrl) {
         setImagePreview(draft.imageUrl);
         setImageUrlInput(draft.imageUrl);
+      }
+      // Set scheduled date/time if exists
+      if (draft.scheduledAt) {
+        const scheduled = new Date(draft.scheduledAt);
+        setScheduledDate(scheduled.toISOString().split("T")[0]);
+        setScheduledTime(scheduled.toTimeString().slice(0, 5));
       }
     }
   }, [draft]);
@@ -161,6 +171,8 @@ export default function CreateNews() {
         status,
         author: formData.author,
         tags: tags, // Backend expects array, not comma-separated string
+        scheduledAt: formData.scheduledAt,
+        date: new Date().toISOString().split("T")[0], // Tự động lưu ngày hiện tại
       };
 
       if (isEditing && draft?.id) {
@@ -168,7 +180,14 @@ export default function CreateNews() {
         success("Cập nhật tin tức thành công!", "Thành công");
       } else {
         await newsService.createNews(newsData);
-        success("Tạo tin tức thành công!", "Thành công");
+        success(
+          status === "published"
+            ? "Đăng tin tức thành công!"
+            : status === "scheduled"
+            ? "Đã lên lịch đăng tin!"
+            : "Lưu nháp thành công!",
+          "Thành công"
+        );
       }
       setTimeout(() => {
         navigate("/home/admin/news");
@@ -183,6 +202,42 @@ export default function CreateNews() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Xử lý hẹn giờ đăng tin
+  const handleSchedulePublish = () => {
+    if (!scheduledDate || !scheduledTime) {
+      showError("Vui lòng chọn ngày và giờ đăng tin", "Lỗi");
+      return;
+    }
+
+    const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+    const now = new Date();
+
+    if (scheduledDateTime <= now) {
+      showError("Thời gian hẹn phải lớn hơn thời gian hiện tại", "Lỗi");
+      return;
+    }
+
+    setFormData({
+      ...formData,
+      scheduledAt: scheduledDateTime.toISOString(),
+    });
+    setShowScheduleModal(false);
+    handleSubmit("scheduled");
+  };
+
+  // Format datetime for display
+  const formatScheduledTime = (isoString) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    return date.toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
@@ -366,43 +421,12 @@ export default function CreateNews() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="newsStatus">Trạng thái *</Label>
-                <Select
-                  defaultValue="draft"
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, status: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Lưu nháp</SelectItem>
-                    <SelectItem value="published">Đăng ngay</SelectItem>
-                    <SelectItem value="hidden">Ẩn</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="newsAuthor">Tác giả</Label>
                 <Input
                   id="newsAuthor"
                   value={formData.author}
                   disabled
                   className="bg-gray-50"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="newsDate">Ngày đăng</Label>
-                <Input
-                  id="newsDate"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date: e.target.value })
-                  }
                 />
               </div>
             </CardContent>
@@ -445,8 +469,9 @@ export default function CreateNews() {
           </Card>
 
           <div className="flex flex-col gap-2">
+            {/* Nút Đăng ngay */}
             <Button
-              className="w-full bg-blue-600 text-white hover:bg-blue-700"
+              className="w-full bg-green-600 text-white hover:bg-green-700"
               onClick={() => handleSubmit("published")}
               disabled={loading}
             >
@@ -456,17 +481,36 @@ export default function CreateNews() {
                   Đang xử lý...
                 </>
               ) : (
-                <>{isEditing ? "Cập nhật tin tức" : "Đăng tin tức"}</>
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  {isEditing ? "Cập nhật & Đăng" : "Đăng ngay"}
+                </>
               )}
             </Button>
+
+            {/* Nút Hẹn giờ đăng */}
             <Button
               variant="outline"
-              className="w-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              className="w-full border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400"
+              onClick={() => setShowScheduleModal(true)}
+              disabled={loading}
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              Hẹn giờ đăng tin
+            </Button>
+
+            {/* Nút Lưu nháp */}
+            <Button
+              variant="outline"
+              className="w-full border-amber-300 text-amber-600 hover:bg-amber-50 hover:border-amber-400"
               onClick={() => handleSubmit("draft")}
               disabled={loading}
             >
+              <Save className="h-4 w-4 mr-2" />
               Lưu nháp
             </Button>
+
+            {/* Nút Hủy */}
             <Button
               variant="ghost"
               className="w-full bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -476,8 +520,148 @@ export default function CreateNews() {
               Hủy
             </Button>
           </div>
+
+          {/* Thông tin trạng thái hiện tại */}
+          {isEditing && (
+            <Card className="border-slate-200">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Trạng thái hiện tại:</span>
+                  <Badge
+                    variant="secondary"
+                    className={
+                      draft?.status === "published"
+                        ? "bg-green-100 text-green-700"
+                        : draft?.status === "scheduled"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-amber-100 text-amber-700"
+                    }
+                  >
+                    {draft?.status === "published"
+                      ? "Đã đăng"
+                      : draft?.status === "scheduled"
+                      ? "Đã lên lịch"
+                      : "Bản nháp"}
+                  </Badge>
+                </div>
+                {draft?.scheduledAt && (
+                  <div className="mt-2 text-xs text-blue-600 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Sẽ đăng lúc: {formatScheduledTime(draft.scheduledAt)}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
+
+      {/* Modal Hẹn giờ đăng tin */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    Hẹn giờ đăng tin
+                  </h3>
+                  <p className="text-blue-100 text-sm">
+                    Chọn thời gian tự động công bố
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="scheduleDate"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Ngày đăng
+                </Label>
+                <Input
+                  id="scheduleDate"
+                  type="date"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="scheduleTime"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Giờ đăng
+                </Label>
+                <Input
+                  id="scheduleTime"
+                  type="time"
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              {scheduledDate && scheduledTime && (
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Calendar className="h-5 w-5" />
+                    <span className="font-medium">Tin sẽ được đăng vào:</span>
+                  </div>
+                  <p className="text-blue-900 font-bold mt-1">
+                    {new Date(
+                      `${scheduledDate}T${scheduledTime}`
+                    ).toLocaleString("vi-VN", {
+                      weekday: "long",
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-6 flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowScheduleModal(false)}
+              >
+                Hủy
+              </Button>
+              <Button
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                onClick={handleSchedulePublish}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Clock className="h-4 w-4 mr-2" />
+                    Xác nhận hẹn giờ
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

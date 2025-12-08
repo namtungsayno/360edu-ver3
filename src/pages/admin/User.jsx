@@ -1,8 +1,7 @@
 // src/pages/admin/User.jsx
 // 🔄 SERVER-SIDE PAGINATION
 import { useEffect, useState, useCallback, useRef } from "react";
-import { UserPlus, Users, GraduationCap, UserCog, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Users, GraduationCap, UserCog, Search } from "lucide-react";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import {
@@ -21,7 +20,6 @@ import useDebounce from "../../hooks/useDebounce";
 
 import UserTable from "./user/UserTable";
 import Pagination from "./user/Pagination";
-import CreateTeacherForm from "./user/CreateTeacherForm";
 
 const ROLE_LABEL = {
   STUDENT: "Học viên",
@@ -36,8 +34,6 @@ export default function UserManagement() {
   useEffect(() => {
     toastRef.current = { success, error };
   }, [success, error]);
-
-  const navigate = useNavigate();
 
   // filter
   const [tab, setTab] = useState("ALL");
@@ -323,12 +319,6 @@ export default function UserManagement() {
                 }}
               />
             </div>
-            <Button
-              onClick={() => navigate("/home/admin/users/create-teacher")}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <UserPlus className="w-4 h-4 mr-2" /> Thêm giáo viên
-            </Button>
           </div>
         </div>
       </div>

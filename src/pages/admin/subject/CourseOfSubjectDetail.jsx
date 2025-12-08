@@ -15,9 +15,11 @@ import { courseService } from "../../../services/course/course.service";
 import { Input } from "../../../components/ui/Input.jsx";
 import { Textarea } from "../../../components/ui/Textarea.jsx";
 import { BackButton } from "../../../components/common/BackButton";
+import { useToast } from "../../../hooks/use-toast";
 
 export default function CourseOfSubjectDetail() {
   const { id: subjectId, courseId } = useParams();
+  const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState(null);
   const [editableCourse, setEditableCourse] = useState(null);
@@ -248,9 +250,12 @@ export default function CourseOfSubjectDetail() {
       setCourse(refreshed);
       setEditableCourse(deepCloneCourse(refreshed));
       setEditMode(false);
+      // Hiển thị toast thành công
+      success("Cập nhật khóa học thành công!", "Thành công");
     } catch (e) {
       console.error(e);
       setErrorMsg("Có lỗi khi lưu thay đổi. Vui lòng thử lại.");
+      showError("Có lỗi khi lưu thay đổi. Vui lòng thử lại.", "Lỗi");
     } finally {
       setSaving(false);
     }

@@ -34,6 +34,9 @@ export default function TeacherManagement() {
   const [educations, setEducations] = useState([]);
   const [experiences, setExperiences] = useState([]);
 
+  // State cho danh sách môn học giáo viên đang dạy
+  const [subjects, setSubjects] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false); // đã lưu thành công
   const [error, setError] = useState("");
@@ -99,6 +102,14 @@ export default function TeacherManagement() {
           setEducations(profileData.educations || []);
           setExperiences(profileData.experiences || []);
 
+          // Load danh sách môn học từ API response
+          if (profileData.subjects && Array.isArray(profileData.subjects)) {
+            setSubjects(profileData.subjects);
+          } else if (profileData.subject) {
+            // Fallback nếu chỉ có single subject
+            setSubjects([profileData.subject]);
+          }
+
           // Preview luôn hiển thị theo dữ liệu đã tải
         }
       } catch (error) {
@@ -140,12 +151,7 @@ export default function TeacherManagement() {
   }, [form.avatarFile, form.avatarUrl]);
 
   const valid = useMemo(() => {
-    return (
-      form.fullName.trim() &&
-      form.degree.trim() &&
-      form.subject.trim() &&
-      form.workplace.trim()
-    );
+    return form.fullName.trim() && form.degree.trim() && form.workplace.trim();
   }, [form]);
 
   // Preview hiển thị realtime theo dữ liệu form
@@ -165,7 +171,7 @@ export default function TeacherManagement() {
       let payload = {
         fullName: form.fullName.trim(),
         degree: form.degree.trim(),
-        subject: form.subject.trim(),
+        // subject không được gửi vì được quản trị viên phân công
         homeroom: form.homeroom.trim(),
         workplace: form.workplace.trim(),
         bio: form.bio.trim(),
@@ -368,14 +374,16 @@ export default function TeacherManagement() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
-                        Bộ môn *
+                        Bộ môn
                       </label>
-                      <Input
-                        name="subject"
-                        value={form.subject}
-                        onChange={handleChange}
-                        placeholder="VD: Toán, Văn, Lý..."
-                      />
+                      <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-700">
+                        {subjects.length > 0
+                          ? subjects.join(", ")
+                          : "Chưa được phân công môn học"}
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Bộ môn được quản trị viên phân công
+                      </p>
                     </div>
 
                     <div>
@@ -889,7 +897,7 @@ export default function TeacherManagement() {
                     </h3>
                     <p className="text-lg text-gray-600 mt-1">
                       {form.degree ? `${form.degree} • ` : ""}
-                      {form.subject.trim() || "Bộ môn"}
+                      {subjects.length > 0 ? subjects.join(", ") : "Bộ môn"}
                     </p>
 
                     {form.yearsOfExperience > 0 && (

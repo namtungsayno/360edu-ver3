@@ -22,6 +22,10 @@ import {
   CheckCircle,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  Send,
+  MoreVertical,
+  Trash2,
 } from "lucide-react";
 import {
   Tabs,
@@ -63,6 +67,7 @@ export default function NewsList() {
     published: 0,
     draft: 0,
     hidden: 0,
+    scheduled: 0,
   });
 
   // Debounced search query for API calls
@@ -74,17 +79,20 @@ export default function NewsList() {
   // Fetch stats for tab badges (load once)
   const fetchStats = useCallback(async () => {
     try {
-      const [allRes, publishedRes, draftRes, hiddenRes] = await Promise.all([
-        newsService.getNews({ page: 0, size: 1 }),
-        newsService.getNews({ page: 0, size: 1, status: "published" }),
-        newsService.getNews({ page: 0, size: 1, status: "draft" }),
-        newsService.getNews({ page: 0, size: 1, status: "hidden" }),
-      ]);
+      const [allRes, publishedRes, draftRes, hiddenRes, scheduledRes] =
+        await Promise.all([
+          newsService.getNews({ page: 0, size: 1 }),
+          newsService.getNews({ page: 0, size: 1, status: "published" }),
+          newsService.getNews({ page: 0, size: 1, status: "draft" }),
+          newsService.getNews({ page: 0, size: 1, status: "hidden" }),
+          newsService.getNews({ page: 0, size: 1, status: "scheduled" }),
+        ]);
       setStats({
         total: allRes.data?.totalElements || 0,
         published: publishedRes.data?.totalElements || 0,
         draft: draftRes.data?.totalElements || 0,
         hidden: hiddenRes.data?.totalElements || 0,
+        scheduled: scheduledRes.data?.totalElements || 0,
       });
     } catch (err) {
       console.error("Failed to fetch stats:", err);
@@ -152,7 +160,7 @@ export default function NewsList() {
     setPage(0);
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, scheduledAt) => {
     switch (status) {
       case "published":
         return (
@@ -160,6 +168,7 @@ export default function NewsList() {
             variant="secondary"
             className="bg-green-100 text-green-800 border-green-200"
           >
+            <CheckCircle className="h-3 w-3 mr-1" />
             Đã đăng
           </Badge>
         );
@@ -169,8 +178,31 @@ export default function NewsList() {
             variant="secondary"
             className="bg-yellow-100 text-yellow-800 border-yellow-200"
           >
+            <Edit className="h-3 w-3 mr-1" />
             Nháp
           </Badge>
+        );
+      case "scheduled":
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge
+              variant="secondary"
+              className="bg-blue-100 text-blue-800 border-blue-200"
+            >
+              <Clock className="h-3 w-3 mr-1" />
+              Đã lên lịch
+            </Badge>
+            {scheduledAt && (
+              <span className="text-xs text-blue-600">
+                {new Date(scheduledAt).toLocaleString("vi-VN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            )}
+          </div>
         );
       case "hidden":
         return (
@@ -178,6 +210,7 @@ export default function NewsList() {
             variant="secondary"
             className="bg-slate-100 text-slate-800 border-slate-200"
           >
+            <EyeOff className="h-3 w-3 mr-1" />
             Đã ẩn
           </Badge>
         );
@@ -200,18 +233,60 @@ export default function NewsList() {
 
   const handleToggleStatus = async (id) => {
     try {
-      const currentStatus = news.find((n) => n.id === id)?.status;
-      const newStatus = currentStatus === "published" ? "hidden" : "published";
+      const currentNews = news.find((n) => n.id === id);
+      const currentStatus = currentNews?.status;
+      // Logic chuyển trạng thái
+      let newStatus;
+      if (currentStatus === "published") {
+        newStatus = "hidden";
+      } else if (currentStatus === "hidden") {
+        newStatus = "published";
+      } else if (currentStatus === "draft" || currentStatus === "scheduled") {
+        newStatus = "published";
+      } else {
+        newStatus = "published";
+      }
+
       await newsService.updateStatus(id, newStatus);
       // Refresh data and stats after status change
       fetchNews();
       fetchStats();
       success(
-        newStatus === "published" ? "Đã hiển thị tin tức" : "Đã ẩn tin tức"
+        newStatus === "published"
+          ? "Đã công bố tin tức"
+          : newStatus === "hidden"
+          ? "Đã ẩn tin tức"
+          : "Đã cập nhật trạng thái"
       );
     } catch (err) {
       console.error("Failed to toggle status:", err);
       showError(err.displayMessage || "Không thể cập nhật trạng thái");
+    }
+  };
+
+  // Công bố tin tức từ draft
+  const handlePublish = async (id) => {
+    try {
+      await newsService.publishNews(id);
+      fetchNews();
+      fetchStats();
+      success("Đã công bố tin tức thành công!");
+    } catch (err) {
+      console.error("Failed to publish:", err);
+      showError(err.displayMessage || "Không thể công bố tin tức");
+    }
+  };
+
+  // Chuyển về nháp
+  const handleUnpublish = async (id) => {
+    try {
+      await newsService.unpublishNews(id);
+      fetchNews();
+      fetchStats();
+      success("Đã chuyển tin tức về nháp");
+    } catch (err) {
+      console.error("Failed to unpublish:", err);
+      showError(err.displayMessage || "Không thể chuyển về nháp");
     }
   };
 
@@ -244,7 +319,7 @@ export default function NewsList() {
       </div>
 
       {/* ============ STATS CARDS ============ */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -285,6 +360,21 @@ export default function NewsList() {
             </div>
             <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
               <Edit className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Đã lên lịch</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {stats.scheduled}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Clock className="w-6 h-6 text-white" />
             </div>
           </div>
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
@@ -363,6 +453,9 @@ export default function NewsList() {
                   Đã đăng ({stats.published})
                 </TabsTrigger>
                 <TabsTrigger value="draft">Nháp ({stats.draft})</TabsTrigger>
+                <TabsTrigger value="scheduled">
+                  Đã lên lịch ({stats.scheduled})
+                </TabsTrigger>
                 <TabsTrigger value="hidden">Đã ẩn ({stats.hidden})</TabsTrigger>
               </TabsList>
 
@@ -399,7 +492,7 @@ export default function NewsList() {
                               <h3 className="text-lg font-semibold">
                                 {item.title}
                               </h3>
-                              {getStatusBadge(item.status)}
+                              {getStatusBadge(item.status, item.scheduledAt)}
                             </div>
                             <p className="text-sm text-slate-600">
                               {item.excerpt}
@@ -426,30 +519,102 @@ export default function NewsList() {
                               <span>{item.views} lượt xem</span>
                               <span>Bởi: {item.author}</span>
                             </div>
-                            <div className="flex gap-2 mt-2">
-                              {item.status === "published" ? (
+
+                            {/* Action Buttons - Cải tiến */}
+                            <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                              {/* Nút Chỉnh sửa - Luôn hiển thị */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/home/admin/news/create`, {
+                                    state: { draft: item },
+                                  });
+                                }}
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Sửa
+                              </Button>
+
+                              {/* Nút Công bố - Hiện khi draft hoặc scheduled */}
+                              {(item.status === "draft" ||
+                                item.status === "scheduled") && (
                                 <Button
-                                  variant="outline"
                                   size="sm"
+                                  className="bg-green-600 hover:bg-green-700 text-white"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleToggleStatus(item.id);
+                                    handlePublish(item.id);
                                   }}
                                 >
-                                  Ẩn
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleToggleStatus(item.id);
-                                  }}
-                                >
-                                  Hiện
+                                  <Send className="h-4 w-4 mr-1" />
+                                  Công bố ngay
                                 </Button>
                               )}
+
+                              {/* Nút Ẩn - Hiện khi published */}
+                              {item.status === "published" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleStatus(item.id);
+                                  }}
+                                >
+                                  <EyeOff className="h-4 w-4 mr-1" />
+                                  Ẩn tin
+                                </Button>
+                              )}
+
+                              {/* Nút Hiển thị lại - Hiện khi hidden */}
+                              {item.status === "hidden" && (
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePublish(item.id);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Hiển thị lại
+                                </Button>
+                              )}
+
+                              {/* Nút Chuyển về nháp - Hiện khi published hoặc scheduled */}
+                              {(item.status === "published" ||
+                                item.status === "scheduled") && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-slate-600 border-slate-200 hover:bg-slate-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUnpublish(item.id);
+                                  }}
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  Về nháp
+                                </Button>
+                              )}
+
+                              {/* Nút Xem trước */}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-500 hover:text-gray-700"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleView(item);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Xem
+                              </Button>
                             </div>
                           </div>
                         </div>
