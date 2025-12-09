@@ -17,12 +17,13 @@ import { Input } from "../../components/ui/Input";
 import Logo from "../../components/common/Logo";
 import { useToast } from "../../hooks/use-toast";
 import { Mail, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
+import { authApi } from "../../services/auth/auth.api";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 
 export default function ForgotPassword() {
   const nav = useNavigate();
-  const { success, error, info } = useToast();
+  const { success, error } = useToast();
 
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState({});
@@ -53,22 +54,13 @@ export default function ForgotPassword() {
     try {
       setSubmitting(true);
 
-      // TODO: Implement API call when backend supports forgot password
-      // await authService.forgotPassword(email.trim());
-
-      // Simulate API call - remove this when real API is ready
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Gọi API forgot password
+      const response = await authApi.forgotPassword(email.trim());
 
       setSubmitted(true);
       success(
-        "Nếu email tồn tại trong hệ thống, bạn sẽ nhận được link đặt lại mật khẩu.",
+        response?.message || "Nếu email tồn tại trong hệ thống, mật khẩu mới đã được gửi đến email của bạn.",
         "Đã gửi yêu cầu! 📧"
-      );
-
-      // Note: Currently backend doesn't support this feature
-      info(
-        "Tính năng đang được phát triển. Vui lòng liên hệ Admin để được hỗ trợ.",
-        "Thông báo"
       );
     } catch (err) {
       const apiMsg =

@@ -3,37 +3,55 @@
 // src/services/auth/auth.api.js
 import { http } from "../http";
 
-//lấy base URL gốc từ của BE.
-const API_BASE_ORIGIN = (http?.defaults?.baseURL || "").replace(
-  /\/api\/?$/,
-  ""
-);
-
-// FE callback (có thể override bằng env)
-const OAUTH_REDIRECT =
+// Google OAuth Config - Lấy từ Google Cloud Console
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const GOOGLE_REDIRECT_URI =
   import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
-  `${window.location.origin}/oauth2/callback`;
+  `${window.location.origin}/auth/google/callback`;
 
 export const authApi = {
-  // ✅ Đăng nhập → trả về UserInfoResponse
+  //  Đăng nhập → trả về UserInfoResponse
   login: (payload) => http.post("/auth/login", payload).then((r) => r.data),
 
-  // ✅ Đăng xuất
+  //  Đăng xuất
   logout: () => http.post("/auth/logout").then((r) => r.data),
 
-  // ✅ Đăng ký (signup)
+  //  Đăng ký (signup)
   register: (payload) =>
     http
       .post("/auth/signup", payload, { withCredentials: false })
       .then((r) => r.data),
-  // ✅ Thêm mode để phân biệt login/register (đi qua tham số state)
-  getGoogleOAuthUrl(mode = "login") {
-    const start = `${API_BASE_ORIGIN}/oauth2/authorization/google`;
-    const stateObj = { mode, t: Date.now() }; // t chống cache
+
+  //  Quên mật khẩu - gửi email để nhận mật khẩu mới
+  forgotPassword: (email) =>
+    http.post("/auth/forgot-password", { email }).then((r) => r.data),
+
+  //  Google OAuth - Lấy URL đăng nhập Google
+  getGoogleOAuthUrl() {
+    const baseUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     const params = new URLSearchParams({
-      redirect_uri: OAUTH_REDIRECT,
-      state: encodeURIComponent(JSON.stringify(stateObj)),
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: GOOGLE_REDIRECT_URI,
+      response_type: "code",
+      scope: "openid email profile",
+      access_type: "offline",
+      prompt: "select_account consent", // Force chọn account mỗi lần
     });
-    return `${start}?${params.toString()}`;
+    return `${baseUrl}?${params.toString()}`;
   },
+
+  //  Google OAuth - Exchange code for user info
+  // Gửi authorization code lên BE để xử lý
+  googleAuth: (code, redirectUri = GOOGLE_REDIRECT_URI) =>
+    http
+      .post("/auth/google", { code, redirectUri })
+      .then((r) => r.data),
+
+  //  Google OAuth - Complete registration với thông tin phụ huynh
+  googleRegister: (data) =>
+    http.post("/auth/google/register", data).then((r) => r.data),
+
+  //  Check if parent phone exists in system
+  checkParentPhone: (phone) =>
+    http.get(`/auth/check-parent-phone?phone=${encodeURIComponent(phone)}`).then((r) => r.data),
 };

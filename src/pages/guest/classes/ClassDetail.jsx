@@ -317,10 +317,60 @@ export default function ClassDetail() {
                   <div>
                     <div className="flex items-center gap-2 text-gray-700 mb-2">
                       <Calendar className="w-5 h-5 text-blue-600" />
-                      <span className="font-medium">Khai giảng</span>
+                      <span className="font-medium">Ngày bắt đầu học</span>
                     </div>
                     <div className="ml-7 text-gray-600">
-                      {data.startDate || "01/11/2024"}
+                      {(() => {
+                        // Tính ngày học đầu tiên từ startDate + schedule
+                        if (!data.startDate) return "Chưa xác định";
+                        
+                        const startDate = new Date(data.startDate);
+                        const schedules = Array.isArray(data.schedule) ? data.schedule : [];
+                        
+                        if (schedules.length === 0) {
+                          return data.startDate;
+                        }
+                        
+                        // dayOfWeek trong schedule: 2=Thứ 2, 3=Thứ 3, ..., 8=CN
+                        // JS getDay(): 0=CN, 1=Thứ 2, ..., 6=Thứ 7
+                        const scheduleDays = schedules.map(s => s.dayOfWeek);
+                        
+                        // Tìm ngày học đầu tiên (trong 7 ngày kể từ startDate)
+                        let firstClassDate = null;
+                        let firstSlot = null;
+                        
+                        for (let i = 0; i < 7; i++) {
+                          const checkDate = new Date(startDate);
+                          checkDate.setDate(startDate.getDate() + i);
+                          const jsDay = checkDate.getDay(); // 0=CN, 1-6=T2-T7
+                          const scheduleDay = jsDay === 0 ? 8 : jsDay + 1; // Convert to schedule format
+                          
+                          if (scheduleDays.includes(scheduleDay)) {
+                            firstClassDate = checkDate;
+                            // Lấy slot đầu tiên của ngày này
+                            const daySlots = schedules
+                              .filter(s => s.dayOfWeek === scheduleDay)
+                              .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+                            firstSlot = daySlots[0];
+                            break;
+                          }
+                        }
+                        
+                        if (!firstClassDate) return data.startDate;
+                        
+                        const dateStr = firstClassDate.toLocaleDateString("vi-VN", {
+                          weekday: "long",
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric"
+                        });
+                        
+                        const timeStr = firstSlot?.startTime 
+                          ? ` • ${firstSlot.startTime.slice(0,5)} - ${firstSlot.endTime?.slice(0,5) || ""}`
+                          : "";
+                        
+                        return dateStr + timeStr;
+                      })()}
                     </div>
                   </div>
 
@@ -615,16 +665,9 @@ export default function ClassDetail() {
                         : "Đăng nhập để đăng ký"}
                     </Button>
 
-                    <a
-                      href="tel:0123456789"
-                      className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 h-11 text-sm font-medium"
-                    >
-                      Liên hệ với chúng tôi
-                    </a>
-
-                    <p className="text-xs text-gray-500 text-center mt-3">
-                      Hoặc liên hệ: 0123 456 789
-                    </p>
+                    <div className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-100 text-gray-600 h-11 text-sm font-medium cursor-not-allowed">
+                      Liên hệ: 0963398714 để được tư vấn
+                    </div>
                   </div>
                 </CardContent>
               </Card>

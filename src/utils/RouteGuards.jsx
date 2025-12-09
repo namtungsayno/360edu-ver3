@@ -3,6 +3,11 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { landingPathByRoles } from "./auth-landing";
 
+function normalizeRole(role) {
+  const r = String(role).toLowerCase();
+  return r.replace(/^role[_ ]/, "");
+}
+
 // Chỉ cho khách chưa login truy cập
 export function GuestOnly() {
   const { user, loading } = useAuth();
@@ -27,7 +32,8 @@ export function RequireRole({ allow = [] }) {
   const loc = useLocation();
   if (loading) return null;
   if (!user) return <Navigate to="/home/login" replace state={{ from: loc }} />;
-  const ok = user.roles?.some((r) => allow.includes(String(r).toLowerCase()));
+  const normalizedAllow = allow.map((a) => normalizeRole(a));
+  const ok = user.roles?.some((r) => normalizedAllow.includes(normalizeRole(r)));
   if (!ok) return <Navigate to={landingPathByRoles(user.roles)} replace />;
   return <Outlet />;
 }

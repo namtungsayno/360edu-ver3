@@ -7,13 +7,40 @@ const BASE =
   import.meta.env.VITE_API_URL ||
   "http://localhost:8080/api";
 
+// Helper function to get JWT token from cookie/localStorage
+const getTokenFromCookie = () => {
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'edu360_jwt') {
+      return value;
+    }
+  }
+  // Fallback: localStorage (more reliable across ports in dev)
+  try {
+    const lsToken = window.localStorage.getItem('edu360_jwt');
+    if (lsToken) return lsToken;
+  } catch {}
+  return null;
+};
+
 export const http = axios.create({
   baseURL: BASE.replace(/\/$/, ""), // remove trailing slash if any
   withCredentials: true, // to send/receive jwt cookie (backend uses HTTP-only cookie)
   headers: { "Content-Type": "application/json" },
 });
 
-// No need for Authorization header interceptor - backend uses HTTP-only cookie for JWT
+// Request interceptor to add Authorization header from cookie
+http.interceptors.request.use(
+  (config) => {
+    const token = getTokenFromCookie();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 http.interceptors.response.use(
   (r) => r,
@@ -53,4 +80,19 @@ http.interceptors.response.use(
 
     return Promise.reject(err);
   }
+);
+
+// Global axios defaults & interceptor as a safety net for any ad-hoc axios usage
+axios.defaults.baseURL = BASE.replace(/\/$/, "");
+axios.defaults.withCredentials = true;
+axios.interceptors.request.use(
+  (config) => {
+    const token = getTokenFromCookie();
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
 );

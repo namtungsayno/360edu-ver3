@@ -172,15 +172,10 @@ export default function NewsDetail() {
 
                 {/* Main Content with better typography */}
                 <article className="prose prose-lg max-w-none">
-                  <div className="text-gray-800 leading-relaxed space-y-4">
-                    {news.content?.split('\n').map((paragraph, index) => (
-                      paragraph.trim() && (
-                        <p key={index} className="text-justify">
-                          {paragraph}
-                        </p>
-                      )
-                    ))}
-                  </div>
+                  <div 
+                    className="text-gray-800 leading-relaxed rich-text-content"
+                    dangerouslySetInnerHTML={{ __html: news.content }}
+                  />
                 </article>
 
                 {/* Share Section */}

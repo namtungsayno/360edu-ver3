@@ -12,6 +12,7 @@ import { Button } from "../../../components/ui/Button.jsx";
 import { Input } from "../../../components/ui/Input.jsx";
 import { Textarea } from "../../../components/ui/Textarea.jsx";
 import { Badge } from "../../../components/ui/Badge.jsx";
+import RichTextEditor from "../../../components/ui/RichTextEditor";
 
 import { Info, Plus, Trash2, BookOpen, Layers, FileText } from "lucide-react";
 
@@ -351,16 +352,17 @@ export default function AdminCourseCreate() {
                 <label className="text-[12px] text-[#62748e] font-medium">
                   Mô tả khóa học <span className="text-red-500">*</span>
                 </label>
-                <Textarea
-                  rows={4}
-                  placeholder="Mô tả chi tiết về khóa học: nội dung, mục tiêu, đối tượng học viên, phương pháp giảng dạy..."
+                <RichTextEditor
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="placeholder:text-[#b0b8c4]"
+                  onChange={setDescription}
+                  placeholder="Mô tả chi tiết về khóa học: nội dung, mục tiêu, đối tượng học viên, phương pháp giảng dạy..."
+                  simple
+                  minHeight="150px"
+                  maxHeight="300px"
                 />
-                <p className="text-[11px] text-[#45556c]">
+                <div className="text-[11px] text-[#45556c]">
                   Mô tả chi tiết giúp học viên hiểu rõ hơn về khóa học của bạn.
-                </p>
+                </div>
               </div>
             </CardContent>
           </Card>

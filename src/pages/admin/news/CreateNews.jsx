@@ -16,7 +16,6 @@ import {
   X,
   Loader2,
   Upload,
-  Image as ImageIcon,
   Newspaper,
   Clock,
   Send,
@@ -28,6 +27,7 @@ import {
 import { newsService } from "../../../services/news/news.service";
 import { useToast } from "../../../hooks/use-toast";
 import { BackButton } from "../../../components/common/BackButton";
+import RichTextEditor from "../../../components/ui/RichTextEditor";
 
 export default function CreateNews() {
   const navigate = useNavigate();
@@ -297,15 +297,14 @@ export default function CreateNews() {
 
               <div className="space-y-2">
                 <Label htmlFor="newsContent">Nội dung chi tiết *</Label>
-                <Textarea
-                  id="newsContent"
-                  placeholder="Nhập nội dung chi tiết tin tức..."
-                  rows={15}
-                  className="font-mono text-sm"
+                <RichTextEditor
                   value={formData.content}
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
+                  onChange={(content) =>
+                    setFormData({ ...formData, content: content })
                   }
+                  placeholder="Nhập nội dung chi tiết tin tức..."
+                  minHeight="350px"
+                  maxHeight="600px"
                 />
               </div>
 
@@ -451,8 +450,8 @@ export default function CreateNews() {
 
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="gap-1">
+                  {tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="gap-1">
                       {tag}
                       <button
                         type="button"

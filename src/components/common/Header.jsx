@@ -25,6 +25,9 @@ import {
   Search,
   LogOut,
   Calendar,
+  BookOpen,
+  Users,
+  Loader2,
 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
@@ -33,18 +36,91 @@ import Logo from "./Logo";
 import NotificationBell from "./NotificationBell";
 import AuthContext from "../../context/AuthContext";
 import { useToast } from "../../hooks/use-toast";
+import { searchApi } from "../../services/search/search.api";
+import useDebounce from "../../hooks/useDebounce";
 
 export default function Header({ onNavigate, currentPage }) {
   const { user, logout } = useContext(AuthContext);
   const { success, error: showError } = useToast();
+  
+  // Helper để normalize role (xử lý cả "ROLE_STUDENT" và "student")
+  const hasRole = (roleToCheck) => {
+    if (!user?.roles) return false;
+    return user.roles.some(r => {
+      const normalized = String(r).replace(/^ROLE_/, '').toLowerCase();
+      return normalized === roleToCheck.toLowerCase();
+    });
+  };
+  
   // State quản lý menu mobile (đóng/mở)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // State lưu từ khóa tìm kiếm
   const [searchQuery, setSearchQuery] = useState("");
   // State quản lý dropdown profile
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  // State cho search results
+  const [searchResults, setSearchResults] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   // Ref để track dropdown container
   const profileMenuRef = useRef(null);
+  const searchRef = useRef(null);
+  
+  // Debounce search query
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  // Perform search when debounced query changes
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!debouncedSearchQuery || debouncedSearchQuery.trim().length < 2) {
+        setSearchResults(null);
+        setShowSearchDropdown(false);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const results = await searchApi.globalSearch(debouncedSearchQuery, 5);
+        setSearchResults(results);
+        setShowSearchDropdown(true);
+      } catch (error) {
+        console.error("Search error:", error);
+        setSearchResults(null);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    performSearch();
+  }, [debouncedSearchQuery]);
+
+  // Close search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearchDropdown(false);
+      }
+    };
+
+    if (showSearchDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSearchDropdown]);
+
+  // Handle search result click
+  const handleSearchResultClick = (type, id) => {
+    setShowSearchDropdown(false);
+    setSearchQuery("");
+    if (type === "class") {
+      onNavigate({ type: "class", id });
+    } else if (type === "teacher") {
+      onNavigate({ type: "teacher", id });
+    } else if (type === "subject") {
+      // Navigate to classes filtered by subject
+      onNavigate({ type: "classes" });
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -115,18 +191,133 @@ export default function Header({ onNavigate, currentPage }) {
           </button>
 
           {/* THANH TÌM KIẾM - Chỉ hiển thị trên desktop */}
-          <div className="hidden lg:block flex-1 max-w-md mx-4">
+          <div className="hidden lg:block flex-1 max-w-md mx-4" ref={searchRef}>
             <div className="relative">
-              {/* Icon tìm kiếm bên trái */}
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
+              {/* Icon tìm kiếm hoặc loading spinner */}
+              {isSearching ? (
+                <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70 animate-spin" />
+              ) : (
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70" />
+              )}
               {/* Input tìm kiếm với styling custom */}
               <Input
                 type="text"
-                placeholder="Tìm kiếm khóa học, lớp học..."
+                placeholder="Tìm kiếm lớp học, giáo viên, môn học..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => searchResults && setShowSearchDropdown(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && searchQuery.trim()) {
+                    e.preventDefault();
+                    setShowSearchDropdown(false);
+                    onNavigate({ type: "classes", search: searchQuery.trim() });
+                    setSearchQuery("");
+                  }
+                }}
                 className="pl-10 pr-4 h-10 bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/70 focus:bg-white/20 focus:border-white/30 rounded-lg"
               />
+              
+              {/* Search Results Dropdown */}
+              {showSearchDropdown && searchResults && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden z-50 max-h-96 overflow-y-auto">
+                  {searchResults.totalResults === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      Không tìm thấy kết quả cho "{searchResults.query}"
+                    </div>
+                  ) : (
+                    <>
+                      {/* Classes Results */}
+                      {searchResults.classes?.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-medium text-gray-700">Lớp học</span>
+                          </div>
+                          {searchResults.classes.map((cls) => (
+                            <button
+                              key={`class-${cls.id}`}
+                              onClick={() => handleSearchResultClick("class", cls.id)}
+                              className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <GraduationCap className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{cls.name}</p>
+                                <p className="text-sm text-gray-500 truncate">
+                                  {cls.teacherName} • {cls.subjectName}
+                                </p>
+                              </div>
+                              {cls.price && (
+                                <span className="text-sm font-medium text-green-600">
+                                  {new Intl.NumberFormat("vi-VN").format(cls.price)}đ
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Teachers Results */}
+                      {searchResults.teachers?.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+                            <Users className="w-4 h-4 text-purple-600" />
+                            <span className="text-sm font-medium text-gray-700">Giáo viên</span>
+                          </div>
+                          {searchResults.teachers.map((teacher) => (
+                            <button
+                              key={`teacher-${teacher.id}`}
+                              onClick={() => handleSearchResultClick("teacher", teacher.id)}
+                              className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                            >
+                              <ImageWithFallback
+                                src={teacher.avatarUrl}
+                                alt={teacher.fullName}
+                                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                fallbackType="avatar"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{teacher.fullName}</p>
+                                <p className="text-sm text-gray-500 truncate">
+                                  {teacher.specialization || "Giáo viên"}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Subjects Results */}
+                      {searchResults.subjects?.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+                            <BookOpen className="w-4 h-4 text-green-600" />
+                            <span className="text-sm font-medium text-gray-700">Môn học</span>
+                          </div>
+                          {searchResults.subjects.map((subject) => (
+                            <button
+                              key={`subject-${subject.id}`}
+                              onClick={() => handleSearchResultClick("subject", subject.id)}
+                              className="w-full px-4 py-3 text-left hover:bg-green-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                                <BookOpen className="w-5 h-5 text-green-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{subject.name}</p>
+                                <p className="text-sm text-gray-500 truncate">
+                                  Mã: {subject.code}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -194,9 +385,7 @@ export default function Header({ onNavigate, currentPage }) {
             </button>
 
             {/* Nếu đã đăng nhập với role student, hiển thị mục Lớp đã đăng ký */}
-            {user?.roles?.some(
-              (r) => String(r).toLowerCase() === "student"
-            ) && (
+            {hasRole("student") && (
               <>
                 <button
                   onClick={() => onNavigate({ type: "student-classes" })}
@@ -265,9 +454,7 @@ export default function Header({ onNavigate, currentPage }) {
                       </p>
                     </div>
                     {/* Link to Student Profile if user is a student */}
-                    {user?.roles?.some(
-                      (r) => String(r).toLowerCase() === "student"
-                    ) && (
+                    {hasRole("student") && (
                       <>
                         <button
                           onClick={() => {
@@ -298,6 +485,16 @@ export default function Header({ onNavigate, currentPage }) {
                         >
                           <User className="w-4 h-4" />
                           Thông tin cá nhân
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            onNavigate({ type: "payment-history" });
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                          Lịch sử thanh toán
                         </button>
                       </>
                     )}
@@ -357,9 +554,7 @@ export default function Header({ onNavigate, currentPage }) {
               </button>
 
               {/* Mobile: Link Lớp đã đăng ký cho student */}
-              {user?.roles?.some(
-                (r) => String(r).toLowerCase() === "student"
-              ) && (
+              {hasRole("student") && (
                 <button
                   onClick={() => {
                     onNavigate({ type: "student-classes" });
@@ -464,9 +659,7 @@ export default function Header({ onNavigate, currentPage }) {
                       </div>
                     </button>
                     {/* Student Profile Link for mobile */}
-                    {user?.roles?.some(
-                      (r) => String(r).toLowerCase() === "student"
-                    ) && (
+                    {hasRole("student") && (
                       <>
                         <Button
                           onClick={() => {

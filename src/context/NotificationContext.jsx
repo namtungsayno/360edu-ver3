@@ -6,7 +6,7 @@
  * Tự động tạo ID và quản lý lifecycle của toast
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { NotificationContext } from "./NotificationContextCore";
 
 export function NotificationProvider({ children }) {
@@ -58,16 +58,19 @@ export function NotificationProvider({ children }) {
     [addToast]
   );
 
-  const value = {
-    toasts,
-    addToast,
-    removeToast,
-    clearToasts,
-    success,
-    error,
-    warning,
-    info,
-  };
+  const value = useMemo(
+    () => ({
+      toasts,
+      addToast,
+      removeToast,
+      clearToasts,
+      success,
+      error,
+      warning,
+      info,
+    }),
+    [toasts, addToast, removeToast, clearToasts, success, error, warning, info]
+  );
 
   return (
     <NotificationContext.Provider value={value}>

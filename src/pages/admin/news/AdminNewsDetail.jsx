@@ -100,9 +100,10 @@ export default function AdminNewsDetail() {
           ))}
         </div>
         <div className="prose max-w-none">
-          <p className="whitespace-pre-line text-base text-gray-700 leading-relaxed">
-            {news.content}
-          </p>
+          <div 
+            className="text-base text-gray-700 leading-relaxed rich-text-content"
+            dangerouslySetInnerHTML={{ __html: news.content }}
+          />
         </div>
       </div>
 

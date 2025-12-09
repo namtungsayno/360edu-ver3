@@ -45,6 +45,7 @@ import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
 import StudentProfile from "../pages/student/StudentProfile.jsx";
 import StudentSchedule from "../pages/student/StudentSchedule.jsx";
 import AllNotifications from "../pages/student/AllNotifications.jsx";
+import StudentPaymentHistory from "../pages/student/PaymentHistory.jsx";
 
 // GUEST PAGES - Các trang dành cho user chưa đăng nhập
 import Home from "../pages/guest/home/Home";
@@ -80,6 +81,7 @@ import AdminClassDetail from "../pages/admin/schedule/AdminClassDetail.jsx";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
+import GoogleCallback from "../pages/auth/GoogleCallback";
 import SubjectManagement from "../pages/admin/subject/SubjectManagement.jsx";
 import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagement.jsx";
 import SubjectDetail from "../pages/admin/subject/SubjectDetail.jsx";
@@ -119,6 +121,8 @@ function AppRouter() {
           <Route path="/home/register" element={<Register />} />
           <Route path="/home/forgot-password" element={<ForgotPassword />} />
         </Route>
+        {/* GOOGLE AUTH CALLBACK - Xử lý OAuth redirect */}
+        <Route path="/auth/google/callback" element={<GoogleCallback />} />
         {/* GUEST ROUTES - Các route cho người dùng chưa đăng nhập (có Header) */}
         <Route element={<GuestLayout />}>
           <Route path="/home" element={<Home />} /> {/* Trang chủ */}
@@ -160,6 +164,11 @@ function AppRouter() {
             element={<AllNotifications />}
           />{" "}
           {/* Tất cả thông báo */}
+          <Route
+            path="/home/payment-history"
+            element={<StudentPaymentHistory />}
+          />{" "}
+          {/* Lịch sử thanh toán */}
         </Route>
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
         <Route element={<RequireRole allow={["admin"]} />}>

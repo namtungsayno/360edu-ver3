@@ -481,9 +481,12 @@ export default function SubjectDetail() {
                           {statusInfo.label}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                        {course.description || "Không có mô tả"}
-                      </p>
+                      <div 
+                        className="text-sm text-gray-500 mb-3 line-clamp-2"
+                        dangerouslySetInnerHTML={{ 
+                          __html: course.description || "Không có mô tả" 
+                        }}
+                      />
                       <div className="flex items-center gap-4 text-sm text-gray-600">
                         <span className="flex items-center gap-1">
                           <Layers className="w-4 h-4 text-purple-500" />

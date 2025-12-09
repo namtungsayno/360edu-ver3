@@ -18,7 +18,7 @@
  */
 
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Header from "../components/common/Header";
 import { Footer } from "../components/common/Footer";
 import PageTransition from "../components/common/PageTransition";
@@ -58,82 +58,92 @@ export default function GuestLayout() {
   }, [location.pathname]);
 
   // Hàm điều hướng - được truyền xuống cho Header và các components
-  const onNavigate = (page) => {
-    switch (page.type) {
-      case "home":
-        navigate("/home");
-        break;
-      case "login":
-        navigate("/home/login");
-        break;
-      case "register":
-        navigate("/home/register");
-        break;
-      case "profile":
-        navigate("/home/profile");
-        break;
-      case "classes":
-        navigate("/home/classes");
-        break;
-      case "class":
-        if (page.classId) {
-          navigate(`/home/classes/${page.classId}`);
-        } else {
+  // Memo hóa để tránh re-render không cần thiết
+  const onNavigate = useCallback(
+    (page) => {
+      switch (page.type) {
+        case "home":
+          navigate("/home");
+          break;
+        case "login":
+          navigate("/home/login");
+          break;
+        case "register":
+          navigate("/home/register");
+          break;
+        case "profile":
+          navigate("/home/profile");
+          break;
+        case "classes":
           navigate("/home/classes");
-        }
-        break;
-      case "teachers":
-        navigate("/home/teachers");
-        break;
-      case "news":
-        if (page.id) {
-          navigate(`/home/news/${page.id}`);
-        } else {
-          navigate("/home/news");
-        }
-        break;
-      case "about":
-        navigate("/home/about");
-        break;
-      case "course":
-        // TODO: Navigate đến chi tiết course
-        console.log("Navigate to course:", page.courseId);
-        break;
-      case "subject":
-        // TODO: Navigate đến chi tiết subject
-        console.log("Navigate to subject:", page.subjectId);
-        break;
-      case "teacher":
-        // Navigate to teacher detail page
-        if (page.teacherId) {
-          navigate(`/home/teachers/${page.teacherId}`);
-        } else {
+          break;
+        case "class":
+          if (page.classId) {
+            navigate(`/home/classes/${page.classId}`);
+          } else {
+            navigate("/home/classes");
+          }
+          break;
+        case "teachers":
           navigate("/home/teachers");
-        }
-        break;
-      case "student-classes":
-        navigate("/home/my-classes");
-        break;
-      case "student-schedule":
-        navigate("/home/my-schedule");
-        break;
-      case "student-profile":
-        navigate("/home/profile/student");
-        break;
-      case "my-classes":
-        navigate("/home/my-classes");
-        break;
-      case "my-class":
-        if (page.classId) {
-          navigate(`/home/my-classes/${page.classId}`);
-        } else {
+          break;
+        case "news":
+          if (page.id) {
+            navigate(`/home/news/${page.id}`);
+          } else {
+            navigate("/home/news");
+          }
+          break;
+        case "about":
+          navigate("/home/about");
+          break;
+        case "course":
+          // TODO: Navigate đến chi tiết course
+          console.log("Navigate to course:", page.courseId);
+          break;
+        case "subject":
+          // TODO: Navigate đến chi tiết subject
+          console.log("Navigate to subject:", page.subjectId);
+          break;
+        case "teacher":
+          // Navigate to teacher detail page
+          if (page.teacherId) {
+            navigate(`/home/teachers/${page.teacherId}`);
+          } else {
+            navigate("/home/teachers");
+          }
+          break;
+        case "student-classes":
           navigate("/home/my-classes");
-        }
-        break;
-      default:
-        console.log("Unknown navigation:", page);
-    }
-  };
+          break;
+        case "student-schedule":
+          navigate("/home/my-schedule");
+          break;
+        case "student-profile":
+          navigate("/home/profile/student");
+          break;
+        case "my-classes":
+          navigate("/home/my-classes");
+          break;
+        case "my-class":
+          if (page.classId) {
+            navigate(`/home/my-classes/${page.classId}`);
+          } else {
+            navigate("/home/my-classes");
+          }
+          break;
+        case "payment-history":
+          navigate("/home/payment-history");
+          break;
+        default:
+          console.log("Unknown navigation:", page);
+      }
+    },
+    [navigate]
+  );
+
+  // Memo context value để tránh re-render
+  const outletContext = useMemo(() => ({ onNavigate }), [onNavigate]);
 
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col">
@@ -143,7 +153,7 @@ export default function GuestLayout() {
       {/* Main content - render các page components với Page Transition */}
       <main className="flex-1">
         <PageTransition>
-          <Outlet context={{ onNavigate }} />
+          <Outlet context={outletContext} />
         </PageTransition>
       </main>
 

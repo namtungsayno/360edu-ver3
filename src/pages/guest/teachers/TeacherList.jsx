@@ -133,7 +133,7 @@ export default function TeacherList() {
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
         </div>
 
-        <div className="max-w-[1920px] mx-auto px-6 py-8 relative z-10">
+        <div className="max-w-6xl mx-auto px-6 py-8 relative z-10">
           <div className="flex flex-col items-center gap-6">
             <div className="text-center">
               <div className="flex items-center justify-center gap-3 mb-3">
@@ -228,7 +228,7 @@ export default function TeacherList() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Results Info */}
         <div className="mb-6 flex items-center justify-between">
           <p className="text-gray-600">
@@ -241,7 +241,7 @@ export default function TeacherList() {
 
         {/* Loading State */}
         {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 8 }).map((_, idx) => (
               <Card key={idx} className="animate-pulse">
                 <div className="h-48 bg-gray-200"></div>
@@ -271,7 +271,7 @@ export default function TeacherList() {
           </div>
         ) : (
           <>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {teachers.map((teacher) => {
                 const nameParts = (teacher.name || "").trim().split(" ");
                 const lastInitial = nameParts.length
