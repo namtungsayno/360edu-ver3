@@ -70,7 +70,6 @@ import ClassroomList from "../pages/admin/room/RoomManagement.jsx";
 // tuấn test
 // FIXED: Import các component cho Class Management (Quản lý lớp học)
 import ClassManagement from "../pages/admin/class/ClassManagement.jsx";
-import ClassDetailPage from "../pages/admin/class/ClassDetailPage.jsx";
 import ClassEditPage from "../pages/admin/class/ClassEditPage.jsx";
 import CreateOfflineClassPage from "../pages/admin/class/CreateOfflineClassPage.jsx";
 import CreateOnlineClassPage from "../pages/admin/class/CreateOnlineClassPage.jsx";
@@ -80,6 +79,7 @@ import AdminClassDetail from "../pages/admin/schedule/AdminClassDetail.jsx";
 // AUTH PAGES - Các trang đăng nhập/đăng ký
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
+import ForgotPassword from "../pages/auth/ForgotPassword";
 import SubjectManagement from "../pages/admin/subject/SubjectManagement.jsx";
 import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagement.jsx";
 import SubjectDetail from "../pages/admin/subject/SubjectDetail.jsx";
@@ -93,6 +93,7 @@ import PaymentHistory from "../pages/admin/payment/PaymentHistory.jsx";
 import TeacherAttendanceList from "../pages/admin/TeacherAttendanceList.jsx";
 import TeacherAttendanceDetail from "../pages/admin/TeacherAttendanceDetail.jsx";
 import TeacherClassAttendance from "../pages/admin/TeacherClassAttendance.jsx";
+import ReportDashboard from "../pages/admin/report/ReportDashboard.jsx";
 
 // Teacher pages
 import TeacherManagement from "../pages/teacher/profile/TeacherManagement.jsx";
@@ -116,6 +117,7 @@ function AppRouter() {
         <Route element={<AuthLayout />}>
           <Route path="/home/login" element={<Login />} />
           <Route path="/home/register" element={<Register />} />
+          <Route path="/home/forgot-password" element={<ForgotPassword />} />
         </Route>
         {/* GUEST ROUTES - Các route cho người dùng chưa đăng nhập (có Header) */}
         <Route element={<GuestLayout />}>
@@ -165,11 +167,13 @@ function AppRouter() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<User />} />
-            <Route path="teachers" element={<AdminTeacherManagement />} />
+            {/* Redirect đường dẫn cũ sang mới */}
             <Route
               path="users/create-teacher"
-              element={<CreateTeacherPage />}
+              element={<Navigate to="/home/admin/teachers/create" replace />}
             />
+            <Route path="teachers" element={<AdminTeacherManagement />} />
+            <Route path="teachers/create" element={<CreateTeacherPage />} />
             <Route path="news" element={<NewsList />} />
             <Route path="news/:id" element={<AdminNewsDetail />} />
             <Route path="news/create" element={<CreateNews />} />
@@ -177,7 +181,6 @@ function AppRouter() {
             {/* Tuấn test */}
             {/* FIXED: Thêm route cho Class Management - Quản lý lớp học */}
             <Route path="class" element={<ClassManagement />} />
-            <Route path="class/:id" element={<ClassDetailPage />} />
             <Route path="class/:id/edit" element={<ClassEditPage />} />
             <Route
               path="class/create-offline"
@@ -225,6 +228,8 @@ function AppRouter() {
               path="teacher-attendance/:teacherId/class/:classId"
               element={<TeacherClassAttendance />}
             />
+            {/* Reports - Báo cáo & Thống kê */}
+            <Route path="reports" element={<ReportDashboard />} />
           </Route>
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}

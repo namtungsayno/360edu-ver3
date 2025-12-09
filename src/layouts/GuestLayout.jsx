@@ -1,6 +1,6 @@
 /**
  * GUEST LAYOUT - Layout cho các trang guest (chưa đăng nhập)
- * 
+ *
  * Routes được quản lý:
  * - /home (Trang chủ)
  * - /home/profile (Profile guest)
@@ -9,7 +9,7 @@
  * - /home/teachers (Danh sách giáo viên)
  * - /home/about (Giới thiệu)
  * - /home/news (Tin tức - chưa implement)
- * 
+ *
  * Chức năng:
  * - Quản lý navigation giữa các trang guest
  * - Track trang hiện tại để highlight menu
@@ -21,11 +21,12 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Header from "../components/common/Header";
 import { Footer } from "../components/common/Footer";
+import PageTransition from "../components/common/PageTransition";
 
 export default function GuestLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // State để track trang hiện tại (cho highlight navigation)
   const [currentPage, setCurrentPage] = useState({ type: "home" });
 
@@ -38,7 +39,10 @@ export default function GuestLayout() {
       setCurrentPage({ type: "profile" });
     } else if (path === "/home/profile/student") {
       setCurrentPage({ type: "student-profile" });
-    } else if (path === "/home/my-classes" || path.startsWith("/home/my-classes/")) {
+    } else if (
+      path === "/home/my-classes" ||
+      path.startsWith("/home/my-classes/")
+    ) {
       setCurrentPage({ type: "my-classes" });
     } else if (path === "/home/my-schedule") {
       setCurrentPage({ type: "student-schedule" });
@@ -64,7 +68,7 @@ export default function GuestLayout() {
         break;
       case "register":
         navigate("/home/register");
-        break; 
+        break;
       case "profile":
         navigate("/home/profile");
         break;
@@ -135,10 +139,12 @@ export default function GuestLayout() {
     <div className="min-h-screen bg-white text-gray-900 flex flex-col">
       {/* Header cố định cho tất cả guest pages */}
       <Header onNavigate={onNavigate} currentPage={currentPage} />
-      
-      {/* Main content - render các page components thông qua Outlet */}
+
+      {/* Main content - render các page components với Page Transition */}
       <main className="flex-1">
-        <Outlet context={{ onNavigate }} />
+        <PageTransition>
+          <Outlet context={{ onNavigate }} />
+        </PageTransition>
       </main>
 
       {/* Footer chung */}
@@ -146,4 +152,3 @@ export default function GuestLayout() {
     </div>
   );
 }
-

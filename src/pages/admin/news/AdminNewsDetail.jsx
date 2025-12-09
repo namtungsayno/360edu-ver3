@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Badge } from "../../../components/ui/Badge";
 import { newsService } from "../../../services/news/news.service";
-import { Calendar, Eye, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { Calendar, Eye, Edit, Trash2, Newspaper } from "lucide-react";
+import { BackButton } from "../../../components/common/BackButton";
 
 export default function AdminNewsDetail() {
   const { id } = useParams();
@@ -56,41 +57,56 @@ export default function AdminNewsDetail() {
 
   return (
     <div className="p-6 space-y-6">
-      <Button
-        variant="ghost"
-        onClick={() => navigate("/home/admin/news")}
-        className="mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" /> Quay lại danh sách
-      </Button>
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <BackButton to="/home/admin/news" showLabel={false} />
+        <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+          <Newspaper className="h-7 w-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Chi tiết tin tức</h1>
+          <p className="text-sm text-gray-500">
+            Xem và quản lý thông tin tin tức
+          </p>
+        </div>
+      </div>
+
       {news.imageUrl && (
         <img
           src={news.imageUrl}
           alt={news.title}
-          className="w-full h-72 object-cover rounded-lg mb-6"
+          className="w-full h-72 object-cover rounded-xl shadow-sm"
         />
       )}
-      <h1 className="text-3xl font-bold mb-2">{news.title}</h1>
-      <div className="flex items-center gap-4 text-sm text-slate-600 mb-2">
-        <Calendar className="h-4 w-4" />
-        <span>{news.date || news.createdAt}</span>
-        <Eye className="h-4 w-4 ml-4" />
-        <span>{news.views} lượt xem</span>
-        <span className="ml-4">Bởi: {news.author}</span>
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-3">{news.title}</h2>
+        <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+          <div className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
+            <span>{news.date || news.createdAt}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Eye className="h-4 w-4" />
+            <span>{news.views} lượt xem</span>
+          </div>
+          <span>Bởi: {news.author}</span>
+        </div>
+        <div className="flex flex-wrap gap-2 mb-6">
+          {tags.map((tag, idx) => (
+            <Badge key={tag} variant="outline" className="text-xs">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+        <div className="prose max-w-none">
+          <p className="whitespace-pre-line text-base text-gray-700 leading-relaxed">
+            {news.content}
+          </p>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2 mb-4">
-        {tags.map((tag, idx) => (
-          <Badge key={tag} variant="outline" className="text-xs">
-            {tag}
-          </Badge>
-        ))}
-      </div>
-      <div className="prose max-w-none mb-6">
-        <p className="whitespace-pre-line text-base text-slate-800">
-          {news.content}
-        </p>
-      </div>
-      <div className="flex gap-2 mt-4">
+
+      <div className="flex gap-3">
         <Button variant="default" onClick={handleEdit}>
           <Edit className="h-4 w-4 mr-2" /> Sửa
         </Button>

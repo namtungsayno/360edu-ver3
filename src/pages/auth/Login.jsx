@@ -64,32 +64,32 @@ export default function Login() {
   // Validate form
   const validate = () => {
     const next = {};
-    
+
     if (!formData.username.trim()) {
       next.username = "Vui lòng nhập tên đăng nhập.";
     } else if (formData.username.length < 3) {
       next.username = "Tên đăng nhập phải có ít nhất 3 ký tự.";
     }
-    
+
     if (!formData.password) {
       next.password = "Vui lòng nhập mật khẩu.";
     } else if (formData.password.length < 6) {
       next.password = "Mật khẩu phải có ít nhất 6 ký tự.";
     }
-    
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate form before submitting
     if (!validate()) {
       error("Vui lòng kiểm tra lại thông tin đăng nhập");
       return;
     }
-    
+
     setSubmitting(true);
 
     try {
@@ -106,9 +106,12 @@ export default function Login() {
         nav(to, { replace: true });
       }, 500);
     } catch (ex) {
-      const errorMsg = ex.displayMessage || ex?.response?.data?.message || "Tên đăng nhập hoặc mật khẩu không chính xác";
+      const errorMsg =
+        ex.displayMessage ||
+        ex?.response?.data?.message ||
+        "Tên đăng nhập hoặc mật khẩu không chính xác";
       error(errorMsg);
-      
+
       // Highlight fields on error
       if (errorMsg.includes("mật khẩu")) {
         setErrors({ password: "Mật khẩu không chính xác" });
@@ -190,7 +193,9 @@ export default function Login() {
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder="Nhập mật khẩu"
-                  className={`w-full pr-10 ${errors.password ? "border-red-500" : ""}`}
+                  className={`w-full pr-10 ${
+                    errors.password ? "border-red-500" : ""
+                  }`}
                 />
                 <button
                   type="button"
@@ -220,6 +225,7 @@ export default function Login() {
               </label>
               <button
                 type="button"
+                onClick={() => nav("/home/forgot-password")}
                 className="text-blue-600 hover:text-blue-700 hover:underline"
               >
                 Quên mật khẩu?

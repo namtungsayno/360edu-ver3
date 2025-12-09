@@ -18,8 +18,9 @@ import { teacherService } from "../../../services/teacher/teacher.service";
 import { classroomService } from "../../../services/classrooms/classroom.service";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
 import { courseApi } from "../../../services/course/course.api";
-import { Loader2, ArrowLeft, Eye } from "lucide-react";
+import { Loader2, Eye, Trash2, AlertTriangle } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
+import { BackButton } from "../../../components/common/BackButton";
 
 /**
  * ClassEditPage
@@ -35,6 +36,7 @@ export default function ClassEditPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1); // 1: form, 2: preview
 
   // Original class data
@@ -60,18 +62,17 @@ export default function ClassEditPage() {
   const [teachers, setTeachers] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
-  // Random code for new naming (1 letter + 1 digit), generated once per page open
-  const [randomCode, setRandomCode] = useState("");
 
   // Busy & picked slots
   const [teacherBusy, setTeacherBusy] = useState([]);
   const [roomBusy, setRoomBusy] = useState([]);
   const [pickedSlots, setPickedSlots] = useState([]); // grid selections
+  // Room conflict state for PUBLIC classes
+  const [roomConflict, setRoomConflict] = useState(null); // { roomName, className, dayName, slotTime }
+  const [checkingRoomConflict, setCheckingRoomConflict] = useState(false);
   // Toggle edit/view for schedule
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [prevPickedSlots, setPrevPickedSlots] = useState([]);
-  // Track previous generated name to detect manual edits
-  const [prevGeneratedName, setPrevGeneratedName] = useState("");
   // Bỏ xác nhận endDate nên không cần giữ prev để hoàn tác
   // const [prevPickedSlots, setPrevPickedSlots] = useState([]); // unused
   // const [prevTotalSessions, setPrevTotalSessions] = useState(""); // unused
@@ -109,46 +110,6 @@ export default function ClassEditPage() {
       }
     })();
   }, []);
-
-  // Helpers: alias and random code for class name
-  const makeTeacherAlias = useCallback((fullName) => {
-    const removeDiacritics = (s) =>
-      (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (!fullName) return "";
-    const parts = fullName.trim().split(/\s+/);
-    const last = removeDiacritics(parts[parts.length - 1] || "");
-    if (!last) return "";
-    return "GV" + last.charAt(0).toUpperCase() + last.slice(1).toLowerCase();
-  }, []);
-
-  const generateRandomCode = useCallback(() => {
-    try {
-      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      const nums = "0123456789";
-      const arr = new Uint8Array(2);
-      if (window.crypto && window.crypto.getRandomValues) {
-        window.crypto.getRandomValues(arr);
-      } else {
-        arr[0] = Math.floor(Math.random() * 256);
-        arr[1] = Math.floor(Math.random() * 256);
-      }
-      const ch = letters[arr[0] % letters.length];
-      const dg = nums[arr[1] % nums.length];
-      return `${ch}${dg}`;
-    } catch {
-      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      const nums = "0123456789";
-      return (
-        letters[Math.floor(Math.random() * letters.length)] +
-        nums[Math.floor(Math.random() * nums.length)]
-      );
-    }
-  }, []);
-
-  // Generate random code once
-  useEffect(() => {
-    setRandomCode(generateRandomCode());
-  }, [generateRandomCode]);
 
   // Build a stable comparison key for a slot: dayOfWeek(0..6)-HH:mm
   // Use exact isoStart+isoEnd equality to align with ScheduleGrid
@@ -225,6 +186,8 @@ export default function ClassEditPage() {
             // Deduplicate by (day, HH:mm) to avoid duplicates later
             const uniq = uniqByKey(mapped);
             setPickedSlots(uniq);
+            // Lưu prevPickedSlots để hỗ trợ nút Hủy cho lớp DRAFT
+            setPrevPickedSlots(uniq);
             // initialSlotsCount logic removed
             // originalPickedSlots removed
           }
@@ -294,50 +257,8 @@ export default function ClassEditPage() {
     })();
   }, [cls]);
 
-  // Build new naming suggestion when data ready
-  const generatedName = useMemo(() => {
-    const subj = subjects.find((s) => String(s.id) === String(subjectId));
-    const teacher = teachers.find(
-      (t) => String(t.userId) === String(teacherId)
-    );
-    if (!subj || !teacher || !randomCode) return "";
-    const alias = makeTeacherAlias(teacher.fullName);
-    if (!alias) return "";
-    return `${subj.name} - ${alias} - ${randomCode}`;
-  }, [subjects, subjectId, teachers, teacherId, randomCode, makeTeacherAlias]);
-
-  // Old naming (legacy): TeacherFullName - SubjectName
-  const legacyName = useMemo(() => {
-    const subj = subjects.find((s) => String(s.id) === String(subjectId));
-    const teacher = teachers.find(
-      (t) => String(t.userId) === String(teacherId)
-    );
-    if (!subj || !teacher) return "";
-    return `${teacher.fullName} - ${subj.name}`;
-  }, [subjects, subjectId, teachers, teacherId]);
-
-  // Prefill name with new format if empty, using legacy pattern, or matching previous auto-generated name
-  useEffect(() => {
-    if (!generatedName) return;
-
-    // Check if current name follows the auto-generated pattern: "SubjectName - GV... - XX"
-    const autoGenPattern = /^.+ - GV\w+ - [A-Z]\d$/;
-    const isAutoGenerated = autoGenPattern.test(name);
-
-    // If current name is empty, exactly matches legacy style, matches the previous auto-generated name,
-    // or follows the auto-generated pattern → update
-    const shouldUpdate =
-      !name ||
-      (legacyName && name === legacyName) ||
-      (prevGeneratedName && name === prevGeneratedName) ||
-      isAutoGenerated;
-    if (shouldUpdate) {
-      setName(generatedName);
-    }
-    // Always track the latest generated name for future comparisons
-    setPrevGeneratedName(generatedName);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [generatedName, legacyName]);
+  // KHÔNG auto-generate tên ở trang Edit - giữ nguyên tên lớp từ database
+  // Logic auto-generate chỉ dùng cho trang Create
 
   // Busy data loads when teacher/room/startDate change
   const loadTeacherBusy = useCallback(async () => {
@@ -427,6 +348,98 @@ export default function ClassEditPage() {
   useEffect(() => {
     loadRoomBusy();
   }, [loadRoomBusy]);
+
+  // Check room conflict for PUBLIC classes when room changes
+  const checkRoomConflict = useCallback(async () => {
+    // Only check for PUBLIC classes when changing room
+    if (!cls || cls.status !== "PUBLIC" || cls.online || !roomId) {
+      setRoomConflict(null);
+      return;
+    }
+    // If room hasn't changed from original, no need to check
+    const originalRoomId = cls.roomId || cls.room?.id;
+    if (String(roomId) === String(originalRoomId)) {
+      setRoomConflict(null);
+      return;
+    }
+
+    setCheckingRoomConflict(true);
+    try {
+      const fromDate = new Date(startDate || cls.startDate).toISOString();
+      const toDate = new Date(endDate || cls.endDate).toISOString();
+      const busyData = await classroomService.getFreeBusy(
+        roomId,
+        fromDate,
+        toDate
+      );
+
+      if (!Array.isArray(busyData) || busyData.length === 0) {
+        setRoomConflict(null);
+        return;
+      }
+
+      // Get this class's schedule pattern (dayOfWeek + timeSlot)
+      const thisClassSlots = pickedSlots.map((slot) => {
+        const d = new Date(slot.isoStart);
+        const dow = d.getDay(); // 0-6
+        const h = String(d.getHours()).padStart(2, "0");
+        const m = String(d.getMinutes()).padStart(2, "0");
+        return { dow, time: `${h}:${m}` };
+      });
+
+      // Check if any busy slot overlaps with this class's schedule
+      for (const busy of busyData) {
+        if (!busy.start || !busy.end) continue;
+        const busyStart = new Date(busy.start);
+        const busyDow = busyStart.getDay();
+        const busyH = String(busyStart.getHours()).padStart(2, "0");
+        const busyM = String(busyStart.getMinutes()).padStart(2, "0");
+        const busyTime = `${busyH}:${busyM}`;
+
+        // Check if this busy slot matches any of our class's slots
+        const conflict = thisClassSlots.find(
+          (s) => s.dow === busyDow && s.time === busyTime
+        );
+
+        if (conflict) {
+          const dayNames = [
+            "Chủ nhật",
+            "Thứ 2",
+            "Thứ 3",
+            "Thứ 4",
+            "Thứ 5",
+            "Thứ 6",
+            "Thứ 7",
+          ];
+          const selectedRoom = rooms.find(
+            (r) => String(r.id) === String(roomId)
+          );
+          const busyEnd = new Date(busy.end);
+          const endH = String(busyEnd.getHours()).padStart(2, "0");
+          const endM = String(busyEnd.getMinutes()).padStart(2, "0");
+
+          setRoomConflict({
+            roomName: selectedRoom?.name || "Phòng đã chọn",
+            dayName: dayNames[busyDow],
+            slotTime: `${busyTime} - ${endH}:${endM}`,
+            className: busy.className || "lớp khác", // BE might include this
+          });
+          return;
+        }
+      }
+
+      setRoomConflict(null);
+    } catch (e) {
+      console.error("Error checking room conflict:", e);
+      setRoomConflict(null);
+    } finally {
+      setCheckingRoomConflict(false);
+    }
+  }, [cls, roomId, startDate, endDate, pickedSlots, rooms]);
+
+  useEffect(() => {
+    checkRoomConflict();
+  }, [checkRoomConflict]);
 
   function toggleSlot(slot) {
     const targetKey = slotKey(slot);
@@ -523,6 +536,7 @@ export default function ClassEditPage() {
 
   const isOnline = cls?.online === true;
   const isPublic = cls?.status === "PUBLIC"; // giữ badge hiển thị, không ảnh hưởng chỉnh sửa
+  const isDraft = cls?.status === "DRAFT"; // Khi DRAFT: khóa Môn học, Giáo viên, Khóa học, Tên lớp
   // Centralized accent styles
   const accentGradient = isOnline
     ? "bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600"
@@ -552,6 +566,9 @@ export default function ClassEditPage() {
   }
 
   const step1Valid = useMemo(() => {
+    // Block if room conflict exists for PUBLIC classes
+    if (roomConflict) return false;
+
     if (
       !subjectId ||
       !teacherId ||
@@ -593,6 +610,7 @@ export default function ClassEditPage() {
     roomId,
     cls?.status,
     selectedRoom,
+    roomConflict,
   ]);
 
   async function handleSave() {
@@ -640,7 +658,7 @@ export default function ClassEditPage() {
         }
       }
       success("Cập nhật lớp thành công");
-      navigate(`/home/admin/class/${cls.id}`);
+      navigate("/home/admin/class");
     } catch (e) {
       console.error(e);
       let msg = "Không thể cập nhật lớp";
@@ -649,6 +667,28 @@ export default function ClassEditPage() {
       error(msg);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!cls || cls.status !== "DRAFT") return;
+
+    const confirmMsg = `Bạn có chắc chắn muốn XÓA VĨNH VIỄN lớp "${cls.name}"?\n\nLưu ý: Tất cả dữ liệu liên quan (buổi học, lịch học, học viên đăng ký,...) sẽ bị xóa và KHÔNG THỂ KHÔI PHỤC.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setDeleting(true);
+    try {
+      await classService.delete(cls.id);
+      success("Đã xóa lớp học thành công");
+      navigate("/home/admin/class");
+    } catch (e) {
+      console.error(e);
+      let msg = "Không thể xóa lớp";
+      if (e.response?.data?.message) msg = e.response.data.message;
+      else if (e.response?.data?.error) msg = e.response.data.error;
+      error(msg);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -695,17 +735,13 @@ export default function ClassEditPage() {
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
+                <BackButton
                   onClick={() => {
                     if (currentStep === 2) setCurrentStep(1);
-                    else navigate(`/home/admin/class/${cls.id}`);
+                    else navigate("/home/admin/class");
                   }}
-                  className="flex items-center gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Quay lại
-                </Button>
+                  showLabel={false}
+                />
                 <div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1
@@ -762,59 +798,110 @@ export default function ClassEditPage() {
           </div>
         </div>
 
-        <div className="max-w-[1400px] mx-auto px-6 py-8">
+        <div className="max-w-[1600px] mx-auto px-6 py-4">
           {currentStep === 1 && (
-            <div className="grid grid-cols-[380px_1fr] gap-6 items-stretch">
+            <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-4 items-start">
               {/* Left form */}
               <div
-                className={`rounded-2xl p-5 h-[calc(100vh-250px)] overflow-y-auto sticky top-24 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg ${
+                className={`rounded-2xl p-4 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg ${
                   isOnline ? "shadow-indigo-500/20" : "shadow-green-500/20"
                 }`}
               >
-                <div className="mb-5">
+                <div className="mb-3">
                   <div
-                    className={`flex items-center gap-3 p-4 ${accentBlockGradient} text-white rounded-2xl shadow-lg w-full ${accentShadowStrong}`}
+                    className={`flex items-center gap-3 p-3 ${accentBlockGradient} text-white rounded-xl shadow-lg w-full ${accentShadowStrong}`}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center text-lg flex-shrink-0">
                       {isOnline ? "🌐" : "🏫"}
                     </div>
                     <div>
-                      <h2 className="text-base font-semibold">
+                      <h2 className="text-sm font-semibold">
                         {isOnline ? "Lớp học Online" : "Lớp học Offline"}
                       </h2>
-                      <p className="text-xs text-white/80">
+                      <p className="text-[10px] text-white/80">
                         Chỉnh sửa thông tin lớp
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {isPublic && (
-                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[13px] text-amber-700 leading-relaxed">
-                      <div className="font-semibold mb-1">
-                        Lớp đã ở trạng thái Public
-                      </div>
-                      {isOnline ? (
-                        <p>
-                          Chỉ được phép cập nhật{" "}
-                          <span className="font-medium">Link Meet</span> và{" "}
-                          <span className="font-medium">Sĩ số</span>. Các thông
-                          tin khác đã bị khóa.
-                        </p>
-                      ) : (
-                        <p>
-                          Chỉ được phép cập nhật{" "}
-                          <span className="font-medium">Phòng học</span> và{" "}
-                          <span className="font-medium">Sĩ số</span>. Các thông
-                          tin khác đã bị khóa.
-                        </p>
-                      )}
+                    <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-700 leading-relaxed">
+                      <div className="font-semibold">⚠️ Lớp đã Public</div>
+                      <p className="mt-0.5">
+                        {isOnline
+                          ? "Chỉ sửa được Link Meet và Sĩ số"
+                          : "Chỉ sửa được Phòng học và Sĩ số"}
+                      </p>
                     </div>
                   )}
-                  {/* Dates */}
+
+                  {isDraft && (
+                    <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-700 leading-relaxed">
+                      <div className="font-semibold flex items-center gap-1">
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        Một số trường bị khóa
+                      </div>
+                      <p className="mt-0.5">
+                        <strong>Môn học</strong>, <strong>Giáo viên</strong>,{" "}
+                        <strong>Khóa học</strong>, <strong>Tên lớp</strong>{" "}
+                        không thể thay đổi sau khi tạo.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Thông báo và nút xóa cho lớp DRAFT */}
+                  {isDraft && (
+                    <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-700 leading-relaxed">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold flex items-center gap-1">
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Có thể xóa lớp
+                          </div>
+                          <p className="mt-0.5">
+                            Lớp đang ở trạng thái{" "}
+                            <strong>DRAFT (bản nháp)</strong> nên có thể xóa
+                            vĩnh viễn.
+                          </p>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDelete}
+                          disabled={deleting}
+                          className="h-7 px-2.5 text-[10px] flex-shrink-0"
+                        >
+                          {deleting ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              Đang xóa...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Xóa lớp
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Row 1: Ngày bắt đầu + Ngày kết thúc */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Ngày bắt đầu <span className="text-red-500">*</span>
                       </label>
                       <Input
@@ -822,63 +909,136 @@ export default function ClassEditPage() {
                         value={startDate}
                         min={todayStr}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="h-10 text-sm"
+                        className="h-9 text-sm"
                         disabled={isPublic}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
                         Ngày kết thúc
                       </label>
                       <Input
                         type="date"
                         value={endDate}
                         readOnly
-                        className="h-10 text-sm bg-gray-50"
+                        className="h-9 text-sm bg-gray-50"
                       />
                     </div>
                   </div>
-                  {/* Subject */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Môn học <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      key={`subject-${subjectId}-${subjects.length}`}
-                      value={String(subjectId)}
-                      onValueChange={setSubjectId}
-                      disabled={isPublic}
-                    >
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Chọn môn" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.map((s) => (
-                          <SelectItem key={s.id} value={String(s.id)}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* Cho phép đổi môn khi DRAFT; chỉ khóa khi PUBLIC */}
+
+                  {/* Row 2: Môn học + Giáo viên */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        Môn học <span className="text-red-500">*</span>
+                        {(isDraft || isPublic) && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-400 font-normal">
+                            <svg
+                              className="w-3 h-3"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Đã khóa
+                          </span>
+                        )}
+                      </label>
+                      <Select
+                        key={`subject-${subjectId}-${subjects.length}`}
+                        value={String(subjectId)}
+                        onValueChange={setSubjectId}
+                        disabled={true}
+                      >
+                        <SelectTrigger className="h-9 text-sm w-full bg-gray-100 cursor-not-allowed opacity-70">
+                          <SelectValue placeholder="Chọn môn" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subjects.map((s) => (
+                            <SelectItem key={s.id} value={String(s.id)}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        Giáo viên <span className="text-red-500">*</span>
+                        {(isDraft || isPublic) && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-400 font-normal">
+                            <svg
+                              className="w-3 h-3"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Đã khóa
+                          </span>
+                        )}
+                      </label>
+                      <Select
+                        key={`teacher-${teacherId}-${teachers.length}`}
+                        value={String(teacherId)}
+                        onValueChange={setTeacherId}
+                        disabled={true}
+                      >
+                        <SelectTrigger className="h-9 text-sm w-full bg-gray-100 cursor-not-allowed opacity-70">
+                          <SelectValue placeholder="Chọn GV" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teachers.map((t) => (
+                            <SelectItem key={t.userId} value={String(t.userId)}>
+                              {t.fullName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  {/* Course optional */}
+
+                  {/* Row 3: Khóa học */}
                   {subjectId && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Khóa học{" "}
-                        <span className="text-xs text-gray-500">
-                          (tùy chọn)
-                        </span>
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
+                        Khóa học <span className="text-red-500">*</span>
+                        {(isDraft || isPublic) && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-400 font-normal">
+                            <svg
+                              className="w-3 h-3"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Đã khóa
+                          </span>
+                        )}
                       </label>
                       <Select
                         key={`course-${courseId}-${courses.length}`}
                         value={String(courseId)}
                         onValueChange={setCourseId}
-                        disabled={isPublic}
+                        disabled={true}
                       >
-                        <SelectTrigger className="h-10 text-sm">
-                          <SelectValue placeholder="Chọn khóa học" />
+                        <SelectTrigger className="h-auto min-h-[36px] text-sm py-2 bg-gray-100 cursor-not-allowed opacity-70">
+                          <SelectValue
+                            placeholder="Chọn khóa học"
+                            className="whitespace-normal line-clamp-2"
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="">-- Không chọn --</SelectItem>
@@ -889,212 +1049,237 @@ export default function ClassEditPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {/* Cho phép đổi khóa học khi DRAFT; chỉ khóa khi PUBLIC */}
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Giáo viên <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      key={`teacher-${teacherId}-${teachers.length}`}
-                      value={String(teacherId)}
-                      onValueChange={setTeacherId}
-                      disabled={isPublic}
-                    >
-                      <SelectTrigger className="h-10 text-sm">
-                        <SelectValue placeholder="Chọn GV" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teachers.map((t) => (
-                          <SelectItem key={t.userId} value={String(t.userId)}>
-                            {t.fullName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* Cho phép đổi giáo viên khi DRAFT; chỉ khóa khi PUBLIC */}
-                  </div>
-                  {/* Total sessions */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Số buổi <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={totalSessions}
-                      onChange={(e) => {
-                        // prevTotalSessions không còn dùng
-                        setTotalSessions(e.target.value);
-                        // endDate sẽ tự động cập nhật
-                      }}
-                      className="h-10 text-sm"
-                      disabled={isPublic}
-                    />
-                    {isPublic && (
-                      <p className="text-[10px] text-amber-600 mt-1">
-                        Số buổi đã bị khóa ở trạng thái Public.
-                      </p>
-                    )}
-                  </div>
-                  {/* Giá tiền mỗi buổi học */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                      Giá tiền mỗi buổi học (VNĐ){" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={formatVNNumber(pricePerSession)}
-                      onChange={(e) =>
-                        setPricePerSession(digitsOnly(e.target.value))
-                      }
-                      className="h-10 text-sm"
-                      disabled={isPublic}
-                    />
-                    {pricePerSession !== "" &&
-                      parseInt(pricePerSession) < 0 && (
-                        <p className="text-xs text-red-600 mt-1">
-                          Giá tiền mỗi buổi học phải ≥ 0
-                        </p>
-                      )}
-                    {isPublic && (
-                      <p className="text-[10px] text-amber-600 mt-1">
-                        Giá tiền mỗi buổi bị khóa ở trạng thái Public.
-                      </p>
-                    )}
-                  </div>
-                  {/* Offline room or online link + Capacity */}
+                  {/* Row 4: Phòng học/Link Meet + Số buổi */}
                   <div className="grid grid-cols-2 gap-3">
                     {isOnline ? (
-                      <>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                            Link Meet <span className="text-red-500">*</span>
-                          </label>
-                          <Input
-                            value={meetingLink}
-                            onChange={(e) => setMeetingLink(e.target.value)}
-                            placeholder="https://"
-                            className="h-10 text-sm"
-                          />
-                          {meetingLink && !isValidUrl(meetingLink) && (
-                            <p className="text-xs text-red-600 mt-1">
-                              Link không hợp lệ
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                            Sĩ số <span className="text-red-500">*</span>
-                          </label>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={30}
-                            value={capacity}
-                            onChange={(e) => setCapacity(e.target.value)}
-                            className="h-10 text-sm"
-                          />
-                          {capacity && parseInt(capacity) > 30 && (
-                            <p className="text-xs text-red-600 mt-1">
-                              Tối đa 30
-                            </p>
-                          )}
-                        </div>
-                      </>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Link Meet <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                          value={meetingLink}
+                          onChange={(e) => setMeetingLink(e.target.value)}
+                          placeholder="https://"
+                          className="h-9 text-sm"
+                        />
+                        {meetingLink && !isValidUrl(meetingLink) && (
+                          <p className="text-[10px] text-red-600 mt-0.5">
+                            Link không hợp lệ
+                          </p>
+                        )}
+                      </div>
                     ) : (
-                      <>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                            Phòng học <span className="text-red-500">*</span>
-                          </label>
-                          <Select
-                            key={`room-${roomId}-${rooms.length}`}
-                            value={String(roomId)}
-                            onValueChange={setRoomId}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Phòng học <span className="text-red-500">*</span>
+                        </label>
+                        <Select
+                          key={`room-${roomId}-${rooms.length}`}
+                          value={String(roomId)}
+                          onValueChange={setRoomId}
+                        >
+                          <SelectTrigger
+                            className={`h-9 text-sm ${
+                              roomConflict
+                                ? "border-red-400 ring-1 ring-red-200"
+                                : ""
+                            }`}
                           >
-                            <SelectTrigger className="h-10 text-sm">
-                              <SelectValue placeholder="Chọn phòng" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {rooms.map((r) => (
-                                <SelectItem key={r.id} value={String(r.id)}>
-                                  {r.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                            Sĩ số <span className="text-red-500">*</span>
-                          </label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={capacity}
-                            onChange={(e) => setCapacity(e.target.value)}
-                            className="h-10 text-sm"
-                          />
-                          {selectedRoom && selectedRoom.capacity && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Tối đa: {selectedRoom.capacity}
-                            </p>
-                          )}
-                        </div>
-                      </>
+                            <SelectValue placeholder="Chọn phòng" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rooms.map((r) => (
+                              <SelectItem key={r.id} value={String(r.id)}>
+                                {r.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {/* Room conflict warning */}
+                        {checkingRoomConflict && (
+                          <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Đang kiểm tra phòng...
+                          </div>
+                        )}
+                        {roomConflict && !checkingRoomConflict && (
+                          <div className="mt-2 p-2.5 bg-red-50 border border-red-200 rounded-lg">
+                            <div className="flex items-start gap-2">
+                              <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="text-xs text-red-700 font-medium">
+                                  Phòng bị trùng lịch!
+                                </p>
+                                <p className="text-[11px] text-red-600 mt-0.5">
+                                  {roomConflict.roomName} đã có lớp khác dạy vào{" "}
+                                  {roomConflict.dayName} (
+                                  {roomConflict.slotTime})
+                                </p>
+                                <p className="text-[10px] text-red-500 mt-1">
+                                  Vui lòng chọn phòng khác
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Số buổi <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={totalSessions}
+                        onChange={(e) => setTotalSessions(e.target.value)}
+                        className="h-9 text-sm"
+                        disabled={isPublic}
+                      />
+                    </div>
                   </div>
-                  {/* Class name readonly */}
+
+                  {/* Row 5: Sĩ số + Giá/buổi */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Sĩ số <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={isOnline ? 30 : undefined}
+                        value={capacity}
+                        onChange={(e) => setCapacity(e.target.value)}
+                        className="h-9 text-sm"
+                      />
+                      {!isOnline && selectedRoom?.capacity && (
+                        <p className="text-[10px] text-gray-500 mt-0.5">
+                          Tối đa: {selectedRoom.capacity}
+                        </p>
+                      )}
+                      {isOnline && capacity && parseInt(capacity) > 30 && (
+                        <p className="text-[10px] text-red-600 mt-0.5">
+                          Tối đa 30
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Giá/buổi (VNĐ) <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatVNNumber(pricePerSession)}
+                        onChange={(e) =>
+                          setPricePerSession(digitsOnly(e.target.value))
+                        }
+                        className="h-9 text-sm"
+                        disabled={isPublic}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 6: Tên lớp */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                       Tên lớp
+                      {(isDraft || isPublic) && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-400 font-normal">
+                          <svg
+                            className="w-3 h-3"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          Đã khóa
+                        </span>
+                      )}
                     </label>
                     <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="h-10 text-sm"
-                      disabled={isPublic}
+                      className="h-9 text-sm bg-gray-100 font-medium cursor-not-allowed opacity-70"
+                      disabled={true}
+                      readOnly
                     />
                   </div>
+
+                  {/* Row 7: Mô tả */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Mô tả
                     </label>
                     <Textarea
                       rows={2}
                       value={desc}
                       onChange={(e) => setDesc(e.target.value)}
+                      placeholder="Mô tả về lớp..."
                       className="resize-none text-sm"
                       disabled={isPublic}
                     />
                   </div>
+
+                  {/* Action Button */}
+                  <Button
+                    onClick={() => setCurrentStep(2)}
+                    disabled={!step1Valid}
+                    className={`w-full h-10 rounded-xl ${accentGradient} text-white shadow-lg ${accentShadowStrong} hover:brightness-105 mt-2`}
+                  >
+                    Xem trước
+                  </Button>
                 </div>
               </div>
               {/* Right schedule grid */}
               <div
-                className={`rounded-2xl p-5 h-[calc(100vh-250px)] bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg ${
+                className={`rounded-2xl p-4 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg ${
                   isOnline ? "shadow-indigo-500/20" : "shadow-green-500/20"
                 }`}
               >
                 <div
-                  className={`sticky top-0 z-10 -mx-5 px-5 py-3 rounded-xl text-white ${accentStepGradient} shadow-md flex items-center justify-between`}
+                  className={`-mx-4 px-4 py-2.5 rounded-xl text-white ${accentStepGradient} shadow-md flex items-center justify-between`}
                 >
                   <h2 className="text-lg font-bold">Lịch học</h2>
-                  {!isEditingSchedule ? (
-                    <Button
-                      variant="outline"
-                      onClick={startEditSchedule}
-                      className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
-                      disabled={isPublic}
-                    >
-                      Chỉnh sửa
-                    </Button>
-                  ) : (
+                  {/* Lớp PUBLIC: cần bấm Chỉnh sửa để sửa lịch */}
+                  {isPublic &&
+                    (!isEditingSchedule ? (
+                      <Button
+                        variant="outline"
+                        onClick={startEditSchedule}
+                        className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
+                        disabled={isPublic}
+                      >
+                        Chỉnh sửa
+                      </Button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={cancelEditSchedule}
+                          className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={doneEditSchedule}
+                          className="h-8 px-3 text-xs"
+                        >
+                          Xong
+                        </Button>
+                      </div>
+                    ))}
+                  {/* Lớp DRAFT: luôn có nút Hủy/Xong để quản lý thay đổi */}
+                  {isDraft && (
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
@@ -1114,56 +1299,47 @@ export default function ClassEditPage() {
                   )}
                 </div>
 
-                {!isEditingSchedule ? (
+                {/* Lớp DRAFT: hiện ScheduleGrid luôn để dễ xem phòng bận + lịch GV */}
+                {isDraft && (
                   <div className="mt-4">
-                    {pickedSlots.length === 0 ? (
-                      <p className="text-xs text-gray-500">Chưa có lịch học.</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {pickedSlots
-                          .slice()
-                          .sort(
-                            (a, b) =>
-                              new Date(a.isoStart) - new Date(b.isoStart)
-                          )
-                          .map((slot, idx) => {
-                            const d = new Date(slot.isoStart);
-                            const e = new Date(slot.isoEnd);
-                            const days = [
-                              "CN",
-                              "T2",
-                              "T3",
-                              "T4",
-                              "T5",
-                              "T6",
-                              "T7",
-                            ];
-                            const startStr = d.toLocaleTimeString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            });
-                            const endStr = e.toLocaleTimeString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            });
-                            return (
-                              <div
-                                key={idx}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
-                                  isOnline
-                                    ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                                    : "bg-emerald-50 border-emerald-200 text-emerald-700"
-                                }`}
-                              >
-                                {days[d.getDay()]} - {startStr}–{endStr}
-                              </div>
-                            );
-                          })}
+                    {/* Thông báo hướng dẫn */}
+                    <div className="mb-3 p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-700 leading-relaxed">
+                      <div className="font-semibold flex items-center gap-1">
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        Có thể chuyển slot cũ sang slot mới
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-4">
+                      <p className="mt-0.5">
+                        Click vào ô{" "}
+                        <span className="font-semibold text-blue-800">
+                          Slot cũ
+                        </span>{" "}
+                        để bỏ chọn, sau đó click vào ô{" "}
+                        <span className="font-semibold text-blue-800">
+                          Trống
+                        </span>{" "}
+                        để chọn slot mới. Các ô{" "}
+                        <span className="font-semibold text-orange-600">
+                          GV bận
+                        </span>{" "}
+                        và{" "}
+                        <span className="font-semibold text-gray-600">
+                          Phòng bận
+                        </span>{" "}
+                        không thể chọn.
+                      </p>
+                    </div>
                     <ScheduleGrid
                       timeSlots={timeSlots}
                       weekStart={weekStart}
@@ -1172,15 +1348,82 @@ export default function ClassEditPage() {
                       selected={pickedSlots}
                       originalSelected={prevPickedSlots}
                       onToggle={toggleSlot}
-                      disabled={
-                        isPublic ||
-                        !isEditingSchedule ||
-                        !teacherId ||
-                        (!isOnline && !roomId)
-                      }
+                      disabled={!teacherId || (!isOnline && !roomId)}
                     />
                   </div>
                 )}
+
+                {/* Lớp PUBLIC: giữ nguyên logic cũ - cần bấm Chỉnh sửa mới thấy grid */}
+                {isPublic &&
+                  (!isEditingSchedule ? (
+                    <div className="mt-4">
+                      {pickedSlots.length === 0 ? (
+                        <p className="text-xs text-gray-500">
+                          Chưa có lịch học.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {pickedSlots
+                            .slice()
+                            .sort(
+                              (a, b) =>
+                                new Date(a.isoStart) - new Date(b.isoStart)
+                            )
+                            .map((slot, idx) => {
+                              const d = new Date(slot.isoStart);
+                              const e = new Date(slot.isoEnd);
+                              const days = [
+                                "CN",
+                                "T2",
+                                "T3",
+                                "T4",
+                                "T5",
+                                "T6",
+                                "T7",
+                              ];
+                              const startStr = d.toLocaleTimeString("vi-VN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                              const endStr = e.toLocaleTimeString("vi-VN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
+                                    isOnline
+                                      ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                                      : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                  }`}
+                                >
+                                  {days[d.getDay()]} - {startStr}–{endStr}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-4">
+                      <ScheduleGrid
+                        timeSlots={timeSlots}
+                        weekStart={weekStart}
+                        teacherBusy={teacherBusy}
+                        roomBusy={isOnline ? [] : roomBusy}
+                        selected={pickedSlots}
+                        originalSelected={prevPickedSlots}
+                        onToggle={toggleSlot}
+                        disabled={
+                          isPublic ||
+                          !isEditingSchedule ||
+                          !teacherId ||
+                          (!isOnline && !roomId)
+                        }
+                      />
+                    </div>
+                  ))}
               </div>
             </div>
           )}
@@ -1206,47 +1449,32 @@ export default function ClassEditPage() {
               roomName={selectedRoom?.name}
             />
           )}
-          {/* Footer actions */}
-          <div className="mt-8 flex items-center justify-between">
-            <div>
-              {currentStep === 2 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep(1)}
-                  className="px-6 h-11 rounded-xl"
-                >
-                  Quay lại bước 1
-                </Button>
-              )}
+          {/* Footer actions - only for step 2 */}
+          {currentStep === 2 && (
+            <div className="mt-6 flex items-center justify-between">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentStep(1)}
+                className="px-6 h-10 rounded-xl"
+              >
+                Quay lại bước 1
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className={`px-8 h-10 rounded-xl ${accentGradient} text-white shadow-lg ${accentShadowStrong} hover:brightness-105`}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  "Lưu thay đổi"
+                )}
+              </Button>
             </div>
-            <div className="flex items-center gap-3">
-              {currentStep === 1 && (
-                <Button
-                  onClick={() => setCurrentStep(2)}
-                  disabled={!step1Valid}
-                  className={`px-8 h-11 rounded-xl ${accentGradient} text-white shadow-lg ${accentShadowStrong} hover:brightness-105`}
-                >
-                  Xem trước
-                </Button>
-              )}
-              {currentStep === 2 && (
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className={`px-8 h-11 rounded-xl ${accentGradient} text-white shadow-lg ${accentShadowStrong} hover:brightness-105`}
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Đang lưu...
-                    </>
-                  ) : (
-                    "Lưu thay đổi"
-                  )}
-                </Button>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
       {/* Modal xác nhận ngày kết thúc đã được bỏ. */}

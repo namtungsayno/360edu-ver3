@@ -42,6 +42,8 @@ export const courseService = {
   /**
    * Lấy chi tiết 1 khóa học (dùng cho màn detail + editor)
    */
+
+  //lấy khóa học cá nhân
   async getCourseDetail(id) {
     return courseApi.getById(id);
   },
@@ -76,24 +78,14 @@ export const courseService = {
     return courseApi.remove(id);
   },
 
-  // ====== COURSE (ADMIN APPROVAL) ======
-
-  async approveCourse(id) {
-    return courseApi.approve(id);
-  },
-
-  async rejectCourse(id) {
-    return courseApi.reject(id);
-  },
-
   /**
    * Dùng khi tạo Class:
-   * - Truyền subjectId → nhận danh sách course APPROVED thuộc môn đó
+   * - Truyền subjectId → nhận danh sách course thuộc môn đó
    */
-  async getApprovedCoursesBySubject(subjectId) {
+  async getCoursesBySubject(subjectId) {
     if (!subjectId) return [];
-    // Fallback to generic list API with filters since dedicated endpoint is absent
-    return courseApi.list({ subjectId, status: "APPROVED" });
+    // Fallback to generic list API with filters
+    return courseApi.list({ subjectId });
   },
 
   // ====== CHAPTER / LESSON EDITOR ======

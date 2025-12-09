@@ -1,7 +1,7 @@
 // src/pages/admin/User.jsx
-import { useEffect, useMemo, useState } from "react";
-import { UserPlus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+// 🔄 SERVER-SIDE PAGINATION
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Users, GraduationCap, UserCog, Search } from "lucide-react";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import {
@@ -20,98 +20,144 @@ import useDebounce from "../../hooks/useDebounce";
 
 import UserTable from "./user/UserTable";
 import Pagination from "./user/Pagination";
-import CreateTeacherForm from "./user/CreateTeacherForm";
 
-const ROLE_LABEL = { STUDENT: "Student", TEACHER: "Teacher", PARENT: "Parent" };
+const ROLE_LABEL = {
+  STUDENT: "Học viên",
+  TEACHER: "Giáo viên",
+  PARENT: "Phụ huynh",
+};
 const ROLES = ["ALL", "STUDENT", "TEACHER", "PARENT"];
 
 export default function UserManagement() {
   const { success, error } = useToast();
-  const navigate = useNavigate();
+  const toastRef = useRef({ success, error });
+  useEffect(() => {
+    toastRef.current = { success, error };
+  }, [success, error]);
 
   // filter
   const [tab, setTab] = useState("ALL");
   const [query, setQuery] = useState("");
-  const q = useDebounce(query, 300);
+  const debouncedQuery = useDebounce(query, 300);
 
-  // per-tab pagination
-  const [pageByTab, setPageByTab] = useState({
+  // Server-side pagination
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(5);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Data
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Stats counts (load all once)
+  const [counts, setCounts] = useState({
     ALL: 0,
     STUDENT: 0,
     TEACHER: 0,
     PARENT: 0,
   });
-  const [sizeByTab, setSizeByTab] = useState({
-    ALL: 10,
-    STUDENT: 10,
-    TEACHER: 10,
-    PARENT: 10,
-  });
-  const curPage = pageByTab[tab] ?? 0;
-  const curSize = sizeByTab[tab] ?? 10;
-
-  // data loaded once (client-side mode). Nếu bạn dùng server-side, thay bằng listPage(...)
-  const [allUsers, setAllUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
 
   // dialogs
   const [selected, setSelected] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailMode, setDetailMode] = useState("view"); // view | edit
 
-  // load data once
+  // Load stats once
   useEffect(() => {
     (async () => {
       try {
-        setLoading(true);
         const arr = await userService.list();
-        setAllUsers(Array.isArray(arr) ? arr : []);
+        const allUsers = Array.isArray(arr) ? arr : [];
+        const stu = allUsers.filter((u) => u.role === "STUDENT").length;
+        const tea = allUsers.filter((u) => u.role === "TEACHER").length;
+        const par = allUsers.filter((u) => u.role === "PARENT").length;
+        setCounts({
+          ALL: allUsers.length,
+          STUDENT: stu,
+          TEACHER: tea,
+          PARENT: par,
+        });
       } catch (e) {
-        console.error(e);
-        error("Không thể tải danh sách người dùng");
-      } finally {
-        setLoading(false);
+        console.error("Failed to load counts:", e);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // counts for tabs
-  const counts = useMemo(() => {
-    const stu = allUsers.filter((u) => u.role === "STUDENT").length;
-    const tea = allUsers.filter((u) => u.role === "TEACHER").length;
-    const par = allUsers.filter((u) => u.role === "PARENT").length;
-    return { ALL: allUsers.length, STUDENT: stu, TEACHER: tea, PARENT: par };
-  }, [allUsers]);
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [tab, debouncedQuery]);
 
-  // filter + paginate
-  const filtered = useMemo(() => {
-    const roleFiltered =
-      tab === "ALL" ? allUsers : allUsers.filter((u) => u.role === tab);
-    if (!q) return roleFiltered;
-    const kw = q.toLowerCase();
-    return roleFiltered.filter(
-      (u) =>
-        (u.fullName || "").toLowerCase().includes(kw) ||
-        (u.email || "").toLowerCase().includes(kw) ||
-        (u.phone || "").toLowerCase().includes(kw)
-    );
-  }, [allUsers, tab, q]);
+  // Fetch users with server-side pagination
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const role = tab === "ALL" ? "ALL" : tab;
+      console.log("📡 Fetching users:", {
+        search: debouncedQuery,
+        role,
+        page,
+        size,
+      });
 
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / curSize));
-  const pageSafe = Math.min(curPage, totalPages - 1);
-  const pageItems = filtered.slice(
-    pageSafe * curSize,
-    pageSafe * curSize + curSize
-  );
+      const response = await userService.listPaginated({
+        search: debouncedQuery,
+        role,
+        page,
+        size,
+        sortBy: "id",
+        order: "asc",
+      });
+
+      console.log("📊 BE Response:", response);
+
+      const content = response.content || [];
+      setUsers(content);
+      setTotalElements(response.totalElements || 0);
+      setTotalPages(response.totalPages || 0);
+    } catch (e) {
+      console.error(e);
+      toastRef.current.error("Không thể tải danh sách người dùng");
+    } finally {
+      setLoading(false);
+    }
+  }, [tab, debouncedQuery, page, size]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Reload stats after changes
+  const reloadCounts = async () => {
+    try {
+      const arr = await userService.list();
+      const allUsers = Array.isArray(arr) ? arr : [];
+      const stu = allUsers.filter((u) => u.role === "STUDENT").length;
+      const tea = allUsers.filter((u) => u.role === "TEACHER").length;
+      const par = allUsers.filter((u) => u.role === "PARENT").length;
+      setCounts({
+        ALL: allUsers.length,
+        STUDENT: stu,
+        TEACHER: tea,
+        PARENT: par,
+      });
+    } catch (e) {
+      console.error("Failed to reload counts:", e);
+    }
+  };
+
+  // Data for rendering
+  const pageItems = users;
+  const pageSafe = page;
+  const curSize = size;
+  const total = totalElements;
 
   // helpers
-  const setPageForCurrentTab = (p) =>
-    setPageByTab((prev) => ({ ...prev, [tab]: Math.max(0, p) }));
+  const setPageForCurrentTab = (p) => setPage(Math.max(0, p));
   const setSizeForCurrentTab = (s) => {
-    setSizeByTab((prev) => ({ ...prev, [tab]: s }));
-    setPageForCurrentTab(0);
+    setSize(s);
+    setPage(0);
   };
 
   const handleToggleStatus = async (u) => {
@@ -130,93 +176,176 @@ export default function UserManagement() {
       }
 
       await userService.updateStatus(u.id, !u.active);
-      setAllUsers((list) =>
-        list.map((x) => (x.id === u.id ? { ...x, active: !u.active } : x))
-      );
+      // Reload data from server
+      fetchUsers();
+      reloadCounts();
       success(
         u.active ? "Đã vô hiệu hóa người dùng" : "Đã kích hoạt người dùng"
       );
     } catch (e) {
       console.error(e);
-      error(e.response?.data?.message || "Cập nhật trạng thái thất bại");
+      error(e.displayMessage || "Cập nhật trạng thái thất bại");
     }
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Quản lý người dùng
-        </h1>
-        <p className="text-gray-500">
-          Quản lý thông tin học viên, giáo viên và phụ huynh
-        </p>
+    <div className="p-6 min-h-screen">
+      {/* ============ HEADER ============ */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
+            <Users className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Quản lý người dùng
+            </h1>
+            <p className="text-sm text-gray-500">
+              Quản lý thông tin học viên, giáo viên và phụ huynh trong hệ thống
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        {/* Toolbar */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-          <div className="flex gap-2 overflow-x-auto">
+      {/* ============ STATS CARDS ============ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">
+                Tổng người dùng
+              </p>
+              <p className="text-2xl font-bold text-white mt-1">{counts.ALL}</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Học viên</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {counts.STUDENT}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <GraduationCap className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Giáo viên</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {counts.TEACHER}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <UserCog className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Phụ huynh</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {counts.PARENT}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+      </div>
+
+      {/* ============ TOOLBAR ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Filter tabs */}
+          <div className="flex items-center gap-2">
             {ROLES.map((r) => {
-              const active = tab === r;
-              const label =
-                r === "ALL"
-                  ? `Tất cả (${counts.ALL})`
-                  : `${ROLE_LABEL[r]} (${counts[r] ?? 0})`;
+              const isActive = tab === r;
+              const label = r === "ALL" ? "Tất cả" : ROLE_LABEL[r];
+              const count = counts[r] ?? 0;
               return (
                 <button
                   key={r}
                   onClick={() => setTab(r)}
-                  className={`px-3 py-1.5 rounded-md border whitespace-nowrap ${
-                    active
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-700 border-gray-200"
-                  }`}
+                  className={`
+                    relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-gray-900 text-white shadow-lg shadow-gray-300"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                    }
+                  `}
                 >
                   {label}
+                  <span
+                    className={`ml-1.5 px-1.5 py-0.5 rounded-md text-xs ${
+                      isActive ? "bg-white/20" : "bg-gray-200"
+                    }`}
+                  >
+                    {count}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          <div className="flex gap-3">
-            <Input
-              className="w-72"
-              placeholder="Tìm theo tên, email, số điện thoại…"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPageForCurrentTab(0);
-              }}
-            />
-            <Button
-              onClick={() => navigate("/home/admin/users/create-teacher")}
-            >
-              <UserPlus className="w-4 h-4 mr-2" /> Thêm giáo viên
-            </Button>
+          {/* Search & Actions */}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                className="w-72 pl-9"
+                placeholder="Tìm kiếm người dùng..."
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPageForCurrentTab(0);
+                }}
+              />
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Data table */}
-        <UserTable
-          items={pageItems}
-          loading={loading}
-          onToggleStatus={handleToggleStatus}
-          onRowClick={(u) => {
-            setSelected(u);
-            setDetailMode("view");
-            setDetailOpen(true);
-          }}
-        />
+      {/* ============ DATA TABLE ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-4">
+          <UserTable
+            items={pageItems}
+            loading={loading}
+            onToggleStatus={handleToggleStatus}
+            onRowClick={(u) => {
+              setSelected(u);
+              setDetailMode("view");
+              setDetailOpen(true);
+            }}
+          />
 
-        {/* Pagination */}
-        <Pagination
-          page={pageSafe}
-          size={curSize}
-          total={total}
-          onPageChange={setPageForCurrentTab}
-          onSizeChange={setSizeForCurrentTab}
-        />
+          {/* Pagination */}
+          <Pagination
+            page={pageSafe}
+            size={curSize}
+            total={total}
+            onPageChange={setPageForCurrentTab}
+            onSizeChange={setSizeForCurrentTab}
+          />
+        </div>
       </div>
 
       {/* Modal chi tiết / chỉnh sửa người dùng */}
@@ -260,8 +389,8 @@ export default function UserManagement() {
               onClose={() => setDetailOpen(false)}
               onSuccess={async () => {
                 success("Đã cập nhật người dùng");
-                const arr = await userService.list();
-                setAllUsers(Array.isArray(arr) ? arr : []);
+                fetchUsers();
+                reloadCounts();
                 setDetailMode("view");
               }}
             />

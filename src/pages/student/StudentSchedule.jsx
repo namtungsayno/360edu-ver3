@@ -1,52 +1,28 @@
 // src/pages/student/StudentSchedule.jsx
-// Màn hình lịch học cho học sinh - Thiết kế giống Admin Schedule
+// Màn hình lịch học cho học sinh - Modern Calendar Design
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "../../components/ui/Card.jsx";
-import { Button } from "../../components/ui/Button.jsx";
 import {
-  ChevronLeft,
-  ChevronRight,
   Calendar,
   Clock,
   MapPin,
   User,
-  BookOpen
+  BookOpen,
+  GraduationCap,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
 import { studentScheduleService } from "../../services/student-schedule/student-schedule.service.js";
 import { useToast } from "../../hooks/use-toast";
+import ModernWeekCalendar, {
+  CalendarEventCard,
+  CalendarStatusBadge,
+} from "../../components/common/ModernWeekCalendar";
+import { startOfWeek, addDays, addWeeks, fmt } from "../../utils/date-helpers";
 
-// Date helper functions
-function startOfWeek(d) {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  date.setDate(date.getDate() + diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function addDays(d, n) {
-  const nd = new Date(d);
-  nd.setDate(nd.getDate() + n);
-  return nd;
-}
-
-function addWeeks(d, n) {
-  return addDays(d, n * 7);
-}
-
-function fmt(date, pattern) {
-  const dd = String(date.getDate()).padStart(2, "0");
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const yyyy = date.getFullYear();
-  if (pattern === "dd/MM") return `${dd}/${mm}`;
-  if (pattern === "dd/MM/yyyy") return `${dd}/${mm}/${yyyy}`;
-  if (pattern === "yyyy-MM-dd") return `${yyyy}-${mm}-${dd}`;
-  return date.toISOString();
-}
-
-// Week days configuration - giống admin
+// Week days configuration
 const WEEK_DAYS = [
   { id: 1, name: "MON", label: "Thứ 2" },
   { id: 2, name: "TUE", label: "Thứ 3" },
@@ -133,12 +109,12 @@ export default function StudentSchedule() {
     const dayDate = addDays(weekStart, dayId - 1);
     const dayStr = fmt(dayDate, "yyyy-MM-dd");
     const display = cache[weekKey] || [];
-    return display.filter(session => {
+    return display.filter((session) => {
       if (!session.date || !session.timeStart) return false;
       const sessionDate = fmt(new Date(session.date), "yyyy-MM-dd");
       if (sessionDate !== dayStr) return false;
 
-      const timeStart = session.timeStart.slice(0,5); // HH:MM lấy từ HH:MM:SS
+      const timeStart = session.timeStart.slice(0, 5); // HH:MM lấy từ HH:MM:SS
       const slotMapping = { "16:00": 1, "18:00": 2, "20:00": 3 };
       return slotMapping[timeStart] === slotId;
     });
@@ -172,248 +148,230 @@ export default function StudentSchedule() {
     );
   }
 
-  return (
-    <div className="p-6 space-y-6">
-      {/* Header - giống admin */}
-      <div className="flex items-center justify-between">
+  // Stats calculation
+  const scheduleData = cache[weekKey] || [];
+  const stats = {
+    totalSessions: scheduleData.length,
+    totalClasses: new Set(scheduleData.map((s) => s.classId)).size,
+    present: scheduleData.filter((s) => s.attendanceStatus === "PRESENT")
+      .length,
+    absent: scheduleData.filter((s) => s.attendanceStatus === "ABSENT").length,
+  };
+
+  // Render event card
+  const renderScheduleEvent = (classData, dayId, slotId) => {
+    const st = classData.attendanceStatus || "UNMARKED";
+
+    const variantMap = {
+      PRESENT: "success",
+      ABSENT: "danger",
+      LATE: "warning",
+      UNMARKED: "default",
+    };
+
+    const statusMap = {
+      PRESENT: {
+        icon: <CheckCircle2 className="h-3 w-3" />,
+        text: "Có mặt",
+        type: "success",
+      },
+      ABSENT: {
+        icon: <XCircle className="h-3 w-3" />,
+        text: "Vắng",
+        type: "danger",
+      },
+      LATE: {
+        icon: <AlertCircle className="h-3 w-3" />,
+        text: "Trễ",
+        type: "warning",
+      },
+      UNMARKED: {
+        icon: <Clock className="h-3 w-3" />,
+        text: "Chờ ĐD",
+        type: "default",
+      },
+    };
+
+    const statusInfo = statusMap[st] || statusMap.UNMARKED;
+    const hasContent =
+      classData.lessonContent ||
+      (classData.linkedChapters && classData.linkedChapters.length > 0) ||
+      (classData.linkedLessons && classData.linkedLessons.length > 0);
+
+    return (
+      <StudentClassCardModern
+        key={classData.sessionId}
+        classData={classData}
+        variant={variantMap[st] || "default"}
+        statusInfo={statusInfo}
+        hasContent={hasContent}
+      />
+    );
+  };
+
+  // Stats content
+  const StatsContent = (
+    <div className="grid grid-cols-4 gap-4">
+      <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-blue-200">
+          <Calendar className="h-5 w-5 text-white" />
+        </div>
         <div>
-          <h1 className="text-3xl font-bold">Lịch học của tôi</h1>
-          <p className="text-slate-600 mt-1">
+          <div className="text-xs text-blue-600 font-medium">Buổi học</div>
+          <div className="text-xl font-bold text-blue-700">
+            {stats.totalSessions}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl border border-purple-100">
+        <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-200">
+          <GraduationCap className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <div className="text-xs text-purple-600 font-medium">Lớp học</div>
+          <div className="text-xl font-bold text-purple-700">
+            {stats.totalClasses}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border border-emerald-100">
+        <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-200">
+          <CheckCircle2 className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <div className="text-xs text-emerald-600 font-medium">Có mặt</div>
+          <div className="text-xl font-bold text-emerald-700">
+            {stats.present}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-red-50 to-rose-50 rounded-xl border border-red-100">
+        <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center shadow-lg shadow-red-200">
+          <XCircle className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <div className="text-xs text-red-600 font-medium">Vắng</div>
+          <div className="text-xl font-bold text-red-700">{stats.absent}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-6 space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-200">
+          <GraduationCap className="h-7 w-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Lịch học của tôi</h1>
+          <p className="text-sm text-gray-500">
             Xem lịch học các lớp đã đăng ký theo tuần
           </p>
         </div>
       </div>
 
-      {/* Week Navigation - giống admin */}
-      <Card>
-        <CardContent className="pt-6 pb-6">
-          <div className="flex items-center justify-center gap-3 border-t border-gray-200 pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePreviousWeek}
-              className="h-9 px-3 hover:bg-blue-50"
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Tuần trước
-            </Button>
+      {/* Modern Calendar */}
+      <ModernWeekCalendar
+        currentWeek={currentWeek}
+        onWeekChange={setCurrentWeek}
+        timeSlots={TIME_SLOTS}
+        getEventsForSlot={getClassesForSlot}
+        renderEvent={renderScheduleEvent}
+        accentColor="emerald"
+        showStats={true}
+        statsContent={StatsContent}
+      />
 
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-              <Calendar className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-semibold text-blue-900">
-                {fmt(weekStart, "dd/MM/yyyy")} - {fmt(addDays(weekStart, 6), "dd/MM/yyyy")}
-              </span>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNextWeek}
-              className="h-9 px-3 hover:bg-blue-50"
-            >
-              Tuần sau
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={goToCurrentWeek}
-              className="h-9 px-3 hover:bg-green-50 border-green-300 text-green-700"
-            >
-              <Calendar className="h-4 w-4 mr-1" />
-              Hôm nay
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Schedule Grid - giống admin */}
-      <Card>
-        <CardContent className="p-4">
-          {/* Stats */}
-          <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                <span className="font-semibold text-gray-700">
-                  Tổng buổi học trong tuần:
-                </span>
-                <span className="text-blue-700 font-bold">
-                  {(cache[weekKey] || []).length}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                <span className="font-semibold text-gray-700">
-                  Lớp khác nhau:
-                </span>
-                <span className="text-green-700 font-bold">
-                  {new Set((cache[weekKey] || []).map(s => s.classId)).size}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {(cache[weekKey] || []).length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-              <Calendar className="h-16 w-16 mb-4 opacity-50" />
-              <p className="text-lg font-medium">
-                Không có lịch học trong tuần này
-              </p>
-              <p className="text-sm mt-2">
-                Hãy thử chọn tuần khác hoặc đăng ký thêm lớp học
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <div className="min-w-[1100px]">
-                {/* Header row - giống admin */}
-                <div className="grid grid-cols-8 gap-2 mb-3">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-md p-2 font-medium text-center">
-                    <div className="text-xs text-blue-900 font-bold">Slot</div>
-                    <div className="text-xs text-blue-600 mt-1">Thời gian</div>
-                  </div>
-                  {weekDates.map((date, index) => {
-                    const dayInfo = WEEK_DAYS[index];
-                    const isToday = fmt(date, "yyyy-MM-dd") === fmt(new Date(), "yyyy-MM-dd");
-                    return (
-                      <div
-                        key={fmt(date, "yyyy-MM-dd")}
-                        className={`rounded-md p-2 text-center shadow-sm ${
-                          isToday 
-                            ? "bg-gradient-to-br from-green-600 to-emerald-700 text-white ring-2 ring-green-400" 
-                            : "bg-gradient-to-br from-blue-600 to-indigo-700 text-white"
-                        }`}
-                      >
-                        <div className="font-bold text-sm">{dayInfo.name}</div>
-                        <div className="text-xs mt-1 opacity-90">
-                          {fmt(date, "dd/MM")}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Time slots grid - giống admin */}
-                <div className="space-y-2 relative" aria-busy={isFetching}>
-                  {isFetching && (
-                    <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] animate-pulse rounded-md z-10"></div>
-                  )}
-                  {TIME_SLOTS.map((slot) => (
-                    <div key={slot.id} className="grid grid-cols-8 gap-2">
-                      <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-md p-2 flex flex-col justify-center">
-                        <div className="font-bold text-xs text-gray-800">
-                          {slot.label}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          {slot.time}
-                        </div>
-                      </div>
-
-                      {WEEK_DAYS.map((day) => {
-                        const classes = getClassesForSlot(day.id, slot.id);
-
-                        return (
-                          <div
-                            key={day.id}
-                            className="border-2 border-gray-200 rounded-md p-1 min-h-[100px] bg-gray-50"
-                          >
-                            {classes.length > 0 ? (
-                              <div className="space-y-2">
-                                {classes.map((classData) => (
-                                  <StudentClassCard key={classData.sessionId} classData={classData} />
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="h-full flex items-center justify-center text-gray-300">
-                                <div className="text-xs">Trống</div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Legend */}
+      <div className="flex items-center gap-6 text-sm bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+        <span className="font-semibold text-gray-700">Chú thích:</span>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-sm"></div>
+          <span className="text-gray-600">Có mặt</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-red-500 rounded-full shadow-sm"></div>
+          <span className="text-gray-600">Vắng</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-amber-500 rounded-full shadow-sm"></div>
+          <span className="text-gray-600">Đi trễ</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-gray-300 rounded-full shadow-sm"></div>
+          <span className="text-gray-600">Chờ điểm danh</span>
+        </div>
+      </div>
     </div>
   );
 }
 
-// Student class card component - giống admin nhưng đơn giản hơn
-function StudentClassCard({ classData }) {
+// Modern Student Class Card
+function StudentClassCardModern({
+  classData,
+  variant,
+  statusInfo,
+  hasContent,
+}) {
   const [showDetail, setShowDetail] = useState(false);
-  
-  const STATUS_LABELS = { PRESENT: "Có mặt", ABSENT: "Vắng", LATE: "Đi trễ", UNMARKED: "Chưa điểm danh" };
-  const STATUS_STYLES = {
-    PRESENT: "from-green-500 to-green-600 border-green-400 text-white",
-    ABSENT: "from-red-500 to-red-600 border-red-400 text-white",
-    LATE: "from-amber-400 to-amber-500 border-amber-400 text-white",
-    UNMARKED: "from-slate-200 to-slate-300 border-slate-300 text-slate-700"
-  };
-  const st = classData.attendanceStatus || "UNMARKED";
-  const style = STATUS_STYLES[st] || STATUS_STYLES.UNMARKED;
-  
-  // Có nội dung bài học hay không
-  const hasContent = classData.lessonContent || 
-    (classData.linkedChapters && classData.linkedChapters.length > 0) ||
-    (classData.linkedLessons && classData.linkedLessons.length > 0);
-  
+
   return (
     <>
-      <div 
-        className={`relative bg-gradient-to-br ${style} rounded-md p-2 border shadow-sm transition-all cursor-pointer hover:shadow-md`}
-        onClick={() => setShowDetail(true)}
-      >      
-        <div className="absolute top-1 right-1 text-[10px] px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm font-semibold">
-          {STATUS_LABELS[st]}
+      <CalendarEventCard variant={variant} onClick={() => setShowDetail(true)}>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="font-bold text-sm text-gray-800 leading-tight line-clamp-1">
+            {classData.className}
+          </div>
+          <CalendarStatusBadge status={statusInfo.type}>
+            {statusInfo.icon}
+            <span>{statusInfo.text}</span>
+          </CalendarStatusBadge>
         </div>
-        <div className="text-xs font-bold mb-1 line-clamp-2">
-          {classData.className}
+
+        {/* Subject */}
+        <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2">
+          <BookOpen className="h-3 w-3 flex-shrink-0" />
+          <span className="line-clamp-1">{classData.subjectName}</span>
         </div>
-        
-        <div className="space-y-1">
-          <div className="flex items-center gap-1 text-xs opacity-90">
-            <BookOpen className="w-3 h-3" />
-            <span className="truncate">{classData.subjectName}</span>
-          </div>
-          
-          <div className="flex items-center gap-1 text-xs opacity-90">
-            <User className="w-3 h-3" />
-            <span className="truncate">{classData.teacherName}</span>
-          </div>
-          
-          <div className="flex items-center gap-1 text-xs opacity-90">
-            <Clock className="w-3 h-3" />
-            <span>{classData.timeDisplay}</span>
-          </div>
-          
+
+        {/* Info Row */}
+        <div className="flex items-center gap-3 text-[11px] text-gray-500">
+          <span className="flex items-center gap-1">
+            <User className="h-3 w-3" />
+            <span className="truncate max-w-[70px]">
+              {classData.teacherName}
+            </span>
+          </span>
           {classData.roomName && (
-            <div className="flex items-center gap-1 text-xs opacity-90">
-              <MapPin className="w-3 h-3" />
-              <span className="truncate">{classData.roomName}</span>
-            </div>
-          )}
-          
-          {hasContent && (
-            <div className="flex items-center gap-1 text-xs opacity-90 mt-1 pt-1 border-t border-white/20">
-              <BookOpen className="w-3 h-3" />
-              <span className="font-medium">Có nội dung bài học</span>
-            </div>
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              <span className="truncate max-w-[50px]">
+                {classData.roomName}
+              </span>
+            </span>
           )}
         </div>
-      </div>
-      
-      {/* Modal hiển thị chi tiết nội dung buổi học */}
+
+        {/* Content indicator */}
+        {hasContent && (
+          <div className="mt-2 pt-2 border-t border-current/10 text-[10px] text-blue-600 font-medium flex items-center gap-1">
+            <BookOpen className="h-3 w-3" />
+            Có nội dung bài học
+          </div>
+        )}
+      </CalendarEventCard>
+
+      {/* Modal */}
       {showDetail && (
-        <SessionDetailModal 
-          classData={classData} 
-          onClose={() => setShowDetail(false)} 
+        <SessionDetailModal
+          classData={classData}
+          onClose={() => setShowDetail(false)}
         />
       )}
     </>
@@ -422,18 +380,26 @@ function StudentClassCard({ classData }) {
 
 // Modal hiển thị chi tiết buổi học với nội dung bài học
 function SessionDetailModal({ classData, onClose }) {
-  const STATUS_LABELS = { PRESENT: "Có mặt", ABSENT: "Vắng", LATE: "Đi trễ", UNMARKED: "Chưa điểm danh" };
+  const STATUS_LABELS = {
+    PRESENT: "Có mặt",
+    ABSENT: "Vắng",
+    LATE: "Đi trễ",
+    UNMARKED: "Chưa điểm danh",
+  };
   const STATUS_STYLES = {
     PRESENT: "bg-green-100 text-green-800 border-green-300",
     ABSENT: "bg-red-100 text-red-800 border-red-300",
     LATE: "bg-amber-100 text-amber-800 border-amber-300",
-    UNMARKED: "bg-gray-100 text-gray-800 border-gray-300"
+    UNMARKED: "bg-gray-100 text-gray-800 border-gray-300",
   };
   const st = classData.attendanceStatus || "UNMARKED";
-  
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div 
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
         className="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
@@ -441,7 +407,7 @@ function SessionDetailModal({ classData, onClose }) {
         <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 rounded-t-xl">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-lg">{classData.className}</h3>
-            <button 
+            <button
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition"
             >
@@ -450,14 +416,16 @@ function SessionDetailModal({ classData, onClose }) {
           </div>
           <p className="text-sm opacity-90 mt-1">{classData.subjectName}</p>
         </div>
-        
+
         {/* Content */}
         <div className="p-4 space-y-4">
           {/* Thông tin cơ bản */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-blue-600" />
-              <span className="font-medium">{new Date(classData.date).toLocaleDateString('vi-VN')}</span>
+              <span className="font-medium">
+                {new Date(classData.date).toLocaleDateString("vi-VN")}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4 text-blue-600" />
@@ -474,84 +442,112 @@ function SessionDetailModal({ classData, onClose }) {
               </div>
             )}
           </div>
-          
+
           {/* Trạng thái điểm danh */}
           <div className={`px-3 py-2 rounded-lg border ${STATUS_STYLES[st]}`}>
-            <span className="font-semibold">Điểm danh: {STATUS_LABELS[st]}</span>
+            <span className="font-semibold">
+              Điểm danh: {STATUS_LABELS[st]}
+            </span>
           </div>
-          
+
           {/* Nội dung bài học */}
           <div className="border-t pt-4">
             <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-blue-600" />
               Nội dung buổi học
             </h4>
-            
+
             {/* Danh sách chapters được gán */}
-            {classData.linkedChapters && classData.linkedChapters.length > 0 && (
-              <div className="mb-3">
-                <p className="text-sm font-medium text-gray-700 mb-2">Chương:</p>
-                <div className="space-y-2">
-                  {classData.linkedChapters.map((chapter) => (
-                    <div key={chapter.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <div className="font-semibold text-blue-900">{chapter.title}</div>
-                      {chapter.description && (
-                        <p className="text-sm text-blue-700 mt-1">{chapter.description}</p>
-                      )}
-                    </div>
-                  ))}
+            {classData.linkedChapters &&
+              classData.linkedChapters.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Chương:
+                  </p>
+                  <div className="space-y-2">
+                    {classData.linkedChapters.map((chapter) => (
+                      <div
+                        key={chapter.id}
+                        className="bg-blue-50 border border-blue-200 rounded-lg p-3"
+                      >
+                        <div className="font-semibold text-blue-900">
+                          {chapter.title}
+                        </div>
+                        {chapter.description && (
+                          <p className="text-sm text-blue-700 mt-1">
+                            {chapter.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            
+              )}
+
             {/* Danh sách lessons được gán */}
             {classData.linkedLessons && classData.linkedLessons.length > 0 && (
               <div className="mb-3">
-                <p className="text-sm font-medium text-gray-700 mb-2">Bài học:</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Bài học:
+                </p>
                 <div className="space-y-2">
                   {classData.linkedLessons.map((lesson) => (
-                    <div key={lesson.id} className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                    <div
+                      key={lesson.id}
+                      className="bg-purple-50 border border-purple-200 rounded-lg p-3"
+                    >
                       <div className="text-xs text-purple-600 mb-1">
-                        {lesson.chapterTitle && `Chương: ${lesson.chapterTitle}`}
+                        {lesson.chapterTitle &&
+                          `Chương: ${lesson.chapterTitle}`}
                       </div>
-                      <div className="font-semibold text-purple-900">{lesson.title}</div>
+                      <div className="font-semibold text-purple-900">
+                        {lesson.title}
+                      </div>
                       {lesson.description && (
-                        <p className="text-sm text-purple-700 mt-1">{lesson.description}</p>
+                        <p className="text-sm text-purple-700 mt-1">
+                          {lesson.description}
+                        </p>
                       )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            
+
             {/* Nội dung ghi chú từ giáo viên */}
             {classData.lessonContent && (
               <div className="mb-3">
-                <p className="text-sm font-medium text-gray-700 mb-2">Ghi chú từ giáo viên:</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Ghi chú từ giáo viên:
+                </p>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                  <div 
+                  <div
                     className="text-sm text-gray-700 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: classData.lessonContent }}
+                    dangerouslySetInnerHTML={{
+                      __html: classData.lessonContent,
+                    }}
                   />
                 </div>
               </div>
             )}
-            
+
             {/* Nếu không có nội dung */}
-            {!classData.lessonContent && 
-             (!classData.linkedChapters || classData.linkedChapters.length === 0) &&
-             (!classData.linkedLessons || classData.linkedLessons.length === 0) && (
-              <div className="text-center py-6 text-gray-400">
-                <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>Chưa có nội dung bài học cho buổi này</p>
-              </div>
-            )}
+            {!classData.lessonContent &&
+              (!classData.linkedChapters ||
+                classData.linkedChapters.length === 0) &&
+              (!classData.linkedLessons ||
+                classData.linkedLessons.length === 0) && (
+                <div className="text-center py-6 text-gray-400">
+                  <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Chưa có nội dung bài học cho buổi này</p>
+                </div>
+              )}
           </div>
-          
+
           {/* Xem khóa học đầy đủ */}
           {classData.courseId && (
             <div className="border-t pt-4">
-              <a 
+              <a
                 href={`/home/courses/${classData.courseId}`}
                 className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition"
               >
@@ -565,4 +561,3 @@ function SessionDetailModal({ classData, onClose }) {
     </div>
   );
 }
-

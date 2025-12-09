@@ -12,6 +12,31 @@ export const courseApi = {
    *  - scope="mine" dùng cho teacher: chỉ lấy khóa học cá nhân (nếu BE hỗ trợ)
    */
   list: (params = {}) => http.get("/courses", { params }).then((r) => r.data),
+
+  /**
+   * GET /courses/paginated - Lấy courses với phân trang từ server
+   * @param {Object} params - { search, status, subjectId, teacherUserId, page, size, sortBy, order }
+   * @returns {Promise<{content: Array, totalElements: number, totalPages: number, ...}>}
+   */
+  listPaginated: (params = {}) => {
+    const {
+      search = "",
+      status = "ALL", // ALL, PENDING, APPROVED, ARCHIVED, DRAFT
+      subjectId = null,
+      teacherUserId = null,
+      page = 0,
+      size = 10,
+      sortBy = "id",
+      order = "asc",
+    } = params;
+    const queryParams = { search, status, page, size, sortBy, order };
+    if (subjectId) queryParams.subjectId = subjectId;
+    if (teacherUserId) queryParams.teacherUserId = teacherUserId;
+    return http
+      .get("/courses/paginated", { params: queryParams })
+      .then((r) => r.data);
+  },
+
   listMine: () => http.get("/courses/mine").then((r) => r.data),
 
   /**
@@ -37,21 +62,14 @@ export const courseApi = {
    */
   remove: (id) => http.delete(`/courses/${id}`).then((r) => r.data),
 
-  // ====== COURSE APPROVAL (ADMIN) ======
-
-  approve: (id) => http.put(`/courses/${id}/approve`).then((r) => r.data),
-
-  // (tuỳ BE có hay không endpoint reject)
-  reject: (id) => http.put(`/courses/${id}/reject`).then((r) => r.data),
-
   // ====== COURSE CHO CREATE CLASS ======
 
   /**
-   * Lấy danh sách course đã APPROVED theo subject,
+   * Lấy danh sách course theo subject,
    * dùng khi tạo Class (Admin / Teacher chọn sẵn chương trình học).
    */
-  getApprovedBySubject: (subjectId) =>
-    http.get(`/courses/by-subject/${subjectId}/approved`).then((r) => r.data),
+  getBySubject: (subjectId) =>
+    http.get(`/courses/by-subject/${subjectId}`).then((r) => r.data),
 
   // ====== CHAPTER ======
 

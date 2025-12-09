@@ -33,9 +33,8 @@ import { useAuth } from "../../../hooks/useAuth.js";
 
 const STATUS_OPTIONS = [
   { value: "ALL", label: "Tất cả trạng thái" },
-  { value: "APPROVED", label: "Đã phê duyệt" },
-  { value: "PENDING", label: "Chờ phê duyệt" },
-  { value: "REJECTED", label: "Bị từ chối" },
+  { value: "APPROVED", label: "Đang hoạt động" },
+  { value: "ARCHIVED", label: "Đã lưu trữ" },
 ];
 
 function getStatusConfig(status) {
@@ -44,34 +43,22 @@ function getStatusConfig(status) {
   switch (normalized) {
     case "APPROVED":
       return {
-        label: "Đã phê duyệt",
+        label: "Đang hoạt động",
         className: "bg-green-50 text-green-700 border border-green-200",
         icon: CheckCircle2,
-      };
-    case "PENDING":
-      return {
-        label: "Chờ phê duyệt",
-        className: "bg-orange-50 text-orange-700 border border-orange-200",
-        icon: Clock,
-      };
-    case "REJECTED":
-      return {
-        label: "Bị từ chối",
-        className: "bg-red-50 text-red-700 border border-red-200",
-        icon: AlertCircle,
       };
     case "DISABLED":
     case "ARCHIVED":
       return {
-        label: "Ngừng sử dụng",
+        label: "Đã lưu trữ",
         className: "bg-gray-50 text-gray-600 border border-gray-200",
         icon: AlertCircle,
       };
     default:
       return {
-        label: "Không xác định",
-        className: "bg-gray-50 text-gray-600 border border-gray-200",
-        icon: AlertCircle,
+        label: "Đang hoạt động",
+        className: "bg-green-50 text-green-700 border border-green-200",
+        icon: CheckCircle2,
       };
   }
 }
@@ -222,50 +209,33 @@ export default function TeacherCourseList() {
   const stats = useMemo(() => {
     const total = courses.length;
     const approved = courses.filter(
-      (c) => String(c.status).toUpperCase() === "APPROVED"
+      (c) => String(c.status).toUpperCase() === "APPROVED" || !c.status
     ).length;
-    const pending = courses.filter(
-      (c) => String(c.status).toUpperCase() === "PENDING"
+    const archived = courses.filter(
+      (c) => String(c.status).toUpperCase() === "ARCHIVED"
     ).length;
 
-    return { total, approved, pending };
+    return { total, approved, archived };
   }, [courses]);
 
-  // Filtered courses on FE (search by title/subject)
-  const visibleCourses = useMemo(() => {
-    let list = [...courses];
-
-    if (search.trim()) {
-      const keyword = search.trim().toLowerCase();
-      list = list.filter((c) => {
-        const title = String(c.title || "").toLowerCase();
-        const subject = String(c.subjectName || "").toLowerCase();
-        return title.includes(keyword) || subject.includes(keyword);
-      });
-    }
-
-    if (statusFilter !== "ALL") {
-      list = list.filter(
-        (c) => String(c.status).toUpperCase() === statusFilter
-      );
-    }
-
-    return list;
-  }, [courses, search, statusFilter]);
+  // NOTE: Search and status filter are now handled by the BE API (courseService.listMyCourses)
+  // No additional FE filtering needed - just use 'courses' directly
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
+          <BookOpen className="h-7 w-7 text-white" />
+        </div>
         <div>
-          <h1 className="text-xl font-semibold text-neutral-950">
+          <h1 className="text-2xl font-bold text-gray-900">
             Quản lý khóa học theo lớp
           </h1>
-          <p className="text-[12px] text-[#62748e] mt-1">
+          <p className="text-sm text-gray-500">
             Xem và quản lý các khóa học cá nhân mà bạn trực tiếp biên soạn.
           </p>
         </div>
-        {/* Theo nghiệp vụ mới: bỏ tính năng tạo khóa học tại đây */}
       </div>
 
       {/* STATS CARDS */}
@@ -290,7 +260,7 @@ export default function TeacherCourseList() {
               <CheckCircle2 className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-[12px] text-[#62748e]">Đã phê duyệt</p>
+              <p className="text-[12px] text-[#62748e]">Đang hoạt động</p>
               <p className="text-neutral-950 text-base font-semibold">
                 {stats.approved}
               </p>
@@ -300,13 +270,13 @@ export default function TeacherCourseList() {
 
         <Card className="p-4 rounded-[14px]">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-orange-600" />
+            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-gray-600" />
             </div>
             <div>
-              <p className="text-[12px] text-[#62748e]">Chờ phê duyệt</p>
+              <p className="text-[12px] text-[#62748e]">Đã lưu trữ</p>
               <p className="text-neutral-950 text-base font-semibold">
-                {stats.pending}
+                {stats.archived}
               </p>
             </div>
           </div>
@@ -379,7 +349,7 @@ export default function TeacherCourseList() {
           </Card>
         )}
 
-        {!loading && visibleCourses.length === 0 && (
+        {!loading && courses.length === 0 && (
           <Card className="rounded-[14px] border-2 border-dashed border-gray-200 bg-gray-50 py-10 flex flex-col items-center justify-center text-center">
             <div className="w-14 h-14 rounded-full border border-gray-200 flex items-center justify-center mb-4">
               <BookOpen className="w-6 h-6 text-[#62748e]" />
@@ -394,8 +364,8 @@ export default function TeacherCourseList() {
         )}
 
         {!loading &&
-          visibleCourses.length > 0 &&
-          visibleCourses.map((course) => {
+          courses.length > 0 &&
+          courses.map((course) => {
             const statusConfig = getStatusConfig(course.status);
             const StatusIcon = statusConfig.icon;
 

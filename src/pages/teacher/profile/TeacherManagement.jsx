@@ -4,10 +4,13 @@ import { Input } from "../../../components/ui/Input";
 import Card from "../../../components/common/Card";
 import { teacherProfileService } from "../../../services/teacher/teacher.profile.service";
 import { teacherUploadApi } from "../../../services/teacher/teacher.upload.api";
+import { User } from "lucide-react";
+import { useToast } from "../../../hooks/use-toast";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
 export default function TeacherManagement() {
+  const { success, error: showError } = useToast();
   const [form, setForm] = useState({
     fullName: "",
     degree: "",
@@ -30,6 +33,9 @@ export default function TeacherManagement() {
   const [certificates, setCertificates] = useState([]);
   const [educations, setEducations] = useState([]);
   const [experiences, setExperiences] = useState([]);
+
+  // State cho danh sách môn học giáo viên đang dạy
+  const [subjects, setSubjects] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false); // đã lưu thành công
@@ -96,11 +102,20 @@ export default function TeacherManagement() {
           setEducations(profileData.educations || []);
           setExperiences(profileData.experiences || []);
 
+          // Load danh sách môn học từ API response
+          if (profileData.subjects && Array.isArray(profileData.subjects)) {
+            setSubjects(profileData.subjects);
+          } else if (profileData.subject) {
+            // Fallback nếu chỉ có single subject
+            setSubjects([profileData.subject]);
+          }
+
           // Preview luôn hiển thị theo dữ liệu đã tải
         }
       } catch (error) {
         console.error("Error loading teacher data:", error);
         setError("Không thể tải thông tin giáo viên. Vui lòng thử lại.");
+        showError("Không thể tải thông tin giáo viên");
       } finally {
         setLoading(false);
       }
@@ -136,12 +151,7 @@ export default function TeacherManagement() {
   }, [form.avatarFile, form.avatarUrl]);
 
   const valid = useMemo(() => {
-    return (
-      form.fullName.trim() &&
-      form.degree.trim() &&
-      form.subject.trim() &&
-      form.workplace.trim()
-    );
+    return form.fullName.trim() && form.degree.trim() && form.workplace.trim();
   }, [form]);
 
   // Preview hiển thị realtime theo dữ liệu form
@@ -161,7 +171,7 @@ export default function TeacherManagement() {
       let payload = {
         fullName: form.fullName.trim(),
         degree: form.degree.trim(),
-        subject: form.subject.trim(),
+        // subject không được gửi vì được quản trị viên phân công
         homeroom: form.homeroom.trim(),
         workplace: form.workplace.trim(),
         bio: form.bio.trim(),
@@ -191,6 +201,7 @@ export default function TeacherManagement() {
         } catch (uploadError) {
           console.error("Error uploading avatar:", uploadError);
           setError("Không thể upload ảnh. Vui lòng thử lại hoặc dùng URL ảnh.");
+          showError("Không thể upload ảnh đại diện");
           setLoading(false);
           setUploadingImage(false);
           return;
@@ -201,8 +212,11 @@ export default function TeacherManagement() {
 
       await teacherProfileService.saveProfile(payload);
       setSaved(true);
+      success("Lưu thông tin thành công!");
     } catch (err) {
-      setError(err?.message || "Không thể lưu. Vui lòng thử lại.");
+      const msg = err?.displayMessage || "Không thể lưu thông tin";
+      setError(msg);
+      showError(msg);
     } finally {
       setLoading(false);
     }
@@ -278,24 +292,41 @@ export default function TeacherManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
+            <User className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Quản lý hồ sơ giáo viên
+            </h1>
+            <p className="text-sm text-gray-500">
+              Cập nhật và quản lý thông tin cá nhân của bạn
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Loading state */}
       {loading && !form.fullName ? (
-        <div className="max-w-7xl mx-auto">
+        <div>
           <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Đang tải thông tin giáo viên...</p>
           </div>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* FORM NHẬP THÔNG TIN */}
           <div className="bg-white border border-gray-200 rounded-lg">
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900">
-                ⚙️ Quản lý hồ sơ giáo viên
+                ⚙️ Thông tin hồ sơ
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Cập nhật và quản lý thông tin cá nhân của bạn.
+                Điền đầy đủ thông tin cá nhân của bạn.
               </p>
 
               <form
@@ -343,14 +374,16 @@ export default function TeacherManagement() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
-                        Bộ môn *
+                        Bộ môn
                       </label>
-                      <Input
-                        name="subject"
-                        value={form.subject}
-                        onChange={handleChange}
-                        placeholder="VD: Toán, Văn, Lý..."
-                      />
+                      <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-700">
+                        {subjects.length > 0
+                          ? subjects.join(", ")
+                          : "Chưa được phân công môn học"}
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Bộ môn được quản trị viên phân công
+                      </p>
                     </div>
 
                     <div>
@@ -864,7 +897,7 @@ export default function TeacherManagement() {
                     </h3>
                     <p className="text-lg text-gray-600 mt-1">
                       {form.degree ? `${form.degree} • ` : ""}
-                      {form.subject.trim() || "Bộ môn"}
+                      {subjects.length > 0 ? subjects.join(", ") : "Bộ môn"}
                     </p>
 
                     {form.yearsOfExperience > 0 && (

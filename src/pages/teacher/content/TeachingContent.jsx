@@ -25,8 +25,6 @@ import {
   Layers,
   FileText,
   CheckCircle2,
-  Clock,
-  XCircle,
   AlertCircle,
   Search,
 } from "lucide-react";
@@ -35,26 +33,20 @@ function statusCfgOf(status) {
   const s = String(status || "").toUpperCase();
   if (s === "APPROVED")
     return {
-      label: "Đã phê duyệt",
+      label: "Đang hoạt động",
       className: "bg-green-50 text-green-700 border border-green-200",
       Icon: CheckCircle2,
     };
-  if (s === "PENDING")
+  if (s === "ARCHIVED")
     return {
-      label: "Chờ phê duyệt",
-      className: "bg-yellow-50 text-yellow-700 border border-yellow-300",
-      Icon: Clock,
-    };
-  if (s === "REJECTED")
-    return {
-      label: "Đã từ chối",
-      className: "bg-red-50 text-red-700 border border-red-200",
-      Icon: XCircle,
+      label: "Đã lưu trữ",
+      className: "bg-gray-100 text-gray-600 border border-gray-200",
+      Icon: AlertCircle,
     };
   return {
-    label: "Không xác định",
-    className: "bg-gray-50 text-gray-600 border border-gray-200",
-    Icon: AlertCircle,
+    label: "Đang hoạt động",
+    className: "bg-green-50 text-green-700 border border-green-200",
+    Icon: CheckCircle2,
   };
 }
 
@@ -135,11 +127,9 @@ export default function TeachingContent() {
         }
         setSubjectOptions(opts);
 
-        // Fetch courses đã APPROVED theo từng subjectId song song
+        // Fetch courses theo từng subjectId song song
         const results = await Promise.all(
-          subjectIds.map((sid) =>
-            courseService.getApprovedCoursesBySubject(sid)
-          )
+          subjectIds.map((sid) => courseService.getCoursesBySubject(sid))
         );
 
         const merged = [];
@@ -190,14 +180,19 @@ export default function TeachingContent() {
   }, [courses, subjectFilter, q]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-neutral-950">
-          Nội dung giảng dạy
-        </h1>
-        <p className="text-[12px] text-[#62748e] mt-1">
-          Xem các khóa học đã được admin phê duyệt cho bộ môn bạn phụ trách.
-        </p>
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-200">
+          <BookOpen className="h-7 w-7 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Nội dung giảng dạy
+          </h1>
+          <p className="text-sm text-gray-500">
+            Xem các khóa học đã được admin phê duyệt cho bộ môn bạn phụ trách.
+          </p>
+        </div>
       </div>
 
       {/* FILTER BAR */}

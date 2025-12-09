@@ -1,11 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
+import { Check, X, Clock, User, Home } from "lucide-react";
 
 // Helpers
 function addDays(base, n) {
   const d = new Date(base);
   d.setDate(d.getDate() + n);
   return d;
+}
+
+function fmt(date, pattern) {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  if (pattern === "dd/MM") return `${dd}/${mm}`;
+  if (pattern === "yyyy-MM-dd") return `${yyyy}-${mm}-${dd}`;
+  return date.toISOString();
 }
 
 function buildSlot(date, slot) {
@@ -151,123 +161,192 @@ export default function ScheduleGrid({
     );
   }
 
-  const weekdayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+  const weekdayNames = [
+    { short: "T2", full: "Thứ 2" },
+    { short: "T3", full: "Thứ 3" },
+    { short: "T4", full: "Thứ 4" },
+    { short: "T5", full: "Thứ 5" },
+    { short: "T6", full: "Thứ 6" },
+    { short: "T7", full: "Thứ 7" },
+    { short: "CN", full: "Chủ nhật" },
+  ];
 
   return (
-    <div className="overflow-x-auto">
-      <style>{`
-        @keyframes fadeIn { from {opacity:0; transform:translateY(8px) scale(0.98);} to {opacity:1; transform:translateY(0) scale(1);} }
-        @keyframes pop { 0% {transform:scale(0.95);} 60% {transform:scale(1.08);} 100% {transform:scale(1);} }
-        .animate-fadeIn { animation: fadeIn .5s cubic-bezier(.4,0,.2,1); }
-        .animate-pop { animation: pop .3s cubic-bezier(.4,0,.2,1); }
-      `}</style>
-      <div className="min-w-[900px] space-y-3">
-        {/* Header: chỉ hiện thứ */}
-        <div className="grid grid-cols-8 gap-2 sticky top-0 z-10 bg-white/80 backdrop-blur border-b pb-2">
-          <div className="p-2 text-center text-xs font-semibold text-gray-600 flex flex-col items-center justify-center">
-            <span className="uppercase tracking-wide">Slot</span>
-            <span className="text-[10px] font-normal mt-1 text-gray-400">
-              Khung giờ
-            </span>
-          </div>
-          {weekdayNames.map((thu) => (
-            <div
-              key={thu}
-              className="p-2 rounded-lg flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 to-indigo-500 text-white shadow-sm animate-fadeIn"
-            >
-              <span className="text-xs font-semibold tracking-wide">{thu}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Body */}
-        <div className="space-y-3">
-          {timeSlots.map((slot) => (
-            <div key={slot.id} className="grid grid-cols-8 gap-2">
-              {/* Slot label */}
-              <div className="p-3 bg-white border rounded-lg text-sm flex flex-col justify-center shadow-sm">
-                <div className="font-semibold text-gray-700">
-                  {slot.name || `Slot ${slot.id}`}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {slot.startTime} - {slot.endTime}
+    <div className="space-y-4">
+      {/* Modern Calendar Grid */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <div className="min-w-[1000px]">
+            {/* Header Row */}
+            <div className="grid grid-cols-8">
+              {/* Time Column Header */}
+              <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 border-r border-b border-gray-200">
+                <div className="flex flex-col items-center justify-center h-full">
+                  <Clock className="h-5 w-5 text-gray-400 mb-1" />
+                  <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Slot
+                  </div>
                 </div>
               </div>
-              {Array(7)
-                .fill(0)
-                .map((_, dayIdx) => {
-                  const d = weekDates[dayIdx];
-                  const sObj = buildSlot(d, slot);
-                  const sel = isSelected(sObj);
-                  const wasOriginal = isOriginalSelected(sObj);
-                  const teacherB = isTeacherBusySlot(sObj);
-                  const roomB = isRoomBusySlot(sObj);
-                  const busy = teacherB || roomB;
-                  const base =
-                    "h-[70px] rounded-lg border flex items-center justify-center text-xs font-medium transition-all duration-200 ease-out will-change-transform focus:outline-none focus:ring-2 focus:ring-indigo-400/60 cursor-pointer select-none";
-                  let cls = "";
-                  if (sel)
-                    cls = "bg-blue-600 text-white border-blue-700 animate-pop";
-                  else if (teacherB)
-                    cls =
-                      "bg-red-50 text-red-700 border-red-200 cursor-not-allowed";
-                  else if (roomB)
-                    cls =
-                      "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed";
-                  else
-                    cls =
-                      "bg-white hover:bg-blue-50 text-green-600 border-green-200 hover:shadow hover:scale-[1.03]";
-                  const text = teacherB
-                    ? "GV bận"
-                    : roomB
-                    ? "P bận"
-                    : sel
-                    ? wasOriginal
-                      ? "Slot cũ"
-                      : "Đã chọn"
-                    : "Rảnh";
-                  return (
-                    <div
-                      key={dayIdx + "-" + slot.id}
-                      className={`${base} ${cls} animate-fadeIn`}
-                      style={{ transition: "all .2s cubic-bezier(.4,0,.2,1)" }}
-                      onClick={() =>
-                        !disabled && (wasOriginal || !busy) && onToggle?.(sObj)
-                      }
-                      title={
-                        busy && !wasOriginal
-                          ? "Giờ này đã bận"
-                          : sel
-                          ? "Bỏ chọn"
-                          : "Chọn giờ"
-                      }
-                    >
-                      {text}
-                    </div>
-                  );
-                })}
-            </div>
-          ))}
-        </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-4 pt-4 border-t flex-wrap text-xs">
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-4 rounded border bg-white" /> Trống
+              {/* Day Headers */}
+              {weekdayNames.map((day, index) => {
+                const date = weekDates[index];
+                const isToday =
+                  fmt(date, "yyyy-MM-dd") === fmt(new Date(), "yyyy-MM-dd");
+                const dayNum = date.getDate();
+
+                return (
+                  <div
+                    key={day.short}
+                    className={`relative p-4 border-b border-gray-200 ${
+                      index < 6 ? "border-r border-gray-100" : ""
+                    } bg-gradient-to-br ${
+                      isToday
+                        ? "from-blue-500 via-blue-600 to-indigo-600"
+                        : "from-indigo-500 via-indigo-600 to-purple-600"
+                    }`}
+                  >
+                    {isToday && (
+                      <div className="absolute top-2 right-2">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                        </span>
+                      </div>
+                    )}
+                    <div className="text-center">
+                      <div className="text-white/80 text-xs font-medium uppercase tracking-wider">
+                        {day.short}
+                      </div>
+                      <div
+                        className={`text-2xl font-bold mt-1 ${
+                          isToday ? "text-white" : "text-white/90"
+                        }`}
+                      >
+                        {dayNum}
+                      </div>
+                      <div className="text-white/60 text-xs mt-1">
+                        {fmt(date, "dd/MM")}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Time Slots */}
+            {timeSlots.map((slot, slotIndex) => (
+              <div
+                key={slot.id}
+                className={`grid grid-cols-8 ${
+                  slotIndex !== timeSlots.length - 1
+                    ? "border-b border-gray-100"
+                    : ""
+                }`}
+              >
+                {/* Slot Label */}
+                <div className="p-4 bg-gradient-to-r from-gray-50 to-white border-r border-gray-200">
+                  <div className="flex flex-col justify-center h-full min-h-[80px]">
+                    <div className="inline-flex items-center justify-center w-fit mx-auto px-3 py-1 rounded-full bg-gray-100 mb-2">
+                      <span className="text-sm font-bold text-gray-700">
+                        {slot.name || `Slot ${slot.id}`}
+                      </span>
+                    </div>
+                    <div className="text-center text-xs text-gray-500 font-medium">
+                      {slot.startTime} - {slot.endTime}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Day Cells */}
+                {Array(7)
+                  .fill(0)
+                  .map((_, dayIdx) => {
+                    const d = weekDates[dayIdx];
+                    const sObj = buildSlot(d, slot);
+                    const sel = isSelected(sObj);
+                    const wasOriginal = isOriginalSelected(sObj);
+                    const teacherB = isTeacherBusySlot(sObj);
+                    const roomB = isRoomBusySlot(sObj);
+                    const busy = teacherB || roomB;
+                    const isToday =
+                      fmt(d, "yyyy-MM-dd") === fmt(new Date(), "yyyy-MM-dd");
+
+                    return (
+                      <div
+                        key={dayIdx + "-" + slot.id}
+                        onClick={() =>
+                          !disabled &&
+                          (wasOriginal || !busy) &&
+                          onToggle?.(sObj)
+                        }
+                        className={`p-2 min-h-[100px] transition-all duration-200 ${
+                          dayIdx < 6 ? "border-r border-gray-100" : ""
+                        } ${isToday ? "bg-blue-50/30" : ""} ${
+                          !disabled && !busy
+                            ? "cursor-pointer hover:bg-gray-50"
+                            : ""
+                        }`}
+                      >
+                        <div className="h-full flex items-center justify-center">
+                          {sel ? (
+                            <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200 transform hover:scale-105 transition-transform">
+                              <Check className="h-5 w-5" />
+                              <span className="text-xs font-semibold">
+                                {wasOriginal ? "Slot cũ" : "Đã chọn"}
+                              </span>
+                            </div>
+                          ) : teacherB ? (
+                            <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-red-50 to-rose-100 border border-red-200 text-red-600">
+                              <User className="h-5 w-5" />
+                              <span className="text-xs font-semibold">
+                                GV bận
+                              </span>
+                            </div>
+                          ) : roomB ? (
+                            <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 text-gray-500">
+                              <Home className="h-5 w-5" />
+                              <span className="text-xs font-semibold">
+                                P. bận
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-emerald-300 hover:text-emerald-500 hover:bg-emerald-50/50 transition-all">
+                              <div className="w-6 h-6 rounded-full border-2 border-current flex items-center justify-center">
+                                <span className="text-lg leading-none">+</span>
+                              </div>
+                              <span className="text-xs font-medium">Trống</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            ))}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-4 rounded border bg-red-50 border-red-200" />{" "}
-            GV bận
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-4 rounded border bg-gray-100" /> Phòng bận
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-4 rounded border bg-blue-600" /> Đã chọn
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-4 rounded border bg-blue-500" /> Slot cũ
-          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-6 text-sm bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+        <span className="font-semibold text-gray-700">Chú thích:</span>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-300"></div>
+          <span className="text-gray-600">Trống</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-red-100 border border-red-300"></div>
+          <span className="text-gray-600">GV bận</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-gray-200 border border-gray-300"></div>
+          <span className="text-gray-600">Phòng bận</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm"></div>
+          <span className="text-gray-600">Đã chọn</span>
         </div>
       </div>
     </div>

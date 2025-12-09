@@ -4,10 +4,13 @@ import { Input } from "../../../components/ui/Input";
 import Card from "../../../components/common/Card";
 import { teacherProfileService } from "../../../services/teacher/teacher.profile.service";
 import { teacherProfileApi } from "../../../services/teacher/teacher.profile.detail.api";
+import { UserCog } from "lucide-react";
+import { useToast } from "../../../hooks/use-toast";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
 export default function TeacherProfileEdit() {
+  const { success, error: showError } = useToast();
   const [form, setForm] = useState({
     fullName: "",
     degree: "",
@@ -26,6 +29,9 @@ export default function TeacherProfileEdit() {
   const [certificates, setCertificates] = useState([]);
   const [experiences, setExperiences] = useState([]);
   const [educations, setEducations] = useState([]);
+
+  // State cho danh sách môn học giáo viên đang dạy
+  const [subjects, setSubjects] = useState([]);
 
   // State cho edit/add forms
   const [certForm, setCertForm] = useState({
@@ -98,6 +104,13 @@ export default function TeacherProfileEdit() {
             workplace: data.workplace || "",
             avatarUrl: data.avatarUrl || "",
           }));
+          // Load danh sách môn học từ API response
+          if (data.subjects && Array.isArray(data.subjects)) {
+            setSubjects(data.subjects);
+          } else if (data.subject) {
+            // Fallback nếu chỉ có single subject
+            setSubjects([data.subject]);
+          }
           setSaved(true);
         }
       } catch {
@@ -131,13 +144,13 @@ export default function TeacherProfileEdit() {
   }, [form.avatarFile, form.avatarUrl]);
 
   const valid = useMemo(() => {
-    return form.fullName.trim() && form.subject.trim() && form.workplace.trim();
+    return form.fullName.trim() && form.workplace.trim();
   }, [form]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!valid) {
-      setError("Vui lòng nhập tối thiểu: Tên Giáo viên, Bộ môn, Nơi công tác.");
+      setError("Vui lòng nhập tối thiểu: Tên Giáo viên, Nơi công tác.");
       return;
     }
     setError("");
@@ -167,7 +180,7 @@ export default function TeacherProfileEdit() {
       await teacherProfileService.saveProfile(payload);
       setSaved(true);
     } catch (err) {
-      setError(err?.message || "Không thể lưu. Vui lòng thử lại.");
+      setError(err?.displayMessage || "Không thể lưu. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -178,8 +191,10 @@ export default function TeacherProfileEdit() {
     try {
       if (certForm.id) {
         await teacherProfileApi.updateCertificate(certForm.id, certForm);
+        success("Cập nhật chứng chỉ thành công");
       } else {
         await teacherProfileApi.addCertificate(certForm);
+        success("Thêm chứng chỉ thành công");
       }
       await loadCertificates();
       setCertForm({
@@ -191,7 +206,7 @@ export default function TeacherProfileEdit() {
       });
       setShowCertForm(false);
     } catch (err) {
-      alert("Lỗi: " + (err?.message || "Không thể lưu certificate"));
+      showError(err?.displayMessage || "Không thể lưu chứng chỉ");
     }
   };
 
@@ -201,12 +216,13 @@ export default function TeacherProfileEdit() {
   };
 
   const handleDeleteCert = async (id) => {
-    if (!confirm("Xóa certificate này?")) return;
+    if (!confirm("Xóa chứng chỉ này?")) return;
     try {
       await teacherProfileApi.deleteCertificate(id);
       await loadCertificates();
+      success("Xóa chứng chỉ thành công");
     } catch (err) {
-      alert("Lỗi: " + (err?.message || "Không thể xóa"));
+      showError(err?.displayMessage || "Không thể xóa chứng chỉ");
     }
   };
 
@@ -215,8 +231,10 @@ export default function TeacherProfileEdit() {
     try {
       if (expForm.id) {
         await teacherProfileApi.updateExperience(expForm.id, expForm);
+        success("Cập nhật kinh nghiệm thành công");
       } else {
         await teacherProfileApi.addExperience(expForm);
+        success("Thêm kinh nghiệm thành công");
       }
       await loadExperiences();
       setExpForm({
@@ -229,7 +247,7 @@ export default function TeacherProfileEdit() {
       });
       setShowExpForm(false);
     } catch (err) {
-      alert("Lỗi: " + (err?.message || "Không thể lưu experience"));
+      showError(err?.displayMessage || "Không thể lưu kinh nghiệm");
     }
   };
 
@@ -239,12 +257,13 @@ export default function TeacherProfileEdit() {
   };
 
   const handleDeleteExp = async (id) => {
-    if (!confirm("Xóa experience này?")) return;
+    if (!confirm("Xóa kinh nghiệm này?")) return;
     try {
       await teacherProfileApi.deleteExperience(id);
       await loadExperiences();
+      success("Xóa kinh nghiệm thành công");
     } catch (err) {
-      alert("Lỗi: " + (err?.message || "Không thể xóa"));
+      showError(err?.displayMessage || "Không thể xóa kinh nghiệm");
     }
   };
 
@@ -253,8 +272,10 @@ export default function TeacherProfileEdit() {
     try {
       if (eduForm.id) {
         await teacherProfileApi.updateEducation(eduForm.id, eduForm);
+        success("Cập nhật học vấn thành công");
       } else {
         await teacherProfileApi.addEducation(eduForm);
+        success("Thêm học vấn thành công");
       }
       await loadEducations();
       setEduForm({
@@ -266,7 +287,7 @@ export default function TeacherProfileEdit() {
       });
       setShowEduForm(false);
     } catch (err) {
-      alert("Lỗi: " + (err?.message || "Không thể lưu education"));
+      showError(err?.displayMessage || "Không thể lưu học vấn");
     }
   };
 
@@ -276,17 +297,35 @@ export default function TeacherProfileEdit() {
   };
 
   const handleDeleteEdu = async (id) => {
-    if (!confirm("Xóa education này?")) return;
+    if (!confirm("Xóa học vấn này?")) return;
     try {
       await teacherProfileApi.deleteEducation(id);
       await loadEducations();
+      success("Xóa học vấn thành công");
     } catch (err) {
-      alert("Lỗi: " + (err?.message || "Không thể xóa"));
+      showError(err?.displayMessage || "Không thể xóa học vấn");
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50 p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-200">
+            <UserCog className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Chỉnh sửa hồ sơ
+            </h1>
+            <p className="text-sm text-gray-500">
+              Giáo viên tự thêm/chỉnh sửa thông tin của mình
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* THÔNG TIN CƠ BẢN */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <Card className="bg-white border border-gray-200">
@@ -295,7 +334,7 @@ export default function TeacherProfileEdit() {
               Thông tin cơ bản
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              Giáo viên tự thêm/chỉnh sửa thông tin của mình.
+              Cập nhật thông tin cá nhân của bạn.
             </p>
 
             <form className="mt-6 space-y-5" onSubmit={onSubmit}>
@@ -333,14 +372,16 @@ export default function TeacherProfileEdit() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Bộ môn *
+                    Bộ môn
                   </label>
-                  <Input
-                    name="subject"
-                    value={form.subject}
-                    onChange={handleChange}
-                    placeholder="VD: Toán, Văn, Lý..."
-                  />
+                  <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    {subjects.length > 0
+                      ? subjects.join(", ")
+                      : "Chưa được phân công môn học"}
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Bộ môn được quản trị viên phân công, không thể tự chỉnh sửa
+                  </p>
                 </div>
 
                 <div>
@@ -446,7 +487,7 @@ export default function TeacherProfileEdit() {
                     </h3>
                     <p className="text-gray-600 mt-1">
                       {form.degree ? `${form.degree} • ` : ""}
-                      {form.subject || "Bộ môn"}
+                      {subjects.length > 0 ? subjects.join(", ") : "Bộ môn"}
                     </p>
 
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">

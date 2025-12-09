@@ -5,32 +5,11 @@ import { teacherAttendanceApi } from "./teacher-attendance.api";
 
 export const teacherAttendanceService = {
   /**
-   * Lấy danh sách giáo viên với thống kê chấm công
-   * @param {Object} filters - { search, subjectId }
+   * Lấy danh sách giáo viên với thống kê chấm công (có phân trang)
+   * @param {Object} params - { search, page, size }
    */
-  async getTeacherList(filters = {}) {
-    const data = await teacherAttendanceApi.getAllTeachers();
-    let list = Array.isArray(data) ? data : [];
-
-    // Filter by search keyword
-    if (filters.search) {
-      const kw = String(filters.search).toLowerCase().trim();
-      list = list.filter(
-        (t) =>
-          t.fullName?.toLowerCase().includes(kw) ||
-          t.email?.toLowerCase().includes(kw) ||
-          t.phone?.includes(kw)
-      );
-    }
-
-    // Filter by subject
-    if (filters.subjectId) {
-      list = list.filter((t) =>
-        t.subjectNames?.some((name) => name === filters.subjectId)
-      );
-    }
-
-    return list;
+  async getTeacherList(params = {}) {
+    return teacherAttendanceApi.getAllTeachers(params);
   },
 
   /**

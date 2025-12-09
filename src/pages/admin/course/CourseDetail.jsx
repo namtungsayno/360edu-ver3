@@ -4,29 +4,16 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Badge } from "../../../components/ui/Badge.jsx";
-import { Textarea } from "../../../components/ui/Textarea.jsx";
-import {
-  Dialog,
-  DialogHeader,
-  DialogTitle,
-  DialogContent,
-} from "../../../components/ui/Dialog.jsx";
 import {
   BookOpen,
   CheckCircle2,
-  Clock,
-  XCircle,
   FileText,
   User,
   Mail,
   Layers,
   ChevronDown,
   ChevronRight,
-  AlertTriangle,
   EyeOff,
-  ArrowLeft,
-  Check,
-  X,
   Calendar,
 } from "lucide-react";
 import { courseService } from "../../../services/course/course.service.js";
@@ -53,21 +40,9 @@ function getStatusConfig(status) {
   switch (st) {
     case "APPROVED":
       return {
-        label: "Đã phê duyệt",
+        label: "Đang hoạt động",
         variant: "success",
         icon: CheckCircle2,
-      };
-    case "PENDING":
-      return {
-        label: "Chờ phê duyệt",
-        variant: "warning",
-        icon: Clock,
-      };
-    case "REJECTED":
-      return {
-        label: "Đã từ chối",
-        variant: "destructive",
-        icon: XCircle,
       };
     case "DRAFT":
       return {
@@ -75,11 +50,17 @@ function getStatusConfig(status) {
         variant: "secondary",
         icon: FileText,
       };
-    default:
+    case "ARCHIVED":
       return {
-        label: "Không xác định",
+        label: "Đã lưu trữ",
         variant: "secondary",
         icon: FileText,
+      };
+    default:
+      return {
+        label: "Đang hoạt động",
+        variant: "success",
+        icon: CheckCircle2,
       };
   }
 }
@@ -93,11 +74,6 @@ export default function AdminCourseDetail() {
   const [loading, setLoading] = useState(true);
   const [adminTitle, setAdminTitle] = useState(null);
   const [className, setClassName] = useState(null);
-
-  // reject dialog
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [rejecting, setRejecting] = useState(false);
 
   // load course
   useEffect(() => {
@@ -178,42 +154,9 @@ export default function AdminCourseDetail() {
     ? `${adminTitle || sliced} - ${className}`
     : adminTitle || sliced;
 
-  const handleApprove = async () => {
-    try {
-      await courseService.approveCourse(course.id);
-      success("Đã phê duyệt khoá học!");
-      setCourse((prev) => ({ ...prev, status: "APPROVED" }));
-    } catch (e) {
-      error("Không thể phê duyệt khóa học");
-    }
-  };
-
-  const handleReject = async () => {
-    if (!rejectReason.trim()) {
-      error("Bạn phải nhập lý do từ chối!");
-      return;
-    }
-
-    setRejecting(true);
-    try {
-      await courseService.rejectCourse(course.id);
-      success("Đã gửi từ chối khóa học");
-      setCourse((prev) => ({
-        ...prev,
-        status: "REJECTED",
-        rejectionReason: rejectReason,
-      }));
-      setRejectOpen(false);
-    } catch (e) {
-      error("Không thể từ chối khóa học");
-    } finally {
-      setRejecting(false);
-    }
-  };
-
   const handleHide = () => {
     setCourse((prev) => ({ ...prev, status: "ARCHIVED" }));
-    success("Đã ẩn khóa học (demo)");
+    success("Đã lưu trữ khóa học");
   };
 
   // Stats data
@@ -246,56 +189,25 @@ export default function AdminCourseDetail() {
       {/* Header */}
       <DetailHeader
         title={displayTitle}
-        subtitle="Xem thông tin đầy đủ về khóa học và phê duyệt nội dung"
+        subtitle="Xem thông tin đầy đủ về khóa học"
         onBack={() => navigate(-1)}
+        icon={BookOpen}
+        iconColor="blue"
         status={{
           label: statusCfg.label,
           variant: statusCfg.variant,
         }}
         actions={
           <div className="flex gap-3">
-            {course.status === "PENDING" && (
-              <>
-                <Button
-                  className="bg-green-600 text-white hover:bg-green-700"
-                  onClick={handleApprove}
-                >
-                  <Check className="w-4 h-4 mr-2" />
-                  Phê duyệt
-                </Button>
-                <Button
-                  className="bg-red-600 text-white hover:bg-red-700"
-                  onClick={() => setRejectOpen(true)}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Từ chối
-                </Button>
-              </>
-            )}
-            {course.status === "APPROVED" && (
+            {course.status !== "ARCHIVED" && (
               <Button variant="outline" onClick={handleHide}>
                 <EyeOff className="w-4 h-4 mr-2" />
-                Ẩn khóa học
+                Lưu trữ
               </Button>
             )}
           </div>
         }
       />
-
-      {/* Rejection Warning */}
-      {course.status === "REJECTED" && course.rejectionReason && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
-            <div>
-              <p className="font-semibold text-red-900">Lý do từ chối:</p>
-              <p className="text-red-800 text-sm whitespace-pre-line mt-1">
-                {course.rejectionReason}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -419,51 +331,6 @@ export default function AdminCourseDetail() {
           </div>
         )}
       </DetailSection>
-
-      {/* REJECT MODAL */}
-      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <DialogContent className="max-w-lg rounded-2xl">
-          <DialogHeader className="flex flex-row items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-              <XCircle className="w-6 h-6 text-red-600" />
-            </div>
-            <DialogTitle className="text-xl">Từ chối khóa học</DialogTitle>
-          </DialogHeader>
-
-          <div className="mt-3 space-y-4">
-            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-xl text-sm flex gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-700 flex-shrink-0" />
-              Giáo viên sẽ nhận thông báo với lý do từ chối. Hãy ghi rõ ràng và
-              mang tính góp ý.
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Lý do từ chối <span className="text-red-600">*</span>
-              </label>
-              <Textarea
-                rows={6}
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Ví dụ: Chương 2 chưa đủ nội dung, cần bổ sung thêm ví dụ..."
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setRejectOpen(false)}>
-                Hủy
-              </Button>
-              <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
-                onClick={handleReject}
-                disabled={rejecting}
-              >
-                {rejecting ? "Đang gửi..." : "Gửi từ chối"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </DetailPageWrapper>
   );
 }

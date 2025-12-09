@@ -9,6 +9,27 @@ export const classroomApi = {
     return http.get(BASE, { params }).then((r) => r.data);
   },
 
+  /**
+   * GET /rooms/paginated - Lấy rooms với phân trang từ server
+   * @param {Object} params - { search, status, page, size, sortBy, order }
+   * @returns {Promise<{content: Array, totalElements: number, totalPages: number, ...}>}
+   */
+  listPaginated(params = {}) {
+    const {
+      search = "",
+      status = "ALL", // ALL, AVAILABLE, UNAVAILABLE
+      page = 0,
+      size = 10,
+      sortBy = "id",
+      order = "asc",
+    } = params;
+    return http
+      .get(`${BASE}/paginated`, {
+        params: { search, status, page, size, sortBy, order },
+      })
+      .then((r) => r.data);
+  },
+
   /** POST /rooms */
   create(payload) {
     return http.post(BASE, payload).then((r) => r.data);

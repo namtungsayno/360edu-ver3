@@ -8,6 +8,7 @@ import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { useToast } from "../../../hooks/use-toast.js";
 import { courseService } from "../../../services/course/course.service.js";
+import { BackButton } from "../../../components/common/BackButton";
 
 export default function TeachingContentDetail() {
   const { id } = useParams();
@@ -56,7 +57,7 @@ export default function TeachingContentDetail() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto p-8">
+      <div className="p-6">
         <Card className="rounded-xl border border-gray-200">
           <CardContent className="p-6 text-[#62748e]">
             Đang tải chi tiết...
@@ -68,7 +69,7 @@ export default function TeachingContentDetail() {
 
   if (!course) {
     return (
-      <div className="max-w-6xl mx-auto p-8">
+      <div className="p-6">
         <Card className="rounded-xl border border-dashed border-gray-300 bg-gray-50">
           <CardContent className="p-10 text-center">
             <div className="w-16 h-16 rounded-full border border-gray-300 flex items-center justify-center mx-auto mb-4">
@@ -84,21 +85,18 @@ export default function TeachingContentDetail() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-neutral-950">
-            {course.title}
-          </h1>
-          <p className="text-[12px] text-[#62748e]">
-            {course.subjectName || ""}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            Quay lại
-          </Button>
+        <div className="flex items-center gap-4">
+          <BackButton onClick={() => navigate(-1)} showLabel={false} />
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-200">
+            <BookOpen className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{course.title}</h1>
+            <p className="text-sm text-gray-500">{course.subjectName || ""}</p>
+          </div>
         </div>
       </div>
 
