@@ -20,7 +20,6 @@ import {
 import { Card, CardContent } from "../../../components/ui/Card";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
-import { Footer } from "../../../components/common/Footer";
 
 export default function About() {
   const { onNavigate } = useOutletContext();
@@ -314,9 +313,6 @@ export default function About() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }

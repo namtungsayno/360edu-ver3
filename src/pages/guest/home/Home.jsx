@@ -18,7 +18,6 @@ import { useOutletContext } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Video, Users, Calendar, Book, Award, TrendingUp, BookOpen, Clock, UserCheck, ArrowRight, GraduationCap, ChevronLeft, ChevronRight } from "lucide-react";
 import Banner from "../../../components/common/Banner";
-import { Footer } from "../../../components/common/Footer";
 import { Card, CardContent } from "../../../components/ui/Card";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
@@ -776,9 +775,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-      
-      {/* Footer - Thông tin liên hệ */}
-      <Footer />
     </>
   );
 }

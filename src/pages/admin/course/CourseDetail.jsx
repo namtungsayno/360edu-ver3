@@ -15,6 +15,7 @@ import {
   ChevronRight,
   EyeOff,
   Calendar,
+  Clock,
 } from "lucide-react";
 import { courseService } from "../../../services/course/course.service.js";
 import { classService } from "../../../services/class/class.service.js";
