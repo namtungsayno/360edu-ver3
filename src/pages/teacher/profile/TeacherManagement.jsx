@@ -6,7 +6,9 @@ import { teacherProfileService } from "../../../services/teacher/teacher.profile
 import { teacherUploadApi } from "../../../services/teacher/teacher.upload.api";
 import { User, Edit3, X, Lock } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
-import RichTextEditor, { RichTextContent } from "../../../components/ui/RichTextEditor";
+import RichTextEditor, {
+  RichTextContent,
+} from "../../../components/ui/RichTextEditor";
 
 const DEGREE_OPTIONS = ["Cử nhân", "Thạc sĩ", "Tiến sĩ", "Khác"];
 
@@ -331,7 +333,9 @@ export default function TeacherManagement() {
                     ⚙️ Thông tin hồ sơ
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    {isEditing ? "Đang chỉnh sửa thông tin cá nhân" : "Nhấn nút Sửa để chỉnh sửa thông tin"}
+                    {isEditing
+                      ? "Đang chỉnh sửa thông tin cá nhân"
+                      : "Nhấn nút Sửa để chỉnh sửa thông tin"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -362,517 +366,534 @@ export default function TeacherManagement() {
               </div>
 
               {/* Overlay khi không ở chế độ chỉnh sửa */}
-              <div className={`relative ${!isEditing ? 'pointer-events-none' : ''}`}>
+              <div
+                className={`relative ${
+                  !isEditing ? "pointer-events-none" : ""
+                }`}
+              >
                 {!isEditing && (
                   <div className="absolute inset-0 bg-gray-100/60 backdrop-blur-[1px] z-10 rounded-lg flex items-center justify-center">
                     <div className="bg-white/90 px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-gray-600">
                       <Lock className="w-5 h-5" />
-                      <span className="font-medium">Nhấn "Sửa hồ sơ" để chỉnh sửa</span>
+                      <span className="font-medium">
+                        Nhấn "Sửa hồ sơ" để chỉnh sửa
+                      </span>
                     </div>
                   </div>
                 )}
 
-              <form
-                id="teacher-profile-form"
-                className="mt-6 space-y-6"
-                onSubmit={onSubmit}
-              >
-                {/* THÔNG TIN CƠ BẢN */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-medium text-gray-900 mb-4">
-                    📋 Thông tin cơ bản
-                  </h3>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Tên Giáo viên *
-                      </label>
-                      <Input
-                        name="fullName"
-                        value={form.fullName}
-                        onChange={handleChange}
-                        placeholder="VD: Nguyễn Văn A"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Trình độ *
-                      </label>
-                      <select
-                        name="degree"
-                        value={form.degree}
-                        onChange={handleChange}
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-                      >
-                        <option value="">-- Chọn trình độ --</option>
-                        {DEGREE_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Bộ môn
-                      </label>
-                      <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-700">
-                        {subjects.length > 0
-                          ? subjects.join(", ")
-                          : "Chưa được phân công môn học"}
-                      </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Bộ môn được quản trị viên phân công
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Nơi công tác *
-                      </label>
-                      <Input
-                        name="workplace"
-                        value={form.workplace}
-                        onChange={handleChange}
-                        placeholder="VD: THPT ABC, Quận 1, TP.HCM"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Số năm kinh nghiệm
-                      </label>
-                      <Input
-                        type="number"
-                        name="yearsOfExperience"
-                        value={form.yearsOfExperience}
-                        onChange={handleChange}
-                        placeholder="VD: 5"
-                        min="0"
-                        max="50"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* THÔNG TIN MÔ TẢ */}
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h3 className="font-medium text-gray-900 mb-4">
-                    📝 Thông tin mô tả
-                  </h3>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Giới thiệu bản thân
-                      </label>
-                      <RichTextEditor
-                        value={form.bio}
-                        onChange={(content) => setForm({ ...form, bio: content })}
-                        placeholder="Giới thiệu ngắn gọn về bản thân, phương pháp dạy học..."
-                        simple
-                        minHeight="120px"
-                        maxHeight="300px"
-                      />
-                    </div>
+                <form
+                  id="teacher-profile-form"
+                  className="mt-6 space-y-6"
+                  onSubmit={onSubmit}
+                >
+                  {/* THÔNG TIN CƠ BẢN */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-medium text-gray-900 mb-4">
+                      📋 Thông tin cơ bản
+                    </h3>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          Chuyên môn
+                          Tên Giáo viên *
                         </label>
                         <Input
-                          name="specialization"
-                          value={form.specialization}
+                          name="fullName"
+                          value={form.fullName}
                           onChange={handleChange}
-                          placeholder="VD: Toán cao cấp, Phương pháp giảng dạy..."
+                          placeholder="VD: Nguyễn Văn A"
                         />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          Thành tích nổi bật
+                          Trình độ *
+                        </label>
+                        <select
+                          name="degree"
+                          value={form.degree}
+                          onChange={handleChange}
+                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900/10"
+                        >
+                          <option value="">-- Chọn trình độ --</option>
+                          {DEGREE_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Bộ môn
+                        </label>
+                        <div className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-700">
+                          {subjects.length > 0
+                            ? subjects.join(", ")
+                            : "Chưa được phân công môn học"}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Bộ môn được quản trị viên phân công
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Nơi công tác *
                         </label>
                         <Input
-                          name="achievements"
-                          value={form.achievements}
+                          name="workplace"
+                          value={form.workplace}
                           onChange={handleChange}
-                          placeholder="VD: Giáo viên xuất sắc 2023, Giải nhất..."
+                          placeholder="VD: THPT ABC, Quận 1, TP.HCM"
                         />
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Ghi chú
-                      </label>
-                      <textarea
-                        name="note"
-                        value={form.note}
-                        onChange={handleChange}
-                        rows={2}
-                        style={{ minHeight: "56px", resize: "none" }}
-                        onInput={(e) => {
-                          e.target.style.height = "auto";
-                          e.target.style.height =
-                            Math.max(56, e.target.scrollHeight) + "px";
-                        }}
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10"
-                        placeholder="Ghi chú thêm nếu có..."
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* LIÊN HỆ VÀ AVATAR */}
-                <div className="bg-green-50 rounded-lg p-4">
-                  <h3 className="font-medium text-gray-900 mb-4">
-                    🔗 Liên hệ và Hình ảnh
-                  </h3>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Facebook URL
-                      </label>
-                      <Input
-                        name="facebookUrl"
-                        value={form.facebookUrl}
-                        onChange={handleChange}
-                        placeholder="https://facebook.com/username"
-                        type="url"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        LinkedIn URL
-                      </label>
-                      <Input
-                        name="linkedinUrl"
-                        value={form.linkedinUrl}
-                        onChange={handleChange}
-                        placeholder="https://linkedin.com/in/username"
-                        type="url"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Ảnh đại diện (URL)
-                      </label>
-                      <Input
-                        name="avatarUrl"
-                        value={form.avatarUrl}
-                        onChange={handleChange}
-                        placeholder="Dán URL ảnh hoặc dùng 'Chọn file' bên cạnh"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Ưu tiên dùng URL ảnh. Nếu không có, chọn file để xem
-                        thử.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Chọn file ảnh
-                      </label>
-                      <input
-                        type="file"
-                        name="avatarFile"
-                        accept="image/*"
-                        onChange={handleChange}
-                        className="mt-1 block w-full text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                    {error}
-                  </div>
-                )}
-              </form>
-
-              {/* CERTIFICATES SECTION */}
-              <div className="mt-8 border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    🏆 Chứng chỉ
-                  </h3>
-                  <Button
-                    type="button"
-                    onClick={addCertificate}
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    ➕ Thêm
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {certificates.map((cert, index) => (
-                    <div
-                      key={index}
-                      className="border border-gray-300 rounded-lg p-3"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-900">
-                          #{index + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeCertificate(index)}
-                          className="text-red-600 hover:text-red-800 text-xs"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                      <div className="space-y-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Số năm kinh nghiệm
+                        </label>
                         <Input
-                          value={cert.title || ""}
-                          onChange={(e) =>
-                            updateCertificate(index, "title", e.target.value)
-                          }
-                          placeholder="Tên chứng chỉ"
-                          className="text-sm"
+                          type="number"
+                          name="yearsOfExperience"
+                          value={form.yearsOfExperience}
+                          onChange={handleChange}
+                          placeholder="VD: 5"
+                          min="0"
+                          max="50"
                         />
-                        <div className="grid grid-cols-2 gap-2">
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* THÔNG TIN MÔ TẢ */}
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h3 className="font-medium text-gray-900 mb-4">
+                      📝 Thông tin mô tả
+                    </h3>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Giới thiệu bản thân
+                        </label>
+                        <RichTextEditor
+                          value={form.bio}
+                          onChange={(content) =>
+                            setForm({ ...form, bio: content })
+                          }
+                          placeholder="Giới thiệu ngắn gọn về bản thân, phương pháp dạy học..."
+                          simple
+                          minHeight="120px"
+                          maxHeight="300px"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Chuyên môn
+                          </label>
+                          <RichTextEditor
+                            value={form.specialization}
+                            onChange={(content) =>
+                              setForm({ ...form, specialization: content })
+                            }
+                            placeholder="VD: Toán cao cấp, Phương pháp giảng dạy..."
+                            simple
+                            minHeight="100px"
+                            maxHeight="200px"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Thành tích nổi bật
+                          </label>
+                          <RichTextEditor
+                            value={form.achievements}
+                            onChange={(content) =>
+                              setForm({ ...form, achievements: content })
+                            }
+                            placeholder="VD: Giáo viên xuất sắc 2023, Giải nhất..."
+                            simple
+                            minHeight="100px"
+                            maxHeight="200px"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Ghi chú
+                        </label>
+                        <RichTextEditor
+                          value={form.note}
+                          onChange={(content) =>
+                            setForm({ ...form, note: content })
+                          }
+                          placeholder="Ghi chú thêm nếu có..."
+                          simple
+                          minHeight="80px"
+                          maxHeight="200px"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* LIÊN HỆ VÀ AVATAR */}
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <h3 className="font-medium text-gray-900 mb-4">
+                      🔗 Liên hệ và Hình ảnh
+                    </h3>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Facebook URL
+                        </label>
+                        <Input
+                          name="facebookUrl"
+                          value={form.facebookUrl}
+                          onChange={handleChange}
+                          placeholder="https://facebook.com/username"
+                          type="url"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          LinkedIn URL
+                        </label>
+                        <Input
+                          name="linkedinUrl"
+                          value={form.linkedinUrl}
+                          onChange={handleChange}
+                          placeholder="https://linkedin.com/in/username"
+                          type="url"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Ảnh đại diện (URL)
+                        </label>
+                        <Input
+                          name="avatarUrl"
+                          value={form.avatarUrl}
+                          onChange={handleChange}
+                          placeholder="Dán URL ảnh hoặc dùng 'Chọn file' bên cạnh"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Ưu tiên dùng URL ảnh. Nếu không có, chọn file để xem
+                          thử.
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Chọn file ảnh
+                        </label>
+                        <input
+                          type="file"
+                          name="avatarFile"
+                          accept="image/*"
+                          onChange={handleChange}
+                          className="mt-1 block w-full text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                      {error}
+                    </div>
+                  )}
+                </form>
+
+                {/* CERTIFICATES SECTION */}
+                <div className="mt-8 border-t pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      🏆 Chứng chỉ
+                    </h3>
+                    <Button
+                      type="button"
+                      onClick={addCertificate}
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      ➕ Thêm
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {certificates.map((cert, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-300 rounded-lg p-3"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            #{index + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeCertificate(index)}
+                            className="text-red-600 hover:text-red-800 text-xs"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                        <div className="space-y-2">
                           <Input
-                            value={cert.organization || ""}
+                            value={cert.title || ""}
                             onChange={(e) =>
-                              updateCertificate(
+                              updateCertificate(index, "title", e.target.value)
+                            }
+                            placeholder="Tên chứng chỉ"
+                            className="text-sm"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              value={cert.organization || ""}
+                              onChange={(e) =>
+                                updateCertificate(
+                                  index,
+                                  "organization",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Tổ chức"
+                              className="text-sm"
+                            />
+                            <Input
+                              type="number"
+                              value={cert.year || ""}
+                              onChange={(e) =>
+                                updateCertificate(
+                                  index,
+                                  "year",
+                                  parseInt(e.target.value) || null
+                                )
+                              }
+                              placeholder="Năm"
+                              className="text-sm"
+                            />
+                          </div>
+                          <RichTextEditor
+                            value={cert.description || ""}
+                            onChange={(content) =>
+                              updateCertificate(index, "description", content)
+                            }
+                            placeholder="Mô tả chứng chỉ..."
+                            simple
+                            minHeight="80px"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {certificates.length === 0 && (
+                      <p className="text-gray-500 text-center text-sm py-3">
+                        Chưa có chứng chỉ
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* EDUCATION SECTION */}
+                <div className="mt-6 border-t pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      🎓 Học vấn
+                    </h3>
+                    <Button
+                      type="button"
+                      onClick={addEducation}
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      ➕ Thêm
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {educations.map((edu, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-300 rounded-lg p-3"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            #{index + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeEducation(index)}
+                            className="text-red-600 hover:text-red-800 text-xs"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          <Input
+                            value={edu.degree || ""}
+                            onChange={(e) =>
+                              updateEducation(index, "degree", e.target.value)
+                            }
+                            placeholder="Bằng cấp"
+                            className="text-sm"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              value={edu.school || ""}
+                              onChange={(e) =>
+                                updateEducation(index, "school", e.target.value)
+                              }
+                              placeholder="Trường học"
+                              className="text-sm"
+                            />
+                            <Input
+                              type="number"
+                              value={edu.year || ""}
+                              onChange={(e) =>
+                                updateEducation(
+                                  index,
+                                  "year",
+                                  parseInt(e.target.value) || null
+                                )
+                              }
+                              placeholder="Năm"
+                              className="text-sm"
+                            />
+                          </div>
+                          <RichTextEditor
+                            value={edu.description || ""}
+                            onChange={(content) =>
+                              updateEducation(index, "description", content)
+                            }
+                            placeholder="Mô tả học vấn..."
+                            simple
+                            minHeight="80px"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {educations.length === 0 && (
+                      <p className="text-gray-500 text-center text-sm py-3">
+                        Chưa có học vấn
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* EXPERIENCE SECTION */}
+                <div className="mt-6 border-t pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      💼 Kinh nghiệm
+                    </h3>
+                    <Button
+                      type="button"
+                      onClick={addExperience}
+                      size="sm"
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      ➕ Thêm
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {experiences.map((exp, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-300 rounded-lg p-3"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-sm font-medium text-gray-900">
+                            #{index + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeExperience(index)}
+                            className="text-red-600 hover:text-red-800 text-xs"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          <Input
+                            value={exp.position || ""}
+                            onChange={(e) =>
+                              updateExperience(
                                 index,
-                                "organization",
+                                "position",
                                 e.target.value
                               )
                             }
-                            placeholder="Tổ chức"
+                            placeholder="Vị trí"
                             className="text-sm"
                           />
                           <Input
-                            type="number"
-                            value={cert.year || ""}
+                            value={exp.company || ""}
                             onChange={(e) =>
-                              updateCertificate(
-                                index,
-                                "year",
-                                parseInt(e.target.value) || null
-                              )
+                              updateExperience(index, "company", e.target.value)
                             }
-                            placeholder="Năm"
+                            placeholder="Công ty"
                             className="text-sm"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              type="number"
+                              value={exp.startYear || ""}
+                              onChange={(e) =>
+                                updateExperience(
+                                  index,
+                                  "startYear",
+                                  parseInt(e.target.value) || null
+                                )
+                              }
+                              placeholder="Từ năm"
+                              className="text-sm"
+                            />
+                            <Input
+                              type="number"
+                              value={exp.endYear || ""}
+                              onChange={(e) =>
+                                updateExperience(
+                                  index,
+                                  "endYear",
+                                  parseInt(e.target.value) || null
+                                )
+                              }
+                              placeholder="Đến năm"
+                              className="text-sm"
+                            />
+                          </div>
+                          <RichTextEditor
+                            value={exp.description || ""}
+                            onChange={(content) =>
+                              updateExperience(index, "description", content)
+                            }
+                            placeholder="Mô tả công việc..."
+                            simple
+                            minHeight="80px"
                           />
                         </div>
-                        <RichTextEditor
-                          value={cert.description || ""}
-                          onChange={(content) =>
-                            updateCertificate(index, "description", content)
-                          }
-                          placeholder="Mô tả chứng chỉ..."
-                          simple
-                          minHeight="80px"
-                        />
                       </div>
-                    </div>
-                  ))}
-                  {certificates.length === 0 && (
-                    <p className="text-gray-500 text-center text-sm py-3">
-                      Chưa có chứng chỉ
-                    </p>
-                  )}
+                    ))}
+                    {experiences.length === 0 && (
+                      <p className="text-gray-500 text-center text-sm py-3">
+                        Chưa có kinh nghiệm
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* EDUCATION SECTION */}
-              <div className="mt-6 border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    🎓 Học vấn
-                  </h3>
-                  <Button
-                    type="button"
-                    onClick={addEducation}
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    ➕ Thêm
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {educations.map((edu, index) => (
-                    <div
-                      key={index}
-                      className="border border-gray-300 rounded-lg p-3"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-900">
-                          #{index + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeEducation(index)}
-                          className="text-red-600 hover:text-red-800 text-xs"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        <Input
-                          value={edu.degree || ""}
-                          onChange={(e) =>
-                            updateEducation(index, "degree", e.target.value)
-                          }
-                          placeholder="Bằng cấp"
-                          className="text-sm"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            value={edu.school || ""}
-                            onChange={(e) =>
-                              updateEducation(index, "school", e.target.value)
-                            }
-                            placeholder="Trường học"
-                            className="text-sm"
-                          />
-                          <Input
-                            type="number"
-                            value={edu.year || ""}
-                            onChange={(e) =>
-                              updateEducation(
-                                index,
-                                "year",
-                                parseInt(e.target.value) || null
-                              )
-                            }
-                            placeholder="Năm"
-                            className="text-sm"
-                          />
-                        </div>
-                        <RichTextEditor
-                          value={edu.description || ""}
-                          onChange={(content) =>
-                            updateEducation(index, "description", content)
-                          }
-                          placeholder="Mô tả học vấn..."
-                          simple
-                          minHeight="80px"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  {educations.length === 0 && (
-                    <p className="text-gray-500 text-center text-sm py-3">
-                      Chưa có học vấn
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* EXPERIENCE SECTION */}
-              <div className="mt-6 border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    💼 Kinh nghiệm
-                  </h3>
-                  <Button
-                    type="button"
-                    onClick={addExperience}
-                    size="sm"
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    ➕ Thêm
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {experiences.map((exp, index) => (
-                    <div
-                      key={index}
-                      className="border border-gray-300 rounded-lg p-3"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-900">
-                          #{index + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeExperience(index)}
-                          className="text-red-600 hover:text-red-800 text-xs"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        <Input
-                          value={exp.position || ""}
-                          onChange={(e) =>
-                            updateExperience(index, "position", e.target.value)
-                          }
-                          placeholder="Vị trí"
-                          className="text-sm"
-                        />
-                        <Input
-                          value={exp.company || ""}
-                          onChange={(e) =>
-                            updateExperience(index, "company", e.target.value)
-                          }
-                          placeholder="Công ty"
-                          className="text-sm"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            type="number"
-                            value={exp.startYear || ""}
-                            onChange={(e) =>
-                              updateExperience(
-                                index,
-                                "startYear",
-                                parseInt(e.target.value) || null
-                              )
-                            }
-                            placeholder="Từ năm"
-                            className="text-sm"
-                          />
-                          <Input
-                            type="number"
-                            value={exp.endYear || ""}
-                            onChange={(e) =>
-                              updateExperience(
-                                index,
-                                "endYear",
-                                parseInt(e.target.value) || null
-                              )
-                            }
-                            placeholder="Đến năm"
-                            className="text-sm"
-                          />
-                        </div>
-                        <RichTextEditor
-                          value={exp.description || ""}
-                          onChange={(content) =>
-                            updateExperience(index, "description", content)
-                          }
-                          placeholder="Mô tả công việc..."
-                          simple
-                          minHeight="80px"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  {experiences.length === 0 && (
-                    <p className="text-gray-500 text-center text-sm py-3">
-                      Chưa có kinh nghiệm
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-              </div> {/* End of isEditing wrapper */}
+            </div>{" "}
+            {/* End of isEditing wrapper */}
           </div>
 
           {/* PREVIEW SECTION */}
@@ -977,21 +998,23 @@ export default function TeacherManagement() {
 
                   {form.specialization && (
                     <div className="rounded-lg border border-gray-200 p-4">
-                      <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">
+                      <p className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-2">
                         🎯 Chuyên môn
                       </p>
-                      <p className="mt-1 text-gray-900">
-                        {form.specialization}
-                      </p>
+                      <div className="text-gray-900">
+                        <RichTextContent content={form.specialization} />
+                      </div>
                     </div>
                   )}
 
                   {form.achievements && (
                     <div className="rounded-lg border border-gray-200 p-4">
-                      <p className="text-xs uppercase tracking-wider text-gray-500 font-medium">
+                      <p className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-2">
                         🏅 Thành tích
                       </p>
-                      <p className="mt-1 text-gray-900">{form.achievements}</p>
+                      <div className="text-gray-900">
+                        <RichTextContent content={form.achievements} />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1014,7 +1037,9 @@ export default function TeacherManagement() {
                     <p className="text-xs uppercase tracking-wider text-yellow-700 font-medium mb-2">
                       📌 Ghi chú
                     </p>
-                    <p className="text-yellow-800 text-sm">{form.note}</p>
+                    <div className="text-yellow-800 text-sm">
+                      <RichTextContent content={form.note} />
+                    </div>
                   </div>
                 )}
 

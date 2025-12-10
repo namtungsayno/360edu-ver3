@@ -90,7 +90,8 @@ export default function TeacherList() {
           : teacher.degree || "Giáo viên",
         courses: teacher.classCount || 0,
         rating: teacher.rating || 0,
-        achievements: [teacher.degree, teacher.specialization].filter(Boolean),
+        // Chỉ hiển thị degree trong card, specialization có HTML nên bỏ qua
+        achievements: [teacher.degree].filter(Boolean),
         avatar: teacher.avatarUrl,
         bio: teacher.bio,
         workplace: teacher.workplace,

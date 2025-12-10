@@ -1,9 +1,9 @@
 /**
  * TEACHER DETAIL PAGE - Trang chi tiết giáo viên
- * 
+ *
  * Route: /home/teachers/:id
  * Layout: GuestLayout
- * 
+ *
  * Hiển thị thông tin chi tiết về giáo viên bao gồm:
  * - Thông tin cá nhân (tên, ảnh, học vị, chuyên môn)
  * - Thống kê (học viên, lớp học, đánh giá)
@@ -15,10 +15,22 @@
 
 import { useParams, useOutletContext } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { 
-  ArrowLeft, Mail, Phone, Award, BookOpen, Users, Star, 
-  Calendar, Clock, GraduationCap, TrendingUp, CheckCircle,
-  Briefcase, FileText, Facebook, Linkedin
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  Award,
+  BookOpen,
+  Users,
+  Star,
+  Calendar,
+  Clock,
+  GraduationCap,
+  TrendingUp,
+  Briefcase,
+  FileText,
+  Facebook,
+  Linkedin,
 } from "lucide-react";
 import { teacherService } from "../../../services/teacher/teacher.service";
 import { Card, CardContent, CardHeader } from "../../../components/ui/Card";
@@ -36,7 +48,9 @@ export default function TeacherDetail() {
   useEffect(() => {
     const fetchTeacher = async () => {
       try {
-        const teacherData = await teacherService.getProfile(Number.parseInt(id, 10));
+        const teacherData = await teacherService.getProfile(
+          Number.parseInt(id, 10)
+        );
         if (teacherData) {
           setTeacher(teacherData);
         }
@@ -91,20 +105,30 @@ export default function TeacherDetail() {
     );
   }
 
-  const nameParts = (teacher.fullName || teacher.username || "").trim().split(" ");
-  const lastInitial = nameParts.length ? nameParts[nameParts.length - 1].charAt(0) : "?";
-  
+  const nameParts = (teacher.fullName || teacher.username || "")
+    .trim()
+    .split(" ");
+  const lastInitial = nameParts.length
+    ? nameParts[nameParts.length - 1].charAt(0)
+    : "?";
+
   // Use real data from API with fallbacks
   const displayName = teacher.fullName || teacher.username;
   const displayDegree = teacher.degree || "Giảng viên";
   const displayRating = teacher.rating || 0;
   const displayYearsExp = teacher.yearsOfExperience || 0;
-  const displayBio = teacher.bio || `${displayName} là giảng viên tại hệ thống 360edu.`;
+  const displayBio =
+    teacher.bio || `${displayName} là giảng viên tại hệ thống 360edu.`;
   const displayCertificates = teacher.certificates || [];
   const displayExperiences = teacher.experiences || [];
   const displayEducations = teacher.educations || [];
-  const displayAchievements = teacher.achievements ? teacher.achievements.split('\n').filter(Boolean) : [];
-  const displaySubjects = teacher.subjects || (teacher.subjectNames ? teacher.subjectNames : [teacher.subjectName]).filter(Boolean);
+  const displayAchievements = teacher.achievements || null;
+  const displaySubjects =
+    teacher.subjects ||
+    (teacher.subjectNames
+      ? teacher.subjectNames
+      : [teacher.subjectName]
+    ).filter(Boolean);
   const displayWorkplace = teacher.workplace || null;
   const displayLinkedin = teacher.linkedinUrl || null;
   const displayFacebook = teacher.facebookUrl || null;
@@ -131,13 +155,15 @@ export default function TeacherDetail() {
                 <div className="relative">
                   <div className="w-48 h-48 rounded-full ring-4 ring-purple-100 overflow-hidden bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
                     {teacher.avatarUrl ? (
-                      <img 
-                        src={teacher.avatarUrl} 
+                      <img
+                        src={teacher.avatarUrl}
                         alt={displayName}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-6xl font-bold text-white">{lastInitial}</span>
+                      <span className="text-6xl font-bold text-white">
+                        {lastInitial}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -147,14 +173,23 @@ export default function TeacherDetail() {
               <div className="flex-1">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">{displayName}</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                      {displayName}
+                    </h1>
                     <div className="flex items-center gap-2 mb-3">
                       <GraduationCap className="w-5 h-5 text-purple-600" />
-                      <span className="text-lg text-gray-700">{displayDegree}</span>
+                      <span className="text-lg text-gray-700">
+                        {displayDegree}
+                      </span>
                       {teacher.specialization && (
                         <>
                           <span className="text-gray-400">•</span>
-                          <span className="text-gray-600">{teacher.specialization}</span>
+                          <span
+                            className="text-gray-600 rich-text-content"
+                            dangerouslySetInnerHTML={{
+                              __html: teacher.specialization,
+                            }}
+                          />
                         </>
                       )}
                     </div>
@@ -192,9 +227,9 @@ export default function TeacherDetail() {
                 {(displayLinkedin || displayFacebook) && (
                   <div className="flex gap-3 mb-4">
                     {displayLinkedin && (
-                      <a 
-                        href={displayLinkedin} 
-                        target="_blank" 
+                      <a
+                        href={displayLinkedin}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                       >
@@ -203,9 +238,9 @@ export default function TeacherDetail() {
                       </a>
                     )}
                     {displayFacebook && (
-                      <a 
-                        href={displayFacebook} 
-                        target="_blank" 
+                      <a
+                        href={displayFacebook}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
                       >
@@ -219,7 +254,10 @@ export default function TeacherDetail() {
                 {/* Subjects */}
                 <div className="flex flex-wrap gap-2">
                   {displaySubjects.map((subject) => (
-                    <Badge key={subject} className="bg-purple-100 text-purple-700">
+                    <Badge
+                      key={subject}
+                      className="bg-purple-100 text-purple-700"
+                    >
                       {subject}
                     </Badge>
                   ))}
@@ -236,7 +274,9 @@ export default function TeacherDetail() {
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Users className="w-6 h-6 text-blue-600" />
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{teacher.studentCount || 0}</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">
+                {teacher.studentCount || 0}
+              </p>
               <p className="text-sm text-gray-600">Học viên</p>
             </CardContent>
           </Card>
@@ -246,7 +286,9 @@ export default function TeacherDetail() {
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <BookOpen className="w-6 h-6 text-green-600" />
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{teacher.classCount || 0}</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">
+                {teacher.classCount || 0}
+              </p>
               <p className="text-sm text-gray-600">Lớp học</p>
             </CardContent>
           </Card>
@@ -256,7 +298,9 @@ export default function TeacherDetail() {
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <TrendingUp className="w-6 h-6 text-purple-600" />
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{displayYearsExp}+</p>
+              <p className="text-3xl font-bold text-gray-900 mb-1">
+                {displayYearsExp}+
+              </p>
               <p className="text-sm text-gray-600">Năm kinh nghiệm</p>
             </CardContent>
           </Card>
@@ -278,15 +322,22 @@ export default function TeacherDetail() {
                 <CardContent>
                   <div className="space-y-4">
                     {displayCertificates.map((cert, index) => (
-                      <div key={`cert-${cert.id || index}`} className="flex gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100">
+                      <div
+                        key={`cert-${cert.id || index}`}
+                        className="flex gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100"
+                      >
                         <div className="flex-shrink-0">
                           <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
                             <FileText className="w-6 h-6 text-white" />
                           </div>
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 mb-1">{cert.title}</h3>
-                          <p className="text-sm text-gray-600 mb-1">{cert.organization}</p>
+                          <h3 className="font-semibold text-gray-900 mb-1">
+                            {cert.title}
+                          </h3>
+                          <p className="text-sm text-gray-600 mb-1">
+                            {cert.organization}
+                          </p>
                           {cert.year && (
                             <div className="flex items-center gap-2">
                               <Badge className="bg-purple-100 text-purple-700 text-xs">
@@ -308,7 +359,7 @@ export default function TeacherDetail() {
             )}
 
             {/* Achievements */}
-            {displayAchievements.length > 0 && (
+            {displayAchievements && (
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
@@ -317,13 +368,8 @@ export default function TeacherDetail() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {displayAchievements.map((achievement) => (
-                      <div key={achievement} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                        <span className="text-gray-700">{achievement}</span>
-                      </div>
-                    ))}
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <RichTextContent content={displayAchievements} />
                   </div>
                 </CardContent>
               </Card>
@@ -341,10 +387,18 @@ export default function TeacherDetail() {
                 <CardContent>
                   <div className="space-y-3">
                     {teacher.schedule.map((item, idx) => (
-                      <div key={`schedule-${idx}`} className="border-l-4 border-purple-500 pl-3">
-                        <p className="font-semibold text-gray-900 mb-1">{item.day}</p>
+                      <div
+                        key={`schedule-${idx}`}
+                        className="border-l-4 border-purple-500 pl-3"
+                      >
+                        <p className="font-semibold text-gray-900 mb-1">
+                          {item.day}
+                        </p>
                         {item.slots.map((slot, slotIdx) => (
-                          <div key={`slot-${idx}-${slotIdx}`} className="flex items-center gap-2 text-sm text-gray-600">
+                          <div
+                            key={`slot-${idx}-${slotIdx}`}
+                            className="flex items-center gap-2 text-sm text-gray-600"
+                          >
                             <Clock className="w-3 h-3" />
                             <span>{slot}</span>
                           </div>
@@ -371,12 +425,20 @@ export default function TeacherDetail() {
                 <CardContent>
                   <div className="space-y-4">
                     {displayExperiences.map((exp, index) => (
-                      <div key={`exp-${exp.id || index}`} className="relative pl-6 pb-4 border-l-2 border-purple-200 last:pb-0">
+                      <div
+                        key={`exp-${exp.id || index}`}
+                        className="relative pl-6 pb-4 border-l-2 border-purple-200 last:pb-0"
+                      >
                         <div className="absolute -left-2 top-0 w-4 h-4 bg-purple-500 rounded-full border-2 border-white"></div>
-                        <h3 className="font-semibold text-gray-900 mb-1">{exp.position}</h3>
-                        <p className="text-sm text-purple-600 font-medium mb-1">{exp.company}</p>
+                        <h3 className="font-semibold text-gray-900 mb-1">
+                          {exp.position}
+                        </h3>
+                        <p className="text-sm text-purple-600 font-medium mb-1">
+                          {exp.company}
+                        </p>
                         <p className="text-xs text-gray-500 mb-2">
-                          {exp.startYear} {exp.endYear ? `- ${exp.endYear}` : '- Hiện tại'}
+                          {exp.startYear}{" "}
+                          {exp.endYear ? `- ${exp.endYear}` : "- Hiện tại"}
                         </p>
                         {exp.description && (
                           <div className="text-sm text-gray-600">
@@ -402,11 +464,20 @@ export default function TeacherDetail() {
                 <CardContent>
                   <div className="space-y-4">
                     {displayEducations.map((edu, index) => (
-                      <div key={`edu-${edu.id || index}`} className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                        <h3 className="font-semibold text-gray-900 mb-1">{edu.degree}</h3>
-                        <p className="text-sm text-blue-600 font-medium mb-1">{edu.school}</p>
+                      <div
+                        key={`edu-${edu.id || index}`}
+                        className="p-4 bg-blue-50 rounded-lg border border-blue-100"
+                      >
+                        <h3 className="font-semibold text-gray-900 mb-1">
+                          {edu.degree}
+                        </h3>
+                        <p className="text-sm text-blue-600 font-medium mb-1">
+                          {edu.school}
+                        </p>
                         {edu.year && (
-                          <p className="text-xs text-gray-500">Năm {edu.year}</p>
+                          <p className="text-xs text-gray-500">
+                            Năm {edu.year}
+                          </p>
                         )}
                         {edu.description && (
                           <div className="text-sm text-gray-600 mt-2">

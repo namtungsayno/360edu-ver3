@@ -21,6 +21,7 @@ import { dayLabelVi } from "../../../helper/formatters";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { RichTextContent } from "../../../components/ui/RichTextEditor";
 import AuthContext from "../../../context/AuthContext";
 import { useToast } from "../../../hooks/use-toast";
 import PaymentQRModal from "../../../components/payment/PaymentQRModal";
@@ -508,15 +509,14 @@ export default function ClassDetail() {
                         4.9
                       </span>
                     </div>
-                    {(data.teacherBio || data.teacherDepartment) && (
+                    {data.teacherBio && (
+                      <div className="text-gray-600 text-sm mb-3 line-clamp-4">
+                        <RichTextContent content={data.teacherBio} />
+                      </div>
+                    )}
+                    {data.teacherDepartment && (
                       <p className="text-gray-600 text-sm mb-3">
-                        {data.teacherBio}
-                        {data.teacherDepartment && (
-                          <>
-                            <br />
-                            {data.teacherDepartment}
-                          </>
-                        )}
+                        {data.teacherDepartment}
                       </p>
                     )}
                     <div className="space-y-1 text-sm">

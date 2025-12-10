@@ -3,7 +3,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/use-toast";
-import { Calendar, CheckSquare, LogOut, BookOpen, Lock } from "lucide-react";
+import { Calendar, LogOut, BookOpen, Lock } from "lucide-react";
 
 const SidebarTeacher = () => {
   const location = useLocation();
@@ -49,17 +49,6 @@ const SidebarTeacher = () => {
           label: "Đổi mật khẩu",
           icon: Lock,
           href: "/home/teacher/security",
-        },
-      ],
-    },
-    {
-      section: "Điểm danh",
-      items: [
-        {
-          id: "attendance",
-          label: "Điểm danh",
-          icon: CheckSquare,
-          href: "/home/teacher/attendance",
         },
       ],
     },
