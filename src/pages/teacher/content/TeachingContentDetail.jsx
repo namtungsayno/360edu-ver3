@@ -16,6 +16,7 @@ import { Button } from "../../../components/ui/Button.jsx";
 import { useToast } from "../../../hooks/use-toast.js";
 import { courseService } from "../../../services/course/course.service.js";
 import { BackButton } from "../../../components/common/BackButton";
+import { stripHtmlTags } from "../../../utils/html-helpers.js";
 import LessonMaterialUpload from "../../../components/teacher/LessonMaterialUpload.jsx";
 
 export default function TeachingContentDetail() {
@@ -173,7 +174,7 @@ export default function TeachingContentDetail() {
                 </div>
                 {ch.description && (
                   <p className="text-[12px] text-[#45556c] mb-2">
-                    {ch.description}
+                    {stripHtmlTags(ch.description)}
                   </p>
                 )}
                 {Array.isArray(ch.lessons) && ch.lessons.length > 0 && (
@@ -198,7 +199,7 @@ export default function TeachingContentDetail() {
                               </span>
                               {ls.description && (
                                 <p className="text-[12px] text-[#45556c] truncate">
-                                  {ls.description}
+                                  {stripHtmlTags(ls.description)}
                                 </p>
                               )}
                             </div>

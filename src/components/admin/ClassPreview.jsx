@@ -19,6 +19,7 @@ import {
 import { Badge } from "../../components/ui/Badge";
 import { Card, CardContent } from "../../components/ui/Card";
 import { formatCurrency } from "../../helper/formatters";
+import { stripHtmlTags } from "../../utils/html-helpers";
 
 // Helper to convert day index to Vietnamese label
 const dayLabelVi = (dayOfWeek) => {
@@ -316,7 +317,7 @@ export default function ClassPreview({
                             </span>
                             {lesson.description && (
                               <p className="text-sm text-gray-500 mt-1">
-                                {lesson.description}
+                                {stripHtmlTags(lesson.description)}
                               </p>
                             )}
                           </div>

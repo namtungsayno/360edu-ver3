@@ -20,6 +20,7 @@ import {
 import { courseService } from "../../../services/course/course.service.js";
 import { classService } from "../../../services/class/class.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
+import { stripHtmlTags } from "../../../utils/html-helpers.js";
 import {
   DetailPageWrapper,
   DetailHeader,
@@ -362,7 +363,7 @@ function ChapterItem({ chapter, index }) {
             </h4>
             {chapter.description && (
               <p className="text-sm text-gray-600 mt-0.5 line-clamp-1">
-                {chapter.description}
+                {stripHtmlTags(chapter.description)}
               </p>
             )}
           </div>
@@ -406,7 +407,7 @@ function ChapterItem({ chapter, index }) {
                     </p>
                     {lesson.description && (
                       <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">
-                        {lesson.description}
+                        {stripHtmlTags(lesson.description)}
                       </p>
                     )}
                   </div>

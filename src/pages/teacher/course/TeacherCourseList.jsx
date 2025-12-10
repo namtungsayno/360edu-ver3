@@ -28,6 +28,7 @@ import {
 
 import { courseService } from "../../../services/course/course.service.js";
 import { classService } from "../../../services/class/class.service.js";
+import { stripHtmlTags } from "../../../utils/html-helpers.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import { useAuth } from "../../../hooks/useAuth.js";
 
@@ -372,12 +373,14 @@ export default function TeacherCourseList() {
             const hasSourceTag = String(course.description || "").includes(
               "[[SOURCE:"
             );
-            const cleanedDescription = String(course.description || "")
-              .replace(/\n?\[\[SOURCE:[^\]]+\]\]/, "")
-              .replace(/\n?\[\[OWNER:[^\]]+\]\]/, "")
-              .replace(/\n?\[\[CLASS_ID:[^\]]+\]\]/, "")
-              .replace(/\n?\[\[CLASS_NAME:[^\]]+\]\]/, "")
-              .trim();
+            const cleanedDescription = stripHtmlTags(
+              String(course.description || "")
+                .replace(/\n?\[\[SOURCE:[^\]]+\]\]/, "")
+                .replace(/\n?\[\[OWNER:[^\]]+\]\]/, "")
+                .replace(/\n?\[\[CLASS_ID:[^\]]+\]\]/, "")
+                .replace(/\n?\[\[CLASS_NAME:[^\]]+\]\]/, "")
+                .trim()
+            );
 
             // Try to identify linked class from known fields or tags
             const classIdFromField =
