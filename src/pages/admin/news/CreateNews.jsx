@@ -10,7 +10,6 @@ import { Input } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
 import { Badge } from "../../../components/ui/Badge";
 import { Label } from "../../../components/ui/Label";
-import { Textarea } from "../../../components/ui/Textarea";
 import {
   Plus,
   X,
@@ -284,14 +283,15 @@ export default function CreateNews() {
 
               <div className="space-y-2">
                 <Label htmlFor="newsExcerpt">Mô tả ngắn *</Label>
-                <Textarea
-                  id="newsExcerpt"
-                  placeholder="Nhập mô tả ngắn (hiển thị trong danh sách tin tức)..."
-                  rows={3}
+                <RichTextEditor
                   value={formData.excerpt}
-                  onChange={(e) =>
-                    setFormData({ ...formData, excerpt: e.target.value })
+                  onChange={(excerpt) =>
+                    setFormData({ ...formData, excerpt: excerpt })
                   }
+                  placeholder="Nhập mô tả ngắn (hiển thị trong danh sách tin tức)..."
+                  simple={true}
+                  minHeight="100px"
+                  maxHeight="150px"
                 />
               </div>
 

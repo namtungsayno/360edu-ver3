@@ -27,7 +27,10 @@ export default function NewsDetail() {
         const allNewsResponse = await newsService.getNews({ page: 0, size: 4 });
         const allNews = allNewsResponse.content || [];
         const related = allNews
-          .filter(n => n.id !== parseInt(id) && n.status?.toLowerCase() === 'published')
+          .filter(
+            (n) =>
+              n.id !== parseInt(id) && n.status?.toLowerCase() === "published"
+          )
           .slice(0, 3);
         setRelatedNews(related);
       } catch (error) {
@@ -43,12 +46,12 @@ export default function NewsDetail() {
   }, [id]);
 
   const formatDate = (dateString) => {
-    if (!dateString) return '';
+    if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
 
@@ -64,8 +67,10 @@ export default function NewsDetail() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Không tìm thấy tin tức</h2>
-          <Button onClick={() => navigate('/news')}>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Không tìm thấy tin tức
+          </h2>
+          <Button onClick={() => navigate("/news")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Quay lại danh sách
           </Button>
@@ -74,9 +79,15 @@ export default function NewsDetail() {
     );
   }
 
-  const tags = typeof news.tags === 'string' 
-    ? news.tags.split(',').map(t => t.trim()).filter(Boolean)
-    : (Array.isArray(news.tags) ? news.tags : []);
+  const tags =
+    typeof news.tags === "string"
+      ? news.tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
+      : Array.isArray(news.tags)
+      ? news.tags
+      : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -85,50 +96,56 @@ export default function NewsDetail() {
         {/* Background Overlay */}
         {news.imageUrl && (
           <div className="absolute inset-0 opacity-20">
-            <img 
-              src={news.imageUrl} 
+            <img
+              src={news.imageUrl}
               alt={news.title}
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600" />
           </div>
         )}
-        
+
         <div className="relative container mx-auto px-4 py-12">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="text-white hover:bg-white/20 mb-6"
-            onClick={() => navigate('/home/news')}
+            onClick={() => navigate("/home/news")}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Quay lại danh sách
           </Button>
-          
+
           {/* Tags */}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {tags.map((tag, index) => (
-                <Badge key={index} className="bg-white/20 backdrop-blur-sm text-white border-white/30">
+                <Badge
+                  key={index}
+                  className="bg-white/20 backdrop-blur-sm text-white border-white/30"
+                >
                   <Tag className="w-3 h-3 mr-1" />
                   {tag}
                 </Badge>
               ))}
             </div>
           )}
-          
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">{news.title}</h1>
-          
+
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+            {news.title}
+          </h1>
+
           {/* Excerpt */}
           {news.excerpt && (
-            <p className="text-xl text-white/90 mb-6 max-w-4xl leading-relaxed">
-              {news.excerpt}
-            </p>
+            <div
+              className="text-xl text-white/90 mb-6 max-w-4xl leading-relaxed rich-text-content"
+              dangerouslySetInnerHTML={{ __html: news.excerpt }}
+            />
           )}
-          
+
           <div className="flex flex-wrap items-center gap-6 text-white/90">
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
               <User className="w-4 h-4" />
-              <span className="font-medium">{news.author || 'Admin'}</span>
+              <span className="font-medium">{news.author || "Admin"}</span>
             </div>
             <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
               <Calendar className="w-4 h-4" />
@@ -147,8 +164,8 @@ export default function NewsDetail() {
               {/* Featured Image */}
               {news.imageUrl && (
                 <div className="relative h-[500px] overflow-hidden">
-                  <img 
-                    src={news.imageUrl} 
+                  <img
+                    src={news.imageUrl}
                     alt={news.title}
                     className="w-full h-full object-cover"
                   />
@@ -161,7 +178,12 @@ export default function NewsDetail() {
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      <span>Tác giả: <span className="font-semibold text-gray-900">{news.author || 'Admin'}</span></span>
+                      <span>
+                        Tác giả:{" "}
+                        <span className="font-semibold text-gray-900">
+                          {news.author || "Admin"}
+                        </span>
+                      </span>
                     </div>
                   </div>
                   <div className="text-sm text-gray-600">
@@ -172,7 +194,7 @@ export default function NewsDetail() {
 
                 {/* Main Content with better typography */}
                 <article className="prose prose-lg max-w-none">
-                  <div 
+                  <div
                     className="text-gray-800 leading-relaxed rich-text-content"
                     dangerouslySetInnerHTML={{ __html: news.content }}
                   />
@@ -182,10 +204,16 @@ export default function NewsDetail() {
                 <div className="mt-12 pt-8 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Chia sẻ bài viết</h4>
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                        Chia sẻ bài viết
+                      </h4>
                       <div className="flex gap-2">
                         {tags.slice(0, 3).map((tag, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
+                          <Badge
+                            key={index}
+                            variant="outline"
+                            className="text-xs"
+                          >
                             {tag}
                           </Badge>
                         ))}
@@ -198,10 +226,7 @@ export default function NewsDetail() {
 
             {/* Navigation to other articles */}
             <div className="mt-8 flex justify-between">
-              <Button 
-                variant="outline"
-                onClick={() => navigate('/home/news')}
-              >
+              <Button variant="outline" onClick={() => navigate("/home/news")}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Xem tất cả tin tức
               </Button>
@@ -221,14 +246,18 @@ export default function NewsDetail() {
                   <User className="w-4 h-4 text-gray-500 mt-0.5" />
                   <div>
                     <p className="text-gray-500 text-xs">Tác giả</p>
-                    <p className="font-semibold text-gray-900">{news.author || 'Admin'}</p>
+                    <p className="font-semibold text-gray-900">
+                      {news.author || "Admin"}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 pb-3 border-b">
                   <Calendar className="w-4 h-4 text-gray-500 mt-0.5" />
                   <div>
                     <p className="text-gray-500 text-xs">Ngày đăng</p>
-                    <p className="font-semibold text-gray-900">{formatDate(news.publishedAt || news.createdAt)}</p>
+                    <p className="font-semibold text-gray-900">
+                      {formatDate(news.publishedAt || news.createdAt)}
+                    </p>
                   </div>
                 </div>
                 {news.updatedAt && news.updatedAt !== news.createdAt && (
@@ -236,7 +265,9 @@ export default function NewsDetail() {
                     <Calendar className="w-4 h-4 text-gray-500 mt-0.5" />
                     <div>
                       <p className="text-gray-500 text-xs">Cập nhật</p>
-                      <p className="font-semibold text-gray-900">{formatDate(news.updatedAt)}</p>
+                      <p className="font-semibold text-gray-900">
+                        {formatDate(news.updatedAt)}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -246,7 +277,9 @@ export default function NewsDetail() {
             {/* Related News */}
             {relatedNews.length > 0 && (
               <div className="bg-white rounded-lg shadow-lg p-6 sticky top-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Tin tức liên quan</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">
+                  Tin tức liên quan
+                </h3>
                 <div className="space-y-4">
                   {relatedNews.map((item) => (
                     <div

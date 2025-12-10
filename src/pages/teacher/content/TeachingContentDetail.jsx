@@ -2,13 +2,21 @@
 // content gốc của admin không thể chỉnh sửa.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { BookOpen, Layers, FileText, Loader2 } from "lucide-react";
+import {
+  BookOpen,
+  Layers,
+  FileText,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { useToast } from "../../../hooks/use-toast.js";
 import { courseService } from "../../../services/course/course.service.js";
 import { BackButton } from "../../../components/common/BackButton";
+import LessonMaterialUpload from "../../../components/teacher/LessonMaterialUpload.jsx";
 
 export default function TeachingContentDetail() {
   const { id } = useParams();
@@ -18,6 +26,16 @@ export default function TeachingContentDetail() {
   const [loading, setLoading] = useState(true);
   // No async clone here; we just navigate to edit under content
   const [course, setCourse] = useState(null);
+  // State để track bài học nào đang mở rộng hiển thị tài liệu
+  const [expandedLessons, setExpandedLessons] = useState({});
+
+  // Toggle mở rộng/thu gọn tài liệu của bài học
+  const toggleLessonExpand = (lessonId) => {
+    setExpandedLessons((prev) => ({
+      ...prev,
+      [lessonId]: !prev[lessonId],
+    }));
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -104,7 +122,10 @@ export default function TeachingContentDetail() {
       <Card className="rounded-xl border border-gray-200">
         <CardContent className="p-5">
           {course.description && (
-            <p className="text-sm text-[#45556c] mb-4">{course.description}</p>
+            <div
+              className="text-sm text-[#45556c] mb-4 rich-text-content"
+              dangerouslySetInnerHTML={{ __html: course.description }}
+            />
           )}
           <div className="flex gap-6">
             <div className="flex items-center gap-2">
@@ -160,20 +181,51 @@ export default function TeachingContentDetail() {
                     {ch.lessons.map((ls, j) => (
                       <div
                         key={ls.id || j}
-                        className="border border-gray-200 rounded-md p-3"
+                        className="border border-gray-200 rounded-md overflow-hidden"
                       >
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-6 h-6 rounded bg-purple-50 flex items-center justify-center">
-                            <FileText className="w-3 h-3 text-purple-600" />
+                        {/* Lesson Header - Click để mở rộng */}
+                        <div
+                          className="p-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => toggleLessonExpand(ls.id)}
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="w-6 h-6 rounded bg-purple-50 flex items-center justify-center flex-shrink-0">
+                              <FileText className="w-3 h-3 text-purple-600" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <span className="text-sm font-medium text-neutral-950 block truncate">
+                                {ls.title}
+                              </span>
+                              {ls.description && (
+                                <p className="text-[12px] text-[#45556c] truncate">
+                                  {ls.description}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <span className="text-sm font-medium text-neutral-950">
-                            {ls.title}
-                          </span>
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <span className="text-xs text-gray-400">
+                              {expandedLessons[ls.id]
+                                ? "Thu gọn"
+                                : "Xem tài liệu"}
+                            </span>
+                            {expandedLessons[ls.id] ? (
+                              <ChevronUp className="w-4 h-4 text-gray-400" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-gray-400" />
+                            )}
+                          </div>
                         </div>
-                        {ls.description && (
-                          <p className="text-[12px] text-[#45556c] whitespace-pre-line">
-                            {ls.description}
-                          </p>
+
+                        {/* Lesson Materials - Hiển thị khi mở rộng */}
+                        {expandedLessons[ls.id] && (
+                          <div className="border-t border-gray-200 p-3 bg-gray-50/50">
+                            <LessonMaterialUpload
+                              lessonId={ls.id}
+                              lessonTitle={ls.title}
+                              readOnly={true}
+                            />
+                          </div>
                         )}
                       </div>
                     ))}

@@ -301,9 +301,12 @@ export default function TeachingContent() {
                         {course.subjectName || ""}
                       </p>
                       {course.description && (
-                        <p className="text-sm text-[#45556c] line-clamp-2">
-                          {course.description}
-                        </p>
+                        <div
+                          className="text-sm text-[#45556c] line-clamp-2 rich-text-content"
+                          dangerouslySetInnerHTML={{
+                            __html: course.description,
+                          }}
+                        />
                       )}
                       <div
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${cfg.className}`}

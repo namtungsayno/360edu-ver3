@@ -683,9 +683,12 @@ export default function AdminCourseList() {
                         {course.subjectName || "Chưa có môn học"}
                       </p>
                       {course.description && (
-                        <p className="text-sm text-gray-600 line-clamp-3">
-                          {course.description}
-                        </p>
+                        <div
+                          className="text-sm text-gray-600 line-clamp-3 rich-text-content"
+                          dangerouslySetInnerHTML={{
+                            __html: course.description,
+                          }}
+                        />
                       )}
                     </div>
                   </div>

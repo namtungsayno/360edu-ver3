@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
-import { Textarea } from "../../../components/ui/Textarea";
+import RichTextEditor from "../../../components/ui/RichTextEditor";
 import {
   Select,
   SelectContent,
@@ -1219,13 +1219,14 @@ export default function ClassEditPage() {
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Mô tả
                     </label>
-                    <Textarea
-                      rows={2}
+                    <RichTextEditor
                       value={desc}
-                      onChange={(e) => setDesc(e.target.value)}
+                      onChange={setDesc}
                       placeholder="Mô tả về lớp..."
-                      className="resize-none text-sm"
-                      disabled={isPublic}
+                      simple={true}
+                      minHeight="120px"
+                      maxHeight="200px"
+                      readOnly={isPublic}
                     />
                   </div>
 
@@ -1261,26 +1262,6 @@ export default function ClassEditPage() {
                         Chỉnh sửa
                       </Button>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={cancelEditSchedule}
-                          className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
-                        >
-                          Hủy
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          onClick={doneEditSchedule}
-                          className="h-8 px-3 text-xs"
-                        >
-                          Xong
-                        </Button>
-                      </div>
-                    ))}
-                  {/* Lớp DRAFT: luôn có nút Hủy/Xong để quản lý thay đổi */}
-                  {isDraft && (
-                    <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
                         onClick={cancelEditSchedule}
@@ -1288,14 +1269,16 @@ export default function ClassEditPage() {
                       >
                         Hủy
                       </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={doneEditSchedule}
-                        className="h-8 px-3 text-xs"
-                      >
-                        Xong
-                      </Button>
-                    </div>
+                    ))}
+                  {/* Lớp DRAFT: có nút Hủy để quản lý thay đổi */}
+                  {isDraft && (
+                    <Button
+                      variant="outline"
+                      onClick={cancelEditSchedule}
+                      className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
+                    >
+                      Hủy
+                    </Button>
                   )}
                 </div>
 

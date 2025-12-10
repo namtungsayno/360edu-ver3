@@ -29,6 +29,7 @@ import {
 } from "../../../services/subject/subject.api";
 import { courseApi } from "../../../services/course/course.api";
 import { useToast } from "../../../hooks/use-toast";
+import { RichTextContent } from "../../../components/ui/RichTextEditor";
 import {
   DetailPageWrapper,
   DetailHeader,
@@ -412,6 +413,7 @@ export default function SubjectDetail() {
           <DetailField
             label="Mô tả"
             value={subject.description || "Chưa có mô tả"}
+            isHtml={true}
           />
         </DetailFieldGrid>
       </DetailSection>
@@ -481,11 +483,9 @@ export default function SubjectDetail() {
                           {statusInfo.label}
                         </Badge>
                       </div>
-                      <div 
+                      <RichTextContent
+                        content={course.description || "Không có mô tả"}
                         className="text-sm text-gray-500 mb-3 line-clamp-2"
-                        dangerouslySetInnerHTML={{ 
-                          __html: course.description || "Không có mô tả" 
-                        }}
                       />
                       <div className="flex items-center gap-4 text-sm text-gray-600">
                         <span className="flex items-center gap-1">

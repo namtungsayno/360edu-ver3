@@ -494,9 +494,10 @@ export default function NewsList() {
                               </h3>
                               {getStatusBadge(item.status, item.scheduledAt)}
                             </div>
-                            <p className="text-sm text-slate-600">
-                              {item.excerpt}
-                            </p>
+                            <div
+                              className="text-sm text-slate-600 rich-text-content"
+                              dangerouslySetInnerHTML={{ __html: item.excerpt }}
+                            />
                             <div className="flex flex-wrap gap-2 mt-2">
                               {(typeof item.tags === "string"
                                 ? item.tags
@@ -682,7 +683,10 @@ export default function NewsList() {
               </div>
               <span>Bởi: {selected.author}</span>
             </div>
-            <p className="text-slate-700">{selected.excerpt}</p>
+            <div
+              className="text-slate-700 rich-text-content"
+              dangerouslySetInnerHTML={{ __html: selected.excerpt }}
+            />
             <div className="prose max-w-none">
               <p className="whitespace-pre-line text-sm text-slate-800">
                 {selected.content}

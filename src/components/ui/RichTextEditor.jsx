@@ -167,9 +167,11 @@ export default RichTextEditor;
 
 // Export thêm component hiển thị nội dung HTML
 export function RichTextContent({ content, className = "" }) {
+  if (!content) return null;
+
   return (
     <div
-      className={`rich-text-content prose prose-sm max-w-none ${className}`}
+      className={`rich-text-content ${className}`}
       dangerouslySetInnerHTML={{ __html: content }}
     />
   );

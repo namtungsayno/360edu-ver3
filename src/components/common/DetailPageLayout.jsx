@@ -131,8 +131,15 @@ export function DetailSection({
  * @param {React.ReactNode} value - Giá trị
  * @param {React.ReactNode} icon - Icon (optional)
  * @param {string} className - Class bổ sung
+ * @param {boolean} isHtml - Nếu true, render value như HTML (dùng cho rich text content)
  */
-export function DetailField({ label, value, icon: Icon, className = "" }) {
+export function DetailField({
+  label,
+  value,
+  icon: Icon,
+  className = "",
+  isHtml = false,
+}) {
   const displayValue = value ?? "—";
   const isEmpty = value === null || value === undefined || value === "";
 
@@ -142,13 +149,20 @@ export function DetailField({ label, value, icon: Icon, className = "" }) {
         {Icon && <Icon className="w-3.5 h-3.5" />}
         {label}
       </dt>
-      <dd
-        className={`text-sm font-medium ${
-          isEmpty ? "text-gray-400" : "text-gray-900"
-        }`}
-      >
-        {displayValue}
-      </dd>
+      {isHtml && !isEmpty ? (
+        <dd
+          className="text-sm font-medium text-gray-900 rich-text-content"
+          dangerouslySetInnerHTML={{ __html: displayValue }}
+        />
+      ) : (
+        <dd
+          className={`text-sm font-medium ${
+            isEmpty ? "text-gray-400" : "text-gray-900"
+          }`}
+        >
+          {displayValue}
+        </dd>
+      )}
     </div>
   );
 }

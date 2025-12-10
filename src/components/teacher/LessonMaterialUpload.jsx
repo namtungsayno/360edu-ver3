@@ -34,7 +34,11 @@ const FILE_ICONS = {
   link: Link,
 };
 
-export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly = false }) {
+export default function LessonMaterialUpload({
+  lessonId,
+  lessonTitle,
+  readOnly = false,
+}) {
   const { success, error } = useToast();
   const fileInputRef = useRef(null);
 
@@ -52,7 +56,11 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
   const [uploadTab, setUploadTab] = useState("file");
 
   // Delete confirmation state
-  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, materialId: null, materialName: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    show: false,
+    materialId: null,
+    materialName: "",
+  });
 
   // Load materials khi component mount hoặc lessonId thay đổi
   useEffect(() => {
@@ -78,7 +86,7 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
     if (!files || files.length === 0 || readOnly) return;
 
     const file = files[0];
-    
+
     // Validate file size (max 50MB)
     if (file.size > 50 * 1024 * 1024) {
       error("File quá lớn. Kích thước tối đa là 50MB");
@@ -88,13 +96,12 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
     try {
       setUploading(true);
       setUploadProgress(30);
-      
+
       const result = await lessonMaterialService.uploadMaterial(lessonId, file);
       setUploadProgress(100);
-      
-      setMaterials(prev => [result, ...prev]);
-      success("Upload tài liệu thành công!");
 
+      setMaterials((prev) => [result, ...prev]);
+      success("Upload tài liệu thành công!");
     } catch (e) {
       console.error("Upload error:", e);
       error("Không thể upload tài liệu");
@@ -125,7 +132,7 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
     try {
       setAddingLink(true);
       const result = await lessonMaterialService.addLink(lessonId, linkUrl);
-      setMaterials(prev => [result, ...prev]);
+      setMaterials((prev) => [result, ...prev]);
       setLinkUrl("");
       success("Thêm link thành công!");
     } catch (e) {
@@ -143,7 +150,7 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
 
   // Cancel delete
   function cancelDelete() {
-    setDeleteConfirm({ show: false, materialId: null, materialName: '' });
+    setDeleteConfirm({ show: false, materialId: null, materialName: "" });
   }
 
   // Confirm and execute delete
@@ -153,13 +160,13 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
 
     try {
       await lessonMaterialService.deleteMaterial(materialId);
-      setMaterials(prev => prev.filter(m => m.id !== materialId));
+      setMaterials((prev) => prev.filter((m) => m.id !== materialId));
       success("Đã xóa tài liệu");
     } catch (e) {
       console.error("Delete error:", e);
       error("Không thể xóa tài liệu");
     } finally {
-      setDeleteConfirm({ show: false, materialId: null, materialName: '' });
+      setDeleteConfirm({ show: false, materialId: null, materialName: "" });
     }
   }
 
@@ -181,7 +188,7 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
   }
 
   function formatFileSize(bytes) {
-    if (!bytes) return '';
+    if (!bytes) return "";
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -264,28 +271,35 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
                 onChange={(e) => handleFileSelect(e.target.files)}
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.jpg,.jpeg,.png,.gif,.mp4,.mp3"
               />
-              
+
               {uploading ? (
                 <div className="text-center py-2">
                   <Loader2 className="w-6 h-6 animate-spin text-purple-500 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Đang upload... {uploadProgress}%</p>
+                  <p className="text-sm text-gray-600">
+                    Đang upload... {uploadProgress}%
+                  </p>
                   <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                    <div 
+                    <div
                       className="bg-purple-500 h-1.5 rounded-full transition-all"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
                 </div>
               ) : (
-                <div 
+                <div
                   className="text-center py-2 cursor-pointer"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="w-6 h-6 text-purple-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-600">
-                    Kéo thả file hoặc <span className="text-purple-600 font-medium">chọn file</span>
+                    Kéo thả file hoặc{" "}
+                    <span className="text-purple-600 font-medium">
+                      chọn file
+                    </span>
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">PDF, Word, Excel, PowerPoint, ảnh, video (tối đa 50MB)</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    PDF, Word, Excel, PowerPoint, ảnh, video (tối đa 50MB)
+                  </p>
                 </div>
               )}
             </div>
@@ -328,19 +342,25 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
         ) : (
           materials.map((material) => {
             const IconComponent = getFileIcon(material.fileType);
-            const isLink = material.fileType === 'LINK';
-            
+            const isLink = material.fileType === "LINK";
+
             return (
               <div
                 key={material.id}
                 className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition group"
               >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  isLink ? 'bg-blue-100' : 'bg-purple-100'
-                }`}>
-                  <IconComponent className={`w-5 h-5 ${isLink ? 'text-blue-600' : 'text-purple-600'}`} />
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    isLink ? "bg-blue-100" : "bg-purple-100"
+                  }`}
+                >
+                  <IconComponent
+                    className={`w-5 h-5 ${
+                      isLink ? "text-blue-600" : "text-purple-600"
+                    }`}
+                  />
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
                     {material.fileName}
@@ -369,7 +389,9 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
                   </a>
                   {!readOnly && (
                     <button
-                      onClick={() => showDeleteConfirm(material.id, material.fileName)}
+                      onClick={() =>
+                        showDeleteConfirm(material.id, material.fileName)
+                      }
                       className="p-2 hover:bg-white rounded-lg transition"
                       title="Xóa"
                     >
@@ -393,7 +415,9 @@ export default function LessonMaterialUpload({ lessonId, lessonTitle, readOnly =
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">Xóa tài liệu?</h3>
-                <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
+                <p className="text-sm text-gray-500">
+                  Hành động này không thể hoàn tác
+                </p>
               </div>
             </div>
             <p className="text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg break-all">

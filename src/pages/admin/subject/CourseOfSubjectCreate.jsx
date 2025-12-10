@@ -8,7 +8,6 @@ import {
 } from "../../../components/ui/Card.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Input } from "../../../components/ui/Input.jsx";
-import { Textarea } from "../../../components/ui/Textarea.jsx";
 import RichTextEditor from "../../../components/ui/RichTextEditor";
 import {
   BookOpen,
@@ -302,17 +301,15 @@ export default function CourseOfSubjectCreate() {
                       <p className="text-sm font-medium text-neutral-950 mb-2">
                         Mô tả chương
                       </p>
-                      <Textarea
-                        rows={3}
-                        placeholder="Nhập mô tả cho chương (không bắt buộc)"
+                      <RichTextEditor
                         value={ch.description}
-                        onChange={(e) =>
-                          changeChapterField(
-                            chapterIndex,
-                            "description",
-                            e.target.value
-                          )
+                        onChange={(value) =>
+                          changeChapterField(chapterIndex, "description", value)
                         }
+                        placeholder="Nhập mô tả cho chương (không bắt buộc)"
+                        simple={true}
+                        minHeight="100px"
+                        maxHeight="180px"
                       />
                     </div>
 

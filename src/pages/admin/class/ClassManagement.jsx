@@ -530,9 +530,10 @@ function DetailPanel({
               <FileText className="w-4 h-4 text-gray-400" />
               Mô tả
             </h3>
-            <p className="text-sm text-gray-600 leading-relaxed p-4 bg-gray-50 rounded-xl whitespace-pre-line">
-              {cls.description}
-            </p>
+            <div
+              className="text-sm text-gray-600 leading-relaxed p-4 bg-gray-50 rounded-xl rich-text-content"
+              dangerouslySetInnerHTML={{ __html: cls.description }}
+            />
           </div>
         )}
 
