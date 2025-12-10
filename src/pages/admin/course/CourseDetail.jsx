@@ -254,6 +254,7 @@ export default function AdminCourseDetail() {
             label="Mô tả"
             value={course.description || "Chưa có mô tả"}
             className="md:col-span-2"
+            isHtml={true}
           />
         </DetailFieldGrid>
       </DetailSection>

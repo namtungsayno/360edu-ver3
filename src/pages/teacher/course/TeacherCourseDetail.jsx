@@ -20,7 +20,10 @@ import {
   User,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
+  Paperclip,
 } from "lucide-react";
+import LessonMaterialUpload from "../../../components/teacher/LessonMaterialUpload.jsx";
 import {
   DetailPageWrapper,
   DetailHeader,
@@ -77,6 +80,7 @@ export default function TeacherCourseDetail() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedChapters, setExpandedChapters] = useState({});
+  const [expandedLessons, setExpandedLessons] = useState({}); // Track expanded lessons for materials
 
   useEffect(() => {
     loadCourseDetail();
@@ -109,6 +113,14 @@ export default function TeacherCourseDetail() {
     setExpandedChapters((prev) => ({
       ...prev,
       [chapterId]: !prev[chapterId],
+    }));
+  }
+
+  // Toggle expand/collapse lesson materials
+  function toggleLessonMaterials(lessonId) {
+    setExpandedLessons((prev) => ({
+      ...prev,
+      [lessonId]: !prev[lessonId],
     }));
   }
 
@@ -182,9 +194,10 @@ export default function TeacherCourseDetail() {
       {/* Description */}
       {course.description && (
         <DetailSection title="Mô tả khóa học" icon={FileText}>
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-            {course.description}
-          </p>
+          <div
+            className="text-sm text-gray-700 leading-relaxed rich-text-content"
+            dangerouslySetInnerHTML={{ __html: course.description }}
+          />
         </DetailSection>
       )}
 
@@ -252,29 +265,59 @@ export default function TeacherCourseDetail() {
                   {/* Lessons */}
                   {isExpanded && lessonCount > 0 && (
                     <div className="bg-white divide-y divide-gray-100">
-                      {chapter.lessons.map((lesson, lessonIndex) => (
-                        <div
-                          key={lesson.id}
-                          className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-medium text-purple-600">
-                              {lessonIndex + 1}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {lesson.title}
-                            </p>
-                            {lesson.description && (
-                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                                {lesson.description}
-                              </p>
+                      {chapter.lessons.map((lesson, lessonIndex) => {
+                        const isMaterialsExpanded = expandedLessons[lesson.id];
+
+                        return (
+                          <div key={lesson.id} className="overflow-hidden">
+                            {/* Lesson Header - clickable to expand materials */}
+                            <div
+                              className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                              onClick={() => toggleLessonMaterials(lesson.id)}
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                                <span className="text-xs font-medium text-purple-600">
+                                  {lessonIndex + 1}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {lesson.title}
+                                </p>
+                                {lesson.description && (
+                                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
+                                    {lesson.description}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="text-xs text-gray-400 flex items-center gap-1">
+                                  <Paperclip className="w-3 h-3" />
+                                  {isMaterialsExpanded ? "Thu gọn" : "Tài liệu"}
+                                </span>
+                                {isMaterialsExpanded ? (
+                                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Lesson Materials - expanded view */}
+                            {isMaterialsExpanded && (
+                              <div className="px-4 pb-4 bg-gray-50/50 border-t border-gray-100">
+                                <div className="pt-3">
+                                  <LessonMaterialUpload
+                                    lessonId={lesson.id}
+                                    lessonTitle={lesson.title}
+                                    readOnly={true}
+                                  />
+                                </div>
+                              </div>
                             )}
                           </div>
-                          <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 

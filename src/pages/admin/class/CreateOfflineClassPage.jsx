@@ -8,7 +8,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
-import { Textarea } from "../../../components/ui/Textarea";
+import RichTextEditor from "../../../components/ui/RichTextEditor";
 import {
   Select,
   SelectContent,
@@ -829,12 +829,13 @@ export default function CreateOfflineClassPage() {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Mô tả
                   </label>
-                  <Textarea
-                    rows={2}
+                  <RichTextEditor
                     value={desc}
-                    onChange={(e) => setDesc(e.target.value)}
+                    onChange={setDesc}
                     placeholder="Mô tả về lớp..."
-                    className="resize-none text-sm"
+                    simple={true}
+                    minHeight="120px"
+                    maxHeight="200px"
                   />
                 </div>
 

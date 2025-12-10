@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../../../components/ui/Button.jsx";
 import {
   Calendar,
@@ -30,6 +30,7 @@ import {
 function TeacherSchedule() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { error: showError } = useToast();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [timeSlots, setTimeSlots] = useState([]);
@@ -65,11 +66,14 @@ function TeacherSchedule() {
       if (classDate <= today) {
         try {
           const dateStr = fmt(classDate, "yyyy-MM-dd");
-          const attendance = await attendanceService.getByClass(
+          const result = await attendanceService.getByClass(
             item.classId,
             dateStr,
             item.slotId
           );
+
+          // getByClass returns { sessionId, students }
+          const attendance = result.students || [];
 
           // Count statistics
           const stats = {
@@ -79,14 +83,19 @@ function TeacherSchedule() {
             total: attendance.length,
           };
 
-          map[`${item.classId}-${item.day}`] = {
-            isMarked: attendance.some((a) => a.status !== "-"),
+          // Đã điểm danh nếu có ít nhất 1 student có status khác "-"
+          const isMarked = attendance.some((a) => a.status !== "-");
+
+          map[`${item.classId}-${item.day}-${item.slotId}`] = {
+            isMarked,
             stats,
-            actualStudentCount: attendance.length, // Số sinh viên thực tế
+            actualStudentCount: attendance.length,
           };
         } catch {
           // Not yet marked or error
-          map[`${item.classId}-${item.day}`] = { isMarked: false };
+          map[`${item.classId}-${item.day}-${item.slotId}`] = {
+            isMarked: false,
+          };
         }
       }
     }
@@ -127,7 +136,7 @@ function TeacherSchedule() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, weekStart]);
+  }, [user, weekStart, location.key]);
 
   const scheduleLookup = useMemo(() => {
     // Filter schedule items by date range (same logic as admin)
@@ -217,7 +226,7 @@ function TeacherSchedule() {
     let totalStudents = 0;
 
     weekSchedule.forEach((item) => {
-      const key = `${item.classId}-${item.day}`;
+      const key = `${item.classId}-${item.day}-${item.slotId}`;
       const attendance = attendanceMap[key];
 
       if (attendance?.isMarked) {
@@ -242,7 +251,7 @@ function TeacherSchedule() {
 
   // Render event card cho calendar
   const renderScheduleEvent = (classData, dayId, slotId) => {
-    const key = `${classData.classId}-${classData.day}`;
+    const key = `${classData.classId}-${classData.day}-${classData.slotId}`;
     const attendance = attendanceMap[key];
     const isMarked = attendance?.isMarked || false;
 

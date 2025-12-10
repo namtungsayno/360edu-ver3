@@ -36,7 +36,7 @@ import { useToast } from "../../hooks/use-toast.js";
 
 // Helper format file size
 function formatFileSize(bytes) {
-  if (!bytes) return '';
+  if (!bytes) return "";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -45,9 +45,9 @@ function formatFileSize(bytes) {
 // Helper get file icon based on type
 function getFileIcon(fileType) {
   if (!fileType) return File;
-  if (fileType.startsWith('image/')) return FileImage;
-  if (fileType.startsWith('video/')) return FileVideo;
-  if (fileType === 'application/pdf') return FileText;
+  if (fileType.startsWith("image/")) return FileImage;
+  if (fileType.startsWith("video/")) return FileVideo;
+  if (fileType === "application/pdf") return FileText;
   return File;
 }
 
@@ -76,7 +76,7 @@ export default function StudentCourseDetail() {
   async function loadData() {
     try {
       setLoading(true);
-      
+
       // Load course detail
       const courseData = await courseService.getCourseDetail(id);
       setCourse(courseData);
@@ -89,15 +89,20 @@ export default function StudentCourseDetail() {
         });
         setExpandedChapters(expanded);
       }
-      
+
       // Nếu có classId, load sessions của lớp đó
       if (classId) {
         try {
-          const sessionsData = await enrollmentService.getClassSessions(classId);
+          const sessionsData = await enrollmentService.getClassSessions(
+            classId
+          );
           setSessions(sessionsData || []);
           // Mở session đầu tiên có nội dung
-          const sessionWithContent = sessionsData?.find(s => 
-            s.lessonContent || s.linkedChapters?.length > 0 || s.linkedLessons?.length > 0
+          const sessionWithContent = sessionsData?.find(
+            (s) =>
+              s.lessonContent ||
+              s.linkedChapters?.length > 0 ||
+              s.linkedLessons?.length > 0
           );
           if (sessionWithContent) {
             setExpandedSessions({ [sessionWithContent.sessionId]: true });
@@ -134,22 +139,27 @@ export default function StudentCourseDetail() {
 
   async function toggleLesson(lessonId) {
     const isCurrentlyExpanded = expandedLessons[lessonId];
-    
+
     setExpandedLessons((prev) => ({
       ...prev,
       [lessonId]: !prev[lessonId],
     }));
-    
+
     // Load materials nếu chưa load
     if (!isCurrentlyExpanded && !lessonMaterials[lessonId]) {
       try {
-        setLoadingMaterials(prev => ({ ...prev, [lessonId]: true }));
-        const materials = await lessonMaterialService.getMaterialsByLesson(lessonId);
-        setLessonMaterials(prev => ({ ...prev, [lessonId]: materials || [] }));
+        setLoadingMaterials((prev) => ({ ...prev, [lessonId]: true }));
+        const materials = await lessonMaterialService.getMaterialsByLesson(
+          lessonId
+        );
+        setLessonMaterials((prev) => ({
+          ...prev,
+          [lessonId]: materials || [],
+        }));
       } catch (e) {
         console.error("Load lesson materials error:", e);
       } finally {
-        setLoadingMaterials(prev => ({ ...prev, [lessonId]: false }));
+        setLoadingMaterials((prev) => ({ ...prev, [lessonId]: false }));
       }
     }
   }
@@ -181,8 +191,12 @@ export default function StudentCourseDetail() {
     : 0;
 
   // Đếm số buổi có nội dung
-  const sessionsWithContent = sessions.filter(s => 
-    s.lessonContent || s.linkedChapters?.length > 0 || s.linkedLessons?.length > 0 || s.materials?.length > 0
+  const sessionsWithContent = sessions.filter(
+    (s) =>
+      s.lessonContent ||
+      s.linkedChapters?.length > 0 ||
+      s.linkedLessons?.length > 0 ||
+      s.materials?.length > 0
   ).length;
 
   return (
@@ -232,9 +246,10 @@ export default function StudentCourseDetail() {
               <h3 className="text-sm font-semibold text-neutral-950 mb-2">
                 Mô tả khóa học
               </h3>
-              <p className="text-[13px] text-[#45556c] leading-relaxed">
-                {course.description}
-              </p>
+              <div
+                className="text-[13px] text-[#45556c] leading-relaxed rich-text-content"
+                dangerouslySetInnerHTML={{ __html: course.description }}
+              />
             </div>
           )}
 
@@ -245,7 +260,9 @@ export default function StudentCourseDetail() {
                 <Layers className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-[11px] text-blue-600 font-medium">Số chương</p>
+                <p className="text-[11px] text-blue-600 font-medium">
+                  Số chương
+                </p>
                 <p className="text-lg font-semibold text-neutral-950">
                   {course.chapters?.length || 0}
                 </p>
@@ -257,7 +274,9 @@ export default function StudentCourseDetail() {
                 <FileText className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-[11px] text-purple-600 font-medium">Số bài học</p>
+                <p className="text-[11px] text-purple-600 font-medium">
+                  Số bài học
+                </p>
                 <p className="text-lg font-semibold text-neutral-950">
                   {totalLessons}
                 </p>
@@ -269,7 +288,9 @@ export default function StudentCourseDetail() {
                 <User className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-[11px] text-green-600 font-medium">Giáo viên</p>
+                <p className="text-[11px] text-green-600 font-medium">
+                  Giáo viên
+                </p>
                 <p className="text-sm font-semibold text-neutral-950 truncate">
                   {course.ownerTeacherName || course.createdByName || "—"}
                 </p>
@@ -282,7 +303,9 @@ export default function StudentCourseDetail() {
                   <Calendar className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-[11px] text-amber-600 font-medium">Buổi có nội dung</p>
+                  <p className="text-[11px] text-amber-600 font-medium">
+                    Buổi có nội dung
+                  </p>
                   <p className="text-lg font-semibold text-neutral-950">
                     {sessionsWithContent}/{sessions.length}
                   </p>
@@ -393,7 +416,7 @@ export default function StudentCourseDetail() {
                             const isLessonExpanded = expandedLessons[lesson.id];
                             const materials = lessonMaterials[lesson.id] || [];
                             const isLoadingMat = loadingMaterials[lesson.id];
-                            
+
                             return (
                               <div key={lesson.id}>
                                 <div
@@ -424,7 +447,7 @@ export default function StudentCourseDetail() {
                                     )}
                                   </div>
                                 </div>
-                                
+
                                 {/* Lesson Materials */}
                                 {isLessonExpanded && (
                                   <div className="px-4 pb-4 bg-gray-50 border-t border-gray-100">
@@ -445,7 +468,9 @@ export default function StudentCourseDetail() {
                                           Tài liệu bài học ({materials.length}):
                                         </p>
                                         {materials.map((material) => {
-                                          const IconComponent = getFileIcon(material.fileType);
+                                          const IconComponent = getFileIcon(
+                                            material.fileType
+                                          );
                                           return (
                                             <a
                                               key={material.id}
@@ -462,11 +487,17 @@ export default function StudentCourseDetail() {
                                                   {material.fileName}
                                                 </p>
                                                 <div className="flex items-center gap-2 text-xs text-blue-700">
-                                                  <span>{formatFileSize(material.fileSize)}</span>
+                                                  <span>
+                                                    {formatFileSize(
+                                                      material.fileSize
+                                                    )}
+                                                  </span>
                                                   {material.description && (
                                                     <>
                                                       <span>•</span>
-                                                      <span className="truncate">{material.description}</span>
+                                                      <span className="truncate">
+                                                        {material.description}
+                                                      </span>
                                                     </>
                                                   )}
                                                 </div>
@@ -507,7 +538,8 @@ export default function StudentCourseDetail() {
               Lịch học theo buổi
             </CardTitle>
             <p className="text-[12px] text-[#62748e] mt-1">
-              Xem nội dung bài học và ghi chú của giáo viên cho từng buổi (slot nào, hôm nào)
+              Xem nội dung bài học và ghi chú của giáo viên cho từng buổi (slot
+              nào, hôm nào)
             </p>
           </CardHeader>
           <CardContent className="pt-6">
@@ -520,18 +552,24 @@ export default function StudentCourseDetail() {
               <div className="space-y-3">
                 {sessions.map((session, index) => {
                   const isExpanded = expandedSessions[session.sessionId];
-                  const hasContent = session.lessonContent || 
-                    (session.linkedChapters?.length > 0) || 
-                    (session.linkedLessons?.length > 0) ||
-                    (session.materials?.length > 0);
-                  
+                  const hasContent =
+                    session.lessonContent ||
+                    session.linkedChapters?.length > 0 ||
+                    session.linkedLessons?.length > 0 ||
+                    session.materials?.length > 0;
+
                   const STATUS_COLORS = {
                     PRESENT: "bg-green-100 text-green-700 border-green-300",
                     ABSENT: "bg-red-100 text-red-700 border-red-300",
                     LATE: "bg-amber-100 text-amber-700 border-amber-300",
                     UNMARKED: "bg-gray-100 text-gray-600 border-gray-300",
                   };
-                  const STATUS_LABELS = { PRESENT: "Có mặt", ABSENT: "Vắng", LATE: "Đi trễ", UNMARKED: "Chưa điểm danh" };
+                  const STATUS_LABELS = {
+                    PRESENT: "Có mặt",
+                    ABSENT: "Vắng",
+                    LATE: "Đi trễ",
+                    UNMARKED: "Chưa điểm danh",
+                  };
 
                   return (
                     <div
@@ -543,46 +581,69 @@ export default function StudentCourseDetail() {
                       {/* Session Header */}
                       <div
                         className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${
-                          hasContent 
-                            ? "bg-blue-50 hover:bg-blue-100" 
+                          hasContent
+                            ? "bg-blue-50 hover:bg-blue-100"
                             : "bg-gray-50 hover:bg-gray-100"
                         }`}
                         onClick={() => toggleSession(session.sessionId)}
                       >
                         <div className="flex items-center gap-4 flex-1">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                            hasContent ? "bg-blue-100" : "bg-gray-200"
-                          }`}>
-                            <span className={`text-sm font-bold ${hasContent ? "text-blue-600" : "text-gray-500"}`}>
+                          <div
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                              hasContent ? "bg-blue-100" : "bg-gray-200"
+                            }`}
+                          >
+                            <span
+                              className={`text-sm font-bold ${
+                                hasContent ? "text-blue-600" : "text-gray-500"
+                              }`}
+                            >
                               {index + 1}
                             </span>
                           </div>
-                          
+
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-sm text-neutral-950">
-                                {new Date(session.date).toLocaleDateString('vi-VN', { 
-                                  weekday: 'long', 
-                                  day: '2-digit', 
-                                  month: '2-digit', 
-                                  year: 'numeric' 
-                                })}
+                                {new Date(session.date).toLocaleDateString(
+                                  "vi-VN",
+                                  {
+                                    weekday: "long",
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  }
+                                )}
                               </span>
                               <Badge variant="outline" className="text-[10px]">
                                 <Clock className="w-3 h-3 mr-1" />
-                                {session.timeStart?.slice(0,5)} - {session.timeEnd?.slice(0,5)}
+                                {session.timeStart?.slice(0, 5)} -{" "}
+                                {session.timeEnd?.slice(0, 5)}
                               </Badge>
                               {session.roomName && (
-                                <Badge variant="outline" className="text-[10px]">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px]"
+                                >
                                   <MapPin className="w-3 h-3 mr-1" />
                                   {session.roomName}
                                 </Badge>
                               )}
                             </div>
-                            
+
                             <div className="flex items-center gap-2 mt-1">
-                              <Badge className={`text-[10px] border ${STATUS_COLORS[session.attendanceStatus || "UNMARKED"]}`}>
-                                {STATUS_LABELS[session.attendanceStatus || "UNMARKED"]}
+                              <Badge
+                                className={`text-[10px] border ${
+                                  STATUS_COLORS[
+                                    session.attendanceStatus || "UNMARKED"
+                                  ]
+                                }`}
+                              >
+                                {
+                                  STATUS_LABELS[
+                                    session.attendanceStatus || "UNMARKED"
+                                  ]
+                                }
                               </Badge>
                               {hasContent && (
                                 <span className="text-[11px] text-blue-600 font-medium flex items-center gap-1">
@@ -593,7 +654,7 @@ export default function StudentCourseDetail() {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="ml-3">
                           {isExpanded ? (
                             <ChevronDown className="w-5 h-5 text-[#62748e]" />
@@ -615,10 +676,17 @@ export default function StudentCourseDetail() {
                               </p>
                               <div className="space-y-2">
                                 {session.linkedChapters.map((chapter) => (
-                                  <div key={chapter.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <div className="font-semibold text-blue-900">{chapter.title}</div>
+                                  <div
+                                    key={chapter.id}
+                                    className="bg-blue-50 border border-blue-200 rounded-lg p-3"
+                                  >
+                                    <div className="font-semibold text-blue-900">
+                                      {chapter.title}
+                                    </div>
                                     {chapter.description && (
-                                      <p className="text-sm text-blue-700 mt-1">{chapter.description}</p>
+                                      <p className="text-sm text-blue-700 mt-1">
+                                        {chapter.description}
+                                      </p>
                                     )}
                                   </div>
                                 ))}
@@ -635,15 +703,22 @@ export default function StudentCourseDetail() {
                               </p>
                               <div className="space-y-2">
                                 {session.linkedLessons.map((lesson) => (
-                                  <div key={lesson.id} className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                                  <div
+                                    key={lesson.id}
+                                    className="bg-purple-50 border border-purple-200 rounded-lg p-3"
+                                  >
                                     {lesson.chapterTitle && (
                                       <div className="text-xs text-purple-600 mb-1">
                                         Thuộc chương: {lesson.chapterTitle}
                                       </div>
                                     )}
-                                    <div className="font-semibold text-purple-900">{lesson.title}</div>
+                                    <div className="font-semibold text-purple-900">
+                                      {lesson.title}
+                                    </div>
                                     {lesson.description && (
-                                      <p className="text-sm text-purple-700 mt-1">{lesson.description}</p>
+                                      <p className="text-sm text-purple-700 mt-1">
+                                        {lesson.description}
+                                      </p>
                                     )}
                                   </div>
                                 ))}
@@ -659,9 +734,11 @@ export default function StudentCourseDetail() {
                                 Ghi chú từ giáo viên:
                               </p>
                               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <div 
+                                <div
                                   className="prose prose-sm max-w-none text-green-900"
-                                  dangerouslySetInnerHTML={{ __html: session.lessonContent }}
+                                  dangerouslySetInnerHTML={{
+                                    __html: session.lessonContent,
+                                  }}
                                 />
                               </div>
                             </div>
@@ -676,7 +753,9 @@ export default function StudentCourseDetail() {
                               </p>
                               <div className="space-y-2">
                                 {session.materials.map((material) => {
-                                  const IconComponent = getFileIcon(material.fileType);
+                                  const IconComponent = getFileIcon(
+                                    material.fileType
+                                  );
                                   return (
                                     <a
                                       key={material.id}
@@ -693,11 +772,15 @@ export default function StudentCourseDetail() {
                                           {material.fileName}
                                         </p>
                                         <div className="flex items-center gap-2 text-xs text-amber-700">
-                                          <span>{formatFileSize(material.fileSize)}</span>
+                                          <span>
+                                            {formatFileSize(material.fileSize)}
+                                          </span>
                                           {material.description && (
                                             <>
                                               <span>•</span>
-                                              <span className="truncate">{material.description}</span>
+                                              <span className="truncate">
+                                                {material.description}
+                                              </span>
                                             </>
                                           )}
                                         </div>
@@ -714,7 +797,9 @@ export default function StudentCourseDetail() {
                           {!hasContent && (
                             <div className="text-center py-4 text-gray-400">
                               <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">Buổi học này chưa có nội dung</p>
+                              <p className="text-sm">
+                                Buổi học này chưa có nội dung
+                              </p>
                             </div>
                           )}
                         </div>

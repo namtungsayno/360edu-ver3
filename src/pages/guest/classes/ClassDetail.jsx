@@ -12,11 +12,16 @@ import {
 } from "lucide-react";
 import { classService } from "../../../services/class/class.service";
 import { enrollmentService } from "../../../services/enrollment/enrollment.service";
-import { buildScheduleIndex, hasConflict, buildIndexByFetchingDetails } from "../../../helper/schedule-conflicts";
+import {
+  buildScheduleIndex,
+  hasConflict,
+  buildIndexByFetchingDetails,
+} from "../../../helper/schedule-conflicts";
 import { dayLabelVi } from "../../../helper/formatters";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
+import { RichTextContent } from "../../../components/ui/RichTextEditor";
 import AuthContext from "../../../context/AuthContext";
 import { useToast } from "../../../hooks/use-toast";
 import PaymentQRModal from "../../../components/payment/PaymentQRModal";
@@ -64,7 +69,8 @@ export default function ClassDetail() {
     const parseLocalDate = (dateStr) => {
       if (!dateStr) return null;
       const parts = String(dateStr).split("-").map(Number);
-      if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(dateStr);
+      if (parts.length !== 3 || parts.some(Number.isNaN))
+        return new Date(dateStr);
       const [y, m, d] = parts;
       return new Date(y, m - 1, d);
     };
@@ -100,10 +106,15 @@ export default function ClassDetail() {
       console.log("🟦 [Enroll] Start enroll flow for class:", classId);
       // 1. Load current enrolled classes (may not include schedule data)
       const myClasses = await enrollmentService.listMyClasses();
-      console.log("🟦 [Enroll] My classes count:", Array.isArray(myClasses) ? myClasses.length : 0);
+      console.log(
+        "🟦 [Enroll] My classes count:",
+        Array.isArray(myClasses) ? myClasses.length : 0
+      );
 
       // 1.1 Already enrolled check
-      const already = (myClasses || []).some((c) => (c.classId || c.id) === classId);
+      const already = (myClasses || []).some(
+        (c) => (c.classId || c.id) === classId
+      );
       if (already) {
         console.warn("🟧 [Enroll] Already enrolled in this class:", classId);
         setIsEnrolled(true);
@@ -114,17 +125,31 @@ export default function ClassDetail() {
       // 2. Build index: if schedule missing, fetch details per class
       let scheduleIndex = buildScheduleIndex(myClasses || []);
       const hasAnySchedule = scheduleIndex.length > 0;
-      console.log("🟦 [Enroll] Schedule index from list size:", scheduleIndex.length);
+      console.log(
+        "🟦 [Enroll] Schedule index from list size:",
+        scheduleIndex.length
+      );
       if (!hasAnySchedule) {
-        console.log("🟨 [Enroll] No schedules on list API. Fetching class details to build index...");
-        scheduleIndex = await buildIndexByFetchingDetails(myClasses || [], classService.getById);
-        console.log("🟦 [Enroll] Schedule index from details size:", scheduleIndex.length);
+        console.log(
+          "🟨 [Enroll] No schedules on list API. Fetching class details to build index..."
+        );
+        scheduleIndex = await buildIndexByFetchingDetails(
+          myClasses || [],
+          classService.getById
+        );
+        console.log(
+          "🟦 [Enroll] Schedule index from details size:",
+          scheduleIndex.length
+        );
       }
       // 3. Check conflict
       const conflict = hasConflict(data, scheduleIndex);
       console.log("🟥 [Enroll] Conflict detected?", conflict);
       if (conflict) {
-        warning("Lịch học lớp này bị trùng với lớp bạn đã đăng ký.", "Trùng lịch");
+        warning(
+          "Lịch học lớp này bị trùng với lớp bạn đã đăng ký.",
+          "Trùng lịch"
+        );
         return;
       }
 
@@ -143,7 +168,11 @@ export default function ClassDetail() {
         e?.response?.data?.message || e?.message || "Đăng ký thất bại";
 
       // 402 Payment Required -> show QR payment modal
-      if (status === 402 || String(msg).toLowerCase().includes("payment required") || String(msg).toLowerCase().includes("thanh toán")) {
+      if (
+        status === 402 ||
+        String(msg).toLowerCase().includes("payment required") ||
+        String(msg).toLowerCase().includes("thanh toán")
+      ) {
         console.log("🟦 [Enroll] Payment required, showing QR modal");
         info("Vui lòng thanh toán để hoàn tất đăng ký", "Yêu cầu thanh toán");
         setShowPaymentModal(true);
@@ -160,7 +189,10 @@ export default function ClassDetail() {
             state: { from: `/home/classes/${classId}` },
           });
         }, 2000);
-      } else if (String(msg).toLowerCase().includes("already enrolled") || String(msg).toLowerCase().includes("đã đăng ký")) {
+      } else if (
+        String(msg).toLowerCase().includes("already enrolled") ||
+        String(msg).toLowerCase().includes("đã đăng ký")
+      ) {
         setIsEnrolled(true);
         info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
       } else {
@@ -216,7 +248,8 @@ export default function ClassDetail() {
   const parseLocalDate = (dateStr) => {
     if (!dateStr) return null;
     const parts = String(dateStr).split("-").map(Number);
-    if (parts.length !== 3 || parts.some(Number.isNaN)) return new Date(dateStr);
+    if (parts.length !== 3 || parts.some(Number.isNaN))
+      return new Date(dateStr);
     const [y, m, d] = parts;
     return new Date(y, m - 1, d);
   };
@@ -272,10 +305,14 @@ export default function ClassDetail() {
             {/* Description */}
             <Card>
               <CardContent className="p-6">
-                <p className="text-gray-700 leading-relaxed">
-                  {data.description ||
-                    "Khóa học Toán 10 học kỳ 1 bao gồm toán bổ trợ kiến thức cơ bản từ Đại số, Hình học phẳng và Lượng giác. Phương pháp giảng dạy kết hợp lý thuyết với thực hành; giúp học sinh nắm vững kiến thức và phát triển tư duy toán học."}
-                </p>
+                <div
+                  className="text-gray-700 leading-relaxed rich-text-content"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      data.description ||
+                      "Khóa học Toán 10 học kỳ 1 bao gồm toán bổ trợ kiến thức cơ bản từ Đại số, Hình học phẳng và Lượng giác. Phương pháp giảng dạy kết hợp lý thuyết với thực hành; giúp học sinh nắm vững kiến thức và phát triển tư duy toán học.",
+                  }}
+                />
               </CardContent>
             </Card>
 
@@ -296,7 +333,12 @@ export default function ClassDetail() {
                           const grouped = data.schedule.reduce((acc, s) => {
                             const day = s.dayOfWeek;
                             if (!acc[day]) acc[day] = [];
-                            acc[day].push(`${s.startTime?.slice(0, 5)} - ${s.endTime?.slice(0, 5)}`);
+                            acc[day].push(
+                              `${s.startTime?.slice(0, 5)} - ${s.endTime?.slice(
+                                0,
+                                5
+                              )}`
+                            );
                             return acc;
                           }, {});
                           // Sort by dayOfWeek and render
@@ -304,7 +346,8 @@ export default function ClassDetail() {
                             .sort((a, b) => Number(a) - Number(b))
                             .map((day) => (
                               <div key={day}>
-                                {dayLabelVi(Number(day))}: {grouped[day].join(", ")}
+                                {dayLabelVi(Number(day))}:{" "}
+                                {grouped[day].join(", ")}
                               </div>
                             ));
                         })()
@@ -323,52 +366,63 @@ export default function ClassDetail() {
                       {(() => {
                         // Tính ngày học đầu tiên từ startDate + schedule
                         if (!data.startDate) return "Chưa xác định";
-                        
+
                         const startDate = new Date(data.startDate);
-                        const schedules = Array.isArray(data.schedule) ? data.schedule : [];
-                        
+                        const schedules = Array.isArray(data.schedule)
+                          ? data.schedule
+                          : [];
+
                         if (schedules.length === 0) {
                           return data.startDate;
                         }
-                        
+
                         // dayOfWeek trong schedule: 2=Thứ 2, 3=Thứ 3, ..., 8=CN
                         // JS getDay(): 0=CN, 1=Thứ 2, ..., 6=Thứ 7
-                        const scheduleDays = schedules.map(s => s.dayOfWeek);
-                        
+                        const scheduleDays = schedules.map((s) => s.dayOfWeek);
+
                         // Tìm ngày học đầu tiên (trong 7 ngày kể từ startDate)
                         let firstClassDate = null;
                         let firstSlot = null;
-                        
+
                         for (let i = 0; i < 7; i++) {
                           const checkDate = new Date(startDate);
                           checkDate.setDate(startDate.getDate() + i);
                           const jsDay = checkDate.getDay(); // 0=CN, 1-6=T2-T7
                           const scheduleDay = jsDay === 0 ? 8 : jsDay + 1; // Convert to schedule format
-                          
+
                           if (scheduleDays.includes(scheduleDay)) {
                             firstClassDate = checkDate;
                             // Lấy slot đầu tiên của ngày này
                             const daySlots = schedules
-                              .filter(s => s.dayOfWeek === scheduleDay)
-                              .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+                              .filter((s) => s.dayOfWeek === scheduleDay)
+                              .sort((a, b) =>
+                                (a.startTime || "").localeCompare(
+                                  b.startTime || ""
+                                )
+                              );
                             firstSlot = daySlots[0];
                             break;
                           }
                         }
-                        
+
                         if (!firstClassDate) return data.startDate;
-                        
-                        const dateStr = firstClassDate.toLocaleDateString("vi-VN", {
-                          weekday: "long",
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric"
-                        });
-                        
-                        const timeStr = firstSlot?.startTime 
-                          ? ` • ${firstSlot.startTime.slice(0,5)} - ${firstSlot.endTime?.slice(0,5) || ""}`
+
+                        const dateStr = firstClassDate.toLocaleDateString(
+                          "vi-VN",
+                          {
+                            weekday: "long",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          }
+                        );
+
+                        const timeStr = firstSlot?.startTime
+                          ? ` • ${firstSlot.startTime.slice(0, 5)} - ${
+                              firstSlot.endTime?.slice(0, 5) || ""
+                            }`
                           : "";
-                        
+
                         return dateStr + timeStr;
                       })()}
                     </div>
@@ -435,8 +489,8 @@ export default function ClassDetail() {
                 </h2>
                 <div className="flex items-start gap-4">
                   {data.teacherAvatarUrl ? (
-                    <img 
-                      src={data.teacherAvatarUrl} 
+                    <img
+                      src={data.teacherAvatarUrl}
                       alt={data.teacherFullName}
                       className="w-20 h-20 rounded-full object-cover"
                     />
@@ -455,15 +509,14 @@ export default function ClassDetail() {
                         4.9
                       </span>
                     </div>
-                    {(data.teacherBio || data.teacherDepartment) && (
+                    {data.teacherBio && (
+                      <div className="text-gray-600 text-sm mb-3 line-clamp-4">
+                        <RichTextContent content={data.teacherBio} />
+                      </div>
+                    )}
+                    {data.teacherDepartment && (
                       <p className="text-gray-600 text-sm mb-3">
-                        {data.teacherBio}
-                        {data.teacherDepartment && (
-                          <>
-                            <br />
-                            {data.teacherDepartment}
-                          </>
-                        )}
+                        {data.teacherDepartment}
                       </p>
                     )}
                     <div className="space-y-1 text-sm">
@@ -498,13 +551,26 @@ export default function ClassDetail() {
                 <div className="space-y-4">
                   {data.courseLessons && data.courseLessons.length > 0 ? (
                     data.courseLessons.map((lesson, idx) => (
-                      <div key={lesson.id} className={`border-l-4 ${idx < 3 ? 'border-blue-600' : 'border-gray-300'} pl-4`}>
+                      <div
+                        key={lesson.id}
+                        className={`border-l-4 ${
+                          idx < 3 ? "border-blue-600" : "border-gray-300"
+                        } pl-4`}
+                      >
                         <div className="flex items-start gap-2">
-                          <CheckCircle className={`w-4 h-4 ${idx < 3 ? 'text-blue-600' : 'text-gray-400'} mt-0.5 flex-shrink-0`} />
+                          <CheckCircle
+                            className={`w-4 h-4 ${
+                              idx < 3 ? "text-blue-600" : "text-gray-400"
+                            } mt-0.5 flex-shrink-0`}
+                          />
                           <div>
-                            <span className="font-medium text-gray-900">{lesson.title}</span>
+                            <span className="font-medium text-gray-900">
+                              {lesson.title}
+                            </span>
                             {lesson.description && (
-                              <p className="text-sm text-gray-500 mt-1">{lesson.description}</p>
+                              <p className="text-sm text-gray-500 mt-1">
+                                {lesson.description}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -618,31 +684,40 @@ export default function ClassDetail() {
                   <div className="pt-4 border-t">
                     {/* Giá mỗi buổi */}
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-gray-600 text-sm">Giá mỗi buổi:</span>
+                      <span className="text-gray-600 text-sm">
+                        Giá mỗi buổi:
+                      </span>
                       <span className="text-gray-900 font-medium">
                         {data.pricePerSession
                           ? `${data.pricePerSession.toLocaleString()}đ`
                           : "Liên hệ"}
                       </span>
                     </div>
-                    
+
                     {/* Số buổi học */}
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-gray-600 text-sm">Số buổi học:</span>
+                      <span className="text-gray-600 text-sm">
+                        Số buổi học:
+                      </span>
                       <span className="text-gray-900 font-medium">
                         {data.totalSessions || data.sessionsGenerated || 0} buổi
                       </span>
                     </div>
-                    
+
                     {/* Tổng học phí = pricePerSession * totalSessions */}
                     <div className="flex items-center justify-between mb-4 pt-3 border-t border-dashed">
-                      <span className="text-gray-700 font-medium">Tổng học phí:</span>
+                      <span className="text-gray-700 font-medium">
+                        Tổng học phí:
+                      </span>
                       <span className="text-2xl font-bold text-blue-600">
                         {(() => {
                           const price = data.pricePerSession || 0;
-                          const sessions = data.totalSessions || data.sessionsGenerated || 0;
+                          const sessions =
+                            data.totalSessions || data.sessionsGenerated || 0;
                           const total = price * sessions;
-                          return total > 0 ? `${total.toLocaleString()}đ` : "Liên hệ";
+                          return total > 0
+                            ? `${total.toLocaleString()}đ`
+                            : "Liên hệ";
                         })()}
                       </span>
                     </div>

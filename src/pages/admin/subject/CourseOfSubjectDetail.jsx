@@ -317,9 +317,12 @@ export default function CourseOfSubjectDetail() {
                       {previewSource.title}
                     </h2>
                     {previewSource.description && (
-                      <p className="text-sm text-[#45556c] whitespace-pre-line">
-                        {previewSource.description}
-                      </p>
+                      <div
+                        className="text-sm text-[#45556c] rich-text-content"
+                        dangerouslySetInnerHTML={{
+                          __html: previewSource.description,
+                        }}
+                      />
                     )}
                     <div className="flex gap-4 mt-2">
                       <div className="flex items-center gap-2">
@@ -420,7 +423,10 @@ export default function CourseOfSubjectDetail() {
                     <RichTextEditor
                       value={editableCourse.description || ""}
                       onChange={(content) => {
-                        setEditableCourse((prev) => ({ ...prev, description: content }));
+                        setEditableCourse((prev) => ({
+                          ...prev,
+                          description: content,
+                        }));
                       }}
                       placeholder="Nhập mô tả khóa học"
                       simple

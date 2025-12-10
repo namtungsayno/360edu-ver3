@@ -146,10 +146,14 @@ export default function ClassPreview({
             {/* Description */}
             <Card>
               <CardContent className="p-6">
-                <p className="text-gray-700 leading-relaxed">
-                  {description ||
-                    "Mô tả lớp học sẽ hiển thị ở đây. Giáo viên có thể thêm mô tả chi tiết về nội dung và phương pháp giảng dạy."}
-                </p>
+                <div
+                  className="text-gray-700 leading-relaxed rich-text-content"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      description ||
+                      "Mô tả lớp học sẽ hiển thị ở đây. Giáo viên có thể thêm mô tả chi tiết về nội dung và phương pháp giảng dạy.",
+                  }}
+                />
               </CardContent>
             </Card>
 
