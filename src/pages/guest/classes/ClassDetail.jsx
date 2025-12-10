@@ -22,6 +22,7 @@ import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { RichTextContent } from "../../../components/ui/RichTextEditor";
+import { stripHtmlTags } from "../../../utils/html-helpers";
 import AuthContext from "../../../context/AuthContext";
 import { useToast } from "../../../hooks/use-toast";
 import PaymentQRModal from "../../../components/payment/PaymentQRModal";
@@ -569,7 +570,7 @@ export default function ClassDetail() {
                             </span>
                             {lesson.description && (
                               <p className="text-sm text-gray-500 mt-1">
-                                {lesson.description}
+                                {stripHtmlTags(lesson.description)}
                               </p>
                             )}
                           </div>

@@ -17,6 +17,7 @@ import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
 import { getImageUrl, PLACEHOLDER_IMAGE } from "../../../utils/image";
+import { stripHtmlTags } from "../../../utils/html-helpers";
 import useDebounce from "../../../hooks/useDebounce";
 
 export default function NewsList() {
@@ -257,8 +258,9 @@ export default function NewsList() {
                     </h2>
 
                     <p className="text-gray-600 text-lg mb-6 line-clamp-3">
-                      {featuredNews.excerpt ||
-                        featuredNews.content?.substring(0, 200) + "..."}
+                      {stripHtmlTags(
+                        featuredNews.excerpt || featuredNews.content
+                      )?.substring(0, 200) + "..."}
                     </p>
 
                     {(() => {
@@ -362,9 +364,10 @@ export default function NewsList() {
 
                       {/* Excerpt */}
                       <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-1">
-                        {item.excerpt ||
-                          item.content?.substring(0, 150) + "..." ||
-                          "Mô tả ngắn về tin tức này..."}
+                        {stripHtmlTags(item.excerpt || item.content)?.substring(
+                          0,
+                          150
+                        ) + "..." || "Mô tả ngắn về tin tức này..."}
                       </p>
 
                       {/* Read More Link */}

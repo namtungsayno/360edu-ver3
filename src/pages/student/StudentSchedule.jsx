@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { studentScheduleService } from "../../services/student-schedule/student-schedule.service.js";
 import { useToast } from "../../hooks/use-toast";
+import { stripHtmlTags } from "../../utils/html-helpers";
 import ModernWeekCalendar, {
   CalendarEventCard,
   CalendarStatusBadge,
@@ -477,7 +478,7 @@ function SessionDetailModal({ classData, onClose }) {
                         </div>
                         {chapter.description && (
                           <p className="text-sm text-blue-700 mt-1">
-                            {chapter.description}
+                            {stripHtmlTags(chapter.description)}
                           </p>
                         )}
                       </div>
@@ -507,7 +508,7 @@ function SessionDetailModal({ classData, onClose }) {
                       </div>
                       {lesson.description && (
                         <p className="text-sm text-purple-700 mt-1">
-                          {lesson.description}
+                          {stripHtmlTags(lesson.description)}
                         </p>
                       )}
                     </div>

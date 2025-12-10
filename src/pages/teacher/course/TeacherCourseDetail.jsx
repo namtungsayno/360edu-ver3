@@ -36,6 +36,7 @@ import {
 
 import { courseService } from "../../../services/course/course.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
+import { stripHtmlTags } from "../../../utils/html-helpers.js";
 
 function getStatusConfig(status) {
   const normalized = String(status || "").toUpperCase();
@@ -245,7 +246,7 @@ export default function TeacherCourseDetail() {
                         </h4>
                         {chapter.description && (
                           <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                            {chapter.description}
+                            {stripHtmlTags(chapter.description)}
                           </p>
                         )}
                       </div>
@@ -286,7 +287,7 @@ export default function TeacherCourseDetail() {
                                 </p>
                                 {lesson.description && (
                                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                                    {lesson.description}
+                                    {stripHtmlTags(lesson.description)}
                                   </p>
                                 )}
                               </div>

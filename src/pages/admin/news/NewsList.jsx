@@ -13,7 +13,6 @@ import {
   Search,
   Plus,
   Newspaper,
-  Eye,
   Edit,
   EyeOff,
   Calendar,
@@ -40,7 +39,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/Select";
-import Modal from "../../../components/ui/Modal";
 import { newsService } from "../../../services/news/news.service";
 import { useToast } from "../../../hooks/use-toast";
 import useDebounce from "../../../hooks/useDebounce";
@@ -49,8 +47,6 @@ export default function NewsList() {
   const navigate = useNavigate();
   const { success, error: showError } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -224,11 +220,6 @@ export default function NewsList() {
           </Badge>
         );
     }
-  };
-
-  const handleView = (item) => {
-    setSelected(item);
-    setIsPreviewOpen(true);
   };
 
   const handleToggleStatus = async (id) => {
@@ -602,20 +593,6 @@ export default function NewsList() {
                                   Về nháp
                                 </Button>
                               )}
-
-                              {/* Nút Xem trước */}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-gray-500 hover:text-gray-700"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleView(item);
-                                }}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Xem
-                              </Button>
                             </div>
                           </div>
                         </div>
@@ -660,50 +637,6 @@ export default function NewsList() {
           </div>
         </div>
       )}
-
-      {/* Preview Modal */}
-      <Modal
-        open={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        title={selected?.title}
-      >
-        {selected && (
-          <div className="space-y-4">
-            {selected.imageUrl && (
-              <img
-                src={selected.imageUrl}
-                alt={selected.title}
-                className="w-full h-64 object-cover rounded-lg"
-              />
-            )}
-            <div className="flex items-center gap-4 text-sm text-slate-600">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                <span>{selected.date}</span>
-              </div>
-              <span>Bởi: {selected.author}</span>
-            </div>
-            <div
-              className="text-slate-700 rich-text-content"
-              dangerouslySetInnerHTML={{ __html: selected.excerpt }}
-            />
-            <div className="prose max-w-none">
-              <p className="whitespace-pre-line text-sm text-slate-800">
-                {selected.content}
-              </p>
-            </div>
-            {selected.tags?.length ? (
-              <div className="flex flex-wrap gap-2 pt-2">
-                {selected.tags.map((t, i) => (
-                  <Badge key={i} variant="outline" className="text-xs">
-                    {t}
-                  </Badge>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

@@ -33,6 +33,7 @@ import { courseService } from "../../services/course/course.service.js";
 import { enrollmentService } from "../../services/enrollment/enrollment.service.js";
 import { lessonMaterialService } from "../../services/lesson-material/lesson-material.service.js";
 import { useToast } from "../../hooks/use-toast.js";
+import { stripHtmlTags } from "../../utils/html-helpers.js";
 
 // Helper format file size
 function formatFileSize(bytes) {
@@ -389,7 +390,7 @@ export default function StudentCourseDetail() {
                             </h4>
                             {chapter.description && (
                               <p className="text-[12px] text-[#62748e] mt-0.5 line-clamp-1">
-                                {chapter.description}
+                                {stripHtmlTags(chapter.description)}
                               </p>
                             )}
                           </div>
@@ -434,7 +435,7 @@ export default function StudentCourseDetail() {
                                     </p>
                                     {lesson.description && (
                                       <p className="text-[11px] text-[#62748e] mt-0.5 line-clamp-1">
-                                        {lesson.description}
+                                        {stripHtmlTags(lesson.description)}
                                       </p>
                                     )}
                                   </div>
@@ -685,7 +686,7 @@ export default function StudentCourseDetail() {
                                     </div>
                                     {chapter.description && (
                                       <p className="text-sm text-blue-700 mt-1">
-                                        {chapter.description}
+                                        {stripHtmlTags(chapter.description)}
                                       </p>
                                     )}
                                   </div>
@@ -717,7 +718,7 @@ export default function StudentCourseDetail() {
                                     </div>
                                     {lesson.description && (
                                       <p className="text-sm text-purple-700 mt-1">
-                                        {lesson.description}
+                                        {stripHtmlTags(lesson.description)}
                                       </p>
                                     )}
                                   </div>
