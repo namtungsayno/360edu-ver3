@@ -1280,7 +1280,7 @@ export default function ClassDetail() {
                                   : "text-gray-700"
                               }`}
                             >
-                              Khóa học từ Admin
+                              Khóa học từ môn
                             </span>
                             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full">
                               CHỈ XEM

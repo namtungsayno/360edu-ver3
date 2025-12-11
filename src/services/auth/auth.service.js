@@ -73,14 +73,14 @@ export const authService = {
     try {
       await authApi.logout();
     } catch (error) {
-      console.error('Logout API error:', error);
+      console.error("Logout API error:", error);
     } finally {
       // Clear all localStorage
       localStorage.clear();
-      
+
       // Clear all sessionStorage
       sessionStorage.clear();
-      
+
       // Clear all cookies
       document.cookie.split(";").forEach((c) => {
         document.cookie = c
@@ -105,6 +105,9 @@ export const authService = {
       parentFullName: d.parentName,
       parentEmail: d.parentEmail || null, // DTO cho phép null
       parentPhoneNumber: d.parentPhone,
+
+      // ----- Existing Parent (nếu liên kết với phụ huynh đã có trong hệ thống) -----
+      existingParentId: d.existingParentId || null,
     };
 
     return authApi.register(payload);
@@ -116,14 +119,14 @@ export const authService = {
     // This ensures we don't have stale user data when coming back
     localStorage.clear();
     sessionStorage.clear();
-    
+
     // Clear all cookies
     document.cookie.split(";").forEach((c) => {
       document.cookie = c
         .replace(/^ +/, "")
         .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
-    
+
     window.location.assign(authApi.getGoogleOAuthUrl(mode));
   },
 
@@ -132,14 +135,14 @@ export const authService = {
     // Clear all storage before redirecting to Google OAuth
     localStorage.clear();
     sessionStorage.clear();
-    
+
     // Clear all cookies
     document.cookie.split(";").forEach((c) => {
       document.cookie = c
         .replace(/^ +/, "")
         .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
-    
+
     window.location.assign(authApi.getGoogleOAuthUrl());
   },
 

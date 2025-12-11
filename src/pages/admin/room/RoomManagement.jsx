@@ -279,8 +279,17 @@ export default function ClassroomList() {
       collapseRow();
       fetchClassrooms();
       reloadCounts();
-    } catch {
-      toast?.error?.("Lưu thất bại");
+    } catch (err) {
+      // Check for duplicate room name error from BE
+      const errorMsg = err?.response?.data?.message || err?.message || "";
+      if (
+        errorMsg.includes("Phòng học đã tồn tại") ||
+        errorMsg.toLowerCase().includes("room name")
+      ) {
+        toast?.error?.("Phòng học đã tồn tại");
+      } else {
+        toast?.error?.("Lưu thất bại");
+      }
     } finally {
       setSaving(false);
     }
@@ -445,7 +454,7 @@ export default function ClassroomList() {
                 </h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                     Tên phòng <span className="text-red-500">*</span>
@@ -471,19 +480,6 @@ export default function ClassroomList() {
                     onChange={handleChange}
                     placeholder="VD: 40"
                     min="1"
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Mô tả
-                  </label>
-                  <input
-                    type="text"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="Mô tả ngắn..."
                     className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   />
                 </div>
@@ -526,16 +522,13 @@ export default function ClassroomList() {
           <div className="col-span-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             STT
           </div>
-          <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="col-span-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Tên phòng
           </div>
-          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Sức chứa
           </div>
-          <div className="col-span-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Mô tả
-          </div>
-          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
+          <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
             Trạng thái
           </div>
         </div>
@@ -592,7 +585,7 @@ export default function ClassroomList() {
                         {rowNum}
                       </span>
                     </div>
-                    <div className="col-span-3 flex items-center gap-3">
+                    <div className="col-span-5 flex items-center gap-3">
                       <div
                         className={`
                         p-2 rounded-xl transition-colors
@@ -613,19 +606,14 @@ export default function ClassroomList() {
                         {room.name}
                       </span>
                     </div>
-                    <div className="col-span-2 flex items-center">
+                    <div className="col-span-3 flex items-center">
                       <div className="flex items-center gap-1.5 text-gray-600">
                         <Users className="w-4 h-4 text-gray-400" />
                         <span>{room.capacity} người</span>
                       </div>
                     </div>
-                    <div className="col-span-4 flex items-center">
-                      <span className="text-gray-500 truncate">
-                        {room.description || "—"}
-                      </span>
-                    </div>
                     <div
-                      className="col-span-2 flex items-center justify-center"
+                      className="col-span-3 flex items-center justify-center"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center gap-2">
@@ -667,7 +655,7 @@ export default function ClassroomList() {
                                 Chế độ chỉnh sửa
                               </span>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                               <div>
                                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                   Tên phòng
@@ -690,18 +678,6 @@ export default function ClassroomList() {
                                   value={formData.capacity}
                                   onChange={handleChange}
                                   min="1"
-                                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                                  Mô tả
-                                </label>
-                                <input
-                                  type="text"
-                                  name="description"
-                                  value={formData.description}
-                                  onChange={handleChange}
                                   className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 />
                               </div>
