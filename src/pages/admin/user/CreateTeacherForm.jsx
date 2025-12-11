@@ -116,7 +116,9 @@ export default function CreateTeacherForm({
       onSuccess?.();
     } catch (err) {
       console.error(err);
-      error("Lưu thất bại. Vui lòng thử lại.");
+      // Hiển thị lỗi chi tiết từ backend nếu có
+      const errMsg = err?.response?.data?.message || err?.message || "Lưu thất bại. Vui lòng thử lại.";
+      error(errMsg);
     } finally {
       setSubmitting(false);
     }

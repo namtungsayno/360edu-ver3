@@ -14,11 +14,8 @@ import {
   ChevronDown,
   ChevronRight,
   EyeOff,
-  Calendar,
-  Clock,
 } from "lucide-react";
 import { courseService } from "../../../services/course/course.service.js";
-import { classService } from "../../../services/class/class.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import { stripHtmlTags } from "../../../utils/html-helpers.js";
 import {
@@ -74,8 +71,6 @@ export default function AdminCourseDetail() {
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [adminTitle, setAdminTitle] = useState(null);
-  const [className, setClassName] = useState(null);
 
   // load course
   useEffect(() => {
@@ -85,36 +80,6 @@ export default function AdminCourseDetail() {
       try {
         const data = await courseService.getCourseDetail(id);
         if (!ignore) setCourse(data);
-        // Enrich title parts
-        try {
-          const desc = String(data?.description || "");
-          const sm = desc.match(/\[\[SOURCE:([^\]]+)\]\]/);
-          if (sm && sm[1]) {
-            const sid = sm[1].trim();
-            if (sid) {
-              const src = await courseService.getCourseDetail(sid);
-              if (src?.title) setAdminTitle(src.title);
-            }
-          }
-        } catch (e) {
-          console.warn("[AdminCourseDetail] fetch SOURCE title failed:", e);
-        }
-
-        try {
-          const classId = data?.classId || data?.clazzId || data?.classID;
-          if (classId) {
-            const cls = await classService.getById(classId);
-            if (cls?.name) setClassName(cls.name);
-          } else if (id) {
-            const list = await classService.list({ courseId: id });
-            if (Array.isArray(list) && list.length > 0) {
-              const first = list[0];
-              if (first?.name) setClassName(first.name);
-            }
-          }
-        } catch (e) {
-          console.warn("[AdminCourseDetail] fetch class name failed:", e);
-        }
       } catch (e) {
         console.error("❌ Error loading course:", e);
         error("Không tải được thông tin khóa học");
@@ -148,13 +113,8 @@ export default function AdminCourseDetail() {
   const statusCfg = getStatusConfig(course.status);
   const StatusIcon = statusCfg.icon;
 
-  // Compose display title
-  const rawTitle = String(course.title || "");
-  const idx = rawTitle.indexOf(" - ");
-  const sliced = idx > -1 ? rawTitle.slice(0, idx) : rawTitle;
-  const displayTitle = className
-    ? `${adminTitle || sliced} - ${className}`
-    : adminTitle || sliced;
+  // Hiển thị đúng tiêu đề từ API (đã bao gồm tên class)
+  const displayTitle = course.title || "Khóa học";
 
   const handleHide = () => {
     setCourse((prev) => ({ ...prev, status: "ARCHIVED" }));
@@ -253,7 +213,7 @@ export default function AdminCourseDetail() {
           />
           <DetailField
             label="Mô tả"
-            value={course.description || "Chưa có mô tả"}
+            value={(course.description || "Chưa có mô tả").replace(/\[\[SOURCE:\d+\]\]/g, "").trim() || "Chưa có mô tả"}
             className="md:col-span-2"
             isHtml={true}
           />
@@ -279,39 +239,6 @@ export default function AdminCourseDetail() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      </DetailSection>
-
-      {/* Timeline */}
-      <DetailSection title="Lịch sử">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-              <Calendar className="w-4 h-4" />
-              Ngày tạo
-            </div>
-            <p className="font-medium text-gray-900">
-              {course.createdAt || "—"}
-            </p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-              <Clock className="w-4 h-4" />
-              Ngày gửi duyệt
-            </div>
-            <p className="font-medium text-gray-900">
-              {course.submittedAt || "—"}
-            </p>
-          </div>
-          <div className="bg-gray-50 rounded-xl p-4">
-            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-              <CheckCircle2 className="w-4 h-4" />
-              Ngày duyệt
-            </div>
-            <p className="font-medium text-gray-900">
-              {course.reviewedAt || "—"}
-            </p>
           </div>
         </div>
       </DetailSection>

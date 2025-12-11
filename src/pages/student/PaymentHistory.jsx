@@ -88,13 +88,10 @@ export default function PaymentHistory() {
 
   const formatDate = (dateString) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const d = new Date(dateString);
+    const datePart = d.toLocaleDateString("sv-SE");
+    const timePart = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    return `${datePart} ${timePart}`;
   };
 
   return (

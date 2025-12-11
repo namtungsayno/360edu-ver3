@@ -526,16 +526,13 @@ export default function ClassroomList() {
           <div className="col-span-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             STT
           </div>
-          <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="col-span-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Tên phòng
           </div>
-          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Sức chứa
           </div>
-          <div className="col-span-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Mô tả
-          </div>
-          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
+          <div className="col-span-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
             Trạng thái
           </div>
         </div>
@@ -592,7 +589,7 @@ export default function ClassroomList() {
                         {rowNum}
                       </span>
                     </div>
-                    <div className="col-span-3 flex items-center gap-3">
+                    <div className="col-span-5 flex items-center gap-3">
                       <div
                         className={`
                         p-2 rounded-xl transition-colors
@@ -613,19 +610,14 @@ export default function ClassroomList() {
                         {room.name}
                       </span>
                     </div>
-                    <div className="col-span-2 flex items-center">
+                    <div className="col-span-3 flex items-center">
                       <div className="flex items-center gap-1.5 text-gray-600">
                         <Users className="w-4 h-4 text-gray-400" />
                         <span>{room.capacity} người</span>
                       </div>
                     </div>
-                    <div className="col-span-4 flex items-center">
-                      <span className="text-gray-500 truncate">
-                        {room.description || "—"}
-                      </span>
-                    </div>
                     <div
-                      className="col-span-2 flex items-center justify-center"
+                      className="col-span-3 flex items-center justify-center"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center gap-2">
