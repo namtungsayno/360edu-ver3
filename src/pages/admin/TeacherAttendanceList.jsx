@@ -209,33 +209,14 @@ export default function TeacherAttendanceList() {
 
       {/* Search */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-        <div className="flex items-center gap-3">
-          <Select
-            value={String(size)}
-            onValueChange={(v) => {
-              setSize(Number(v));
-              setPage(0);
-            }}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="5">5 / trang</SelectItem>
-              <SelectItem value="10">10 / trang</SelectItem>
-              <SelectItem value="20">20 / trang</SelectItem>
-              <SelectItem value="50">50 / trang</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="Tìm kiếm theo tên, email, số điện thoại hoặc môn học..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 rounded-xl border-gray-200"
-            />
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Tìm kiếm theo tên, email, số điện thoại hoặc môn học..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 rounded-xl border-gray-200"
+          />
         </div>
       </div>
 
@@ -358,9 +339,28 @@ export default function TeacherAttendanceList() {
         {/* Pagination */}
         {totalPages > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-            <p className="text-sm text-gray-500">
-              Hiển thị {teachers.length} / {totalElements} giáo viên
-            </p>
+            <div className="flex items-center gap-4">
+              <Select
+                value={String(size)}
+                onValueChange={(v) => {
+                  setSize(Number(v));
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 / trang</SelectItem>
+                  <SelectItem value="10">10 / trang</SelectItem>
+                  <SelectItem value="20">20 / trang</SelectItem>
+                  <SelectItem value="50">50 / trang</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500">
+                Hiển thị {teachers.length} / {totalElements} giáo viên
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"

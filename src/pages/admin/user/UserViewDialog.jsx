@@ -14,7 +14,6 @@ export default function UserViewDialog({ user }) {
     <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-lg font-semibold">{user.fullName}</div>
           <div className="text-sm text-gray-500">{user.email}</div>
         </div>
         <Badge className={roleColor}>{user.role}</Badge>

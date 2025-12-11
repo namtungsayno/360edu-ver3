@@ -1,7 +1,6 @@
 // src/components/common/Footer.jsx
-import { Mail, Phone, MapPin, Facebook, Youtube, Linkedin } from "lucide-react";
-import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
+import { Mail, Phone, MapPin, Facebook, Youtube, Instagram } from "lucide-react";
+import { Link } from "react-router-dom";
 import Logo from "./Logo";
 
 export function Footer() {
@@ -25,22 +24,28 @@ export function Footer() {
             </p>
             <div className="flex gap-3">
               <a
-                href="#"
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
               >
                 <Facebook className="w-5 h-5" />
               </a>
               <a
-                href="#"
-                className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-red-600 transition-colors"
               >
                 <Youtube className="w-5 h-5" />
               </a>
               <a
-                href="#"
-                className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-pink-600 transition-colors"
               >
-                <Linkedin className="w-5 h-5" />
+                <Instagram className="w-5 h-5" />
               </a>
             </div>
           </div>
@@ -50,29 +55,24 @@ export function Footer() {
             <h4 className="text-white mb-4">Liên kết nhanh</h4>
             <ul className="space-y-3">
               <li>
-                <a href="#about" className="hover:text-blue-400 transition-colors">
-                  Giới thiệu
-                </a>
+                <Link to="/home" className="hover:text-blue-400 transition-colors">
+                  Trang chủ
+                </Link>
               </li>
               <li>
-                <a href="#courses" className="hover:text-blue-400 transition-colors">
-                  Khóa học
-                </a>
+                <Link to="/home/classes" className="hover:text-blue-400 transition-colors">
+                  Lớp học
+                </Link>
               </li>
               <li>
-                <a href="#teachers" className="hover:text-blue-400 transition-colors">
+                <Link to="/home/teachers" className="hover:text-blue-400 transition-colors">
                   Giáo viên
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#news" className="hover:text-blue-400 transition-colors">
+                <Link to="/home/news" className="hover:text-blue-400 transition-colors">
                   Tin tức
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-blue-400 transition-colors">
-                  Liên hệ
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -82,29 +82,29 @@ export function Footer() {
             <h4 className="text-white mb-4">Hỗ trợ</h4>
             <ul className="space-y-3">
               <li>
-                <a href="#" className="hover:text-blue-400 transition-colors">
+                <Link to="/home/faq" className="hover:text-blue-400 transition-colors">
                   Câu hỏi thường gặp
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-blue-400 transition-colors">
+                <Link to="/register" className="hover:text-blue-400 transition-colors">
                   Hướng dẫn đăng ký
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-blue-400 transition-colors">
+                <Link to="/home/payment-policy" className="hover:text-blue-400 transition-colors">
                   Chính sách thanh toán
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-blue-400 transition-colors">
+                <Link to="/home/terms" className="hover:text-blue-400 transition-colors">
                   Điều khoản sử dụng
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-blue-400 transition-colors">
+                <Link to="/home/privacy" className="hover:text-blue-400 transition-colors">
                   Chính sách bảo mật
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -115,32 +115,17 @@ export function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-blue-400 flex-shrink-0 mt-1" />
-                <span>123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh</span>
+                <span>Đại học FPT, Khu Công nghệ cao Hòa Lạc, Km 29, Đại lộ Thăng Long, Thạch Thất, Hà Nội</span>
               </li>
               <li className="flex items-start gap-3">
                 <Phone className="w-5 h-5 text-blue-400 flex-shrink-0 mt-1" />
-                <span>0123 456 789</span>
+                <span>024 7300 1866</span>
               </li>
               <li className="flex items-start gap-3">
                 <Mail className="w-5 h-5 text-blue-400 flex-shrink-0 mt-1" />
                 <span>contact@360edu.vn</span>
               </li>
             </ul>
-
-            {/* Newsletter */}
-            <div className="mt-6">
-              <p className="mb-3">Đăng ký nhận tin tức mới nhất</p>
-              <div className="flex gap-2">
-                <Input
-                  type="email"
-                  placeholder="Email của bạn"
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-                />
-                <Button className="bg-blue-600 hover:bg-blue-700 flex-shrink-0">
-                  Đăng ký
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -150,15 +135,15 @@ export function Footer() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-gray-400 text-center md:text-left">
-              © 2024 360edu Management System. All rights reserved.
+              © 2025 360edu Management System. All rights reserved.
             </p>
             <div className="flex gap-6">
-              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors">
+              <Link to="/home/terms" className="text-gray-400 hover:text-blue-400 transition-colors">
                 Điều khoản dịch vụ
-              </a>
-              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors">
+              </Link>
+              <Link to="/home/privacy" className="text-gray-400 hover:text-blue-400 transition-colors">
                 Chính sách bảo mật
-              </a>
+              </Link>
             </div>
           </div>
         </div>

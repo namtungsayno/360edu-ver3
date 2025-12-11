@@ -3,17 +3,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Users, GraduationCap, UserCog, Search } from "lucide-react";
 import { Input } from "../../components/ui/Input";
-import { Button } from "../../components/ui/Button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../components/ui/Dialog";
 import { useToast } from "../../hooks/use-toast";
 import { userService } from "../../services/user/user.service";
 import { teacherService } from "../../services/teacher/teacher.service";
-import UserViewDialog from "./user/UserViewDialog";
 // SidePanel removed (yêu cầu chuyển sang Modal)
 // import SidePanel from "../../components/ui/SidePanel";
 import useDebounce from "../../hooks/useDebounce";
@@ -58,17 +50,15 @@ export default function UserManagement() {
     PARENT: 0,
   });
 
-  // dialogs
-  const [selected, setSelected] = useState(null);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailMode, setDetailMode] = useState("view"); // view | edit
+
 
   // Load stats once
   useEffect(() => {
     (async () => {
       try {
         const arr = await userService.list();
-        const allUsers = Array.isArray(arr) ? arr : [];
+        // Filter out ADMIN users
+        const allUsers = (Array.isArray(arr) ? arr : []).filter((u) => u.role !== "ADMIN");
         const stu = allUsers.filter((u) => u.role === "STUDENT").length;
         const tea = allUsers.filter((u) => u.role === "TEACHER").length;
         const par = allUsers.filter((u) => u.role === "PARENT").length;
@@ -112,7 +102,8 @@ export default function UserManagement() {
 
       console.log("📊 BE Response:", response);
 
-      const content = response.content || [];
+      // Filter out ADMIN users from display
+      const content = (response.content || []).filter((u) => u.role !== "ADMIN");
       setUsers(content);
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
@@ -132,7 +123,8 @@ export default function UserManagement() {
   const reloadCounts = async () => {
     try {
       const arr = await userService.list();
-      const allUsers = Array.isArray(arr) ? arr : [];
+      // Filter out ADMIN users
+      const allUsers = (Array.isArray(arr) ? arr : []).filter((u) => u.role !== "ADMIN");
       const stu = allUsers.filter((u) => u.role === "STUDENT").length;
       const tea = allUsers.filter((u) => u.role === "TEACHER").length;
       const par = allUsers.filter((u) => u.role === "PARENT").length;
@@ -330,11 +322,6 @@ export default function UserManagement() {
             items={pageItems}
             loading={loading}
             onToggleStatus={handleToggleStatus}
-            onRowClick={(u) => {
-              setSelected(u);
-              setDetailMode("view");
-              setDetailOpen(true);
-            }}
           />
 
           {/* Pagination */}
@@ -348,68 +335,7 @@ export default function UserManagement() {
         </div>
       </div>
 
-      {/* Modal chi tiết / chỉnh sửa người dùng */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
-              {detailMode === "edit"
-                ? "Cập nhật người dùng"
-                : selected
-                ? selected.fullName || "Thông tin người dùng"
-                : "Thông tin người dùng"}
-            </DialogTitle>
-          </DialogHeader>
-          {detailMode === "view" && (
-            <div className="space-y-4">
-              <UserViewDialog user={selected} />
-              {selected && (
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    size="sm"
-                    onClick={() => setDetailMode("edit")}
-                    className="bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    Sửa
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => error("Chức năng xóa chưa được hỗ trợ")}
-                  >
-                    Xóa
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-          {detailMode === "edit" && (
-            <CreateTeacherForm
-              user={selected}
-              onClose={() => setDetailOpen(false)}
-              onSuccess={async () => {
-                success("Đã cập nhật người dùng");
-                fetchUsers();
-                reloadCounts();
-                setDetailMode("view");
-              }}
-            />
-          )}
-          {detailMode === "edit" && (
-            <div className="flex justify-end mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDetailMode("view")}
-              >
-                Hủy
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
-      {/* Modal tạo giáo viên đã được thay bằng trang riêng /home/admin/users/create-teacher */}
     </div>
   );
 }

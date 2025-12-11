@@ -2,6 +2,7 @@
 // Màn hình lịch học cho học sinh - Modern Calendar Design
 
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "../../components/ui/Card.jsx";
 import {
   Calendar,
@@ -383,6 +384,7 @@ function StudentClassCardModern({
 
 // Modal hiển thị chi tiết buổi học với nội dung bài học
 function SessionDetailModal({ classData, onClose }) {
+  const navigate = useNavigate();
   const STATUS_LABELS = {
     PRESENT: "Có mặt",
     ABSENT: "Vắng",
@@ -427,7 +429,7 @@ function SessionDetailModal({ classData, onClose }) {
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-blue-600" />
               <span className="font-medium">
-                {new Date(classData.date).toLocaleDateString("vi-VN")}
+                {new Date(classData.date).toLocaleDateString("sv-SE")}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm">
@@ -550,13 +552,20 @@ function SessionDetailModal({ classData, onClose }) {
           {/* Xem khóa học đầy đủ */}
           {classData.courseId && (
             <div className="border-t pt-4">
-              <a
-                href={`/home/courses/${classData.courseId}`}
+              <button
+                onClick={() => {
+                  onClose();
+                  const classId = classData.classId || classData.clazzId;
+                  const url = classId
+                    ? `/home/courses/${classData.courseId}?classId=${classId}`
+                    : `/home/courses/${classData.courseId}`;
+                  navigate(url);
+                }}
                 className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition"
               >
                 <BookOpen className="w-4 h-4" />
                 Xem toàn bộ khóa học
-              </a>
+              </button>
             </div>
           )}
         </div>

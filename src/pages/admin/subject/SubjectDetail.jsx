@@ -357,13 +357,13 @@ export default function SubjectDetail() {
         <DetailHighlightCard
           icon={Calendar}
           label="Ngày tạo"
-          value={new Date(subject.createdAt).toLocaleDateString("vi-VN")}
+          value={new Date(subject.createdAt).toLocaleDateString("sv-SE")}
           color="blue"
         />
         <DetailHighlightCard
           icon={Clock}
           label="Cập nhật"
-          value={new Date(subject.updatedAt).toLocaleDateString("vi-VN")}
+          value={new Date(subject.updatedAt).toLocaleDateString("sv-SE")}
           color="green"
         />
       </div>

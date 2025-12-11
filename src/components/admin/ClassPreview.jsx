@@ -12,9 +12,6 @@ import {
   CheckCircle,
   Video,
   Award,
-  Users,
-  DollarSign,
-  BookOpen,
 } from "lucide-react";
 import { Badge } from "../../components/ui/Badge";
 import { Card, CardContent } from "../../components/ui/Card";

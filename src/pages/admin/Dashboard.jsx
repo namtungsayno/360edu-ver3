@@ -1078,7 +1078,7 @@ export default function Dashboard() {
           id: n.id,
           title: n.title,
           date: n.createdAt
-            ? new Date(n.createdAt).toLocaleDateString("vi-VN")
+            ? new Date(n.createdAt).toLocaleDateString("sv-SE")
             : "N/A",
           status: n.status?.toLowerCase() || "draft",
         }))
