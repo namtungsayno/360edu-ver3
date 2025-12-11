@@ -1,6 +1,6 @@
 /**
  * API ENDPOINTS - Khai báo tất cả các endpoint của ứng dụng
- * Sử dụng: import { API_ENDPOINTS } from '@/constants/api.endpoints';
+ * Sử dụng: import { API_ENDPOINTS } from '@/config/api.endpoints';
  */
 
 export const API_ENDPOINTS = {
@@ -17,28 +17,28 @@ export const API_ENDPOINTS = {
   NEWS: {
     // Lấy danh sách tin tức (hỗ trợ pagination, search, filter)
     LIST: "/news",
-    
+
     // Lấy chi tiết 1 tin tức
     DETAIL: (id) => `/news/${id}`,
-    
+
     // Tạo tin tức mới
     CREATE: "/news",
-    
+
     // Cập nhật tin tức
     UPDATE: (id) => `/news/${id}`,
-    
+
     // Xóa tin tức
     DELETE: (id) => `/news/${id}`,
-    
+
     // Toggle trạng thái (published/hidden)
     TOGGLE_STATUS: (id) => `/news/${id}/toggle-status`,
-    
+
     // Cập nhật trạng thái
     UPDATE_STATUS: (id) => `/news/${id}/status`,
-    
+
     // Tăng lượt xem
     INCREMENT_VIEW: (id) => `/news/${id}/view`,
-    
+
     // Upload ảnh
     UPLOAD_IMAGE: "/news/upload-image",
   },
