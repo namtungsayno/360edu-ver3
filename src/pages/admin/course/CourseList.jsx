@@ -561,41 +561,19 @@ export default function AdminCourseList() {
             <label className="text-sm font-medium text-gray-600 mb-2 block">
               Môn học
             </label>
-            <Select
-              value={selectedSubjectId}
-              onValueChange={setSelectedSubjectId}
-            >
-              <SelectTrigger className="w-full h-11 rounded-xl">
-                <SelectValue placeholder="Lọc theo môn học" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Tất cả môn học</SelectItem>
-                {subjects.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Status filter */}
-          <div className="w-full lg:w-48">
-            <label className="text-sm font-medium text-gray-600 mb-2 block">
-              Trạng thái
-            </label>
             <div className="flex items-center gap-2">
               <Select
-                value={statusFilter}
-                onValueChange={(value) => setStatusFilter(value)}
+                value={selectedSubjectId}
+                onValueChange={setSelectedSubjectId}
               >
                 <SelectTrigger className="w-full h-11 rounded-xl">
-                  <SelectValue placeholder="Lọc theo trạng thái" />
+                  <SelectValue placeholder="Lọc theo môn học" />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_FILTER_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                  <SelectItem value="ALL">Tất cả môn học</SelectItem>
+                  {subjects.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -724,7 +702,9 @@ export default function AdminCourseList() {
                       <div>
                         <p className="text-xs text-gray-500">Ngày tạo</p>
                         <p className="text-sm text-gray-900">
-                          {course.createdAt || "—"}
+                          {course.createdAt
+                            ? new Date(course.createdAt).toLocaleDateString("sv-SE")
+                            : "—"}
                         </p>
                       </div>
                     </div>

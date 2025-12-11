@@ -201,11 +201,27 @@ function ClassListItem({ cls, isSelected, onClick }) {
                 const daysLeft = Math.ceil(
                   (startDate - today) / (1000 * 60 * 60 * 24)
                 );
-                if (daysLeft >= 0 && daysLeft <= 3) {
+                if (daysLeft < 0) {
+                  // Đã quá ngày bắt đầu
                   return (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 animate-pulse">
                       <AlertTriangle className="w-3 h-3" />
-                      Còn {daysLeft} ngày!
+                      Quá hạn!
+                    </span>
+                  );
+                } else if (daysLeft === 0) {
+                  // Đúng ngày bắt đầu
+                  return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 animate-pulse">
+                      <AlertTriangle className="w-3 h-3" />
+                      Đến ngày rồi!
+                    </span>
+                  );
+                } else if (daysLeft <= 3) {
+                  return (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 animate-pulse">
+                      <AlertTriangle className="w-3 h-3" />
+                      Còn {daysLeft} ngày
                     </span>
                   );
                 }
@@ -920,6 +936,7 @@ export default function ClassManagementV2() {
                       : null;
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
+                    if (startDate) startDate.setHours(0, 0, 0, 0);
                     const daysLeft = startDate
                       ? Math.ceil((startDate - today) / (1000 * 60 * 60 * 24))
                       : null;
@@ -932,8 +949,20 @@ export default function ClassManagementV2() {
                           <span className="text-sm font-medium text-gray-900">
                             {cls.name}
                           </span>
-                          <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
-                            Còn {daysLeft} ngày
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              daysLeft < 0
+                                ? "text-red-600 bg-red-100"
+                                : daysLeft === 0
+                                ? "text-orange-600 bg-orange-100"
+                                : "text-amber-600 bg-amber-100"
+                            }`}
+                          >
+                            {daysLeft < 0
+                              ? "Quá hạn!"
+                              : daysLeft === 0
+                              ? "Đến ngày rồi!"
+                              : `Còn ${daysLeft} ngày`}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">

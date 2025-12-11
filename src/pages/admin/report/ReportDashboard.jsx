@@ -1396,31 +1396,34 @@ export default function ReportDashboard() {
               Tỷ lệ thanh toán
             </h2>
             <div className="flex items-center gap-4">
-              <div className="relative w-20 h-20">
-                <svg className="w-20 h-20 transform -rotate-90">
+              <div className="relative w-24 h-24 flex-shrink-0">
+                <svg
+                  className="w-24 h-24 transform -rotate-90"
+                  viewBox="0 0 100 100"
+                >
                   <circle
-                    cx="40"
-                    cy="40"
-                    r="35"
+                    cx="50"
+                    cy="50"
+                    r="40"
                     fill="none"
                     stroke="#e5e7eb"
-                    strokeWidth="8"
+                    strokeWidth="10"
                   />
                   <circle
-                    cx="40"
-                    cy="40"
-                    r="35"
+                    cx="50"
+                    cy="50"
+                    r="40"
                     fill="none"
-                    stroke="url(#gradient)"
-                    strokeWidth="8"
+                    stroke="url(#paymentGradient)"
+                    strokeWidth="10"
                     strokeLinecap="round"
                     strokeDasharray={`${
-                      (overview?.paymentSuccessRate || 0) * 2.2
-                    } 220`}
+                      (overview?.paymentSuccessRate || 0) * 2.51
+                    } 251`}
                   />
                   <defs>
                     <linearGradient
-                      id="gradient"
+                      id="paymentGradient"
                       x1="0%"
                       y1="0%"
                       x2="100%"
@@ -1433,7 +1436,7 @@ export default function ReportDashboard() {
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-lg font-bold text-green-600">
-                    {overview?.paymentSuccessRate?.toFixed(0)}%
+                    {overview?.paymentSuccessRate?.toFixed(0) || 0}%
                   </span>
                 </div>
               </div>

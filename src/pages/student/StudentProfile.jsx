@@ -24,7 +24,6 @@ import {
   GraduationCap,
   Building,
   Users,
-  Briefcase,
   MapPin,
   Eye,
   EyeOff,
@@ -33,6 +32,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { studentProfileService } from "../../services/student/student-profile.service.js";
+import { authApi } from "../../services/auth/auth.api.js";
 import { useToast } from "../../hooks/use-toast.js";
 import { useAuth } from "../../hooks/useAuth.js";
 
@@ -56,6 +56,10 @@ export default function StudentProfile() {
     grade: "",
     school: "",
   });
+  const [formErrors, setFormErrors] = useState({});
+
+  // Parent child count info
+  const [parentChildInfo, setParentChildInfo] = useState(null);
 
   // Avatar upload state
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -89,6 +93,18 @@ export default function StudentProfile() {
           grade: data.grade || "",
           school: data.school || "",
         });
+        
+        // Fetch parent child count if parent has phone
+        if (data.parent?.phoneNumber) {
+          try {
+            const parentCheck = await authApi.checkParentPhone(data.parent.phoneNumber);
+            if (parentCheck.exists && parentCheck.parentInfo) {
+              setParentChildInfo(parentCheck.parentInfo);
+            }
+          } catch (e) {
+            console.error("Check parent phone error:", e);
+          }
+        }
       } catch (e) {
         console.error("Load profile error:", e);
         showError("Không thể tải thông tin profile");
@@ -100,6 +116,34 @@ export default function StudentProfile() {
   }, [showError]);
 
   async function handleSaveProfile() {
+    // Validate form
+    const errors = {};
+    
+    // Validate phone number: 10 digits, starts with 0
+    if (editForm.phoneNumber) {
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneRegex.test(editForm.phoneNumber)) {
+        errors.phoneNumber = "Số điện thoại phải có 10 số và bắt đầu bằng 0";
+      }
+    }
+    
+    // Validate dob: not in the future
+    if (editForm.dob) {
+      const dobDate = new Date(editForm.dob);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dobDate > today) {
+        errors.dob = "Ngày sinh không được lớn hơn ngày hôm nay";
+      }
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    
+    setFormErrors({});
+    
     try {
       setSaving(true);
       const updated = await studentProfileService.updateProfile(editForm);
@@ -430,7 +474,11 @@ export default function StudentProfile() {
                     setEditForm({ ...editForm, phoneNumber: e.target.value })
                   }
                   placeholder="Nhập số điện thoại"
+                  className={formErrors.phoneNumber ? "border-red-500" : ""}
                 />
+                {formErrors.phoneNumber && (
+                  <p className="text-sm text-red-500">{formErrors.phoneNumber}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -442,7 +490,12 @@ export default function StudentProfile() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, dob: e.target.value })
                   }
+                  max={new Date().toISOString().split('T')[0]}
+                  className={formErrors.dob ? "border-red-500" : ""}
                 />
+                {formErrors.dob && (
+                  <p className="text-sm text-red-500">{formErrors.dob}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -560,12 +613,14 @@ export default function StudentProfile() {
 
                 <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
                   <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <Briefcase className="w-5 h-5 text-green-600" />
+                    <Users className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-[#62748e]">Nghề nghiệp</p>
+                    <p className="text-xs text-[#62748e]">Số con đang học tại trung tâm</p>
                     <p className="font-semibold text-neutral-950">
-                      {profile.parent.occupation || "—"}
+                      {parentChildInfo?.childCount 
+                        ? `${parentChildInfo.childCount} học sinh`
+                        : "—"}
                     </p>
                   </div>
                 </div>

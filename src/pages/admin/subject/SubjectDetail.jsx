@@ -297,7 +297,7 @@ export default function SubjectDetail() {
       {/* Header */}
       <DetailHeader
         title={subject?.name || "Chi tiết môn học"}
-        subtitle={`Mã môn: ${subject?.code}`}
+        subtitle={null}
         onBack={handleBack}
         icon={BookOpen}
         iconColor="indigo"
@@ -357,13 +357,13 @@ export default function SubjectDetail() {
         <DetailHighlightCard
           icon={Calendar}
           label="Ngày tạo"
-          value={new Date(subject.createdAt).toLocaleDateString("vi-VN")}
+          value={new Date(subject.createdAt).toLocaleDateString("sv-SE")}
           color="blue"
         />
         <DetailHighlightCard
           icon={Clock}
           label="Cập nhật"
-          value={new Date(subject.updatedAt).toLocaleDateString("vi-VN")}
+          value={new Date(subject.updatedAt).toLocaleDateString("sv-SE")}
           color="green"
         />
       </div>
@@ -396,7 +396,6 @@ export default function SubjectDetail() {
       {/* Subject Information */}
       <DetailSection title="Thông tin môn học">
         <DetailFieldGrid columns={2}>
-          <DetailField label="Mã môn học" value={subject.code} />
           <DetailField label="Tên môn học" value={subject.name} />
           <DetailField
             label="Trạng thái"
@@ -409,11 +408,6 @@ export default function SubjectDetail() {
                 {subject.status === "active" ? "Hoạt động" : "Không hoạt động"}
               </Badge>
             }
-          />
-          <DetailField
-            label="Mô tả"
-            value={subject.description || "Chưa có mô tả"}
-            isHtml={true}
           />
         </DetailFieldGrid>
       </DetailSection>
@@ -475,14 +469,14 @@ export default function SubjectDetail() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-semibold text-gray-900">
-                          {course.courseName || course.name}
-                        </h4>
                         <Badge variant={statusInfo.variant} className="text-xs">
                           <StatusIcon className="w-3 h-3 mr-1" />
                           {statusInfo.label}
                         </Badge>
                       </div>
+                      <h4 className="font-semibold text-gray-900 text-lg mb-2">
+                        🎯 {course.title || course.courseName || course.name}
+                      </h4>
                       <RichTextContent
                         content={course.description || "Không có mô tả"}
                         className="text-sm text-gray-500 mb-3 line-clamp-2"

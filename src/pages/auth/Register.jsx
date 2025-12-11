@@ -9,6 +9,7 @@
  * - Hiển thị lỗi theo field + toast notifications cho thành công/thất bại
  * - Submit -> authService.register -> toast thông báo -> điều hướng /home/login
  * - Nền animation không chặn click (pointer-events-none) + z-index cho card
+ * - Kiểm tra số điện thoại phụ huynh: nếu đã tồn tại, hiện dialog xác nhận
  */
 
 import { useState } from "react";
@@ -17,8 +18,16 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import Logo from "../../components/common/Logo";
 import { authService } from "../../services/auth/auth.service";
+import { authApi } from "../../services/auth/auth.api";
 import { useToast } from "../../hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  UserCheck,
+  X,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const PHONE_REGEX = /^0\d{9}$/; // 10 số, bắt đầu bằng 0
@@ -36,7 +45,7 @@ export default function Register() {
     confirmPassword: "",
     parentName: "",
     parentEmail: "",
-    parentPhone: "", // 👈 Thêm trường số điện thoại phụ huynh
+    parentPhone: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -44,22 +53,111 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // State cho kiểm tra phụ huynh
+  const [checkingParent, setCheckingParent] = useState(false);
+  const [parentConfirmDialog, setParentConfirmDialog] = useState({
+    open: false,
+    parentInfo: null,
+  });
+  const [parentConfirmed, setParentConfirmed] = useState(false); // Đã xác nhận là phụ huynh cũ
+  const [existingParentId, setExistingParentId] = useState(null);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    //prev là giá trị trước đó của formData
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+
+    // Reset parent confirmed status nếu thay đổi số điện thoại phụ huynh
+    if (name === "parentPhone") {
+      setParentConfirmed(false);
+      setExistingParentId(null);
+    }
+  };
+
+  // Kiểm tra số điện thoại phụ huynh khi blur
+  const handleParentPhoneBlur = async () => {
+    const phone = formData.parentPhone.trim();
+
+    // Chỉ kiểm tra nếu số hợp lệ và chưa xác nhận
+    if (!PHONE_REGEX.test(phone) || parentConfirmed) {
+      return;
+    }
+
+    try {
+      setCheckingParent(true);
+      const response = await authApi.checkParentPhone(phone);
+
+      if (response.exists && response.parentInfo) {
+        // Hiển thị dialog xác nhận
+        setParentConfirmDialog({
+          open: true,
+          parentInfo: response.parentInfo,
+        });
+      }
+    } catch (err) {
+      console.error("Error checking parent phone:", err);
+    } finally {
+      setCheckingParent(false);
+    }
+  };
+
+  // Xác nhận đây là phụ huynh đã có
+  const handleConfirmParent = () => {
+    const { parentInfo } = parentConfirmDialog;
+    if (parentInfo) {
+      // Auto-fill thông tin phụ huynh
+      setFormData((prev) => ({
+        ...prev,
+        parentName: parentInfo.fullName || "",
+        parentEmail: parentInfo.email || "",
+        parentPhone: parentInfo.phone || prev.parentPhone,
+      }));
+      setParentConfirmed(true);
+      setExistingParentId(parentInfo.id);
+    }
+    setParentConfirmDialog({ open: false, parentInfo: null });
+  };
+
+  // Không phải phụ huynh này
+  const handleRejectParent = () => {
+    setParentConfirmDialog({ open: false, parentInfo: null });
+    // Clear số điện thoại và hiện thông báo
+    setFormData((prev) => ({ ...prev, parentPhone: "" }));
+    setErrors((prev) => ({
+      ...prev,
+      parentPhone:
+        "Số điện thoại phụ huynh đã có trong hệ thống. Vui lòng nhập số điện thoại khác.",
+    }));
   };
 
   const validate = () => {
     const next = {};
 
+    // Validate thông tin phụ huynh trước (vì form phụ huynh ở trên)
+    if (!formData.parentPhone.trim()) {
+      next.parentPhone = "Vui lòng nhập số điện thoại phụ huynh.";
+    } else if (!PHONE_REGEX.test(formData.parentPhone)) {
+      next.parentPhone =
+        "Số điện thoại phụ huynh không hợp lệ (10 số, bắt đầu bằng 0).";
+    }
+
+    if (!formData.parentEmail.trim()) {
+      next.parentEmail = "Vui lòng nhập email phụ huynh.";
+    } else if (!EMAIL_REGEX.test(formData.parentEmail)) {
+      next.parentEmail = "Email phụ huynh không hợp lệ.";
+    }
+
+    if (!formData.parentName.trim()) {
+      next.parentName = "Vui lòng nhập tên phụ huynh.";
+    }
+
+    // Validate thông tin học sinh
     if (!formData.fullName.trim()) {
       next.fullName = "Vui lòng nhập họ và tên.";
     } else if (formData.fullName.trim().length < 2) {
       next.fullName = "Họ và tên phải có ít nhất 2 ký tự.";
     }
-    
+
     if (!formData.username.trim()) {
       next.username = "Vui lòng nhập tên đăng nhập.";
     } else if (formData.username.trim().length < 3) {
@@ -90,28 +188,12 @@ export default function Register() {
       next.confirmPassword = "Mật khẩu xác nhận không khớp.";
     }
 
-    if (!formData.parentName.trim()) {
-      next.parentName = "Vui lòng nhập tên phụ huynh.";
-    }
-
-    if (!formData.parentEmail.trim()) {
-      next.parentEmail = "Vui lòng nhập email phụ huynh.";
-    } else if (!EMAIL_REGEX.test(formData.parentEmail)) {
-      next.parentEmail = "Email phụ huynh không hợp lệ.";
-    }
-
-    if (!formData.parentPhone.trim()) {
-      next.parentPhone = "Vui lòng nhập số điện thoại phụ huynh.";
-    } else if (!PHONE_REGEX.test(formData.parentPhone)) {
-      next.parentPhone = "Số điện thoại phụ huynh không hợp lệ (10 số, bắt đầu bằng 0).";
-    }
-
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // không cho reload trang
+    e.preventDefault();
     if (!validate()) {
       error(
         "Có một số trường chưa được điền đúng",
@@ -133,6 +215,7 @@ export default function Register() {
         parentName: formData.parentName.trim(),
         parentEmail: formData.parentEmail.trim(),
         parentPhone: formData.parentPhone.trim(),
+        existingParentId: existingParentId, // Nếu liên kết với phụ huynh đã có
       });
 
       success(
@@ -140,7 +223,6 @@ export default function Register() {
         "Đăng ký thành công 🎉"
       );
 
-      // Delay để user thấy toast trước khi chuyển trang
       setTimeout(() => {
         nav("/home/login");
       }, 1500);
@@ -209,6 +291,98 @@ export default function Register() {
 
           {/* Register Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* ========== THÔNG TIN PHỤ HUYNH (ĐẶT TRƯỚC) ========== */}
+            <div className="pb-2">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs font-bold">
+                  1
+                </span>
+                Thông tin phụ huynh
+              </h3>
+
+              {/* Parent Phone - Đầu tiên */}
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="parentPhone"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Số điện thoại phụ huynh
+                  </label>
+                  <div className="relative">
+                    <Input
+                      id="parentPhone"
+                      name="parentPhone"
+                      type="tel"
+                      required
+                      value={formData.parentPhone}
+                      onChange={handleInputChange}
+                      onBlur={handleParentPhoneBlur}
+                      placeholder="Nhập số điện thoại phụ huynh"
+                      className={`w-full ${
+                        errors.parentPhone ? "border-red-500" : ""
+                      } ${
+                        parentConfirmed ? "bg-green-50 border-green-300" : ""
+                      }`}
+                      disabled={checkingParent}
+                    />
+                    {checkingParent && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                    {parentConfirmed && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <UserCheck className="w-4 h-4 text-green-500" />
+                      </div>
+                    )}
+                  </div>
+                  {errors.parentPhone && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {errors.parentPhone}
+                    </p>
+                  )}
+                  {parentConfirmed && (
+                    <p className="mt-1 text-xs text-green-600">
+                      ✓ Đã liên kết với phụ huynh trong hệ thống
+                    </p>
+                  )}
+                </div>
+
+                {/* Parent Email */}
+                <Field
+                  id="parentEmail"
+                  label="Email phụ huynh"
+                  type="email"
+                  value={formData.parentEmail}
+                  error={errors.parentEmail}
+                  onChange={handleInputChange}
+                  disabled={parentConfirmed}
+                />
+
+                {/* Parent Name */}
+                <Field
+                  id="parentName"
+                  label="Họ tên phụ huynh"
+                  value={formData.parentName}
+                  error={errors.parentName}
+                  onChange={handleInputChange}
+                  disabled={parentConfirmed}
+                />
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
+                  2
+                </span>
+                Thông tin học sinh
+              </h3>
+            </div>
+
+            {/* ========== THÔNG TIN HỌC SINH ========== */}
             {/* Fullname */}
             <Field
               id="fullName"
@@ -269,36 +443,9 @@ export default function Register() {
               error={errors.confirmPassword}
               onChange={handleInputChange}
               showPassword={showConfirmPassword}
-              onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-            />
-
-            {/* Parent Name */}
-            <Field
-              id="parentName"
-              label="Tên phụ huynh"
-              value={formData.parentName}
-              error={errors.parentName}
-              onChange={handleInputChange}
-            />
-
-            {/* Parent Email */}
-            <Field
-              id="parentEmail"
-              label="Email phụ huynh"
-              type="email"
-              value={formData.parentEmail}
-              error={errors.parentEmail}
-              onChange={handleInputChange}
-            />
-
-            {/* Parent Phone */}
-            <Field
-              id="parentPhone"
-              label="Số điện thoại phụ huynh"
-              type="tel"
-              value={formData.parentPhone}
-              error={errors.parentPhone}
-              onChange={handleInputChange}
+              onTogglePassword={() =>
+                setShowConfirmPassword(!showConfirmPassword)
+              }
             />
 
             <Button
@@ -336,14 +483,99 @@ export default function Register() {
           </div>
         </div>
       </div>
+
+      {/* Dialog xác nhận phụ huynh */}
+      {parentConfirmDialog.open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <UserCheck className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Xác nhận phụ huynh
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Phụ huynh của bạn có phải là:
+                </p>
+              </div>
+            </div>
+
+            {/* Parent Info */}
+            <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Họ tên:</span>
+                <span className="font-semibold text-gray-900">
+                  {parentConfirmDialog.parentInfo?.fullName || "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Email:</span>
+                <span className="font-semibold text-gray-900">
+                  {parentConfirmDialog.parentInfo?.email || "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Số điện thoại:</span>
+                <span className="font-semibold text-gray-900">
+                  {parentConfirmDialog.parentInfo?.phone || "—"}
+                </span>
+              </div>
+              {parentConfirmDialog.parentInfo?.childCount > 0 && (
+                <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                  <span className="text-sm text-gray-500">
+                    Số con đang học:
+                  </span>
+                  <span className="font-semibold text-blue-600">
+                    {parentConfirmDialog.parentInfo?.childCount} học sinh
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleRejectParent}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                Không phải
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmParent}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <UserCheck className="w-4 h-4" />
+                Đúng rồi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /** Reusable field component */
-function Field({ id, label, type = "text", value, onChange, error, helper, showPassword, onTogglePassword }) {
+function Field({
+  id,
+  label,
+  type = "text",
+  value,
+  onChange,
+  error,
+  helper,
+  showPassword,
+  onTogglePassword,
+  disabled,
+}) {
   const isPassword = type === "password";
-  
+
   return (
     <div>
       <label
@@ -356,12 +588,21 @@ function Field({ id, label, type = "text", value, onChange, error, helper, showP
         <Input
           id={id}
           name={id}
-          type={isPassword && showPassword !== undefined ? (showPassword ? "text" : "password") : type}
+          type={
+            isPassword && showPassword !== undefined
+              ? showPassword
+                ? "text"
+                : "password"
+              : type
+          }
           required
           value={value}
           onChange={onChange}
           placeholder={`Nhập ${label.toLowerCase()}`}
-          className={`w-full ${isPassword && onTogglePassword ? "pr-10" : ""} ${error ? "border-red-500" : ""}`}
+          className={`w-full ${isPassword && onTogglePassword ? "pr-10" : ""} ${
+            error ? "border-red-500" : ""
+          } ${disabled ? "bg-gray-100" : ""}`}
+          disabled={disabled}
         />
         {isPassword && onTogglePassword && (
           <button
