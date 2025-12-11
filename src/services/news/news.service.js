@@ -4,7 +4,7 @@
  */
 
 import { http } from "../http";
-import { API_ENDPOINTS } from "../../constants/api.endpoints";
+import { API_ENDPOINTS } from "../../config/api.endpoints";
 
 export const newsService = {
   /**
