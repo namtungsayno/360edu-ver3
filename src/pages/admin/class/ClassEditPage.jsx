@@ -105,9 +105,7 @@ export default function ClassEditPage() {
         ]);
         setSubjects(Array.isArray(subj) ? subj : []);
         setTimeSlots(Array.isArray(ts) ? ts : []);
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e) {}
     })();
   }, []);
 
@@ -195,7 +193,6 @@ export default function ClassEditPage() {
           error("Không tìm thấy lớp học");
         }
       } catch (e) {
-        console.error(e);
         error("Lỗi tải dữ liệu lớp");
       } finally {
         setLoading(false);
@@ -236,7 +233,6 @@ export default function ClassEditPage() {
           setInitialSubjectId(subjectId);
         }
       } catch (e) {
-        console.error(e);
         setCourses([]);
         setTeachers([]);
       }
@@ -251,7 +247,6 @@ export default function ClassEditPage() {
         const data = await classroomService.search("", "OFFLINE");
         setRooms(Array.isArray(data) ? data : []);
       } catch (e) {
-        console.error(e);
         setRooms([]);
       }
     })();
@@ -284,12 +279,6 @@ export default function ClassEditPage() {
             const m = String(dStart.getMinutes()).padStart(2, "0");
             const hhmm = `${h}:${m}`;
             const ts = timeSlots.find((t) => t.startTime === hhmm);
-            if (!ts) {
-              // Debug nhẹ để kiểm tra mismatch giữa busy và timeSlots
-              console.debug("[teacherBusy] No matching timeslot for", hhmm, {
-                bStart: b.start,
-              });
-            }
             return ts
               ? { day, slotId: ts.id, start: b.start, end: b.end }
               : null;
@@ -298,7 +287,6 @@ export default function ClassEditPage() {
         setTeacherBusy(busyMapped);
       } else setTeacherBusy([]);
     } catch (e) {
-      console.error(e);
       setTeacherBusy([]);
     }
   }, [teacherId, startDate, timeSlots]);
@@ -326,9 +314,6 @@ export default function ClassEditPage() {
             const hhmm = `${h}:${m}`;
             const ts = timeSlots.find((t) => t.startTime === hhmm);
             if (!ts) {
-              console.debug("[roomBusy] No matching timeslot for", hhmm, {
-                bStart: b.start,
-              });
             }
             return ts
               ? { day, slotId: ts.id, start: b.start, end: b.end }
@@ -340,7 +325,6 @@ export default function ClassEditPage() {
         setRoomBusy([]);
       }
     } catch (e) {
-      console.error(e);
       setRoomBusy([]);
     }
   }, [roomId, startDate, cls, timeSlots]);
@@ -430,7 +414,6 @@ export default function ClassEditPage() {
 
       setRoomConflict(null);
     } catch (e) {
-      console.error("Error checking room conflict:", e);
       setRoomConflict(null);
     } finally {
       setCheckingRoomConflict(false);
@@ -660,7 +643,6 @@ export default function ClassEditPage() {
       success("Cập nhật lớp thành công");
       navigate("/home/admin/class");
     } catch (e) {
-      console.error(e);
       let msg = "Không thể cập nhật lớp";
       if (e.response?.data?.message) msg = e.response.data.message;
       else if (e.response?.data?.error) msg = e.response.data.error;
@@ -682,7 +664,6 @@ export default function ClassEditPage() {
       success("Đã xóa lớp học thành công");
       navigate("/home/admin/class");
     } catch (e) {
-      console.error(e);
       let msg = "Không thể xóa lớp";
       if (e.response?.data?.message) msg = e.response.data.message;
       else if (e.response?.data?.error) msg = e.response.data.error;

@@ -22,7 +22,6 @@ export const studentScheduleService = {
         dateDisplay: formatDate(item.date)
       }));
     } catch (error) {
-      console.error("Error fetching daily schedule:", error);
       throw new Error(error.response?.data?.message || "Không thể tải lịch học");
     }
   },
@@ -47,7 +46,6 @@ export const studentScheduleService = {
         dayOfWeek: getDayOfWeek(item.date)
       }));
     } catch (error) {
-      console.error("Error fetching weekly schedule:", error);
       throw new Error(error.response?.data?.message || "Không thể tải lịch học");
     }
   }

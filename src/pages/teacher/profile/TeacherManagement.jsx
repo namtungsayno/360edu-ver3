@@ -52,8 +52,7 @@ export default function TeacherManagement() {
       const data = await teacherProfileService.getProfile();
       setCertificates(data?.certificates || []);
     } catch (error) {
-      console.error("Error loading certificates:", error);
-    }
+      }
   };
 
   const loadExperiences = async () => {
@@ -61,8 +60,7 @@ export default function TeacherManagement() {
       const data = await teacherProfileService.getProfile();
       setExperiences(data?.experiences || []);
     } catch (error) {
-      console.error("Error loading experiences:", error);
-    }
+      }
   };
 
   const loadEducations = async () => {
@@ -70,8 +68,7 @@ export default function TeacherManagement() {
       const data = await teacherProfileService.getProfile();
       setEducations(data?.educations || []);
     } catch (error) {
-      console.error("Error loading educations:", error);
-    }
+      }
   };
 
   // tải dữ liệu đã có từ DB theo teacher đang login
@@ -117,7 +114,6 @@ export default function TeacherManagement() {
           // Preview luôn hiển thị theo dữ liệu đã tải
         }
       } catch (error) {
-        console.error("Error loading teacher data:", error);
         setError("Không thể tải thông tin giáo viên. Vui lòng thử lại.");
         showError("Không thể tải thông tin giáo viên");
       } finally {
@@ -203,7 +199,6 @@ export default function TeacherManagement() {
           payload.avatarUrl =
             typeof uploadedUrl === "string" ? uploadedUrl : uploadedUrl.url;
         } catch (uploadError) {
-          console.error("Error uploading avatar:", uploadError);
           setError("Không thể upload ảnh. Vui lòng thử lại hoặc dùng URL ảnh.");
           showError("Không thể upload ảnh đại diện");
           setLoading(false);

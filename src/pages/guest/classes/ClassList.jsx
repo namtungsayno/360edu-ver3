@@ -60,7 +60,7 @@ export default function ClassList() {
         setSubjects(subjectData || []);
         setTeachers(teacherData || []);
       } catch (e) {
-        console.error("Failed to load filter data:", e);
+        // Failed to load filter data
       }
     })();
   }, []);
@@ -72,7 +72,6 @@ export default function ClassList() {
 
   // === FETCH CLASSES WITH SERVER-SIDE PAGINATION ===
   const fetchClasses = useCallback(async () => {
-    console.log("📡 Fetching classes with BE pagination...");
     setLoading(true);
     setError("");
 
@@ -87,8 +86,6 @@ export default function ClassList() {
         sortBy: "id",
         order: "desc",
       });
-
-      console.log("📊 BE Response:", response);
 
       let content = response.content || [];
 
@@ -136,7 +133,6 @@ export default function ClassList() {
       setTotalPages(response.totalPages || 0);
       setTotalElements(response.totalElements || 0);
     } catch (e) {
-      console.error("❌ Failed to load classes:", e);
       setError("Không tải được danh sách lớp. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -234,15 +230,6 @@ export default function ClassList() {
   // === PAGINATION HELPERS ===
   const canGoPrev = page > 0;
   const canGoNext = page < totalPages - 1;
-
-  console.log("📊 RENDER - Component state:", {
-    loading,
-    error,
-    totalClasses: classes.length,
-    page,
-    totalPages,
-    totalElements,
-  });
 
   return (
     <>

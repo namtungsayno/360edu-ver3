@@ -76,8 +76,7 @@ export default function LessonMaterialUpload({
       const data = await lessonMaterialService.getMaterialsByLesson(lessonId);
       setMaterials(data || []);
     } catch (e) {
-      console.error("Load materials error:", e);
-    } finally {
+      } finally {
       setLoading(false);
     }
   }
@@ -103,7 +102,6 @@ export default function LessonMaterialUpload({
       setMaterials((prev) => [result, ...prev]);
       success("Upload tài liệu thành công!");
     } catch (e) {
-      console.error("Upload error:", e);
       error("Không thể upload tài liệu");
     } finally {
       setUploading(false);
@@ -136,7 +134,6 @@ export default function LessonMaterialUpload({
       setLinkUrl("");
       success("Thêm link thành công!");
     } catch (e) {
-      console.error("Add link error:", e);
       error("Không thể thêm link");
     } finally {
       setAddingLink(false);
@@ -163,7 +160,6 @@ export default function LessonMaterialUpload({
       setMaterials((prev) => prev.filter((m) => m.id !== materialId));
       success("Đã xóa tài liệu");
     } catch (e) {
-      console.error("Delete error:", e);
       error("Không thể xóa tài liệu");
     } finally {
       setDeleteConfirm({ show: false, materialId: null, materialName: "" });

@@ -23,7 +23,6 @@ export const newsService = {
       const response = await http.get(API_ENDPOINTS.NEWS.LIST, { params });
       return response.data;
     } catch (error) {
-      console.error("Error fetching news:", error);
       throw error;
     }
   },
@@ -38,7 +37,6 @@ export const newsService = {
       const response = await http.get(API_ENDPOINTS.NEWS.DETAIL(id));
       return response.data;
     } catch (error) {
-      console.error(`Error fetching news ${id}:`, error);
       throw error;
     }
   },
@@ -60,7 +58,6 @@ export const newsService = {
       const response = await http.post(API_ENDPOINTS.NEWS.CREATE, newsData);
       return response.data;
     } catch (error) {
-      console.error("Error creating news:", error);
       throw error;
     }
   },
@@ -76,7 +73,6 @@ export const newsService = {
       const response = await http.put(API_ENDPOINTS.NEWS.UPDATE(id), newsData);
       return response.data;
     } catch (error) {
-      console.error(`Error updating news ${id}:`, error);
       throw error;
     }
   },
@@ -91,7 +87,6 @@ export const newsService = {
       const response = await http.delete(API_ENDPOINTS.NEWS.DELETE(id));
       return response.data;
     } catch (error) {
-      console.error(`Error deleting news ${id}:`, error);
       throw error;
     }
   },
@@ -106,7 +101,6 @@ export const newsService = {
       const response = await http.patch(API_ENDPOINTS.NEWS.TOGGLE_STATUS(id));
       return response.data;
     } catch (error) {
-      console.error(`Error toggling status for news ${id}:`, error);
       throw error;
     }
   },
@@ -124,7 +118,6 @@ export const newsService = {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error updating status for news ${id}:`, error);
       throw error;
     }
   },
@@ -139,7 +132,6 @@ export const newsService = {
       const response = await http.post(API_ENDPOINTS.NEWS.INCREMENT_VIEW(id));
       return response.data;
     } catch (error) {
-      console.error(`Error incrementing view for news ${id}:`, error);
       throw error;
     }
   },
@@ -165,7 +157,6 @@ export const newsService = {
       );
       return response.data;
     } catch (error) {
-      console.error("Error uploading news image:", error);
       throw error;
     }
   },
@@ -184,7 +175,6 @@ export const newsService = {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error scheduling news ${id}:`, error);
       throw error;
     }
   },
@@ -201,7 +191,6 @@ export const newsService = {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error publishing news ${id}:`, error);
       throw error;
     }
   },
@@ -218,7 +207,6 @@ export const newsService = {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error unpublishing news ${id}:`, error);
       throw error;
     }
   },

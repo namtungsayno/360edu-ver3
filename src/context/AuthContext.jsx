@@ -26,7 +26,6 @@ export const AuthProvider = ({ children }) => {
         setUser(savedUser);
       } else if (savedUser && !token) {
         // User data exists but no token - invalid state, clear it
-        console.warn('Found saved user but no valid token, clearing...');
         localStorage.removeItem('auth_user');
         setUser(null);
       }
@@ -62,8 +61,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await authService.logout();
     } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
+      } finally {
       // Clear user state immediately
       setUser(null);
       

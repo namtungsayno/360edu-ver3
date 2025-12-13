@@ -75,7 +75,6 @@ export default function TeacherAttendanceList() {
       setTotalElements(data.totalElements || 0);
       setTotalPages(data.totalPages || 0);
     } catch (e) {
-      console.error("Load teachers error:", e);
       error("Không thể tải danh sách giáo viên");
       setTeachers([]);
       setTotalElements(0);

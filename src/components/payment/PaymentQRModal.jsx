@@ -31,7 +31,6 @@ export default function PaymentQRModal({ isOpen, onClose, classId, className, on
       setPaymentData(data);
       if (onPaymentCreated) onPaymentCreated(data);
     } catch (e) {
-      console.error("Failed to load payment QR:", e);
       const msg = e?.response?.data?.message || e?.message || "Không thể tạo QR thanh toán";
       showError(msg, "Lỗi");
       onClose();

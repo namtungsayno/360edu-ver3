@@ -63,7 +63,6 @@ export default function SessionMaterialUpload({ sessionId, readOnly = false }) {
 
   // Load materials khi component mount hoặc sessionId thay đổi
   useEffect(() => {
-    console.log("📎 SessionMaterialUpload: sessionId changed to", sessionId);
     if (sessionId) {
       loadMaterials();
     }
@@ -76,8 +75,7 @@ export default function SessionMaterialUpload({ sessionId, readOnly = false }) {
       const data = await materialService.getMaterialsBySession(sessionId);
       setMaterials(data || []);
     } catch (e) {
-      console.error("Load materials error:", e);
-    } finally {
+      } finally {
       setLoading(false);
     }
   }
@@ -105,7 +103,6 @@ export default function SessionMaterialUpload({ sessionId, readOnly = false }) {
       success("Upload tài liệu thành công!");
 
     } catch (e) {
-      console.error("Upload error:", e);
       error("Không thể upload tài liệu");
     } finally {
       setUploading(false);
@@ -133,14 +130,11 @@ export default function SessionMaterialUpload({ sessionId, readOnly = false }) {
 
     try {
       setAddingLink(true);
-      console.log("📎 Adding link to sessionId:", sessionId, "URL:", linkUrl);
       const result = await materialService.addLink(sessionId, linkUrl);
-      console.log("📎 Link added result:", result);
       setMaterials(prev => [result, ...prev]);
       setLinkUrl("");
       success("Thêm link thành công!");
     } catch (e) {
-      console.error("Add link error:", e);
       error("Không thể thêm link");
     } finally {
       setAddingLink(false);
@@ -167,7 +161,6 @@ export default function SessionMaterialUpload({ sessionId, readOnly = false }) {
       setMaterials(prev => prev.filter(m => m.id !== materialId));
       success("Đã xóa tài liệu");
     } catch (e) {
-      console.error("Delete error:", e);
       error("Không thể xóa tài liệu");
     } finally {
       setDeleteConfirm({ show: false, materialId: null, materialName: '' });

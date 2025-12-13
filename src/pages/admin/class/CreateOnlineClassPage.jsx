@@ -142,8 +142,7 @@ export default function CreateOnlineClassPage() {
       const data = await subjectService.all();
       setSubjects(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
-    }
+      }
   }
 
   async function loadCourses() {
@@ -160,7 +159,6 @@ export default function CreateOnlineClassPage() {
       });
       setCourses(filtered);
     } catch (e) {
-      console.error(e);
       setCourses([]);
     }
   }
@@ -177,7 +175,6 @@ export default function CreateOnlineClassPage() {
         setTeachers([]);
       }
     } catch (e) {
-      console.error(e);
       setTeachers([]);
     }
   }
@@ -187,7 +184,6 @@ export default function CreateOnlineClassPage() {
       const data = await timeslotService.list();
       setTimeSlots(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
       setTimeSlots([]);
     }
   }
@@ -222,7 +218,6 @@ export default function CreateOnlineClassPage() {
         setTeacherBusy([]);
       }
     } catch (e) {
-      console.error(e);
       setTeacherBusy([]);
     }
   }, [teacherId, startDate, timeSlots]);
@@ -465,7 +460,6 @@ export default function CreateOnlineClassPage() {
       success("Tạo lớp online thành công");
       navigate("/home/admin/class");
     } catch (e) {
-      console.error("Create online class error:", e);
       let errorMessage = "Không thể tạo lớp online";
       if (e.response?.data?.message) {
         errorMessage = e.response.data.message;

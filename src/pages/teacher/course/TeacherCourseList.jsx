@@ -95,7 +95,6 @@ export default function TeacherCourseList() {
           setCourses(list);
         }
       } catch (e) {
-        console.error("Failed to load courses:", e);
         if (!ignore) {
           error("Không thể tải danh sách khóa học");
         }
@@ -135,7 +134,6 @@ export default function TeacherCourseList() {
               const detail = await classService.getById(id);
               return { id, detail };
             } catch (e) {
-              console.warn("Failed to fetch class detail for id=", id, e);
               return { id, detail: null };
             }
           })
@@ -148,8 +146,7 @@ export default function TeacherCourseList() {
           });
         }
       } catch (e) {
-        console.warn("Failed to batch fetch class details:", e);
-      }
+        }
     })();
 
     return () => {
@@ -182,7 +179,6 @@ export default function TeacherCourseList() {
               const detail = await courseService.getCourseDetail(id);
               return { id, detail };
             } catch (e) {
-              console.warn("Failed to fetch source course detail id=", id, e);
               return { id, detail: null };
             }
           })
@@ -195,8 +191,7 @@ export default function TeacherCourseList() {
           });
         }
       } catch (e) {
-        console.warn("Failed to batch fetch source courses:", e);
-      }
+        }
     })();
 
     return () => {

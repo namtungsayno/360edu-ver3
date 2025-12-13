@@ -46,7 +46,6 @@ export default function TeachingContentDetail() {
         const data = await courseService.getCourseDetail(id);
         if (!ignore) setCourse(data || null);
       } catch (e) {
-        console.error("Failed to load course detail", e);
         if (!ignore) error("Không thể tải chi tiết khóa học");
       } finally {
         if (!ignore) setLoading(false);

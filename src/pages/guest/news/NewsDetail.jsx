@@ -42,8 +42,7 @@ export default function NewsDetail() {
           .slice(0, 3);
         setRelatedNews(related);
       } catch (error) {
-        console.error("Failed to fetch news detail:", error);
-      } finally {
+        } finally {
         setLoading(false);
       }
     };

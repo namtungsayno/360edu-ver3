@@ -132,7 +132,6 @@ export default function AdminCourseList() {
         const data = await subjectService.all();
         setSubjects(Array.isArray(data) ? data : []);
       } catch (e) {
-        console.error("Failed to load subjects:", e);
         toastRef.current("Không thể tải danh sách môn học");
       }
     })();
@@ -167,8 +166,7 @@ export default function AdminCourseList() {
           teacherCount: teacherMap.size,
         });
       } catch (e) {
-        console.error("Failed to load stats:", e);
-      }
+        }
     })();
   }, []);
 
@@ -204,11 +202,7 @@ export default function AdminCourseList() {
         params.teacherUserId = Number(selectedTeacherId);
       }
 
-      console.log("📡 Fetching courses:", params);
-
       const response = await courseApi.listPaginated(params);
-      console.log("📊 BE Response:", response);
-
       const content = response.content || [];
       // Filter only teacher courses (có ownerTeacherId)
       const teacherCourses = content.filter((c) => !!c.ownerTeacherId);
@@ -216,7 +210,6 @@ export default function AdminCourseList() {
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
     } catch (e) {
-      console.error("Failed to load courses (admin):", e);
       toastRef.current("Không thể tải danh sách khóa học");
       setCourses([]);
     } finally {
@@ -254,11 +247,6 @@ export default function AdminCourseList() {
               const detail = await classService.getById(id);
               return { id, detail };
             } catch (e) {
-              console.warn(
-                "[AdminCourseList] fetch class detail failed id=",
-                id,
-                e
-              );
               return { id, detail: null };
             }
           })
@@ -271,8 +259,7 @@ export default function AdminCourseList() {
           });
         }
       } catch (e) {
-        console.warn("[AdminCourseList] batch class fetch error:", e);
-      }
+        }
     })();
 
     return () => {
@@ -302,11 +289,6 @@ export default function AdminCourseList() {
               const detail = await courseService.getCourseDetail(id);
               return { id, detail };
             } catch (e) {
-              console.warn(
-                "[AdminCourseList] fetch source course failed id=",
-                id,
-                e
-              );
               return { id, detail: null };
             }
           })
@@ -319,8 +301,7 @@ export default function AdminCourseList() {
           });
         }
       } catch (e) {
-        console.warn("[AdminCourseList] batch source course fetch error:", e);
-      }
+        }
     })();
 
     return () => {
@@ -350,11 +331,6 @@ export default function AdminCourseList() {
                 Array.isArray(list) && list.length > 0 ? list[0] : null;
               return { courseId, detail: first };
             } catch (e) {
-              console.warn(
-                "[AdminCourseList] list classes by courseId failed:",
-                courseId,
-                e
-              );
               return { courseId, detail: null };
             }
           })
@@ -374,8 +350,7 @@ export default function AdminCourseList() {
           });
         }
       } catch (e) {
-        console.warn("[AdminCourseList] batch courseId→class error:", e);
-      }
+        }
     })();
 
     return () => {

@@ -39,8 +39,7 @@ const NotificationBell = ({ variant = "default" }) => {
       const count = await NotificationService.getUnreadCount();
       setUnreadCount(count);
     } catch (error) {
-      console.error("Error fetching unread count:", error);
-    }
+      }
   };
 
   const fetchNotifications = async (reset = false) => {
@@ -61,7 +60,6 @@ const NotificationBell = ({ variant = "default" }) => {
       
       setHasMore(!data.last);
     } catch (error) {
-      console.error("Error fetching notifications:", error);
       toast({
         variant: "destructive",
         title: "Lỗi",
@@ -90,8 +88,7 @@ const NotificationBell = ({ variant = "default" }) => {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Error marking as read:", error);
-    }
+      }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -104,8 +101,7 @@ const NotificationBell = ({ variant = "default" }) => {
         description: "Đã đánh dấu tất cả đã đọc",
       });
     } catch (error) {
-      console.error("Error marking all as read:", error);
-    }
+      }
   };
 
   const handleNotificationClick = (notification) => {
@@ -131,8 +127,7 @@ const NotificationBell = ({ variant = "default" }) => {
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error("Error deleting notification:", error);
-    }
+      }
   };
 
   const handleScroll = (e) => {

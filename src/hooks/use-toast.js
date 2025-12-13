@@ -41,24 +41,20 @@ export const toast = {
     if (_notificationInstance) {
       return _notificationInstance.success(message, title);
     }
-    console.warn("Toast not initialized");
-  },
+    },
   error: (message, title) => {
     if (_notificationInstance) {
       return _notificationInstance.error(message, title);
     }
-    console.warn("Toast not initialized");
-  },
+    },
   warning: (message, title) => {
     if (_notificationInstance) {
       return _notificationInstance.warning(message, title);
     }
-    console.warn("Toast not initialized");
-  },
+    },
   info: (message, title) => {
     if (_notificationInstance) {
       return _notificationInstance.info(message, title);
     }
-    console.warn("Toast not initialized");
-  },
+    },
 };

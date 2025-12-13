@@ -7,7 +7,7 @@ import GoogleRegisterForm from "../../components/auth/GoogleRegisterForm";
 /**
  * Trang callback xử lý Google OAuth
  * URL: /auth/google/callback?code=xxx
- * 
+ *
  * Flow:
  * 1. Lấy authorization code từ URL
  * 2. Gửi code lên BE để exchange lấy user info
@@ -18,7 +18,7 @@ export default function GoogleCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setUserDirectly } = useAuth();
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [needsRegistration, setNeedsRegistration] = useState(false);
@@ -43,25 +43,22 @@ export default function GoogleCallback() {
 
     // Kiểm tra xem đang xử lý hay chưa (tránh gọi 2 lần)
     if (isProcessing) {
-      console.log("Đang xử lý, bỏ qua lần gọi này");
       return;
     }
 
     // Kiểm tra xem code này đã được xử lý chưa (dùng sessionStorage để persist qua re-render)
     const processedCode = sessionStorage.getItem("google_oauth_code");
     if (processedCode === code) {
-      console.log("Code này đã được xử lý rồi, bỏ qua");
-      // Nếu đã xử lý thành công trước đó, redirect về home
       setLoading(false);
       return;
     }
-    
+
     // Đánh dấu đang xử lý
     setIsProcessing(true);
-    
+
     // Đánh dấu code đã được xử lý NGAY LẬP TỨC
     sessionStorage.setItem("google_oauth_code", code);
-    
+
     // Xóa code khỏi URL để tránh xử lý lại khi refresh
     window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -70,18 +67,10 @@ export default function GoogleCallback() {
         setLoading(true);
         setError(null);
 
-        console.log("Calling Google auth API with code:", code.substring(0, 20) + "...");
         const response = await authApi.googleAuth(code);
-        console.log("Google auth response:", response);
-        console.log("needsRegistration:", response?.needsRegistration);
-        console.log("userId:", response?.userId);
-        console.log("roles:", response?.roles);
-        console.log("message:", response?.message);
-        console.log("token:", response?.token ? "received" : "not received");
 
         if (response.needsRegistration) {
           // User chưa có tài khoản → Hiển thị form đăng ký
-          console.log("Showing registration form");
           setNeedsRegistration(true);
           setGoogleUserInfo({
             googleId: response.googleId,
@@ -91,18 +80,18 @@ export default function GoogleCallback() {
           });
         } else if (response.userId) {
           // User đã có tài khoản → Login thành công
-          console.log("Login successful, redirecting...");
-          
+
           // Lưu JWT token vào cookie + localStorage (backup nếu Set-Cookie không hoạt động do cross-origin)
           if (response.token) {
             const token = response.token;
-            document.cookie = `edu360_jwt=${token}; path=/; max-age=${24 * 60 * 60}; SameSite=Lax`;
+            document.cookie = `edu360_jwt=${token}; path=/; max-age=${
+              24 * 60 * 60
+            }; SameSite=Lax`;
             try {
-              window.localStorage.setItem('edu360_jwt', token);
+              window.localStorage.setItem("edu360_jwt", token);
             } catch {}
-            console.log("Token saved to cookie and localStorage");
           }
-          
+
           // Set user directly without calling login API (avoid API call with null password)
           setUserDirectly({
             id: response.userId,
@@ -112,7 +101,7 @@ export default function GoogleCallback() {
             avatarUrl: response.avatarUrl,
             roles: response.roles,
           });
-          
+
           // Clear sessionStorage và redirect based on role
           sessionStorage.removeItem("google_oauth_code");
           const roles = response.roles || [];
@@ -126,13 +115,10 @@ export default function GoogleCallback() {
             navigate("/home", { replace: true });
           }
         } else {
-          console.log("No needsRegistration and no userId, showing error");
           sessionStorage.removeItem("google_oauth_code");
           setError(response.message || "Đăng nhập thất bại");
         }
       } catch (err) {
-        console.error("Google auth error:", err);
-        console.error("Error response:", err.response);
         sessionStorage.removeItem("google_oauth_code");
         setError(err.response?.data?.message || "Lỗi xác thực Google");
       } finally {
@@ -162,17 +148,18 @@ export default function GoogleCallback() {
 
       if (response.userId) {
         // Đăng ký thành công → Lưu token và set user
-        
+
         // Lưu JWT token vào cookie + localStorage (backup nếu Set-Cookie không hoạt động do cross-origin)
         if (response.token) {
           const token = response.token;
-          document.cookie = `edu360_jwt=${token}; path=/; max-age=${24 * 60 * 60}; SameSite=Lax`;
+          document.cookie = `edu360_jwt=${token}; path=/; max-age=${
+            24 * 60 * 60
+          }; SameSite=Lax`;
           try {
-            window.localStorage.setItem('edu360_jwt', token);
+            window.localStorage.setItem("edu360_jwt", token);
           } catch {}
-          console.log("Token saved to cookie and localStorage after registration");
         }
-        
+
         setUserDirectly({
           id: response.userId,
           username: response.username,
@@ -181,7 +168,7 @@ export default function GoogleCallback() {
           avatarUrl: response.avatarUrl,
           roles: response.roles,
         });
-        
+
         // Clear sessionStorage và redirect to student dashboard
         sessionStorage.removeItem("google_oauth_code");
         navigate("/home/my-classes", { replace: true });
@@ -189,7 +176,6 @@ export default function GoogleCallback() {
         setError(response.message || "Đăng ký thất bại");
       }
     } catch (err) {
-      console.error("Google register error:", err);
       setError(err.response?.data?.message || "Lỗi đăng ký tài khoản");
     } finally {
       setLoading(false);
@@ -203,7 +189,9 @@ export default function GoogleCallback() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">
-            {needsRegistration ? "Đang xử lý đăng ký..." : "Đang xác thực với Google..."}
+            {needsRegistration
+              ? "Đang xử lý đăng ký..."
+              : "Đang xác thực với Google..."}
           </p>
         </div>
       </div>

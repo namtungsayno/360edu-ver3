@@ -372,7 +372,6 @@ function ExportReportButton({
           break;
       }
     } catch (e) {
-      console.error("Export error:", e);
       error("Có lỗi khi xuất báo cáo");
     } finally {
       setExporting(null);
@@ -1170,30 +1169,16 @@ export default function ReportDashboard() {
           reportApi.getRevenueByDay(days),
         ]);
 
-      // Debug: Log API responses
-      console.log("📊 Report API Responses:", {
-        overview: overviewRes.data,
-        teacherRevenue: teacherRes.data,
-        topTeacher: topRes.data,
-        subjectRevenue: subjectRes.data,
-        revenueByDay: dayRes.data,
-      });
-
-      // Debug: Chi tiết revenueByDay
-      console.log("📈 Revenue By Day Details:", dayRes.data);
       const totalDayRevenue = (dayRes.data || []).reduce(
         (sum, d) => sum + (d.revenue || 0),
         0
       );
-      console.log("📈 Total revenue in chart period:", totalDayRevenue);
-
       setOverview(overviewRes.data);
       setTeacherRevenue(teacherRes.data || []);
       setTopTeacher(topRes.data);
       setSubjectRevenue(subjectRes.data || []);
       setRevenueByDay(dayRes.data || []);
     } catch (e) {
-      console.error("Report load error:", e);
       error("Không thể tải dữ liệu báo cáo");
     } finally {
       setLoading(false);
@@ -1204,9 +1189,7 @@ export default function ReportDashboard() {
     try {
       const res = await reportApi.getRevenueByDay(days);
       setRevenueByDay(res.data || []);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
 
   if (loading) {

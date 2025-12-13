@@ -49,8 +49,7 @@ export default function TeacherList() {
         const data = await subjectService.all();
         setSubjects(data || []);
       } catch (e) {
-        console.error("Failed to load subjects:", e);
-      }
+        }
     })();
   }, []);
 
@@ -61,7 +60,6 @@ export default function TeacherList() {
 
   // === FETCH TEACHERS WITH SERVER-SIDE PAGINATION ===
   const fetchTeachers = useCallback(async () => {
-    console.log("📡 Fetching teachers with BE pagination...");
     setLoading(true);
     setError("");
 
@@ -74,8 +72,6 @@ export default function TeacherList() {
         sortBy: "id",
         order: "asc",
       });
-
-      console.log("📊 BE Response:", response);
 
       const enrichedTeachers = (response.content || []).map((teacher) => ({
         id: teacher.id,
@@ -101,7 +97,6 @@ export default function TeacherList() {
       setTotalPages(response.totalPages || 0);
       setTotalElements(response.totalElements || 0);
     } catch (e) {
-      console.error("❌ Failed to fetch teachers:", e);
       setError("Không tải được danh sách giáo viên. Vui lòng thử lại.");
     } finally {
       setLoading(false);

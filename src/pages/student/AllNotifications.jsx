@@ -46,7 +46,6 @@ const AllNotifications = () => {
 
       setHasMore(!data.last);
     } catch (error) {
-      console.error("Error fetching notifications:", error);
       showError("Không thể tải thông báo");
     } finally {
       setLoading(false);
@@ -61,8 +60,7 @@ const AllNotifications = () => {
         prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
       );
     } catch (error) {
-      console.error("Error marking as read:", error);
-    }
+      }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -71,7 +69,6 @@ const AllNotifications = () => {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       success("Đã đánh dấu tất cả đã đọc");
     } catch (error) {
-      console.error("Error marking all as read:", error);
       showError("Không thể đánh dấu đã đọc");
     }
   };
@@ -92,7 +89,6 @@ const AllNotifications = () => {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       success("Thông báo đã được xóa");
     } catch (error) {
-      console.error("Error deleting notification:", error);
       showError("Không thể xóa thông báo");
     }
   };

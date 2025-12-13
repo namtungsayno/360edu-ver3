@@ -91,8 +91,7 @@ export default function NewsList() {
         scheduled: scheduledRes.data?.totalElements || 0,
       });
     } catch (err) {
-      console.error("Failed to fetch stats:", err);
-    }
+      }
   }, []);
 
   // Fetch danh sách tin tức với server-side pagination
@@ -125,7 +124,6 @@ export default function NewsList() {
       setTotalElements(pageData.totalElements || 0);
       setTotalPages(pageData.totalPages || 0);
     } catch (err) {
-      console.error("Failed to fetch news:", err);
       setError(err.displayMessage || "Không thể tải danh sách tin tức");
       setNews([]);
       setTotalElements(0);
@@ -250,7 +248,6 @@ export default function NewsList() {
           : "Đã cập nhật trạng thái"
       );
     } catch (err) {
-      console.error("Failed to toggle status:", err);
       showError(err.displayMessage || "Không thể cập nhật trạng thái");
     }
   };
@@ -263,7 +260,6 @@ export default function NewsList() {
       fetchStats();
       success("Đã công bố tin tức thành công!");
     } catch (err) {
-      console.error("Failed to publish:", err);
       showError(err.displayMessage || "Không thể công bố tin tức");
     }
   };
@@ -276,7 +272,6 @@ export default function NewsList() {
       fetchStats();
       success("Đã chuyển tin tức về nháp");
     } catch (err) {
-      console.error("Failed to unpublish:", err);
       showError(err.displayMessage || "Không thể chuyển về nháp");
     }
   };

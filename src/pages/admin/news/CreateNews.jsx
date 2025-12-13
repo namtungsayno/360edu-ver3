@@ -125,7 +125,6 @@ export default function CreateNews() {
           success("Upload ảnh thành công!", "Thành công");
         })
         .catch((error) => {
-          console.error("Failed to upload image:", error);
           const errorMsg =
             error.response?.data?.error ||
             error.message ||
@@ -192,7 +191,6 @@ export default function CreateNews() {
         navigate("/home/admin/news");
       }, 1000);
     } catch (error) {
-      console.error("Failed to submit news:", error);
       const errorMsg =
         error.response?.data?.message ||
         error.message ||
@@ -341,11 +339,7 @@ export default function CreateNews() {
                           className="w-full h-48 object-cover rounded-lg"
                           onError={(e) => {
                             e.target.src = "/placeholder-image.png";
-                            console.error(
-                              "Failed to load image:",
-                              imagePreview
-                            );
-                          }}
+                            }}
                         />
                         <Button
                           type="button"

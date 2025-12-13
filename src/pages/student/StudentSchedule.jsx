@@ -79,7 +79,6 @@ export default function StudentSchedule() {
       const data = normalize(raw);
       setCache((prev) => ({ ...prev, [key]: data }));
     } catch (e) {
-      console.error("Failed to load schedule data:", e);
       error("Không thể tải dữ liệu lịch học");
       setCache((prev) => ({ ...prev, [key]: [] }));
     }
@@ -447,6 +446,33 @@ function SessionDetailModal({ classData, onClose }) {
               </div>
             )}
           </div>
+
+          {/* Link Google Meet cho lớp online */}
+          {classData.isOnline && classData.meetingLink && (
+            <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Video className="w-5 h-5 text-green-600" />
+                  <span className="font-medium text-green-800">
+                    Lớp học Online
+                  </span>
+                </div>
+                <a
+                  href={classData.meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <Video className="w-4 h-4" />
+                  Vào lớp học
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+              <p className="text-xs text-green-600 mt-2 truncate">
+                {classData.meetingLink}
+              </p>
+            </div>
+          )}
 
           {/* Trạng thái điểm danh */}
           <div className={`px-3 py-2 rounded-lg border ${STATUS_STYLES[st]}`}>

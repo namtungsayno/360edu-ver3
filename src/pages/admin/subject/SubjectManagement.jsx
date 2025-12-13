@@ -65,8 +65,7 @@ export default function SubjectManagement() {
           INACTIVE: data.length - active,
         });
       } catch (e) {
-        console.error("Failed to load counts:", e);
-      }
+        }
     })();
   }, []);
 
@@ -76,15 +75,6 @@ export default function SubjectManagement() {
       setLoading(true);
       const beStatus = mapStatusToBE(tab);
 
-      console.log("📡 Fetching from BE:", {
-        search: debouncedQuery,
-        status: beStatus,
-        page,
-        size,
-        sortBy,
-        order,
-      });
-
       const response = await getSubjectsPaginated({
         search: debouncedQuery,
         status: beStatus,
@@ -93,8 +83,6 @@ export default function SubjectManagement() {
         sortBy,
         order,
       });
-
-      console.log("📊 BE Response:", response);
 
       // Map BE response to FE format
       const content = response.content || [];
@@ -111,7 +99,6 @@ export default function SubjectManagement() {
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
     } catch (e) {
-      console.error("Failed to fetch subjects:", e);
       error("Không thể tải danh sách môn học");
     } finally {
       setLoading(false);
@@ -154,7 +141,6 @@ export default function SubjectManagement() {
         INACTIVE: subject.active ? prev.INACTIVE + 1 : prev.INACTIVE - 1,
       }));
     } catch (e) {
-      console.error(e);
       error("Cập nhật trạng thái thất bại");
     }
   };

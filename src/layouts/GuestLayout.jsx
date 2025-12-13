@@ -99,11 +99,9 @@ export default function GuestLayout() {
           break;
         case "course":
           // TODO: Navigate đến chi tiết course
-          console.log("Navigate to course:", page.courseId);
           break;
         case "subject":
           // TODO: Navigate đến chi tiết subject
-          console.log("Navigate to subject:", page.subjectId);
           break;
         case "teacher":
           // Navigate to teacher detail page
@@ -136,8 +134,7 @@ export default function GuestLayout() {
           navigate("/home/payment-history");
           break;
         default:
-          console.log("Unknown navigation:", page);
-      }
+          }
     },
     [navigate]
   );

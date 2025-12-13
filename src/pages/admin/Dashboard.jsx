@@ -875,8 +875,7 @@ export default function Dashboard() {
         },
       });
     } catch (error) {
-      console.error("Error fetching stats:", error);
-    } finally {
+      } finally {
       setLoading((prev) => ({ ...prev, stats: false }));
     }
   }, []);
@@ -995,8 +994,7 @@ export default function Dashboard() {
         revenue: revenueData,
       });
     } catch (error) {
-      console.error("Error fetching chart data:", error);
-    } finally {
+      } finally {
       setLoading((prev) => ({ ...prev, charts: false }));
     }
   }, []);
@@ -1057,8 +1055,7 @@ export default function Dashboard() {
 
       setTodaySchedules(todaySessions.slice(0, 6));
     } catch (error) {
-      console.error("Error fetching schedules:", error);
-    } finally {
+      } finally {
       setLoading((prev) => ({ ...prev, schedules: false }));
     }
   }, []);
@@ -1084,8 +1081,7 @@ export default function Dashboard() {
         }))
       );
     } catch (error) {
-      console.error("Error fetching news:", error);
-    } finally {
+      } finally {
       setLoading((prev) => ({ ...prev, news: false }));
     }
   }, []);

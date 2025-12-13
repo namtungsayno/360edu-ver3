@@ -63,7 +63,6 @@ export default function TeacherAttendanceDetail() {
       );
       setSummary(data);
     } catch (e) {
-      console.error("Load summary error:", e);
       error("Không thể tải thông tin chấm công");
     } finally {
       setLoading(false);

@@ -40,7 +40,6 @@ export default function PaymentHistory() {
       setTotalPages(response.totalPages || 0);
       setTotalElements(response.totalElements || 0);
     } catch (err) {
-      console.error("Failed to load payment history:", err);
       setError("Không thể tải lịch sử thanh toán");
     } finally {
       setLoading(false);

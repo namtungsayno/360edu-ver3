@@ -113,11 +113,9 @@ export default function StudentCourseDetail() {
             setActiveTab("schedule");
           }
         } catch (e) {
-          console.error("Load sessions error:", e);
-        }
+          }
       }
     } catch (e) {
-      console.error("Load course detail error:", e);
       error("Không thể tải thông tin khóa học");
     } finally {
       setLoading(false);
@@ -158,8 +156,7 @@ export default function StudentCourseDetail() {
           [lessonId]: materials || [],
         }));
       } catch (e) {
-        console.error("Load lesson materials error:", e);
-      } finally {
+        } finally {
         setLoadingMaterials((prev) => ({ ...prev, [lessonId]: false }));
       }
     }

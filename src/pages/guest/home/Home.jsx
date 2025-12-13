@@ -219,8 +219,7 @@ export default function Home() {
         const data = await classService.list();
         setClasses(data || []);
       } catch (error) {
-        console.error("Failed to fetch classes:", error);
-      } finally {
+        } finally {
         setLoading(false);
       }
     };
@@ -242,8 +241,7 @@ export default function Home() {
           .slice(0, 3);
         setNews(publishedNews);
       } catch (error) {
-        console.error("Failed to fetch news:", error);
-      } finally {
+        } finally {
         setNewsLoading(false);
       }
     };
@@ -327,8 +325,7 @@ export default function Home() {
         }));
         setTeachers(enrichedTeachers.slice(0, 10)); // Show first 10 teachers for carousel
       } catch (error) {
-        console.error("Failed to fetch teachers:", error);
-      } finally {
+        } finally {
         setTeachersLoading(false);
       }
     };

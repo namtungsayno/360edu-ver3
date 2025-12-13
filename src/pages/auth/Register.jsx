@@ -95,8 +95,7 @@ export default function Register() {
         });
       }
     } catch (err) {
-      console.error("Error checking parent phone:", err);
-    } finally {
+      } finally {
       setCheckingParent(false);
     }
   };

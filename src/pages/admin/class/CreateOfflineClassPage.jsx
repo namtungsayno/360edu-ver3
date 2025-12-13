@@ -145,8 +145,7 @@ export default function CreateOfflineClassPage() {
       const data = await subjectService.all();
       setSubjects(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
-    }
+      }
   }
 
   async function loadCourses() {
@@ -163,7 +162,6 @@ export default function CreateOfflineClassPage() {
       });
       setCourses(filtered);
     } catch (e) {
-      console.error(e);
       setCourses([]);
     }
   }
@@ -180,7 +178,6 @@ export default function CreateOfflineClassPage() {
         setTeachers([]);
       }
     } catch (e) {
-      console.error(e);
       setTeachers([]);
     }
   }
@@ -190,7 +187,6 @@ export default function CreateOfflineClassPage() {
       const data = await classroomService.search("", "OFFLINE");
       setRooms(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
       setRooms([]);
     }
   }
@@ -200,7 +196,6 @@ export default function CreateOfflineClassPage() {
       const data = await timeslotService.list();
       setTimeSlots(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
       setTimeSlots([]);
     }
   }
@@ -231,7 +226,6 @@ export default function CreateOfflineClassPage() {
         setTeacherBusy([]);
       }
     } catch (e) {
-      console.error(e);
       setTeacherBusy([]);
     }
   }, [teacherId, startDate, timeSlots]);
@@ -250,7 +244,6 @@ export default function CreateOfflineClassPage() {
       const data = await classroomService.getFreeBusy(roomId, fromDate, toDate);
       setRoomBusy(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
       setRoomBusy([]);
     }
   }, [roomId, startDate]);
@@ -499,7 +492,6 @@ export default function CreateOfflineClassPage() {
       success("Tạo lớp offline thành công");
       navigate("/home/admin/class");
     } catch (e) {
-      console.error("Create offline class error:", e);
       let errorMessage = "Không thể tạo lớp offline";
       if (e.response?.data?.message) {
         errorMessage = e.response.data.message;

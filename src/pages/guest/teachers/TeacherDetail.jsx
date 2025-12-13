@@ -55,8 +55,7 @@ export default function TeacherDetail() {
           setTeacher(teacherData);
         }
       } catch (error) {
-        console.error("Failed to fetch teacher:", error);
-      } finally {
+        } finally {
         setLoading(false);
       }
     };

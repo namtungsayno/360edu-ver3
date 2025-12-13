@@ -171,7 +171,6 @@ export default function CourseOfSubjectCreate() {
         showError("Không thể tạo khóa học. Vui lòng thử lại.", "Lỗi");
       }
     } catch (e) {
-      console.error(e);
       setErrorMsg("Có lỗi khi tạo khóa học. Vui lòng thử lại.");
       showError("Có lỗi khi tạo khóa học. Vui lòng thử lại.", "Lỗi");
     } finally {

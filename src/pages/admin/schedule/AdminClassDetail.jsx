@@ -83,7 +83,6 @@ function AdminClassDetail() {
           });
         }
       } catch (e) {
-        console.error("Failed to load class details:", e);
         if (e?.response?.status === 404) {
           setError(
             e.response.data?.message ||

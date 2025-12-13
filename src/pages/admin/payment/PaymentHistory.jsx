@@ -93,7 +93,6 @@ export default function PaymentHistory() {
       setTotalElements(paymentsRes.totalElements || 0);
       setStats(statsRes);
     } catch (e) {
-      console.error("Failed to load payments:", e);
       showError("Không thể tải dữ liệu thanh toán", "Lỗi");
     } finally {
       setLoading(false);
@@ -140,7 +139,6 @@ export default function PaymentHistory() {
       closeConfirmDialog();
       loadData();
     } catch (e) {
-      console.error("Confirm payment error:", e);
       showError(e?.displayMessage || "Xác nhận thất bại", "Lỗi");
     }
   };

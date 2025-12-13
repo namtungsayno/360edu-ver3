@@ -31,8 +31,7 @@ export default function AuthLayout() {
         navigate("/home/register");
         break;
       default:
-        console.log("Unknown navigation:", page);
-    }
+        }
   };
 
   return (

@@ -23,8 +23,7 @@ export default function Dashboard() {
         setRecentUsers(usersData.slice(0, 5));
         setRecentCourses(coursesData.slice(0, 4));
       } catch (error) {
-        console.error("Error loading data:", error);
-      } finally {
+        } finally {
         setLoading(false);
       }
     }
