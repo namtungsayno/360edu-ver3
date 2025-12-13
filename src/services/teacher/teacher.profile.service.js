@@ -11,7 +11,6 @@ export const teacherProfileService = {
       localStorage.setItem(KEY, JSON.stringify(profile));
       return profile;
     } catch (error) {
-      console.error("Failed to get teacher profile:", error);
       // Fallback to cached data
       const raw = localStorage.getItem(KEY);
       return raw ? JSON.parse(raw) : null;
@@ -25,7 +24,6 @@ export const teacherProfileService = {
       localStorage.setItem(KEY, JSON.stringify(updated));
       return updated;
     } catch (error) {
-      console.error("Failed to update teacher profile:", error);
       throw error;
     }
   },
@@ -44,7 +42,6 @@ export const teacherProfileService = {
       localStorage.setItem(KEY, JSON.stringify(updated));
       return updated;
     } catch (error) {
-      console.error("Failed to upload avatar:", error);
       throw error;
     }
   },

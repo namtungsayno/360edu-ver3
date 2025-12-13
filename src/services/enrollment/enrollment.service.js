@@ -11,7 +11,6 @@ export const enrollmentService = {
     try {
       return await enrollmentApi.listMyClasses();
     } catch (err) {
-      console.error("❌ [EnrollmentService] listMyClasses error:", err);
       throw err;
     }
   },
@@ -24,7 +23,6 @@ export const enrollmentService = {
     try {
       return await enrollmentApi.getClassSessions(classId);
     } catch (err) {
-      console.error("❌ [EnrollmentService] getClassSessions error:", err);
       throw err;
     }
   },

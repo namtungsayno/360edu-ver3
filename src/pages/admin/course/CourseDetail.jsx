@@ -81,7 +81,6 @@ export default function AdminCourseDetail() {
         const data = await courseService.getCourseDetail(id);
         if (!ignore) setCourse(data);
       } catch (e) {
-        console.error("❌ Error loading course:", e);
         error("Không tải được thông tin khóa học");
       } finally {
         if (!ignore) setLoading(false);

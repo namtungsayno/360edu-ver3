@@ -124,7 +124,6 @@ export default function SubjectDetail() {
           }
         }
       } catch (e) {
-        console.error(e);
         if (!ignore) setError("Không thể tải thông tin môn học");
       } finally {
         if (!ignore) setLoading(false);
@@ -147,7 +146,6 @@ export default function SubjectDetail() {
         });
         if (!ignore) setCourses(filtered);
       } catch (e) {
-        console.error("Failed to load courses for subject", e);
         if (!ignore) showError?.("Không thể tải khóa học của môn này");
       } finally {
         if (!ignore) setLoadingCourses(false);
@@ -200,7 +198,6 @@ export default function SubjectDetail() {
       setSubject(updated);
       setEditMode(false);
     } catch (e) {
-      console.error("Failed to save subject edits", e);
       showError?.("Không thể lưu thay đổi. Vui lòng thử lại.");
     }
   };

@@ -56,8 +56,7 @@ export default function CreateTeacherForm({
           const data = await subjectService.all();
           setSubjects(Array.isArray(data) ? data : []);
         } catch (err) {
-          console.error("Failed to load subjects", err);
-        } finally {
+          } finally {
           setLoadingSubjects(false);
         }
       })();
@@ -115,7 +114,6 @@ export default function CreateTeacherForm({
 
       onSuccess?.();
     } catch (err) {
-      console.error(err);
       // Hiển thị lỗi chi tiết từ backend nếu có
       const errMsg = err?.response?.data?.message || err?.message || "Lưu thất bại. Vui lòng thử lại.";
       error(errMsg);

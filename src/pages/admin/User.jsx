@@ -69,8 +69,7 @@ export default function UserManagement() {
           PARENT: par,
         });
       } catch (e) {
-        console.error("Failed to load counts:", e);
-      }
+        }
     })();
   }, []);
 
@@ -84,13 +83,6 @@ export default function UserManagement() {
     setLoading(true);
     try {
       const role = tab === "ALL" ? "ALL" : tab;
-      console.log("📡 Fetching users:", {
-        search: debouncedQuery,
-        role,
-        page,
-        size,
-      });
-
       const response = await userService.listPaginated({
         search: debouncedQuery,
         role,
@@ -100,15 +92,12 @@ export default function UserManagement() {
         order: "asc",
       });
 
-      console.log("📊 BE Response:", response);
-
       // Filter out ADMIN users from display
       const content = (response.content || []).filter((u) => u.role !== "ADMIN");
       setUsers(content);
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
     } catch (e) {
-      console.error(e);
       toastRef.current.error("Không thể tải danh sách người dùng");
     } finally {
       setLoading(false);
@@ -135,8 +124,7 @@ export default function UserManagement() {
         PARENT: par,
       });
     } catch (e) {
-      console.error("Failed to reload counts:", e);
-    }
+      }
   };
 
   // Data for rendering
@@ -175,7 +163,6 @@ export default function UserManagement() {
         u.active ? "Đã vô hiệu hóa người dùng" : "Đã kích hoạt người dùng"
       );
     } catch (e) {
-      console.error(e);
       error(e.displayMessage || "Cập nhật trạng thái thất bại");
     }
   };

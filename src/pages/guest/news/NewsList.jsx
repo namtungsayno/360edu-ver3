@@ -46,7 +46,6 @@ export default function NewsList() {
 
   // === FETCH NEWS WITH SERVER-SIDE PAGINATION ===
   const fetchNews = useCallback(async () => {
-    console.log("📡 Fetching news with BE pagination...");
     setLoading(true);
     setError("");
 
@@ -59,8 +58,6 @@ export default function NewsList() {
         sortBy: "createdAt",
         order: "desc",
       });
-
-      console.log("📊 BE Response:", response);
 
       const newsData = response.content || response.data || response || [];
       // Filter only published news (backup filter)
@@ -82,7 +79,6 @@ export default function NewsList() {
       );
       setTotalElements(response.totalElements || publishedNews.length || 0);
     } catch (e) {
-      console.error("❌ Failed to fetch news:", e);
       setError("Không tải được tin tức. Vui lòng thử lại.");
     } finally {
       setLoading(false);

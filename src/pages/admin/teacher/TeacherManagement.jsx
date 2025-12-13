@@ -128,8 +128,7 @@ const TeacherManagement = () => {
         setSubjects(Array.isArray(data) ? data : []);
       } catch (e) {
         toastRef.current.error("Không tải được danh sách môn học", "Môn học");
-        console.error(e);
-      }
+        }
     })();
   }, []);
 
@@ -143,13 +142,6 @@ const TeacherManagement = () => {
     setLoading(true);
     try {
       const subjectId = subjectFilter ? Number(subjectFilter) : null;
-      console.log("📡 Fetching teachers:", {
-        search: debouncedSearch,
-        subjectId,
-        page,
-        size: pageSize,
-      });
-
       const response = await teacherApi.listPaginated({
         search: debouncedSearch,
         subjectId,
@@ -158,8 +150,6 @@ const TeacherManagement = () => {
         sortBy: "id",
         order: "asc",
       });
-
-      console.log("📊 BE Response:", response);
 
       const content = response.content || [];
       const base = normalizeTeachers(content);
@@ -180,7 +170,6 @@ const TeacherManagement = () => {
               .filter(Boolean);
             return { ...t, subjects: normalized };
           } catch (e) {
-            console.error(e);
             // Fallback by-user
             try {
               const userId = t._raw?.userId ?? t.userId;
@@ -206,8 +195,7 @@ const TeacherManagement = () => {
                 return { ...t, subjects: normalized };
               }
             } catch (e2) {
-              console.error(e2);
-            }
+              }
             return t;
           }
         })
@@ -218,8 +206,7 @@ const TeacherManagement = () => {
       setTotalPages(response.totalPages || 0);
     } catch (e) {
       toastRef.current.error("Không tải được danh sách giáo viên", "Giáo viên");
-      console.error(e);
-    } finally {
+      } finally {
       setLoading(false);
     }
   }, [debouncedSearch, subjectFilter, page, pageSize]);
@@ -250,7 +237,6 @@ const TeacherManagement = () => {
       setEditing(updated);
       setSelectedSubjects(normalized.map((s) => s.id));
     } catch (e) {
-      console.error(e);
       // Fallback: thử lấy theo userId nếu backend chưa có route teacher_id
       try {
         const userId = teacher._raw?.userId ?? teacher.userId;
@@ -278,8 +264,7 @@ const TeacherManagement = () => {
           return;
         }
       } catch (e2) {
-        console.error(e2);
-      }
+        }
       // Nếu vẫn lỗi, mở panel với dữ liệu sẵn có
       setEditing(teacher);
       const currentSubjects = Array.isArray(teacher.subjects)
@@ -343,8 +328,7 @@ const TeacherManagement = () => {
               }
             } catch (parseErr) {
               // Bỏ qua lỗi parse, giữ thông điệp mặc định
-              console.debug(parseErr);
-            }
+              }
             error(msg, "Chỉnh sửa môn dạy");
             return; // Dừng lại, không cập nhật môn phụ khi đổi môn chính bị chặn
           }
@@ -369,11 +353,9 @@ const TeacherManagement = () => {
           }
         } catch (parseErr) {
           // Bỏ qua lỗi parse, dùng thông điệp mặc định
-          console.debug(parseErr);
-        }
+          }
         error(msg, "Chỉnh sửa môn dạy");
-        console.error(e);
-      }
+        }
     })();
   };
 

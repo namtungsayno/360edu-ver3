@@ -19,7 +19,6 @@ export const teacherUploadApi = {
       });
       return response.data; // Expected: { url: "https://..." } or just the URL string
     } catch (error) {
-      console.error("Error uploading avatar:", error);
       throw error;
     }
   },
@@ -35,7 +34,6 @@ export const teacherUploadApi = {
         params: { url: avatarUrl },
       });
     } catch (error) {
-      console.error("Error deleting avatar:", error);
       throw error;
     }
   },

@@ -12,7 +12,6 @@ export const enrollmentApi = {
       .get(`/enrollments/me/classes`)
       .then((r) => r.data)
       .catch((err) => {
-        console.error("❌ [EnrollmentAPI] GET /enrollments/me/classes failed:", err);
         throw err;
       }),
   // Student: get all sessions of a class with lesson content
@@ -21,7 +20,6 @@ export const enrollmentApi = {
       .get(`/enrollments/me/classes/${classId}/sessions`)
       .then((r) => r.data)
       .catch((err) => {
-        console.error("❌ [EnrollmentAPI] GET class sessions failed:", err);
         throw err;
       }),
 };

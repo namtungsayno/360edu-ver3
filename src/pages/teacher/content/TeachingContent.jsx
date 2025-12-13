@@ -122,8 +122,7 @@ export default function TeachingContent() {
               .map((s) => s.id);
             opts = list.filter((s) => subjectIds.includes(s.id));
           } catch (legacyErr) {
-            console.warn("Legacy fallback failed", legacyErr);
-          }
+            }
         }
         setSubjectOptions(opts);
 
@@ -152,7 +151,6 @@ export default function TeachingContent() {
         });
         setCourses(merged);
       } catch (e) {
-        console.error("Failed to load teaching content (IDs path):", e);
         if (!ignore) error("Không thể tải nội dung giảng dạy");
       } finally {
         if (!ignore) setLoading(false);

@@ -202,7 +202,6 @@ export const scheduleService = {
         time: "", // no attendance time yet
       }));
     } catch (e) {
-      console.error("Failed to load enrolled students:", e);
       return [];
     }
   },

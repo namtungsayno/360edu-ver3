@@ -23,8 +23,7 @@ export default function CreateTeacherPage() {
         const data = await subjectService.all();
         setSubjects(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Failed to load subjects", err);
-      }
+        }
     })();
   }, []);
 

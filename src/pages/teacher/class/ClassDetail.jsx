@@ -191,13 +191,6 @@ export default function ClassDetail() {
           ? parseInt(sessionIdParam, 10)
           : attendance.sessionId;
 
-        console.log(
-          "🎯 ClassDetail: slotId=",
-          slotIdNum,
-          "fetchedSessionId=",
-          fetchedSessionId
-        );
-
         setAttendanceDetails(attendanceList);
         setOriginalDetails(attendanceList);
         if (fetchedSessionId) {
@@ -259,8 +252,7 @@ export default function ClassDetail() {
                 baseCourseId = parseInt(sourceMatch[1], 10);
               }
             } catch (err) {
-              console.error("Load personal course failed:", err);
-            }
+              }
           }
 
           // 2. Load Course gốc Admin - từ baseCourseId (nếu tìm được) hoặc từ Subject
@@ -272,8 +264,7 @@ export default function ClassDetail() {
               setAdminCourseData(loadedAdminCourse);
               setBaseCourseIdState(baseCourseId);
             } catch (err) {
-              console.error("Load admin course from SOURCE failed:", err);
-            }
+              }
           }
 
           // 3. Fallback: Nếu không tìm được từ SOURCE tag, thử lấy từ Subject's courses
@@ -297,8 +288,7 @@ export default function ClassDetail() {
                 setBaseCourseIdState(adminCourse.id);
               }
             } catch (err) {
-              console.error("Load admin course from Subject failed:", err);
-            }
+              }
           }
 
           // Default: hiển thị course gốc Admin (nếu có), hoặc Personal course
@@ -381,7 +371,6 @@ export default function ClassDetail() {
           }
         }
       } catch (e) {
-        console.error("Failed to load class details:", e);
         error("Không thể tải thông tin lớp học");
       } finally {
         setLoading(false);
@@ -478,7 +467,6 @@ export default function ClassDetail() {
       }
       setEditMode(false);
     } catch (err) {
-      console.error("Error saving attendance:", err);
       const backendMsg =
         (typeof err.response?.data === "string" && err.response.data) ||
         err.response?.data?.message ||
@@ -552,7 +540,6 @@ export default function ClassDetail() {
       setHasExistingContent(true);
       setContentEditMode(false); // Lock after save
     } catch (err) {
-      console.error("Error saving lesson content:", err);
       error("Có lỗi xảy ra khi lưu nội dung buổi học");
     } finally {
       setSavingContent(false);
@@ -590,7 +577,6 @@ export default function ClassDetail() {
         error(result.message || "Có lỗi xảy ra khi gửi thông báo");
       }
     } catch (err) {
-      console.error("Error sending parent notification:", err);
       const errorMsg =
         err.response?.data?.message ||
         err.message ||
@@ -1148,12 +1134,6 @@ export default function ClassDetail() {
                       onClick={() => {
                         if (!contentEditMode) return;
                         if (personalCourseData) {
-                          console.log(
-                            "🔄 Switching to Personal Course:",
-                            personalCourseData?.title,
-                            "| Chapters:",
-                            personalCourseData?.chapters?.length
-                          );
                           setUsingPersonalCourse(true);
                           setCourseData(personalCourseData);
                           setSelectedChapterId("");
@@ -1228,12 +1208,6 @@ export default function ClassDetail() {
                       onClick={() => {
                         if (!contentEditMode) return;
                         if (adminCourseData) {
-                          console.log(
-                            "🔄 Switching to Admin Course:",
-                            adminCourseData?.title,
-                            "| Chapters:",
-                            adminCourseData?.chapters?.length
-                          );
                           setUsingPersonalCourse(false);
                           setCourseData(adminCourseData);
                           setSelectedChapterId("");

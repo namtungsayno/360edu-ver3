@@ -71,8 +71,7 @@ export default function AdminCourseCreate() {
           String(sid);
         setSubjectName(name);
       } catch (e) {
-        console.error("Failed to load subject", e);
-      }
+        }
     })();
   }, [searchParams]);
 
@@ -231,7 +230,6 @@ export default function AdminCourseCreate() {
       success("Đã tạo khóa học thành công", "Thành công");
       navigate(`/home/admin/courses/${courseId}`);
     } catch (err) {
-      console.error("Admin create course failed:", err);
       error(
         err?.displayMessage || err?.message || "Có lỗi xảy ra khi tạo khóa học"
       );

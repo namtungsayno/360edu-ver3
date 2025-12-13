@@ -56,7 +56,6 @@ function ScheduleManagement() {
         setTeachers(tList);
         setTimeSlots(slots);
       } catch (e) {
-        console.error("Failed to load initial data:", e);
         showError("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối backend.");
       }
     })();
@@ -68,7 +67,6 @@ function ScheduleManagement() {
         const data = await scheduleService.getScheduleBySemester("all");
         setWeekSchedule(data);
       } catch (e) {
-        console.error("Failed to load schedule data:", e);
         showError(
           "Không thể tải dữ liệu lịch học. Vui lòng kiểm tra kết nối backend."
         );
@@ -101,16 +99,11 @@ function ScheduleManagement() {
     filtered = filtered.filter((s) => {
       // Nếu thiếu dữ liệu ngày hoặc day, loại bỏ khỏi lịch
       if (!s.startDate || !s.endDate || !s.day || isNaN(Number(s.day))) {
-        console.warn(
-          "[Schedule] Bỏ qua lớp do thiếu startDate/endDate/day:",
-          s
-        );
         return false;
       }
       // Lấy ngày slot thực tế trong tuần này
       const slotDate = addDays(weekStartDate, Number(s.day) - 1); // day: 1-7 (Mon-Sun)
       if (isNaN(slotDate.getTime())) {
-        console.warn("[Schedule] Bỏ qua lớp do slotDate không hợp lệ:", s);
         return false;
       }
       const slotDateStr = fmt(slotDate, "yyyy-MM-dd");
@@ -135,8 +128,6 @@ function ScheduleManagement() {
   };
 
   const openClassDetail = (classData) => {
-    console.log("🎯 Opening class detail:", classData);
-
     // Tính ngày của slot này dựa vào weekStart + day index
     const dayIdx = WEEK_DAYS.findIndex((d) => d.id === classData.day);
     if (dayIdx === -1) {
@@ -145,12 +136,6 @@ function ScheduleManagement() {
     }
     const date = addDays(weekStart, dayIdx);
     const dateStr = fmt(date, "yyyy-MM-dd");
-
-    console.log("📅 Navigating to:", {
-      classId: classData.classId,
-      date: dateStr,
-      url: `/home/admin/schedule/class/${classData.classId}`,
-    });
 
     // Điều hướng đến trang chi tiết lớp, truyền date qua URL state
     navigate(`/home/admin/schedule/class/${classData.classId}`, {

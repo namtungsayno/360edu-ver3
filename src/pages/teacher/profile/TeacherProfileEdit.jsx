@@ -68,8 +68,7 @@ export default function TeacherProfileEdit() {
       const data = await teacherProfileApi.getMyCertificates();
       setCertificates(data || []);
     } catch (err) {
-      console.error("Error loading certificates:", err);
-    }
+      }
   };
 
   const loadExperiences = async () => {
@@ -77,8 +76,7 @@ export default function TeacherProfileEdit() {
       const data = await teacherProfileApi.getMyExperiences();
       setExperiences(data || []);
     } catch (err) {
-      console.error("Error loading experiences:", err);
-    }
+      }
   };
 
   const loadEducations = async () => {
@@ -86,8 +84,7 @@ export default function TeacherProfileEdit() {
       const data = await teacherProfileApi.getMyEducations();
       setEducations(data || []);
     } catch (err) {
-      console.error("Error loading educations:", err);
-    }
+      }
   };
 
   // Load data on mount

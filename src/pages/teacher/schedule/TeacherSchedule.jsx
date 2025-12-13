@@ -108,7 +108,6 @@ function TeacherSchedule() {
         const slots = await scheduleService.getTimeSlots();
         setTimeSlots(slots);
       } catch (e) {
-        console.error("Failed to load time slots:", e);
         showError(
           "Không thể tải dữ liệu slot. Vui lòng kiểm tra kết nối backend."
         );
@@ -128,7 +127,6 @@ function TeacherSchedule() {
         // Load attendance status for all classes in the week
         await loadAttendanceStatuses(data);
       } catch (e) {
-        console.error("Failed to load teacher schedule:", e);
         showError(
           "Không thể tải lịch dạy của bạn. Vui lòng kiểm tra kết nối backend."
         );
@@ -144,19 +142,11 @@ function TeacherSchedule() {
     const filteredSchedule = weekSchedule.filter((s) => {
       // Nếu thiếu dữ liệu ngày hoặc day, loại bỏ khỏi lịch
       if (!s.startDate || !s.endDate || !s.day || isNaN(Number(s.day))) {
-        console.warn(
-          "[TeacherSchedule] Bỏ qua lớp do thiếu startDate/endDate/day:",
-          s
-        );
         return false;
       }
       // Lấy ngày slot thực tế trong tuần này
       const slotDate = addDays(weekStartDate, Number(s.day) - 1); // day: 1-7 (Mon-Sun)
       if (isNaN(slotDate.getTime())) {
-        console.warn(
-          "[TeacherSchedule] Bỏ qua lớp do slotDate không hợp lệ:",
-          s
-        );
         return false;
       }
       const slotDateStr = fmt(slotDate, "yyyy-MM-dd");

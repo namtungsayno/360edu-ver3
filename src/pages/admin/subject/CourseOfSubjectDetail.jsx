@@ -39,8 +39,7 @@ export default function CourseOfSubjectDetail() {
           setEditableCourse(deepCloneCourse(data));
         }
       } catch (e) {
-        console.error("Failed to load course of subject:", e);
-      } finally {
+        } finally {
         if (!ignore) setLoading(false);
       }
     })();
@@ -220,8 +219,7 @@ export default function CourseOfSubjectDetail() {
             try {
               await courseService.removeChapter(ch.id);
             } catch (e) {
-              console.warn("Xoá chương thất bại", ch.id, e);
-            }
+              }
           }
         }
         // Tạo lại toàn bộ chương + bài học với orderIndex mới
@@ -254,7 +252,6 @@ export default function CourseOfSubjectDetail() {
       // Hiển thị toast thành công
       success("Cập nhật khóa học thành công!", "Thành công");
     } catch (e) {
-      console.error(e);
       setErrorMsg("Có lỗi khi lưu thay đổi. Vui lòng thử lại.");
       showError("Có lỗi khi lưu thay đổi. Vui lòng thử lại.", "Lỗi");
     } finally {

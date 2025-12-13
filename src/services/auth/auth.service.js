@@ -52,8 +52,7 @@ export const authService = {
     //   if (remember) localStorage.setItem(REMEMBER_KEY, trimmedUsername || "");
     //   else localStorage.removeItem(REMEMBER_KEY);
     //   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(mockUser));
-    //   console.warn("Using mock admin credentials for local testing.");
-    //   return mockUser;
+    //   //   return mockUser;
     // }
 
     // eslint-disable-next-line no-useless-catch
@@ -73,8 +72,7 @@ export const authService = {
     try {
       await authApi.logout();
     } catch (error) {
-      console.error("Logout API error:", error);
-    } finally {
+      } finally {
       // Clear all localStorage
       localStorage.clear();
 

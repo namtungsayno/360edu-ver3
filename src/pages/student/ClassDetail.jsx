@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Clock, Calendar, MapPin, Users, Star, CheckCircle, Video, Award, BookOpen } from "lucide-react";
+import {
+  ArrowLeft,
+  Clock,
+  Calendar,
+  MapPin,
+  Users,
+  Star,
+  CheckCircle,
+  Video,
+  Award,
+  BookOpen,
+} from "lucide-react";
 import { enrollmentService } from "../../services/enrollment/enrollment.service";
 import { Badge } from "../../components/ui/Badge.jsx";
 import { Button } from "../../components/ui/Button.jsx";
@@ -12,34 +23,26 @@ export default function StudentClassDetail() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
+
   const classId = Number(id);
 
   useEffect(() => {
     (async () => {
-      console.log(" Loading student class detail for classId:", classId);
       setLoading(true);
       setError("");
       try {
-        // Lấy danh sách lớp đã đăng ký
         const enrolledClasses = await enrollmentService.listMyClasses();
-        console.log(" Enrolled classes:", enrolledClasses);
-        
-        // Tìm lớp có classId tương ứng
-        const cls = Array.isArray(enrolledClasses) 
-          ? enrolledClasses.find((c) => c.classId === classId) 
+
+        const cls = Array.isArray(enrolledClasses)
+          ? enrolledClasses.find((c) => c.classId === classId)
           : null;
-        
+
         if (!cls) {
-          console.error(" Class not found in enrolled classes");
           setError("Không tìm thấy lớp hoặc bạn chưa đăng ký lớp này.");
         } else {
-          console.log(" Class found:", cls);
-          console.log("📖 Course info - courseId:", cls.courseId, "courseTitle:", cls.courseTitle);
           setData(cls);
         }
-      } catch (e) {
-        console.error(" Failed to load class detail:", e);
+      } catch {
         setError("Không tải được dữ liệu lớp.");
       } finally {
         setLoading(false);
@@ -57,7 +60,7 @@ export default function StudentClassDetail() {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="bg-gray-50 flex items-center justify-center py-20">
@@ -70,7 +73,7 @@ export default function StudentClassDetail() {
       </div>
     );
   }
-  
+
   if (!data) return null;
 
   return (
@@ -95,12 +98,14 @@ export default function StudentClassDetail() {
             {/* Class Header */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Badge className={
-                  data.status === 'ACTIVE' 
-                    ? "bg-green-100 text-green-800" 
-                    : "bg-gray-100 text-gray-800"
-                }>
-                  {data.status === 'ACTIVE' ? '✓ Đang học' : data.status}
+                <Badge
+                  className={
+                    data.status === "ACTIVE"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
+                  }
+                >
+                  {data.status === "ACTIVE" ? "✓ Đang học" : data.status}
                 </Badge>
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-3">
@@ -125,7 +130,8 @@ export default function StudentClassDetail() {
                   Thông tin lớp học
                 </h2>
                 <p className="text-gray-700 leading-relaxed">
-                  Bạn đã đăng ký lớp học này. Hãy tham gia đầy đủ các buổi học và hoàn thành bài tập được giao để đạt kết quả tốt nhất.
+                  Bạn đã đăng ký lớp học này. Hãy tham gia đầy đủ các buổi học
+                  và hoàn thành bài tập được giao để đạt kết quả tốt nhất.
                 </p>
               </CardContent>
             </Card>
@@ -133,7 +139,9 @@ export default function StudentClassDetail() {
             {/* Schedule Info */}
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Thời gian học</h2>
+                <h2 className="text-lg font-bold text-gray-900 mb-4">
+                  Thời gian học
+                </h2>
                 <div className="grid md:grid-cols-2 gap-6">
                   {data.roomName && (
                     <div>
@@ -141,9 +149,7 @@ export default function StudentClassDetail() {
                         <MapPin className="w-5 h-5 text-blue-600" />
                         <span className="font-medium">Phòng học</span>
                       </div>
-                      <div className="ml-7 text-gray-600">
-                        {data.roomName}
-                      </div>
+                      <div className="ml-7 text-gray-600">{data.roomName}</div>
                     </div>
                   )}
 
@@ -177,7 +183,9 @@ export default function StudentClassDetail() {
             {/* Teacher Info */}
             <Card>
               <CardContent className="p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Giáo viên giảng dạy</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  Giáo viên giảng dạy
+                </h2>
                 <div className="flex items-start gap-4">
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
                     {(data.teacherName || "G").charAt(0).toUpperCase()}
@@ -204,7 +212,9 @@ export default function StudentClassDetail() {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-gray-900">Tài liệu học tập</h2>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Tài liệu học tập
+                  </h2>
                 </div>
 
                 {/* Course Info */}
@@ -225,7 +235,11 @@ export default function StudentClassDetail() {
                       <Button
                         size="sm"
                         className="bg-blue-600 hover:bg-blue-700"
-                        onClick={() => navigate(`/home/courses/${data.courseId}?classId=${data.classId}`)}
+                        onClick={() =>
+                          navigate(
+                            `/home/courses/${data.courseId}?classId=${data.classId}`
+                          )
+                        }
                       >
                         Xem khóa học
                       </Button>
@@ -241,14 +255,16 @@ export default function StudentClassDetail() {
             <div className="sticky top-4">
               <Card className="shadow-xl">
                 <CardContent className="p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">Trạng thái đăng ký</h2>
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">
+                    Trạng thái đăng ký
+                  </h2>
 
                   {/* Status Badge */}
                   <div className="mb-6 p-4 bg-green-50 rounded-lg border-2 border-green-200">
                     <div className="flex items-center gap-3 mb-2">
                       <CheckCircle className="w-6 h-6 text-green-600" />
                       <span className="font-bold text-green-800 text-lg">
-                        {data.status === 'ACTIVE' ? 'Đang học' : 'Đã đăng ký'}
+                        {data.status === "ACTIVE" ? "Đang học" : "Đã đăng ký"}
                       </span>
                     </div>
                     <p className="text-sm text-green-700">
@@ -263,7 +279,9 @@ export default function StudentClassDetail() {
                         Môn học
                       </label>
                       <div className="p-3 bg-gray-50 rounded-lg">
-                        <span className="font-medium text-gray-900">{data.subjectName}</span>
+                        <span className="font-medium text-gray-900">
+                          {data.subjectName}
+                        </span>
                       </div>
                     </div>
 
@@ -272,7 +290,9 @@ export default function StudentClassDetail() {
                         Giáo viên
                       </label>
                       <div className="p-3 bg-gray-50 rounded-lg">
-                        <span className="font-medium text-gray-900">{data.teacherName}</span>
+                        <span className="font-medium text-gray-900">
+                          {data.teacherName}
+                        </span>
                       </div>
                     </div>
 
@@ -282,7 +302,9 @@ export default function StudentClassDetail() {
                           Phòng học
                         </label>
                         <div className="p-3 bg-gray-50 rounded-lg">
-                          <span className="font-medium text-gray-900">{data.roomName}</span>
+                          <span className="font-medium text-gray-900">
+                            {data.roomName}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -294,7 +316,6 @@ export default function StudentClassDetail() {
                       className="w-full bg-blue-600 hover:bg-blue-700"
                       onClick={() => {
                         // TODO: Navigate to attendance or materials
-                        console.log("View attendance/materials");
                       }}
                     >
                       Xem điểm danh

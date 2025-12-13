@@ -109,8 +109,7 @@ export default function ClassroomList() {
           INACTIVE: normalized.length - active,
         });
       } catch (e) {
-        console.error("Failed to load counts:", e);
-      }
+        }
     })();
   }, []);
 
@@ -119,13 +118,6 @@ export default function ClassroomList() {
     setLoading(true);
     try {
       const beStatus = mapStatusToBE(tab);
-      console.log("📡 Fetching rooms:", {
-        search: debouncedQuery,
-        status: beStatus,
-        page,
-        size,
-      });
-
       const response = await classroomApi.listPaginated({
         search: debouncedQuery,
         status: beStatus,
@@ -135,14 +127,11 @@ export default function ClassroomList() {
         order: "asc",
       });
 
-      console.log("📊 BE Response:", response);
-
       const content = response.content || [];
       setRooms(content.map(normalizeRoom));
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
     } catch (e) {
-      console.error("Error fetching rooms:", e);
       toastRef.current?.error?.("Lỗi tải danh sách phòng học");
     } finally {
       setLoading(false);
@@ -178,8 +167,7 @@ export default function ClassroomList() {
         INACTIVE: normalized.length - active,
       });
     } catch (e) {
-      console.error("Failed to reload counts:", e);
-    }
+      }
   };
 
   // Toggle status

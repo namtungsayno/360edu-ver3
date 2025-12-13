@@ -246,48 +246,21 @@ function DetailPanel({
   const navigate = useNavigate();
   const statusBadge = getStatusBadge(cls.status);
 
-  // DEBUG: Log dữ liệu từ API
-  console.log("🔍 DetailPanel cls data - ALL KEYS:", Object.keys(cls));
-  console.log("🔍 DetailPanel cls data - FULL OBJECT:", cls);
-  console.log("🔍 Checking session fields:", {
-    pricePerSession: cls?.pricePerSession,
-    price: cls?.price,
-    sessionPrice: cls?.sessionPrice,
-    price_per_session: cls?.price_per_session,
-    totalSessions: cls?.totalSessions,
-    numberOfSessions: cls?.numberOfSessions,
-    sessionCount: cls?.sessionCount,
-    total_sessions: cls?.total_sessions,
-    sessions: cls?.sessions,
-    totalSessionCount: cls?.totalSessionCount,
-    sessionNumber: cls?.sessionNumber,
-  });
-
   // Hỗ trợ các tên trường thay thế từ backend (giống ClassDetailPage)
-  const priceValue = (() => {
-    const v =
-      cls?.pricePerSession ??
-      cls?.price ??
-      cls?.sessionPrice ??
-      cls?.price_per_session ??
-      null;
-    console.log("💰 priceValue:", v);
-    return v;
-  })();
+  const priceValue =
+    cls?.pricePerSession ??
+    cls?.price ??
+    cls?.sessionPrice ??
+    cls?.price_per_session ??
+    null;
 
-  const totalSessions = (() => {
-    // Ưu tiên lấy từ backend - đây là giá trị chính xác nhất
-    const v =
-      cls?.totalSessions ??
-      cls?.numberOfSessions ??
-      cls?.sessionCount ??
-      cls?.total_sessions ??
-      cls?.sessions ??
-      null;
-
-    console.log("📊 totalSessions from BE:", v);
-    return v;
-  })();
+  const totalSessions =
+    cls?.totalSessions ??
+    cls?.numberOfSessions ??
+    cls?.sessionCount ??
+    cls?.total_sessions ??
+    cls?.sessions ??
+    null;
 
   const totalPrice =
     priceValue != null && totalSessions != null && totalSessions > 0
@@ -710,7 +683,7 @@ export default function ClassManagementV2() {
           published,
         });
       } catch (e) {
-        console.error("Failed to load stats:", e);
+        // Failed to load stats
       }
     })();
   }, []);
@@ -722,7 +695,7 @@ export default function ClassManagementV2() {
         const data = await classApi.getDraftApproaching();
         setDraftApproaching(Array.isArray(data) ? data : []);
       } catch (e) {
-        console.error("Failed to load draft approaching:", e);
+        // Failed to load draft approaching
       }
     })();
   }, []);
@@ -748,14 +721,6 @@ export default function ClassManagementV2() {
       if (classType === "online") isOnline = true;
       else if (classType === "offline") isOnline = false;
 
-      console.log("📡 Fetching classes:", {
-        search: debouncedQuery,
-        status: mapStatusToBE(statusFilter),
-        isOnline,
-        page,
-        size,
-      });
-
       const response = await classApi.listPaginated({
         search: debouncedQuery,
         status: mapStatusToBE(statusFilter),
@@ -766,14 +731,11 @@ export default function ClassManagementV2() {
         order: "desc",
       });
 
-      console.log("📊 BE Response:", response);
-
       const content = response.content || [];
       setClasses(content);
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
     } catch (e) {
-      console.error(e);
       setClasses([]);
       toastRef.current.showError("Không thể tải danh sách lớp học");
     } finally {
@@ -796,7 +758,7 @@ export default function ClassManagementV2() {
       const published = allClasses.filter((c) => c.status === "PUBLIC").length;
       setStats({ total: allClasses.length, online, offline, draft, published });
     } catch (e) {
-      console.error("Failed to reload stats:", e);
+      // Failed to reload stats
     }
   };
 
@@ -819,7 +781,6 @@ export default function ClassManagementV2() {
       await reloadStats();
       success("Đã xuất bản lớp học thành công");
     } catch (e) {
-      console.error(e);
       showError("Không thể xuất bản lớp học");
     } finally {
       setUpdating(false);
@@ -840,7 +801,6 @@ export default function ClassManagementV2() {
       await reloadStats();
       success("Đã xóa lớp học thành công");
     } catch (e) {
-      console.error(e);
       let msg = "Không thể xóa lớp học";
       if (e.response?.data?.message) msg = e.response.data.message;
       showError(msg);

@@ -10,7 +10,6 @@ export const studentScheduleApi = {
     http.get(`/enrollments/me/schedule/week?weekStart=${weekStart}`)
       .then(response => response.data)
       .catch(error => {
-        console.error("❌ [StudentScheduleAPI] getWeeklySchedule error:", error);
         throw error;
       }),
 };

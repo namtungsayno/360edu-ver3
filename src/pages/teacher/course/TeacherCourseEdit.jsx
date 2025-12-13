@@ -123,7 +123,6 @@ export default function TeacherCourseEdit() {
 
       // Không cần enrich: UI dùng trực tiếp `course.title`
     } catch (err) {
-      console.error("Load course detail error:", err);
       error("Không thể tải thông tin khóa học");
       setLoading(false);
       navigate("/home/teacher/courses");
@@ -169,7 +168,6 @@ export default function TeacherCourseEdit() {
         setSubjects(teacherSubjects);
         setLoadingSubjects(false);
       } catch (err) {
-        console.error("Load subjects error:", err);
         error("Không thể tải danh sách môn học");
         setLoadingSubjects(false);
       }
@@ -349,8 +347,7 @@ export default function TeacherCourseEdit() {
                 try {
                   await courseService.removeLesson(ls.id);
                 } catch (lessonErr) {
-                  console.warn(`Failed to remove lesson ${ls.id}:`, lessonErr);
-                }
+                  }
               }
             }
           }
@@ -358,8 +355,7 @@ export default function TeacherCourseEdit() {
             try {
               await courseService.removeChapter(ch.id);
             } catch (chapterErr) {
-              console.warn(`Failed to remove chapter ${ch.id}:`, chapterErr);
-            }
+              }
           }
         }
       }
@@ -409,7 +405,6 @@ export default function TeacherCourseEdit() {
       success("Đã cập nhật khóa học thành công!", "Thành công");
       navigate(`/home/teacher/courses/${id}`);
     } catch (err) {
-      console.error("Update course failed:", err);
       const errorMsg =
         err?.response?.data?.message ||
         err?.displayMessage ||

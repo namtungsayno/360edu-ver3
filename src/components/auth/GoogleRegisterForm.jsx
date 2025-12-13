@@ -60,7 +60,6 @@ export default function GoogleRegisterForm({
           setParentPhoneStatus({ checking: false, exists: false, parentInfo: null });
         }
       } catch (err) {
-        console.error("Error checking parent phone:", err);
         setParentPhoneStatus({ checking: false, exists: false, parentInfo: null });
       }
     }, 800); // Debounce 800ms

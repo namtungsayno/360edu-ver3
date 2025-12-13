@@ -84,7 +84,6 @@ export default function Header({ onNavigate, currentPage }) {
         setSearchResults(results);
         setShowSearchDropdown(true);
       } catch (error) {
-        console.error("Search error:", error);
         setSearchResults(null);
       } finally {
         setIsSearching(false);
@@ -129,7 +128,6 @@ export default function Header({ onNavigate, currentPage }) {
       setShowProfileMenu(false);
       onNavigate({ type: "home" });
     } catch (error) {
-      console.error("Logout failed:", error);
       showError("Không thể đăng xuất. Vui lòng thử lại.");
     }
   };

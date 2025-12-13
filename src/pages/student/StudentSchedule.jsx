@@ -76,11 +76,9 @@ export default function StudentSchedule() {
     const key = fmt(ws, "yyyy-MM-dd");
     try {
       const raw = await studentScheduleService.getScheduleByWeek(key);
-      console.log("📅 Schedule data received:", raw); // Debug log
       const data = normalize(raw);
       setCache((prev) => ({ ...prev, [key]: data }));
     } catch (e) {
-      console.error("Failed to load schedule data:", e);
       error("Không thể tải dữ liệu lịch học");
       setCache((prev) => ({ ...prev, [key]: [] }));
     }

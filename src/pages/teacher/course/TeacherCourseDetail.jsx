@@ -103,7 +103,6 @@ export default function TeacherCourseDetail() {
         setExpandedChapters(expanded);
       }
     } catch (e) {
-      console.error("Load course detail error:", e);
       error("Không thể tải thông tin khóa học");
     } finally {
       setLoading(false);

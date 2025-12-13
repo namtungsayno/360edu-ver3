@@ -45,8 +45,6 @@ http.interceptors.request.use(
 http.interceptors.response.use(
   (r) => r,
   (err) => {
-    console.error("HTTP ERROR:", err?.response?.status, err?.response?.data);
-
     // Extract message from various response formats
     const data = err?.response?.data;
     let message = null;

@@ -64,7 +64,6 @@ export default function TeacherClassAttendance() {
       );
       setData(result);
     } catch (e) {
-      console.error("Load class attendance error:", e);
       error("Không thể tải thông tin chấm công lớp");
     } finally {
       setLoading(false);

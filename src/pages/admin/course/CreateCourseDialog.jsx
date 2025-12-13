@@ -47,7 +47,6 @@ export default function CreateCourseDialog({
       onCreated?.(created);
       onOpenChange(false);
     } catch (e) {
-      console.error(e);
       const msg = e?.response?.data?.message || "Không thể tạo khóa học";
       error(msg);
     } finally {

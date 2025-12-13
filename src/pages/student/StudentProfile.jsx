@@ -102,11 +102,9 @@ export default function StudentProfile() {
               setParentChildInfo(parentCheck.parentInfo);
             }
           } catch (e) {
-            console.error("Check parent phone error:", e);
-          }
+            }
         }
       } catch (e) {
-        console.error("Load profile error:", e);
         showError("Không thể tải thông tin profile");
       } finally {
         setLoading(false);
@@ -151,7 +149,6 @@ export default function StudentProfile() {
       setIsEditing(false);
       success("Cập nhật profile thành công");
     } catch (e) {
-      console.error("Save profile error:", e);
       showError(e.displayMessage || "Cập nhật thất bại");
     } finally {
       setSaving(false);
@@ -175,7 +172,6 @@ export default function StudentProfile() {
 
       success("Cập nhật ảnh đại diện thành công");
     } catch (e) {
-      console.error("Upload avatar error:", e);
       showError(e.displayMessage || "Upload ảnh thất bại");
     } finally {
       setUploadingAvatar(false);
@@ -209,7 +205,6 @@ export default function StudentProfile() {
 
       success("Cập nhật ảnh đại diện thành công");
     } catch (e) {
-      console.error("Save avatar URL error:", e);
       showError(e.displayMessage || "Cập nhật thất bại");
     } finally {
       setSavingAvatarUrl(false);
@@ -228,7 +223,6 @@ export default function StudentProfile() {
         confirmPassword: "",
       });
     } catch (e) {
-      console.error("Change password error:", e);
       showError(e.displayMessage || "Đổi mật khẩu thất bại");
     } finally {
       setChangingPassword(false);

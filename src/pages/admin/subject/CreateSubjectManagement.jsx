@@ -60,7 +60,6 @@ export default function CreateSubjectManagement() {
       success("Môn học đã được tạo thành công!");
       navigate("/home/admin/subject");
     } catch (err) {
-      console.error("Error creating subject:", err);
       showError(
         err?.response?.data?.message ||
           "Có lỗi xảy ra khi tạo môn học. Vui lòng thử lại."
