@@ -52,7 +52,6 @@ export default function CreateOfflineClassPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
   const [subjects, setSubjects] = useState([]);
   const [courses, setCourses] = useState([]); // Danh sách khóa học theo môn
   const [teachers, setTeachers] = useState([]);
@@ -144,8 +143,10 @@ export default function CreateOfflineClassPage() {
     try {
       const data = await subjectService.all();
       setSubjects(Array.isArray(data) ? data : []);
+      // eslint-disable-next-line no-unused-vars
     } catch (e) {
-      }
+      /* empty */
+    }
   }
 
   async function loadCourses() {
@@ -816,6 +817,16 @@ export default function CreateOfflineClassPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Tên lớp <span className="text-gray-400">(Tự động)</span>
+                  </label>
+                  <Input
+                    value={className}
+                    readOnly
+                    className="h-9 text-sm bg-gray-50 font-medium"
+                  />
+                </div>
                 {/* Row 7: Mô tả */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">

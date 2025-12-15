@@ -10,6 +10,6 @@ export function landingPathByRoles(roles = []) {
   if (r.includes("admin")) return "/home/admin/dashboard";
   if (r.includes("teacher")) return "/home/teacher/management";
   if (r.includes("student")) return "/home/my-classes";
-  if (r.includes("parent")) return "/home";
+  if (r.includes("parent")) return "/home/parent/dashboard";
   return "/home"; // fallback
 }

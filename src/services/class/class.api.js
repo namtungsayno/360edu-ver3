@@ -2,13 +2,7 @@ import { http } from "../http";
 export const classApi = {
   create: (payload) => http.post(`/classes`, payload).then((r) => r.data),
   list: (params = {}) => {
-    return http.get(`/classes`, { params }).then((r) => {
-      // Log first 3 classes
-      r.data
-        .slice(0, 3)
-        .forEach((c) =>
-          return r.data;
-    });
+    return http.get(`/classes`, { params }).then((r) => r.data);
   },
 
   /**
@@ -38,13 +32,7 @@ export const classApi = {
   publish: (id) => http.post(`/classes/${id}/publish`).then((r) => r.data),
   revertDraft: (id) =>
     http.post(`/classes/${id}/revert-draft`).then((r) => r.data),
-  getById: (id) =>
-    http.get(`/classes/${id}`).then((r) => {
-      if (r?.data) {
-        const keys = Object.keys(r.data);
-        }
-      return r.data;
-    }),
+  getById: (id) => http.get(`/classes/${id}`).then((r) => r.data),
   // Public API for guest: get class detail with base course info
   getPublicDetail: (id) =>
     http.get(`/classes/${id}/public`).then((r) => r.data),
