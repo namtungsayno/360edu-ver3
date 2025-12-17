@@ -15,7 +15,7 @@ export const paymentService = {
 
   /**
    * Admin: Lấy danh sách payments
-   * @param {Object} filters - { status, studentName, classId, from, to, page, size }
+   * @param {Object} filters - { status, search, classId, from, to, page, size }
    */
   async listPayments(filters = {}) {
     const params = {
@@ -23,7 +23,7 @@ export const paymentService = {
       size: filters.size || 20,
     };
     if (filters.status) params.status = filters.status;
-    if (filters.studentName) params.studentName = filters.studentName;
+    if (filters.search) params.search = filters.search;
     if (filters.classId) params.classId = filters.classId;
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;

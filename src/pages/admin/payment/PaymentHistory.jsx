@@ -57,7 +57,7 @@ export default function PaymentHistory() {
   // Filters
   const [filters, setFilters] = useState({
     status: "",
-    studentName: "",
+    search: "",
     classId: "",
   });
   const [searchInput, setSearchInput] = useState("");
@@ -101,7 +101,7 @@ export default function PaymentHistory() {
 
   const handleSearch = () => {
     setPage(0);
-    setFilters((prev) => ({ ...prev, studentName: searchInput }));
+    setFilters((prev) => ({ ...prev, search: searchInput }));
   };
 
   const handleStatusFilter = (status) => {
@@ -270,7 +270,7 @@ export default function PaymentHistory() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Tìm kiếm theo tên học sinh..."
+                placeholder="Tìm kiếm theo tên học sinh, tên lớp..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -316,7 +316,7 @@ export default function PaymentHistory() {
                   Số tiền
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                  Nội dung CK
+                  Nội dung chuyển khoản
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
                   Trạng thái
