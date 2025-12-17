@@ -108,8 +108,7 @@ export default function ClassroomList() {
           ACTIVE: active,
           INACTIVE: normalized.length - active,
         });
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
   }, []);
 
@@ -166,8 +165,7 @@ export default function ClassroomList() {
         ACTIVE: active,
         INACTIVE: normalized.length - active,
       });
-    } catch (e) {
-      }
+    } catch (e) {}
   };
 
   // Toggle status
@@ -193,8 +191,17 @@ export default function ClassroomList() {
       // Reload data and counts
       fetchClassrooms();
       reloadCounts();
-    } catch {
-      toast?.error?.("Cập nhật thất bại");
+    } catch (err) {
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        err?.message ||
+        "";
+      toast?.error?.(
+        typeof errorMsg === "string" && errorMsg
+          ? errorMsg
+          : "Cập nhật thất bại"
+      );
     }
   };
 

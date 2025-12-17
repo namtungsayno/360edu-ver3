@@ -287,8 +287,11 @@ export default function CreateOfflineClassPage() {
 
   const todayStr = useMemo(() => {
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now.toISOString().slice(0, 10);
+    // Lấy ngày theo múi giờ local (Việt Nam) thay vì UTC
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }, []);
 
   useEffect(() => {

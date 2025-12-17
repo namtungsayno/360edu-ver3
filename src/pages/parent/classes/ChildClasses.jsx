@@ -181,9 +181,12 @@ const ChildClasses = () => {
               </div>
 
               {/* Description */}
-              <p className="text-sm text-gray-600 mb-4">
-                {classItem.description}
-              </p>
+              {classItem.description && (
+                <div
+                  className="text-sm text-gray-600 mb-4 prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: classItem.description }}
+                />
+              )}
 
               {/* Teacher Info */}
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">

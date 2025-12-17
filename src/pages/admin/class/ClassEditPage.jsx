@@ -53,6 +53,7 @@ export default function ClassEditPage() {
   const [totalSessions, setTotalSessions] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [originalStartDate, setOriginalStartDate] = useState(""); // Ngày bắt đầu ban đầu của lớp
   const [pricePerSession, setPricePerSession] = useState("");
   const [name, setName] = useState("");
 
@@ -150,6 +151,7 @@ export default function ClassEditPage() {
           setTotalSessions(String(data.totalSessions || ""));
           setStartDate(data.startDate || "");
           setEndDate(data.endDate || "");
+          setOriginalStartDate(data.startDate || ""); // Lưu ngày bắt đầu ban đầu
           setPricePerSession(String(data.pricePerSession ?? ""));
           setName(data.name || "");
           // originalEndDate removed
@@ -535,8 +537,11 @@ export default function ClassEditPage() {
     : "shadow-green-500/30";
   const todayStr = useMemo(() => {
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now.toISOString().slice(0, 10);
+    // Lấy ngày theo múi giờ local (Việt Nam) thay vì UTC
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }, []);
 
   function isValidUrl(url) {
@@ -552,13 +557,26 @@ export default function ClassEditPage() {
     // Block if room conflict exists for PUBLIC classes
     if (roomConflict) return false;
 
+    // Block nếu sĩ số < số học sinh hiện tại (lớp PUBLIC)
+    if (
+      cls?.status === "PUBLIC" &&
+      capacity &&
+      parseInt(capacity) < (cls?.currentStudents || 0)
+    ) {
+      return false;
+    }
+
+    // Chỉ kiểm tra startDate >= today cho lớp DRAFT
+    // Lớp PUBLIC đã có startDate trong quá khứ vẫn cho phép edit
+    const startDateInvalid = cls?.status === "DRAFT" && startDate < todayStr;
+
     if (
       !subjectId ||
       !teacherId ||
       !totalSessions ||
       parseInt(totalSessions) <= 0 ||
       !startDate ||
-      startDate < todayStr ||
+      startDateInvalid ||
       !pickedSlots.length ||
       // Yêu cầu giá mỗi buổi chỉ khi DRAFT
       (cls?.status === "DRAFT" &&
@@ -592,6 +610,7 @@ export default function ClassEditPage() {
     capacity,
     roomId,
     cls?.status,
+    cls?.currentStudents,
     selectedRoom,
     roomConflict,
   ]);
@@ -888,7 +907,13 @@ export default function ClassEditPage() {
                       <Input
                         type="date"
                         value={startDate}
-                        min={todayStr}
+                        min={
+                          isPublic
+                            ? startDate
+                            : originalStartDate && originalStartDate < todayStr
+                            ? originalStartDate
+                            : todayStr
+                        }
                         onChange={(e) => setStartDate(e.target.value)}
                         className="h-9 text-sm"
                         disabled={isPublic}
@@ -1135,8 +1160,23 @@ export default function ClassEditPage() {
                         max={isOnline ? 30 : undefined}
                         value={capacity}
                         onChange={(e) => setCapacity(e.target.value)}
-                        className="h-9 text-sm"
+                        className={`h-9 text-sm ${
+                          isPublic &&
+                          capacity &&
+                          parseInt(capacity) < (cls?.currentStudents || 0)
+                            ? "border-red-500 focus:ring-red-500"
+                            : ""
+                        }`}
                       />
+                      {/* Cảnh báo real-time khi sĩ số < số học sinh hiện tại (lớp PUBLIC) */}
+                      {isPublic &&
+                        capacity &&
+                        parseInt(capacity) < (cls?.currentStudents || 0) && (
+                          <p className="text-[10px] text-red-600 mt-0.5 font-medium">
+                            ⚠️ Không thể giảm sĩ số xuống {capacity} vì lớp đang
+                            có {cls?.currentStudents} học sinh
+                          </p>
+                        )}
                       {!isOnline && selectedRoom?.capacity && (
                         <p className="text-[10px] text-gray-500 mt-0.5">
                           Tối đa: {selectedRoom.capacity}
