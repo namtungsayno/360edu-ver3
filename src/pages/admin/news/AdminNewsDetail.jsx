@@ -6,18 +6,20 @@ import { newsService } from "../../../services/news/news.service";
 import {
   Calendar,
   Eye,
+  EyeOff,
   Edit,
-  Trash2,
   Newspaper,
   User,
   Clock,
   ArrowLeft,
 } from "lucide-react";
+import { useToast } from "../../../hooks/use-toast";
 import { BackButton } from "../../../components/common/BackButton";
 
 export default function AdminNewsDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
   const [news, setNews] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,10 +42,26 @@ export default function AdminNewsDetail() {
     navigate("/home/admin/news/create", { state: { draft: news } });
   };
 
-  const handleDelete = async () => {
-    if (window.confirm("Bạn có chắc muốn xóa tin này?")) {
-      await newsService.deleteNews(id);
-      navigate("/home/admin/news");
+  const handleHide = async () => {
+    try {
+      await newsService.updateStatus(id, "hidden");
+      success("Đã ẩn tin tức thành công!");
+      // Reload news data
+      const data = await newsService.getNewsById(id);
+      setNews(data);
+    } catch (err) {
+      showError("Không thể ẩn tin tức");
+    }
+  };
+
+  const handleUnhide = async () => {
+    try {
+      await newsService.updateStatus(id, "draft");
+      success("Đã chuyển tin về nháp!");
+      const data = await newsService.getNewsById(id);
+      setNews(data);
+    } catch (err) {
+      showError("Không thể chuyển trạng thái tin tức");
     }
   };
 
@@ -122,16 +140,38 @@ export default function AdminNewsDetail() {
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={handleEdit}
-            className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
-          >
-            <Edit className="h-4 w-4 mr-2" /> Sửa
-          </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            <Trash2 className="h-4 w-4 mr-2" /> Xóa
-          </Button>
+          {/* Chỉ cho sửa khi ở trạng thái draft */}
+          {news.status === "draft" && (
+            <Button
+              variant="outline"
+              onClick={handleEdit}
+              className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+            >
+              <Edit className="h-4 w-4 mr-2" /> Sửa
+            </Button>
+          )}
+          
+          {/* Nút ẩn tin khi đang published */}
+          {news.status === "published" && (
+            <Button
+              variant="outline"
+              onClick={handleHide}
+              className="border-orange-200 text-orange-600 hover:bg-orange-50"
+            >
+              <EyeOff className="h-4 w-4 mr-2" /> Ẩn tin
+            </Button>
+          )}
+
+          {/* Nút bỏ ẩn khi đang hidden */}
+          {news.status === "hidden" && (
+            <Button
+              variant="outline"
+              onClick={handleUnhide}
+              className="border-green-200 text-green-600 hover:bg-green-50"
+            >
+              <Eye className="h-4 w-4 mr-2" /> Bỏ ẩn (về nháp)
+            </Button>
+          )}
         </div>
       </div>
 
