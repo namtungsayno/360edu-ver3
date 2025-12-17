@@ -41,6 +41,9 @@ export const API_ENDPOINTS = {
 
     // Upload ảnh
     UPLOAD_IMAGE: "/news/upload-image",
+
+    // Thống kê số lượng tin tức theo trạng thái
+    STATS: "/news/stats",
   },
 
   // ============ USER MANAGEMENT ============

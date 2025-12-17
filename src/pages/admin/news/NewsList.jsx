@@ -14,6 +14,7 @@ import {
   Plus,
   Newspaper,
   Edit,
+  Eye,
   EyeOff,
   Calendar,
   Loader2,
@@ -75,20 +76,13 @@ export default function NewsList() {
   // Fetch stats for tab badges (load once)
   const fetchStats = useCallback(async () => {
     try {
-      const [allRes, publishedRes, draftRes, hiddenRes, scheduledRes] =
-        await Promise.all([
-          newsService.getNews({ page: 0, size: 1 }),
-          newsService.getNews({ page: 0, size: 1, status: "published" }),
-          newsService.getNews({ page: 0, size: 1, status: "draft" }),
-          newsService.getNews({ page: 0, size: 1, status: "hidden" }),
-          newsService.getNews({ page: 0, size: 1, status: "scheduled" }),
-        ]);
+      const statsData = await newsService.getStats();
       setStats({
-        total: allRes.data?.totalElements || 0,
-        published: publishedRes.data?.totalElements || 0,
-        draft: draftRes.data?.totalElements || 0,
-        hidden: hiddenRes.data?.totalElements || 0,
-        scheduled: scheduledRes.data?.totalElements || 0,
+        total: statsData.total || 0,
+        published: statsData.published || 0,
+        draft: statsData.draft || 0,
+        hidden: statsData.hidden || 0,
+        scheduled: statsData.scheduled || 0,
       });
     } catch (err) {
       }
@@ -396,6 +390,15 @@ export default function NewsList() {
                 Danh sách tin tức
               </h2>
               <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    placeholder="Tìm kiếm tin tức..."
+                    className="pl-10 w-[400px] h-11 text-base rounded-xl"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
                 <Select
                   value={String(size)}
                   onValueChange={(v) => {
@@ -403,25 +406,16 @@ export default function NewsList() {
                     setPage(0);
                   }}
                 >
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-[80px] h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5">5 / trang</SelectItem>
-                    <SelectItem value="10">10 / trang</SelectItem>
-                    <SelectItem value="20">20 / trang</SelectItem>
-                    <SelectItem value="50">50 / trang</SelectItem>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Tìm kiếm tin tức..."
-                    className="pl-10 w-80 rounded-xl"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
               </div>
             </div>
           </div>
@@ -509,21 +503,23 @@ export default function NewsList() {
 
                             {/* Action Buttons - Cải tiến */}
                             <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
-                              {/* Nút Chỉnh sửa - Luôn hiển thị */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/home/admin/news/create`, {
-                                    state: { draft: item },
-                                  });
-                                }}
-                              >
-                                <Edit className="h-4 w-4 mr-1" />
-                                Sửa
-                              </Button>
+                              {/* Nút Chỉnh sửa - Chỉ hiện khi draft */}
+                              {item.status === "draft" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/home/admin/news/create`, {
+                                      state: { draft: item },
+                                    });
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4 mr-1" />
+                                  Sửa
+                                </Button>
+                              )}
 
                               {/* Nút Công bố - Hiện khi draft hoặc scheduled */}
                               {(item.status === "draft" ||
@@ -604,27 +600,29 @@ export default function NewsList() {
                 <p className="text-sm text-gray-500">
                   Hiển thị {news.length} / {totalElements} tin tức
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
+                    className="h-7 w-7"
                     onClick={() => setPage((p) => Math.max(0, p - 1))}
                     disabled={page === 0}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-3.5 w-3.5" />
                   </Button>
-                  <span className="text-sm text-gray-600 px-3">
-                    Trang {page + 1} / {totalPages}
+                  <span className="text-xs text-gray-600 px-2">
+                    {page + 1} / {totalPages}
                   </span>
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
+                    className="h-7 w-7"
                     onClick={() =>
                       setPage((p) => Math.min(totalPages - 1, p + 1))
                     }
                     disabled={page >= totalPages - 1}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

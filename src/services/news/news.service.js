@@ -137,6 +137,19 @@ export const newsService = {
   },
 
   /**
+   * Lấy thống kê số lượng tin tức theo trạng thái
+   * @returns {Promise} Response chứa { total, published, draft, hidden, scheduled }
+   */
+  async getStats() {
+    try {
+      const response = await http.get(API_ENDPOINTS.NEWS.STATS);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
    * Upload ảnh cho tin tức
    * @param {File} file - File ảnh cần upload
    * @returns {Promise} Response chứa { url: string }
