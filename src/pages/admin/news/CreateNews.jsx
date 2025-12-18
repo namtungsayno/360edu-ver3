@@ -30,6 +30,7 @@ export default function CreateNews() {
   const navigate = useNavigate();
   const location = useLocation();
   const draft = location.state?.draft;
+  const returnTo = location.state?.returnTo; // URL để quay về sau khi sửa
   const { success, error: showError } = useToast();
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
@@ -172,7 +173,8 @@ export default function CreateNews() {
         );
       }
       setTimeout(() => {
-        navigate("/home/admin/news");
+        // Nếu có returnTo (từ trang chi tiết) thì quay về đó, không thì về danh sách
+        navigate(returnTo || "/home/admin/news");
       }, 1000);
     } catch (error) {
       const errorMsg =
@@ -189,7 +191,7 @@ export default function CreateNews() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <BackButton to="/home/admin/news" showLabel={false} />
+        <BackButton to={returnTo || "/home/admin/news"} showLabel={false} />
         <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
           <Newspaper className="h-7 w-7 text-white" />
         </div>
@@ -287,7 +289,7 @@ export default function CreateNews() {
                           className="w-full h-48 object-cover rounded-lg"
                           onError={(e) => {
                             e.target.src = "/placeholder-image.png";
-                            }}
+                          }}
                         />
                         <Button
                           type="button"
@@ -408,7 +410,7 @@ export default function CreateNews() {
             <Button
               variant="ghost"
               className="w-full bg-slate-100 text-slate-700 hover:bg-slate-200"
-              onClick={() => navigate("/home/admin/news")}
+              onClick={() => navigate(returnTo || "/home/admin/news")}
               disabled={loading}
             >
               Hủy
@@ -430,9 +432,7 @@ export default function CreateNews() {
                         : "bg-amber-100 text-amber-700"
                     }
                   >
-                    {draft?.status === "published"
-                      ? "Đã đăng"
-                      : "Bản nháp"}
+                    {draft?.status === "published" ? "Đã đăng" : "Bản nháp"}
                   </Badge>
                 </div>
               </CardContent>

@@ -36,6 +36,7 @@ import {
 import { teacherAttendanceService } from "../../services/teacher-attendance/teacher-attendance.service";
 import { useToast } from "../../hooks/use-toast.js";
 import useDebounce from "../../hooks/useDebounce";
+import { getImageUrl } from "../../utils/image";
 
 export default function TeacherAttendanceList() {
   const navigate = useNavigate();
@@ -258,7 +259,7 @@ export default function TeacherAttendanceList() {
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
                         {teacher.avatar ? (
                           <img
-                            src={teacher.avatar}
+                            src={getImageUrl(teacher.avatar)}
                             alt={teacher.fullName}
                             className="w-full h-full object-cover"
                           />

@@ -21,6 +21,13 @@ import { courseApi } from "../../../services/course/course.api";
 import { Loader2, Eye, Trash2, AlertTriangle } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 import { BackButton } from "../../../components/common/BackButton";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogContent,
+  DialogFooter,
+} from "../../../components/ui/Dialog";
 
 /**
  * ClassEditPage
@@ -37,6 +44,9 @@ export default function ClassEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showForceDeleteDialog, setShowForceDeleteDialog] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
   const [currentStep, setCurrentStep] = useState(1); // 1: form, 2: preview
 
   // Original class data
@@ -649,12 +659,11 @@ export default function ClassEditPage() {
           typeof backendMsg === "string" &&
           backendMsg.toLowerCase().includes("lớp đang có nội dung");
         if (needConfirm) {
-          const ok = window.confirm(
-            "Lớp đang có nội dung. Xác nhận xóa toàn bộ nội dung buổi học và khóa học của giáo viên?"
-          );
-          if (!ok) throw e1;
-          const payload2 = { ...payload, forceDeleteContentAndCourse: true };
-          await classService.update(cls.id, payload2);
+          // Lưu payload và hiển dialog xác nhận
+          setPendingPayload(payload);
+          setShowForceDeleteDialog(true);
+          setSaving(false);
+          return;
         } else {
           throw e1;
         }
@@ -673,9 +682,7 @@ export default function ClassEditPage() {
 
   async function handleDelete() {
     if (!cls || cls.status !== "DRAFT") return;
-
-    const confirmMsg = `Bạn có chắc chắn muốn XÓA VĨNH VIỄN lớp "${cls.name}"?\n\nLưu ý: Tất cả dữ liệu liên quan (buổi học, lịch học, học viên đăng ký,...) sẽ bị xóa và KHÔNG THỂ KHÔI PHỤC.`;
-    if (!window.confirm(confirmMsg)) return;
+    setShowDeleteDialog(false);
 
     setDeleting(true);
     try {
@@ -689,6 +696,32 @@ export default function ClassEditPage() {
       error(msg);
     } finally {
       setDeleting(false);
+    }
+  }
+
+  function openDeleteDialog() {
+    if (!cls || cls.status !== "DRAFT") return;
+    setShowDeleteDialog(true);
+  }
+
+  // Xử lý khi xác nhận xóa nội dung lớp học
+  async function handleForceDeleteConfirm() {
+    if (!pendingPayload) return;
+    setShowForceDeleteDialog(false);
+    setSaving(true);
+    try {
+      const payload2 = { ...pendingPayload, forceDeleteContentAndCourse: true };
+      await classService.update(cls.id, payload2);
+      success("Cập nhật lớp thành công");
+      navigate("/home/admin/class");
+    } catch (e) {
+      let msg = "Không thể cập nhật lớp";
+      if (e.response?.data?.message) msg = e.response.data.message;
+      else if (e.response?.data?.error) msg = e.response.data.error;
+      error(msg);
+    } finally {
+      setSaving(false);
+      setPendingPayload(null);
     }
   }
 
@@ -878,7 +911,7 @@ export default function ClassEditPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={handleDelete}
+                          onClick={openDeleteDialog}
                           disabled={deleting}
                           className="h-7 px-2.5 text-[10px] flex-shrink-0"
                         >
@@ -1481,7 +1514,103 @@ export default function ClassEditPage() {
           )}
         </div>
       </div>
-      {/* Modal xác nhận ngày kết thúc đã được bỏ. */}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <div className="text-center">
+          <div className="mx-auto w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="h-7 w-7 text-red-600" />
+          </div>
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-xl">Xác nhận xóa lớp học</DialogTitle>
+          </DialogHeader>
+          <DialogContent className="text-gray-500 mb-6">
+            Bạn có chắc chắn muốn xóa lớp <strong>"{cls?.name}"</strong> không?
+            <br />
+            <span className="text-red-500 font-medium">
+              Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn và không thể khôi
+              phục.
+            </span>
+          </DialogContent>
+          <DialogFooter className="flex justify-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleting}
+              className="min-w-[100px]"
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="min-w-[100px] bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Đang xóa...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Xóa
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </div>
+      </Dialog>
+
+      {/* Force Delete Content Confirmation Dialog */}
+      <Dialog
+        open={showForceDeleteDialog}
+        onOpenChange={setShowForceDeleteDialog}
+      >
+        <div className="text-center">
+          <div className="mx-auto w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="h-7 w-7 text-amber-600" />
+          </div>
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-xl">Xác nhận xóa nội dung</DialogTitle>
+          </DialogHeader>
+          <DialogContent className="text-gray-500 mb-6">
+            Lớp đang có nội dung buổi học và khóa học của giáo viên.
+            <br />
+            <span className="text-amber-600 font-medium">
+              Bạn có muốn xóa toàn bộ nội dung này để tiếp tục cập nhật?
+            </span>
+          </DialogContent>
+          <DialogFooter className="flex justify-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowForceDeleteDialog(false);
+                setPendingPayload(null);
+              }}
+              disabled={saving}
+              className="min-w-[100px]"
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              onClick={handleForceDeleteConfirm}
+              disabled={saving}
+              className="min-w-[100px] bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                "Xác nhận & Tiếp tục"
+              )}
+            </Button>
+          </DialogFooter>
+        </div>
+      </Dialog>
     </>
   );
 }

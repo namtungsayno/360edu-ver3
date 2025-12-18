@@ -820,16 +820,6 @@ export default function CreateOfflineClassPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Tên lớp <span className="text-gray-400">(Tự động)</span>
-                  </label>
-                  <Input
-                    value={className}
-                    readOnly
-                    className="h-9 text-sm bg-gray-50 font-medium"
-                  />
-                </div>
                 {/* Row 7: Mô tả */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">

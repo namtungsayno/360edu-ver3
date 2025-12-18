@@ -24,6 +24,8 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronRight,
+  BarChart3,
+  Target,
 } from "lucide-react";
 
 import { teacherAttendanceService } from "../../services/teacher-attendance/teacher-attendance.service";
@@ -149,7 +151,7 @@ export default function TeacherClassAttendance() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-gray-50/50 min-h-screen">
       {/* Header */}
       <div className="flex items-center gap-4">
         <BackButton
@@ -169,292 +171,353 @@ export default function TeacherClassAttendance() {
         </div>
       </div>
 
-      {/* Class Info Card */}
-      <Card className="rounded-[14px]">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-6">
-            <div className="w-16 h-16 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-              <BookOpen className="w-8 h-8 text-indigo-600" />
+      {/* Class Info Card - Redesigned */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+          {/* Class Icon & Info */}
+          <div className="flex items-center gap-4 flex-1">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200/50 flex-shrink-0">
+              <BookOpen className="w-8 h-8 text-white" />
             </div>
-
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-xl font-semibold text-neutral-950">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <h2 className="text-xl font-bold text-gray-900">
                   {data.className}
                 </h2>
                 <Badge
-                  className={
-                    data.classStatus === "ACTIVE"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-600"
-                  }
+                  className={`text-xs px-2.5 py-0.5 ${
+                    data.classStatus === "ACTIVE" ||
+                    data.classStatus === "PUBLIC"
+                      ? "bg-green-100 text-green-700 border border-green-200"
+                      : "bg-gray-100 text-gray-600 border border-gray-200"
+                  }`}
                 >
-                  {data.classStatus === "ACTIVE"
-                    ? "Đang học"
+                  {data.classStatus === "ACTIVE" ||
+                  data.classStatus === "PUBLIC"
+                    ? "PUBLIC"
                     : data.classStatus}
                 </Badge>
               </div>
-              <p className="text-[13px] text-[#62748e]">
+              <p className="text-sm text-gray-500">
                 {data.subjectName} • {data.semesterName}
               </p>
             </div>
+          </div>
 
-            <div
-              className={`p-4 rounded-xl border ${getAttendanceColor(
-                data.completionRate || 0
-              )}`}
-            >
-              <p className="text-3xl font-bold text-center">
-                {(data.completionRate || 0).toFixed(1)}%
-              </p>
-              <p className="text-[11px] text-center mt-1">Hoàn thành</p>
+          {/* Completion Rate Circle */}
+          <div className="flex-shrink-0">
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+              <div className="relative w-20 h-20">
+                <svg
+                  className="w-full h-full transform -rotate-90"
+                  viewBox="0 0 100 100"
+                >
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    stroke="#e5e7eb"
+                    strokeWidth="8"
+                    fill="none"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    stroke={
+                      (data.completionRate || 0) >= 90
+                        ? "#22c55e"
+                        : (data.completionRate || 0) >= 70
+                        ? "#f59e0b"
+                        : "#ef4444"
+                    }
+                    strokeWidth="8"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeDasharray={`${
+                      ((data.completionRate || 0) / 100) * 263.89
+                    } 263.89`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span
+                    className={`text-lg font-bold ${
+                      (data.completionRate || 0) >= 90
+                        ? "text-green-600"
+                        : (data.completionRate || 0) >= 70
+                        ? "text-amber-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {(data.completionRate || 0).toFixed(1)}%
+                  </span>
+                  <span className="text-[9px] text-gray-500 font-medium">
+                    Hoàn thành
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-[11px] text-[#62748e]">Tổng buổi học</p>
-                <p className="text-xl font-semibold text-neutral-950">
-                  {data.totalSlots || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-[11px] text-[#62748e]">Đã điểm danh</p>
-                <p className="text-xl font-semibold text-green-600">
-                  {data.completedSlots || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-[11px] text-[#62748e]">Chờ điểm danh</p>
-                <p className="text-xl font-semibold text-amber-600">
-                  {data.pendingSlots || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        </div>
       </div>
 
-      {/* Sessions List */}
-      <Card className="rounded-[14px]">
-        <CardHeader className="border-b border-gray-100">
-          <CardTitle className="text-base font-semibold text-neutral-950">
-            Danh sách buổi học ({data.sessions?.length || 0})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {!data.sessions || data.sessions.length === 0 ? (
-            <div className="text-center py-12 text-[#62748e]">
-              <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>Chưa có buổi học nào</p>
+      {/* Stats Grid - Redesigned */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+              <Calendar className="w-5 h-5 text-white" />
             </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {data.sessions.map((session, index) => {
-                const statusBadge = getSessionStatusBadge(session);
-                const StatusIcon = statusBadge.icon;
-                const isExpanded = expandedSessions[session.sessionId];
+            <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+              Tổng
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">
+            {data.totalSlots || 0}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Tổng buổi học</p>
+        </div>
 
-                return (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg shadow-green-200">
+              <CheckCircle2 className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+              Done
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-green-600">
+            {data.completedSlots || 0}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Đã điểm danh</p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-200">
+              <Clock className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+              Chờ
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-amber-600">
+            {data.pendingSlots || 0}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Chờ điểm danh</p>
+        </div>
+      </div>
+
+      {/* Sessions List - Redesigned */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">
+                Danh sách buổi học
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {data.sessions?.length || 0} buổi • Click để xem chi tiết
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {!data.sessions || data.sessions.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 font-medium">Chưa có buổi học nào</p>
+            <p className="text-sm text-gray-400 mt-1">
+              Các buổi học sẽ xuất hiện ở đây
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {data.sessions.map((session, index) => {
+              const statusBadge = getSessionStatusBadge(session);
+              const StatusIcon = statusBadge.icon;
+              const isExpanded = expandedSessions[session.sessionId];
+
+              return (
+                <div key={session.sessionId}>
+                  {/* Session Header */}
                   <div
-                    key={session.sessionId}
-                    className="border-b last:border-b-0"
+                    className="group px-6 py-4 hover:bg-gray-50/80 cursor-pointer transition-all duration-200"
+                    onClick={() => toggleSession(session.sessionId)}
                   >
-                    {/* Session Header */}
-                    <div
-                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => toggleSession(session.sessionId)}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    <div className="flex items-center gap-5">
+                      {/* Index number */}
+                      <div
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          session.isAttendanceSubmitted
+                            ? "bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-200/50"
+                            : "bg-gray-100"
+                        }`}
+                      >
+                        <span
+                          className={`text-base font-bold ${
                             session.isAttendanceSubmitted
-                              ? "bg-green-100"
-                              : "bg-gray-100"
+                              ? "text-white"
+                              : "text-gray-500"
                           }`}
                         >
-                          <span
-                            className={`text-sm font-bold ${
-                              session.isAttendanceSubmitted
-                                ? "text-green-600"
-                                : "text-gray-500"
-                            }`}
+                          {index + 1}
+                        </span>
+                      </div>
+
+                      {/* Session info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="font-semibold text-gray-900">
+                            {new Date(session.date).toLocaleDateString(
+                              "vi-VN",
+                              {
+                                weekday: "long",
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              }
+                            )}
+                          </span>
+                          <Badge
+                            className={`text-[10px] px-2 py-0.5 border ${statusBadge.className}`}
                           >
-                            {index + 1}
+                            <StatusIcon className="w-3 h-3 mr-1" />
+                            {statusBadge.label}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="w-4 h-4" />
+                            {session.timeSlot}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <MapPin className="w-4 h-4" />
+                            {session.roomName || "Online"}
                           </span>
                         </div>
+                      </div>
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-neutral-950">
-                              {new Date(session.date).toLocaleDateString(
-                                "vi-VN",
-                                {
-                                  weekday: "long",
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                }
-                              )}
-                            </span>
-                            <Badge
-                              className={`text-[10px] border ${statusBadge.className}`}
-                            >
-                              <StatusIcon className="w-3 h-3 mr-1" />
-                              {statusBadge.label}
-                            </Badge>
+                      {/* Attendance stats - only show if submitted */}
+                      {session.isAttendanceSubmitted && (
+                        <div className="hidden md:flex items-center gap-6 flex-shrink-0">
+                          <div className="text-center min-w-[50px]">
+                            <p className="text-lg font-bold text-green-600">
+                              {session.presentCount}
+                            </p>
+                            <p className="text-[10px] text-gray-500">Có mặt</p>
                           </div>
-                          <div className="flex items-center gap-3 text-[12px] text-[#62748e]">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5" />
-                              {session.timeSlot}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {session.roomName || "Online"}
-                            </span>
+                          <div className="text-center min-w-[50px]">
+                            <p className="text-lg font-bold text-amber-600">
+                              {session.lateCount}
+                            </p>
+                            <p className="text-[10px] text-gray-500">Trễ</p>
+                          </div>
+                          <div className="text-center min-w-[50px]">
+                            <p className="text-lg font-bold text-red-600">
+                              {session.absentCount}
+                            </p>
+                            <p className="text-[10px] text-gray-500">Vắng</p>
                           </div>
                         </div>
+                      )}
 
-                        {session.isAttendanceSubmitted && (
-                          <div className="flex items-center gap-4 flex-shrink-0">
-                            <div className="text-center">
-                              <span className="text-green-600 font-semibold">
-                                {session.presentCount}
-                              </span>
-                              <p className="text-[10px] text-[#62748e]">
-                                Có mặt
+                      {/* Arrow */}
+                      <div className="flex-shrink-0">
+                        {isExpanded ? (
+                          <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Session Details - Expanded */}
+                  {isExpanded && (
+                    <div className="px-6 pb-5 bg-gray-50/50">
+                      <div className="ml-[68px] space-y-4">
+                        {/* Attendance Stats */}
+                        {session.isAttendanceSubmitted ? (
+                          <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                            <p className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                              <Users className="w-4 h-4 text-indigo-600" />
+                              Thống kê điểm danh ({session.totalStudents} học
+                              sinh)
+                            </p>
+                            <div className="grid grid-cols-3 gap-4">
+                              <div className="text-center p-4 bg-green-50 rounded-xl border border-green-100">
+                                <p className="text-3xl font-bold text-green-600">
+                                  {session.presentCount}
+                                </p>
+                                <p className="text-xs text-green-700 mt-1 font-medium">
+                                  Có mặt
+                                </p>
+                              </div>
+                              <div className="text-center p-4 bg-amber-50 rounded-xl border border-amber-100">
+                                <p className="text-3xl font-bold text-amber-600">
+                                  {session.lateCount}
+                                </p>
+                                <p className="text-xs text-amber-700 mt-1 font-medium">
+                                  Đi trễ
+                                </p>
+                              </div>
+                              <div className="text-center p-4 bg-red-50 rounded-xl border border-red-100">
+                                <p className="text-3xl font-bold text-red-600">
+                                  {session.absentCount}
+                                </p>
+                                <p className="text-xs text-red-700 mt-1 font-medium">
+                                  Vắng mặt
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                              <AlertCircle className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-amber-800">
+                                Chưa điểm danh
                               </p>
-                            </div>
-                            <div className="text-center">
-                              <span className="text-amber-600 font-semibold">
-                                {session.lateCount}
-                              </span>
-                              <p className="text-[10px] text-[#62748e]">Trễ</p>
-                            </div>
-                            <div className="text-center">
-                              <span className="text-red-600 font-semibold">
-                                {session.absentCount}
-                              </span>
-                              <p className="text-[10px] text-[#62748e]">Vắng</p>
+                              <p className="text-sm text-amber-600">
+                                Buổi học này chưa được giáo viên điểm danh
+                              </p>
                             </div>
                           </div>
                         )}
 
-                        <div className="flex-shrink-0">
-                          {isExpanded ? (
-                            <ChevronDown className="w-5 h-5 text-gray-400" />
-                          ) : (
-                            <ChevronRight className="w-5 h-5 text-gray-400" />
-                          )}
-                        </div>
+                        {/* Lesson Content */}
+                        {session.lessonContent && (
+                          <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                            <p className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-purple-600" />
+                              Nội dung buổi học
+                            </p>
+                            <div
+                              className="text-sm text-gray-600 prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{
+                                __html: session.lessonContent,
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    {/* Session Details */}
-                    {isExpanded && (
-                      <div className="px-4 pb-4 bg-gray-50 border-t">
-                        <div className="pt-4 space-y-3">
-                          {/* Attendance Stats */}
-                          {session.isAttendanceSubmitted ? (
-                            <div className="bg-white rounded-lg p-4 border">
-                              <p className="text-sm font-medium text-neutral-950 mb-3 flex items-center gap-2">
-                                <Users className="w-4 h-4 text-blue-600" />
-                                Thống kê điểm danh ({session.totalStudents} học
-                                sinh)
-                              </p>
-                              <div className="grid grid-cols-3 gap-4">
-                                <div className="text-center p-3 bg-green-50 rounded-lg">
-                                  <p className="text-2xl font-bold text-green-600">
-                                    {session.presentCount}
-                                  </p>
-                                  <p className="text-[11px] text-green-700">
-                                    Có mặt
-                                  </p>
-                                </div>
-                                <div className="text-center p-3 bg-amber-50 rounded-lg">
-                                  <p className="text-2xl font-bold text-amber-600">
-                                    {session.lateCount}
-                                  </p>
-                                  <p className="text-[11px] text-amber-700">
-                                    Đi trễ
-                                  </p>
-                                </div>
-                                <div className="text-center p-3 bg-red-50 rounded-lg">
-                                  <p className="text-2xl font-bold text-red-600">
-                                    {session.absentCount}
-                                  </p>
-                                  <p className="text-[11px] text-red-700">
-                                    Vắng mặt
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                              <div className="flex items-center gap-2 text-amber-700">
-                                <AlertCircle className="w-5 h-5" />
-                                <span className="font-medium">
-                                  Buổi học này chưa được điểm danh
-                                </span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Lesson Content */}
-                          {session.lessonContent && (
-                            <div className="bg-white rounded-lg p-4 border">
-                              <p className="text-sm font-medium text-neutral-950 mb-2 flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-purple-600" />
-                                Nội dung buổi học
-                              </p>
-                              <div
-                                className="text-[13px] text-[#45556c] prose prose-sm max-w-none"
-                                dangerouslySetInnerHTML={{
-                                  __html: session.lessonContent,
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

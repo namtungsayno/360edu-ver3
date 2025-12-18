@@ -46,6 +46,14 @@ import {
   PlayCircle,
   AlertTriangle,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogContent,
+  DialogFooter,
+} from "../../../components/ui/Dialog";
+import { Button } from "../../../components/ui/Button";
 
 // ============ HELPER FUNCTIONS ============
 function getStatusBadge(status) {
@@ -659,6 +667,7 @@ export default function ClassManagementV2() {
   const [selectedId, setSelectedId] = useState(null);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Draft classes approaching start date (warning)
   const [draftApproaching, setDraftApproaching] = useState([]);
@@ -789,10 +798,7 @@ export default function ClassManagementV2() {
 
   const handleDelete = async () => {
     if (!selectedClass || selectedClass.status !== "DRAFT") return;
-
-    const confirmMsg = `Bạn có chắc chắn muốn XÓA VĨNH VIỄN lớp "${selectedClass.name}"?\n\nLưu ý: Tất cả dữ liệu liên quan (buổi học, lịch học, học viên đăng ký,...) sẽ bị xóa và KHÔNG THỂ KHÔI PHỤC.`;
-    if (!window.confirm(confirmMsg)) return;
-
+    setShowDeleteDialog(false);
     setDeleting(true);
     try {
       await classService.delete(selectedClass.id);
@@ -807,6 +813,11 @@ export default function ClassManagementV2() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const openDeleteDialog = () => {
+    if (!selectedClass || selectedClass.status !== "DRAFT") return;
+    setShowDeleteDialog(true);
   };
 
   return (
@@ -1066,7 +1077,7 @@ export default function ClassManagementV2() {
               cls={selectedClass}
               onClose={() => setSelectedId(null)}
               onPublish={handlePublish}
-              onDelete={handleDelete}
+              onDelete={openDeleteDialog}
               updating={updating}
               deleting={deleting}
             />
@@ -1088,13 +1099,62 @@ export default function ClassManagementV2() {
               cls={selectedClass}
               onClose={() => setSelectedId(null)}
               onPublish={handlePublish}
-              onDelete={handleDelete}
+              onDelete={openDeleteDialog}
               updating={updating}
               deleting={deleting}
             />
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <div className="text-center">
+          <div className="mx-auto w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="h-7 w-7 text-red-600" />
+          </div>
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-xl">Xác nhận xóa lớp học</DialogTitle>
+          </DialogHeader>
+          <DialogContent className="text-gray-500 mb-6">
+            Bạn có chắc chắn muốn xóa lớp{" "}
+            <strong>"{selectedClass?.name}"</strong> không?
+            <br />
+            <span className="text-red-500 font-medium">
+              Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn và không thể khôi
+              phục.
+            </span>
+          </DialogContent>
+          <DialogFooter className="flex justify-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleting}
+              className="min-w-[100px]"
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="min-w-[100px] bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Đang xóa...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Xóa
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </div>
+      </Dialog>
     </div>
   );
 }

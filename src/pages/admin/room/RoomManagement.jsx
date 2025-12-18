@@ -108,7 +108,9 @@ export default function ClassroomList() {
           ACTIVE: active,
           INACTIVE: normalized.length - active,
         });
-      } catch (e) {}
+      } catch {
+        // Silently ignore error on initial load
+      }
     })();
   }, []);
 
@@ -130,7 +132,7 @@ export default function ClassroomList() {
       setRooms(content.map(normalizeRoom));
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
-    } catch (e) {
+    } catch {
       toastRef.current?.error?.("Lỗi tải danh sách phòng học");
     } finally {
       setLoading(false);
@@ -147,7 +149,6 @@ export default function ClassroomList() {
   }, [tab, debouncedQuery]);
 
   // Helpers
-  const curPage = page;
   const curSize = size;
   const pageItems = rooms;
 
@@ -165,7 +166,9 @@ export default function ClassroomList() {
         ACTIVE: active,
         INACTIVE: normalized.length - active,
       });
-    } catch (e) {}
+    } catch {
+      // Silently ignore error on reload
+    }
   };
 
   // Toggle status
@@ -275,16 +278,10 @@ export default function ClassroomList() {
       fetchClassrooms();
       reloadCounts();
     } catch (err) {
-      // Check for duplicate room name error from BE
-      const errorMsg = err?.response?.data?.message || err?.message || "";
-      if (
-        errorMsg.includes("Phòng học đã tồn tại") ||
-        errorMsg.toLowerCase().includes("room name")
-      ) {
-        toast?.error?.("Phòng học đã tồn tại");
-      } else {
-        toast?.error?.("Lưu thất bại");
-      }
+      // Hiển thị message lỗi từ BE
+      const errorMsg =
+        err?.response?.data?.message || err?.message || "Lưu thất bại";
+      toast?.error?.(errorMsg);
     } finally {
       setSaving(false);
     }

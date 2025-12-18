@@ -45,6 +45,7 @@ import { classService } from "../../../services/class/class.service.js";
 import { subjectService } from "../../../services/subject/subject.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import useDebounce from "../../../hooks/useDebounce.js";
+import { extractBaseCourseTitle } from "../../../utils/html-helpers.js";
 
 /**
  * Map màu + nhãn status
@@ -165,8 +166,7 @@ export default function AdminCourseList() {
           archived: countByStatus("ARCHIVED"),
           teacherCount: teacherMap.size,
         });
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
   }, []);
 
@@ -258,8 +258,7 @@ export default function AdminCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {
@@ -300,8 +299,7 @@ export default function AdminCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {
@@ -349,8 +347,7 @@ export default function AdminCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {
@@ -610,6 +607,15 @@ export default function AdminCourseList() {
               course.ownerTeacherName || course.createdByName || "Không rõ";
             const teacherEmail = course.teacherEmail || ""; // hiện BE chưa có
 
+            // Extract base course title and class name from clone title
+            const baseCourseTitle = extractBaseCourseTitle(course.title);
+            const className =
+              course.title !== baseCourseTitle
+                ? course.title
+                    .substring(baseCourseTitle.length)
+                    .replace(/^\s*[–-]\s*/, "")
+                : null;
+
             return (
               <div
                 key={course.id}
@@ -624,7 +630,7 @@ export default function AdminCourseList() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-3 flex-wrap">
                         <h2 className="text-lg font-semibold text-gray-900">
-                          {course.title}
+                          {baseCourseTitle}
                         </h2>
                         {course.code && (
                           <span className="text-sm text-gray-500">
@@ -632,6 +638,11 @@ export default function AdminCourseList() {
                           </span>
                         )}
                       </div>
+                      {className && (
+                        <p className="text-sm text-blue-600 font-medium">
+                          Lớp: {className}
+                        </p>
+                      )}
                       <p className="text-sm text-gray-500">
                         {course.subjectName || "Chưa có môn học"}
                       </p>
@@ -678,7 +689,9 @@ export default function AdminCourseList() {
                         <p className="text-xs text-gray-500">Ngày tạo</p>
                         <p className="text-sm text-gray-900">
                           {course.createdAt
-                            ? new Date(course.createdAt).toLocaleDateString("sv-SE")
+                            ? new Date(course.createdAt).toLocaleDateString(
+                                "sv-SE"
+                              )
                             : "—"}
                         </p>
                       </div>
@@ -710,15 +723,14 @@ export default function AdminCourseList() {
                       )}
                     </div>
 
-                    {/* Status + ID */}
-                    <div className="flex items-center justify-between gap-2">
+                    {/* Status */}
+                    <div className="flex items-center gap-2">
                       <Badge
                         className={`text-xs px-3 py-1 rounded-full ${statusCfg.className}`}
                       >
                         <StatusIcon className="w-3 h-3 mr-1 inline-block align-middle" />
                         <span className="align-middle">{statusCfg.label}</span>
                       </Badge>
-                      <p className="text-xs text-gray-500">ID: {course.id}</p>
                     </div>
 
                     {/* Actions */}

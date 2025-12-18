@@ -1207,14 +1207,18 @@ export default function ReportDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <BarChart3 className="h-7 w-7 text-blue-600" />
-            Báo cáo & Thống kê
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Tổng quan hoạt động và doanh thu hệ thống 360edu
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
+            <BarChart3 className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Báo cáo & Thống kê
+            </h1>
+            <p className="text-sm text-gray-500">
+              Tổng quan hoạt động và doanh thu hệ thống 360edu
+            </p>
+          </div>
         </div>
         <ExportReportButton
           overview={overview}

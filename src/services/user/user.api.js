@@ -52,6 +52,7 @@ export const userApi = {
     return http.post("/auth/register-teacher", payload).then((r) => r.data);
   },
 
+  // When test find this code, So need to comment it out because not use.
   //  // (tuỳ chọn) cập nhật user cơ bản nếu bạn cần edit trong form
   // update(userId, data) {
   //   return http.put(`/users/${userId}`, data).then((r) => r.data);
