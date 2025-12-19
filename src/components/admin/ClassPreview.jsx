@@ -3,7 +3,7 @@
  * Giao diện tương tự ClassDetail.jsx (Guest view)
  * Dùng cho cả tạo lớp mới và chỉnh sửa lớp
  */
-import React from "react";
+import React, { useState } from "react";
 import {
   Clock,
   Calendar,
@@ -12,10 +12,12 @@ import {
   CheckCircle,
   Video,
   Award,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Badge } from "../../components/ui/Badge";
 import { Card, CardContent } from "../../components/ui/Card";
-import { formatCurrency } from "../../helper/formatters";
+import { formatCurrency, formatDateVN } from "../../helper/formatters";
 import { stripHtmlTags } from "../../utils/html-helpers";
 
 // Helper to convert day index to Vietnamese label
@@ -32,6 +34,99 @@ const dayLabelVi = (dayOfWeek) => {
   };
   return labels[dayOfWeek] || `Thứ ${dayOfWeek}`;
 };
+
+/**
+ * SessionsList - Component hiển thị danh sách các buổi học với khả năng mở rộng/thu gọn
+ */
+function SessionsList({ courseLessons, courseName }) {
+  const [expandedSessionId, setExpandedSessionId] = useState(null);
+
+  const toggleSession = (sessionId) => {
+    setExpandedSessionId((prev) => (prev === sessionId ? null : sessionId));
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900">
+            Nội dung các buổi học
+          </h2>
+          {courseName && (
+            <span className="text-blue-600 text-sm font-medium">
+              {courseName}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {courseLessons && courseLessons.length > 0 ? (
+            courseLessons.map((lesson, idx) => (
+              <div
+                key={lesson.id || idx}
+                className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+              >
+                {/* Session Header - Clickable */}
+                <button
+                  onClick={() => toggleSession(lesson.id || idx)}
+                  className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-semibold flex items-center justify-center text-sm">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 text-base">
+                        Buổi học {idx + 1}
+                      </h3>
+                      {lesson.title && (
+                        <p className="text-sm text-gray-600 mt-0.5">
+                          {lesson.title}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {expandedSessionId === (lesson.id || idx) ? (
+                      <ChevronUp className="w-5 h-5 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                    )}
+                  </div>
+                </button>
+
+                {/* Session Content - Expandable */}
+                {expandedSessionId === (lesson.id || idx) && (
+                  <div className="px-4 pb-4 bg-gray-50 border-t border-gray-200">
+                    {lesson.description ? (
+                      <div
+                        className="text-gray-700 text-sm leading-relaxed mt-3 rich-text-content"
+                        dangerouslySetInnerHTML={{
+                          __html: lesson.description,
+                        }}
+                      />
+                    ) : (
+                      <p className="text-gray-500 text-sm mt-3 italic">
+                        Chưa có nội dung chi tiết cho buổi học này
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <p className="text-gray-500">
+                Nội dung buổi học sẽ được cập nhật bởi giáo viên sau khi lớp
+                được tạo
+              </p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ClassPreview({
   // Class info
@@ -144,6 +239,9 @@ export default function ClassPreview({
             {/* Description */}
             <Card>
               <CardContent className="p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  Giới thiệu lớp học
+                </h2>
                 <div
                   className="text-gray-700 leading-relaxed rich-text-content"
                   dangerouslySetInnerHTML={{
@@ -185,11 +283,11 @@ export default function ClassPreview({
                       <span className="font-medium">Khai giảng</span>
                     </div>
                     <div className="ml-7 text-gray-600">
-                      {startDate || "Chưa xác định"}
+                      {formatDateVN(startDate) || "Chưa xác định"}
                     </div>
                     {endDate && (
                       <div className="ml-7 text-gray-500 text-sm mt-1">
-                        Kết thúc: {endDate}
+                        Kết thúc: {formatDateVN(endDate)}
                       </div>
                     )}
                   </div>
@@ -262,7 +360,10 @@ export default function ClassPreview({
                       </span>
                     </div>
                     {teacherBio && (
-                      <p className="text-gray-600 text-sm mb-3">{teacherBio}</p>
+                      <div
+                        className="text-gray-600 text-sm mb-3 rich-text-content"
+                        dangerouslySetInnerHTML={{ __html: teacherBio }}
+                      />
                     )}
                     <div className="space-y-1 text-sm">
                       <div className="flex items-center gap-2 text-blue-600">
@@ -279,59 +380,11 @@ export default function ClassPreview({
               </CardContent>
             </Card>
 
-            {/* Curriculum */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Chương trình học
-                  </h2>
-                  {courseName && (
-                    <span className="text-blue-600 text-sm font-medium">
-                      {courseName}
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  {courseLessons && courseLessons.length > 0 ? (
-                    courseLessons.map((lesson, idx) => (
-                      <div
-                        key={lesson.id || idx}
-                        className={`border-l-4 ${
-                          idx < 3 ? "border-blue-600" : "border-gray-300"
-                        } pl-4`}
-                      >
-                        <div className="flex items-start gap-2">
-                          <CheckCircle
-                            className={`w-4 h-4 ${
-                              idx < 3 ? "text-blue-600" : "text-gray-400"
-                            } mt-0.5 flex-shrink-0`}
-                          />
-                          <div>
-                            <span className="font-medium text-gray-900">
-                              {lesson.title}
-                            </span>
-                            {lesson.description && (
-                              <p className="text-sm text-gray-500 mt-1">
-                                {stripHtmlTags(lesson.description)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="border-l-4 border-gray-300 pl-4">
-                      <p className="text-gray-500">
-                        Nội dung sẽ được cập nhật bởi giáo viên sau khi lớp được
-                        tạo
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            {/* Curriculum - Nội dung các buổi học */}
+            <SessionsList
+              courseLessons={courseLessons}
+              courseName={courseName}
+            />
           </div>
 
           {/* Right Column - Enrollment Preview */}

@@ -18,7 +18,7 @@ import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
 import { Input } from "../../../components/ui/Input.jsx";
-import { dayLabelVi } from "../../../helper/formatters";
+import { dayLabelVi, formatDateVN } from "../../../helper/formatters";
 import useDebounce from "../../../hooks/useDebounce";
 
 export default function ClassList() {
@@ -746,7 +746,7 @@ export default function ClassList() {
                                 })()}
                                 {c.startDate && (
                                   <span className="px-2 py-1 text-xs rounded-full bg-white/90 text-gray-800 shadow-sm border border-gray-200">
-                                    Mở: {c.startDate}
+                                    Mở: {formatDateVN(c.startDate)}
                                   </span>
                                 )}
                               </div>
@@ -805,7 +805,7 @@ export default function ClassList() {
                               )}
                               {c.startDate && (
                                 <div className="text-sm text-gray-600">
-                                  Khai giảng: {c.startDate}
+                                  Khai giảng: {formatDateVN(c.startDate)}
                                 </div>
                               )}
                             </div>

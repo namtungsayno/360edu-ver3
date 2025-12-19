@@ -8,8 +8,6 @@ import {
   Wallet,
   Calendar,
   Newspaper,
-  TrendingUp,
-  TrendingDown,
   RefreshCw,
   Layers,
   DoorOpen,
@@ -196,8 +194,6 @@ function StatCard({
   value,
   icon: IconComponent,
   gradient,
-  trend,
-  trendValue,
   loading,
   delay = 0,
   onClick,
@@ -260,19 +256,6 @@ function StatCard({
           <p className="text-3xl font-bold mt-1">
             <AnimatedNumber value={value} prefix={prefix} suffix={suffix} />
           </p>
-          {trend !== undefined && (
-            <div className="flex items-center gap-1 mt-2">
-              {trend >= 0 ? (
-                <TrendingUp className="h-3 w-3 text-white/90" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-white/90" />
-              )}
-              <span className="text-xs text-white/80">
-                {trend >= 0 ? "+" : ""}
-                {trendValue || trend}% so với tháng trước
-              </span>
-            </div>
-          )}
         </div>
         <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
           <IconComponent className="h-6 w-6" />
@@ -802,12 +785,6 @@ export default function Dashboard() {
     totalRooms: 0,
     totalCourses: 0,
     activeClasses: 0,
-    trends: {
-      students: 0,
-      teachers: 0,
-      classes: 0,
-      revenue: 0,
-    },
   });
 
   const [chartData, setChartData] = useState({
@@ -836,15 +813,20 @@ export default function Dashboard() {
           courseApi.list().catch(() => []),
         ]);
 
-      // Calculate stats - Tổng học viên = chỉ STUDENT (không tính PARENT)
+      // Calculate stats - Tổng học viên = chỉ STUDENT active (không tính PARENT và inactive)
       // BE returns roles as array: ["ROLE_STUDENT"], etc.
       const studentCount = Array.isArray(users)
         ? users.filter((u) => {
             const roles = u.roles || [];
-            return roles.some((r) => r === "ROLE_STUDENT" || r === "STUDENT");
+            const isStudent = roles.some(
+              (r) => r === "ROLE_STUDENT" || r === "STUDENT"
+            );
+            const isActive = u.active !== false; // active mặc định true nếu không có field
+            return isStudent && isActive;
           }).length
         : 0;
 
+      // Teachers đã được filter từ BE (chỉ trả về active teachers)
       const teacherCount = Array.isArray(teachers) ? teachers.length : 0;
       const classCount = Array.isArray(classes) ? classes.length : 0;
       // Lớp hoạt động = status PUBLIC và có học sinh tham gia (currentStudents > 0)
@@ -867,15 +849,9 @@ export default function Dashboard() {
         totalRooms: roomCount,
         totalCourses: courseCount,
         activeClasses: activeClassCount,
-        trends: {
-          students: Math.floor(Math.random() * 15) + 5,
-          teachers: Math.floor(Math.random() * 10) + 2,
-          classes: Math.floor(Math.random() * 12) + 5,
-          revenue: Math.floor(Math.random() * 20) + 10,
-        },
       });
     } catch (error) {
-      } finally {
+    } finally {
       setLoading((prev) => ({ ...prev, stats: false }));
     }
   }, []);
@@ -994,7 +970,7 @@ export default function Dashboard() {
         revenue: revenueData,
       });
     } catch (error) {
-      } finally {
+    } finally {
       setLoading((prev) => ({ ...prev, charts: false }));
     }
   }, []);
@@ -1055,7 +1031,7 @@ export default function Dashboard() {
 
       setTodaySchedules(todaySessions.slice(0, 6));
     } catch (error) {
-      } finally {
+    } finally {
       setLoading((prev) => ({ ...prev, schedules: false }));
     }
   }, []);
@@ -1071,17 +1047,25 @@ export default function Dashboard() {
       const newsItems = response?.content || [];
 
       setRecentNews(
-        newsItems.slice(0, 3).map((n) => ({
-          id: n.id,
-          title: n.title,
-          date: n.createdAt
-            ? new Date(n.createdAt).toLocaleDateString("sv-SE")
-            : "N/A",
-          status: n.status?.toLowerCase() || "draft",
-        }))
+        newsItems.slice(0, 3).map((n) => {
+          let dateFormatted = "N/A";
+          if (n.createdAt) {
+            const d = new Date(n.createdAt);
+            const day = d.getDate().toString().padStart(2, "0");
+            const month = (d.getMonth() + 1).toString().padStart(2, "0");
+            const year = d.getFullYear();
+            dateFormatted = `${day}/${month}/${year}`;
+          }
+          return {
+            id: n.id,
+            title: n.title,
+            date: dateFormatted,
+            status: n.status?.toLowerCase() || "draft",
+          };
+        })
       );
     } catch (error) {
-      } finally {
+    } finally {
       setLoading((prev) => ({ ...prev, news: false }));
     }
   }, []);
@@ -1147,7 +1131,6 @@ export default function Dashboard() {
           value={stats.totalStudents}
           icon={Users}
           gradient="blue"
-          trend={stats.trends.students}
           loading={loading.stats}
           delay={0}
           onClick={() => navigate("/home/admin/users")}
@@ -1157,7 +1140,6 @@ export default function Dashboard() {
           value={stats.totalTeachers}
           icon={GraduationCap}
           gradient="violet"
-          trend={stats.trends.teachers}
           loading={loading.stats}
           delay={100}
           onClick={() => navigate("/home/admin/users")}
@@ -1167,7 +1149,6 @@ export default function Dashboard() {
           value={stats.activeClasses}
           icon={BookOpen}
           gradient="cyan"
-          trend={stats.trends.classes}
           loading={loading.stats}
           delay={200}
           onClick={() => navigate("/home/admin/class")}
@@ -1177,7 +1158,6 @@ export default function Dashboard() {
           value={stats.totalRevenue}
           icon={Wallet}
           gradient="emerald"
-          trend={stats.trends.revenue}
           loading={loading.stats}
           delay={300}
           prefix="₫"

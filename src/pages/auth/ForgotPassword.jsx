@@ -8,27 +8,71 @@
  * - Nhập email để nhận link đặt lại mật khẩu
  * - Validation email
  * - Hiển thị thông báo sau khi gửi yêu cầu
+ * - Rate limiting để tránh spam (3 lần / 5 phút)
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import Logo from "../../components/common/Logo";
 import { useToast } from "../../hooks/use-toast";
-import { Mail, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
+import { Mail, ArrowLeft, Loader2, CheckCircle, Clock } from "lucide-react";
 import { authApi } from "../../services/auth/auth.api";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 
+// Rate limit config (phải khớp với backend)
+const COOLDOWN_SECONDS = 60; // Cooldown sau mỗi lần gửi thành công
+const STORAGE_KEY = "forgot_password_cooldown";
+
 export default function ForgotPassword() {
   const nav = useNavigate();
-  const { success, error } = useToast();
+  const { success, error, warning } = useToast();
 
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [cooldown, setCooldown] = useState(0); // Số giây còn lại
+
+  // Load cooldown từ localStorage khi component mount
+  useEffect(() => {
+    const savedCooldown = localStorage.getItem(STORAGE_KEY);
+    if (savedCooldown) {
+      const endTime = parseInt(savedCooldown, 10);
+      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+      if (remaining > 0) {
+        setCooldown(remaining);
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  // Countdown timer
+  useEffect(() => {
+    if (cooldown <= 0) return;
+
+    const timer = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          localStorage.removeItem(STORAGE_KEY);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  // Bắt đầu cooldown
+  const startCooldown = useCallback((seconds) => {
+    const endTime = Date.now() + seconds * 1000;
+    localStorage.setItem(STORAGE_KEY, endTime.toString());
+    setCooldown(seconds);
+  }, []);
 
   const validate = () => {
     const next = {};
@@ -46,6 +90,12 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Kiểm tra cooldown
+    if (cooldown > 0) {
+      warning(`Vui lòng đợi ${cooldown} giây trước khi gửi lại.`);
+      return;
+    }
+
     if (!validate()) {
       error("Vui lòng nhập email hợp lệ");
       return;
@@ -58,17 +108,40 @@ export default function ForgotPassword() {
       const response = await authApi.forgotPassword(email.trim());
 
       setSubmitted(true);
+      startCooldown(COOLDOWN_SECONDS); // Bắt đầu cooldown sau khi gửi thành công
       success(
-        response?.message || "Nếu email tồn tại trong hệ thống, mật khẩu mới đã được gửi đến email của bạn.",
+        response?.message ||
+          "Nếu email tồn tại trong hệ thống, mật khẩu mới đã được gửi đến email của bạn.",
         "Đã gửi yêu cầu! 📧"
       );
     } catch (err) {
+      // Xử lý rate limit từ server (HTTP 429)
+      if (err?.response?.status === 429) {
+        const serverMsg =
+          err?.response?.data?.message ||
+          "Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau.";
+        error(serverMsg);
+        // Bắt đầu cooldown dài hơn khi bị server rate limit
+        startCooldown(300); // 5 phút
+        return;
+      }
+
       const apiMsg =
         err?.response?.data?.message || "Có lỗi xảy ra. Vui lòng thử lại sau.";
       error(apiMsg);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Format cooldown display
+  const formatCooldown = (seconds) => {
+    if (seconds >= 60) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}:${secs.toString().padStart(2, "0")}`;
+    }
+    return `${seconds}s`;
   };
 
   return (
@@ -151,27 +224,55 @@ export default function ForgotPassword() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={submitting}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 rounded-xl font-semibold transition-all duration-200"
+                disabled={submitting || cooldown > 0}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Đang gửi...
                   </span>
+                ) : cooldown > 0 ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Thử lại sau {formatCooldown(cooldown)}
+                  </span>
                 ) : (
                   "Gửi yêu cầu"
                 )}
               </Button>
+
+              {/* Rate limit notice */}
+              <p className="text-xs text-gray-500 text-center">
+                Bạn có thể gửi tối đa 3 yêu cầu trong 5 phút
+              </p>
             </form>
           ) : (
             <div className="space-y-4">
               <Button
-                onClick={() => setSubmitted(false)}
+                onClick={() => {
+                  if (cooldown > 0) {
+                    warning(
+                      `Vui lòng đợi ${formatCooldown(
+                        cooldown
+                      )} trước khi gửi lại.`
+                    );
+                    return;
+                  }
+                  setSubmitted(false);
+                }}
                 variant="outline"
                 className="w-full"
+                disabled={cooldown > 0}
               >
-                Gửi lại email
+                {cooldown > 0 ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Gửi lại sau {formatCooldown(cooldown)}
+                  </span>
+                ) : (
+                  "Gửi lại email"
+                )}
               </Button>
             </div>
           )}

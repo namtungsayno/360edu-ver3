@@ -36,6 +36,7 @@ import {
 import { teacherAttendanceService } from "../../services/teacher-attendance/teacher-attendance.service";
 import { useToast } from "../../hooks/use-toast.js";
 import useDebounce from "../../hooks/useDebounce";
+import { getImageUrl } from "../../utils/image";
 
 export default function TeacherAttendanceList() {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ export default function TeacherAttendanceList() {
 
   // Server-side pagination state
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(5);
+  const [size, setSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -258,7 +259,7 @@ export default function TeacherAttendanceList() {
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
                         {teacher.avatar ? (
                           <img
-                            src={teacher.avatar}
+                            src={getImageUrl(teacher.avatar)}
                             alt={teacher.fullName}
                             className="w-full h-full object-cover"
                           />
@@ -338,48 +339,56 @@ export default function TeacherAttendanceList() {
         {/* Pagination */}
         {totalPages > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+            <p className="text-sm text-gray-500">
+              Trang {page + 1} / {totalPages} — Tổng {totalElements} bản ghi
+            </p>
             <div className="flex items-center gap-4">
-              <Select
-                value={String(size)}
-                onValueChange={(v) => {
-                  setSize(Number(v));
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 / trang</SelectItem>
-                  <SelectItem value="10">10 / trang</SelectItem>
-                  <SelectItem value="20">20 / trang</SelectItem>
-                  <SelectItem value="50">50 / trang</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-gray-500">
-                Hiển thị {teachers.length} / {totalElements} giáo viên
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-gray-600 px-3">
-                Trang {page + 1} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+              {/* Size selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">
+                  Số bản ghi / trang:
+                </span>
+                <Select
+                  value={String(size)}
+                  onValueChange={(v) => {
+                    setSize(Number(v));
+                    setPage(0);
+                  }}
+                >
+                  <SelectTrigger className="w-[70px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Page navigation */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-gray-600 px-3">
+                  {page + 1} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                  disabled={page >= totalPages - 1}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         )}

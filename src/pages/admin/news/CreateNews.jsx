@@ -16,10 +16,8 @@ import {
   Loader2,
   Upload,
   Newspaper,
-  Clock,
   Send,
   Save,
-  Calendar,
   Eye,
   AlertCircle,
 } from "lucide-react";
@@ -32,6 +30,7 @@ export default function CreateNews() {
   const navigate = useNavigate();
   const location = useLocation();
   const draft = location.state?.draft;
+  const returnTo = location.state?.returnTo; // URL để quay về sau khi sửa
   const { success, error: showError } = useToast();
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
@@ -40,9 +39,6 @@ export default function CreateNews() {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageMode, setImageMode] = useState("upload"); // "upload" | "url"
   const [imageUrlInput, setImageUrlInput] = useState("");
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     excerpt: "",
@@ -51,7 +47,6 @@ export default function CreateNews() {
     status: "draft",
     author: "Admin",
     date: new Date().toISOString().split("T")[0],
-    scheduledAt: null,
   });
 
   const isEditing = Boolean(draft);
@@ -66,18 +61,11 @@ export default function CreateNews() {
         status: draft.status || "draft",
         author: draft.author || "Admin",
         date: draft.date || new Date().toISOString().split("T")[0],
-        scheduledAt: draft.scheduledAt || null,
       });
       setTags(draft.tags || []);
       if (draft.imageUrl) {
         setImagePreview(draft.imageUrl);
         setImageUrlInput(draft.imageUrl);
-      }
-      // Set scheduled date/time if exists
-      if (draft.scheduledAt) {
-        const scheduled = new Date(draft.scheduledAt);
-        setScheduledDate(scheduled.toISOString().split("T")[0]);
-        setScheduledTime(scheduled.toTimeString().slice(0, 5));
       }
     }
   }, [draft]);
@@ -169,7 +157,6 @@ export default function CreateNews() {
         status,
         author: formData.author,
         tags: tags, // Backend expects array, not comma-separated string
-        scheduledAt: formData.scheduledAt,
         date: new Date().toISOString().split("T")[0], // Tự động lưu ngày hiện tại
       };
 
@@ -181,14 +168,13 @@ export default function CreateNews() {
         success(
           status === "published"
             ? "Đăng tin tức thành công!"
-            : status === "scheduled"
-            ? "Đã lên lịch đăng tin!"
             : "Lưu nháp thành công!",
           "Thành công"
         );
       }
       setTimeout(() => {
-        navigate("/home/admin/news");
+        // Nếu có returnTo (từ trang chi tiết) thì quay về đó, không thì về danh sách
+        navigate(returnTo || "/home/admin/news");
       }, 1000);
     } catch (error) {
       const errorMsg =
@@ -201,47 +187,11 @@ export default function CreateNews() {
     }
   };
 
-  // Xử lý hẹn giờ đăng tin
-  const handleSchedulePublish = () => {
-    if (!scheduledDate || !scheduledTime) {
-      showError("Vui lòng chọn ngày và giờ đăng tin", "Lỗi");
-      return;
-    }
-
-    const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
-    const now = new Date();
-
-    if (scheduledDateTime <= now) {
-      showError("Thời gian hẹn phải lớn hơn thời gian hiện tại", "Lỗi");
-      return;
-    }
-
-    setFormData({
-      ...formData,
-      scheduledAt: scheduledDateTime.toISOString(),
-    });
-    setShowScheduleModal(false);
-    handleSubmit("scheduled");
-  };
-
-  // Format datetime for display
-  const formatScheduledTime = (isoString) => {
-    if (!isoString) return "";
-    const date = new Date(isoString);
-    return date.toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <BackButton to="/home/admin/news" showLabel={false} />
+        <BackButton to={returnTo || "/home/admin/news"} showLabel={false} />
         <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg shadow-indigo-200">
           <Newspaper className="h-7 w-7 text-white" />
         </div>
@@ -339,7 +289,7 @@ export default function CreateNews() {
                           className="w-full h-48 object-cover rounded-lg"
                           onError={(e) => {
                             e.target.src = "/placeholder-image.png";
-                            }}
+                          }}
                         />
                         <Button
                           type="button"
@@ -425,42 +375,6 @@ export default function CreateNews() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Tags</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Thêm tag..."
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                />
-                <Button type="button" onClick={addTag} size="icon">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="gap-1">
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="ml-1 hover:text-red-600"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           <div className="flex flex-col gap-2">
             {/* Nút Đăng ngay */}
             <Button
@@ -481,17 +395,6 @@ export default function CreateNews() {
               )}
             </Button>
 
-            {/* Nút Hẹn giờ đăng */}
-            <Button
-              variant="outline"
-              className="w-full border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400"
-              onClick={() => setShowScheduleModal(true)}
-              disabled={loading}
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              Hẹn giờ đăng tin
-            </Button>
-
             {/* Nút Lưu nháp */}
             <Button
               variant="outline"
@@ -507,7 +410,7 @@ export default function CreateNews() {
             <Button
               variant="ghost"
               className="w-full bg-slate-100 text-slate-700 hover:bg-slate-200"
-              onClick={() => navigate("/home/admin/news")}
+              onClick={() => navigate(returnTo || "/home/admin/news")}
               disabled={loading}
             >
               Hủy
@@ -526,135 +429,17 @@ export default function CreateNews() {
                     className={
                       draft?.status === "published"
                         ? "bg-green-100 text-green-700"
-                        : draft?.status === "scheduled"
-                        ? "bg-blue-100 text-blue-700"
                         : "bg-amber-100 text-amber-700"
                     }
                   >
-                    {draft?.status === "published"
-                      ? "Đã đăng"
-                      : draft?.status === "scheduled"
-                      ? "Đã lên lịch"
-                      : "Bản nháp"}
+                    {draft?.status === "published" ? "Đã đăng" : "Bản nháp"}
                   </Badge>
                 </div>
-                {draft?.scheduledAt && (
-                  <div className="mt-2 text-xs text-blue-600 flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    Sẽ đăng lúc: {formatScheduledTime(draft.scheduledAt)}
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
         </div>
       </div>
-
-      {/* Modal Hẹn giờ đăng tin */}
-      {showScheduleModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">
-                    Hẹn giờ đăng tin
-                  </h3>
-                  <p className="text-blue-100 text-sm">
-                    Chọn thời gian tự động công bố
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 space-y-4">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="scheduleDate"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Ngày đăng
-                </Label>
-                <Input
-                  id="scheduleDate"
-                  type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label
-                  htmlFor="scheduleTime"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Giờ đăng
-                </Label>
-                <Input
-                  id="scheduleTime"
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-
-              {scheduledDate && scheduledTime && (
-                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Calendar className="h-5 w-5" />
-                    <span className="font-medium">Tin sẽ được đăng vào:</span>
-                  </div>
-                  <p className="text-blue-900 font-bold mt-1">
-                    {new Date(
-                      `${scheduledDate}T${scheduledTime}`
-                    ).toLocaleString("vi-VN", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 pb-6 flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowScheduleModal(false)}
-              >
-                Hủy
-              </Button>
-              <Button
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
-                onClick={handleSchedulePublish}
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Clock className="h-4 w-4 mr-2" />
-                    Xác nhận hẹn giờ
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -39,7 +39,7 @@ export default function CourseOfSubjectDetail() {
           setEditableCourse(deepCloneCourse(data));
         }
       } catch (e) {
-        } finally {
+      } finally {
         if (!ignore) setLoading(false);
       }
     })();
@@ -218,8 +218,7 @@ export default function CourseOfSubjectDetail() {
           if (ch.id) {
             try {
               await courseService.removeChapter(ch.id);
-            } catch (e) {
-              }
+            } catch (e) {}
           }
         }
         // Tạo lại toàn bộ chương + bài học với orderIndex mới
@@ -276,7 +275,6 @@ export default function CourseOfSubjectDetail() {
               <h1 className="text-2xl font-bold text-gray-900">
                 Chi tiết khóa học
               </h1>
-              <p className="text-sm text-gray-500">Thuộc môn ID #{subjectId}</p>
             </div>
           </div>
           {!editMode && (

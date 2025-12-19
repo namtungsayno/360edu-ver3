@@ -21,6 +21,13 @@ import { courseApi } from "../../../services/course/course.api";
 import { Loader2, Eye, Trash2, AlertTriangle } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 import { BackButton } from "../../../components/common/BackButton";
+import {
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogContent,
+  DialogFooter,
+} from "../../../components/ui/Dialog";
 
 /**
  * ClassEditPage
@@ -37,6 +44,9 @@ export default function ClassEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showForceDeleteDialog, setShowForceDeleteDialog] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
   const [currentStep, setCurrentStep] = useState(1); // 1: form, 2: preview
 
   // Original class data
@@ -53,6 +63,9 @@ export default function ClassEditPage() {
   const [totalSessions, setTotalSessions] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [originalStartDate, setOriginalStartDate] = useState(""); // Ngày bắt đầu ban đầu của lớp
+  const [originalRoomId, setOriginalRoomId] = useState(""); // Phòng ban đầu của lớp
+  const [originalTeacherId, setOriginalTeacherId] = useState(""); // GV ban đầu của lớp
   const [pricePerSession, setPricePerSession] = useState("");
   const [name, setName] = useState("");
 
@@ -67,9 +80,12 @@ export default function ClassEditPage() {
   const [teacherBusy, setTeacherBusy] = useState([]);
   const [roomBusy, setRoomBusy] = useState([]);
   const [pickedSlots, setPickedSlots] = useState([]); // grid selections
-  // Room conflict state for PUBLIC classes
+  // Room conflict state
   const [roomConflict, setRoomConflict] = useState(null); // { roomName, className, dayName, slotTime }
   const [checkingRoomConflict, setCheckingRoomConflict] = useState(false);
+  // Teacher conflict state
+  const [teacherConflict, setTeacherConflict] = useState(null); // { teacherName, className, dayName, slotTime }
+  const [checkingTeacherConflict, setCheckingTeacherConflict] = useState(false);
   // Toggle edit/view for schedule
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [prevPickedSlots, setPrevPickedSlots] = useState([]);
@@ -145,11 +161,13 @@ export default function ClassEditPage() {
           setCourseId(String(data.courseId || ""));
           // Always store teacher's USER ID in state; backend expects userId in teacherId field
           setTeacherId(String(data.teacherUserId || ""));
+          setOriginalTeacherId(String(data.teacherUserId || "")); // Lưu GV ban đầu
           setDesc(data.description || "");
           setCapacity(String(data.maxStudents || ""));
           setTotalSessions(String(data.totalSessions || ""));
           setStartDate(data.startDate || "");
           setEndDate(data.endDate || "");
+          setOriginalStartDate(data.startDate || ""); // Lưu ngày bắt đầu ban đầu
           setPricePerSession(String(data.pricePerSession ?? ""));
           setName(data.name || "");
           // originalEndDate removed
@@ -157,6 +175,7 @@ export default function ClassEditPage() {
             setMeetingLink(data.meetingLink || "");
           } else {
             setRoomId(String(data.roomId || ""));
+            setOriginalRoomId(String(data.roomId || "")); // Lưu phòng ban đầu
           }
           // Map existing schedule -> pickedSlots (approximate week representation)
           if (Array.isArray(data.schedule)) {
@@ -202,6 +221,24 @@ export default function ClassEditPage() {
 
   // Track initial subjectId to avoid resetting teacherId on first load
   const [initialSubjectId, setInitialSubjectId] = useState(null);
+
+  // Track previous startDate to detect user changes
+  const [prevStartDate, setPrevStartDate] = useState(null);
+
+  // Reset pickedSlots khi startDate thay đổi (DRAFT mode) - chỉ khi người dùng thay đổi, không phải load ban đầu
+  useEffect(() => {
+    if (!cls || cls.status !== "DRAFT") return;
+    // Bỏ qua lần set đầu tiên (khi load data)
+    if (prevStartDate === null) {
+      setPrevStartDate(startDate);
+      return;
+    }
+    // Nếu startDate thay đổi so với lần trước, reset pickedSlots
+    if (startDate && startDate !== prevStartDate) {
+      setPickedSlots([]);
+      setPrevStartDate(startDate);
+    }
+  }, [startDate, cls, prevStartDate]);
 
   // Load dependent lists when subject changes
   useEffect(() => {
@@ -333,24 +370,33 @@ export default function ClassEditPage() {
     loadRoomBusy();
   }, [loadRoomBusy]);
 
-  // Check room conflict for PUBLIC classes when room changes
+  // Check room conflict when room changes - works for both DRAFT and PUBLIC classes
   const checkRoomConflict = useCallback(async () => {
-    // Only check for PUBLIC classes when changing room
-    if (!cls || cls.status !== "PUBLIC" || cls.online || !roomId) {
+    // Skip for online classes or no room selected
+    if (!cls || cls.online || !roomId || !startDate) {
       setRoomConflict(null);
       return;
     }
-    // If room hasn't changed from original, no need to check
-    const originalRoomId = cls.roomId || cls.room?.id;
+
+    // If room hasn't changed from original, no conflict to check
     if (String(roomId) === String(originalRoomId)) {
+      setRoomConflict(null);
+      return;
+    }
+
+    // No picked slots = nothing to conflict
+    if (pickedSlots.length === 0) {
       setRoomConflict(null);
       return;
     }
 
     setCheckingRoomConflict(true);
     try {
-      const fromDate = new Date(startDate || cls.startDate).toISOString();
-      const toDate = new Date(endDate || cls.endDate).toISOString();
+      // Fetch busy slots for NEW room (full year range)
+      const fromDate = new Date(startDate).toISOString();
+      const toDate = new Date(
+        new Date(startDate).getTime() + 365 * 24 * 60 * 60 * 1000
+      ).toISOString();
       const busyData = await classroomService.getFreeBusy(
         roomId,
         fromDate,
@@ -408,6 +454,12 @@ export default function ClassEditPage() {
             slotTime: `${busyTime} - ${endH}:${endM}`,
             className: busy.className || "lớp khác", // BE might include this
           });
+          // Show toast warning immediately
+          error(
+            `⚠️ Phòng ${selectedRoom?.name || "đã chọn"} đang bận vào ${
+              dayNames[busyDow]
+            } (${busyTime} - ${endH}:${endM}). Vui lòng chọn phòng khác hoặc đổi slot!`
+          );
           return;
         }
       }
@@ -418,11 +470,117 @@ export default function ClassEditPage() {
     } finally {
       setCheckingRoomConflict(false);
     }
-  }, [cls, roomId, startDate, endDate, pickedSlots, rooms]);
+  }, [cls, roomId, originalRoomId, startDate, pickedSlots, rooms]);
 
   useEffect(() => {
     checkRoomConflict();
   }, [checkRoomConflict]);
+
+  // Check teacher conflict when teacher changes
+  const checkTeacherConflict = useCallback(async () => {
+    // Skip if no teacher or no start date
+    if (!cls || !teacherId || !startDate) {
+      setTeacherConflict(null);
+      return;
+    }
+
+    // If teacher hasn't changed from original, no conflict to check
+    if (String(teacherId) === String(originalTeacherId)) {
+      setTeacherConflict(null);
+      return;
+    }
+
+    // No picked slots = nothing to conflict
+    if (pickedSlots.length === 0) {
+      setTeacherConflict(null);
+      return;
+    }
+
+    setCheckingTeacherConflict(true);
+    try {
+      // Fetch busy slots for NEW teacher (full year range)
+      const fromDate = new Date(startDate).toISOString();
+      const toDate = new Date(
+        new Date(startDate).getTime() + 365 * 24 * 60 * 60 * 1000
+      ).toISOString();
+      const busyData = await teacherService.getFreeBusy(
+        teacherId,
+        fromDate,
+        toDate
+      );
+
+      if (!Array.isArray(busyData) || busyData.length === 0) {
+        setTeacherConflict(null);
+        return;
+      }
+
+      // Get this class's schedule pattern (dayOfWeek + timeSlot)
+      const thisClassSlots = pickedSlots.map((slot) => {
+        const d = new Date(slot.isoStart);
+        const dow = d.getDay(); // 0-6
+        const h = String(d.getHours()).padStart(2, "0");
+        const m = String(d.getMinutes()).padStart(2, "0");
+        return { dow, time: `${h}:${m}` };
+      });
+
+      // Check if any busy slot overlaps with this class's schedule
+      for (const busy of busyData) {
+        if (!busy.start || !busy.end) continue;
+        const busyStart = new Date(busy.start);
+        const busyDow = busyStart.getDay();
+        const busyH = String(busyStart.getHours()).padStart(2, "0");
+        const busyM = String(busyStart.getMinutes()).padStart(2, "0");
+        const busyTime = `${busyH}:${busyM}`;
+
+        // Check if this busy slot matches any of our class's slots
+        const conflict = thisClassSlots.find(
+          (s) => s.dow === busyDow && s.time === busyTime
+        );
+
+        if (conflict) {
+          const dayNames = [
+            "Chủ nhật",
+            "Thứ 2",
+            "Thứ 3",
+            "Thứ 4",
+            "Thứ 5",
+            "Thứ 6",
+            "Thứ 7",
+          ];
+          const selectedTeacher = teachers.find(
+            (t) => String(t.userId) === String(teacherId)
+          );
+          const busyEnd = new Date(busy.end);
+          const endH = String(busyEnd.getHours()).padStart(2, "0");
+          const endM = String(busyEnd.getMinutes()).padStart(2, "0");
+
+          setTeacherConflict({
+            teacherName: selectedTeacher?.fullName || "Giáo viên đã chọn",
+            dayName: dayNames[busyDow],
+            slotTime: `${busyTime} - ${endH}:${endM}`,
+            className: busy.className || "lớp khác",
+          });
+          // Show toast warning immediately
+          error(
+            `⚠️ GV ${selectedTeacher?.fullName || "đã chọn"} đang bận vào ${
+              dayNames[busyDow]
+            } (${busyTime} - ${endH}:${endM}). Vui lòng chọn giáo viên khác hoặc đổi slot!`
+          );
+          return;
+        }
+      }
+
+      setTeacherConflict(null);
+    } catch (e) {
+      setTeacherConflict(null);
+    } finally {
+      setCheckingTeacherConflict(false);
+    }
+  }, [cls, teacherId, originalTeacherId, startDate, pickedSlots, teachers]);
+
+  useEffect(() => {
+    checkTeacherConflict();
+  }, [checkTeacherConflict]);
 
   function toggleSlot(slot) {
     const targetKey = slotKey(slot);
@@ -535,8 +693,11 @@ export default function ClassEditPage() {
     : "shadow-green-500/30";
   const todayStr = useMemo(() => {
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now.toISOString().slice(0, 10);
+    // Lấy ngày theo múi giờ local (Việt Nam) thay vì UTC
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }, []);
 
   function isValidUrl(url) {
@@ -549,8 +710,22 @@ export default function ClassEditPage() {
   }
 
   const step1Valid = useMemo(() => {
-    // Block if room conflict exists for PUBLIC classes
+    // Block if room or teacher conflict exists
     if (roomConflict) return false;
+    if (teacherConflict) return false;
+
+    // Block nếu sĩ số < số học sinh hiện tại (lớp PUBLIC)
+    if (
+      cls?.status === "PUBLIC" &&
+      capacity &&
+      parseInt(capacity) < (cls?.currentStudents || 0)
+    ) {
+      return false;
+    }
+
+    // Chỉ kiểm tra startDate >= today cho lớp DRAFT
+    // Lớp PUBLIC đã có startDate trong quá khứ vẫn cho phép edit
+    const startDateInvalid = cls?.status === "DRAFT" && startDate < todayStr;
 
     if (
       !subjectId ||
@@ -558,7 +733,7 @@ export default function ClassEditPage() {
       !totalSessions ||
       parseInt(totalSessions) <= 0 ||
       !startDate ||
-      startDate < todayStr ||
+      startDateInvalid ||
       !pickedSlots.length ||
       // Yêu cầu giá mỗi buổi chỉ khi DRAFT
       (cls?.status === "DRAFT" &&
@@ -592,8 +767,10 @@ export default function ClassEditPage() {
     capacity,
     roomId,
     cls?.status,
+    cls?.currentStudents,
     selectedRoom,
     roomConflict,
+    teacherConflict,
   ]);
 
   async function handleSave() {
@@ -630,12 +807,11 @@ export default function ClassEditPage() {
           typeof backendMsg === "string" &&
           backendMsg.toLowerCase().includes("lớp đang có nội dung");
         if (needConfirm) {
-          const ok = window.confirm(
-            "Lớp đang có nội dung. Xác nhận xóa toàn bộ nội dung buổi học và khóa học của giáo viên?"
-          );
-          if (!ok) throw e1;
-          const payload2 = { ...payload, forceDeleteContentAndCourse: true };
-          await classService.update(cls.id, payload2);
+          // Lưu payload và hiển dialog xác nhận
+          setPendingPayload(payload);
+          setShowForceDeleteDialog(true);
+          setSaving(false);
+          return;
         } else {
           throw e1;
         }
@@ -654,9 +830,7 @@ export default function ClassEditPage() {
 
   async function handleDelete() {
     if (!cls || cls.status !== "DRAFT") return;
-
-    const confirmMsg = `Bạn có chắc chắn muốn XÓA VĨNH VIỄN lớp "${cls.name}"?\n\nLưu ý: Tất cả dữ liệu liên quan (buổi học, lịch học, học viên đăng ký,...) sẽ bị xóa và KHÔNG THỂ KHÔI PHỤC.`;
-    if (!window.confirm(confirmMsg)) return;
+    setShowDeleteDialog(false);
 
     setDeleting(true);
     try {
@@ -670,6 +844,32 @@ export default function ClassEditPage() {
       error(msg);
     } finally {
       setDeleting(false);
+    }
+  }
+
+  function openDeleteDialog() {
+    if (!cls || cls.status !== "DRAFT") return;
+    setShowDeleteDialog(true);
+  }
+
+  // Xử lý khi xác nhận xóa nội dung lớp học
+  async function handleForceDeleteConfirm() {
+    if (!pendingPayload) return;
+    setShowForceDeleteDialog(false);
+    setSaving(true);
+    try {
+      const payload2 = { ...pendingPayload, forceDeleteContentAndCourse: true };
+      await classService.update(cls.id, payload2);
+      success("Cập nhật lớp thành công");
+      navigate("/home/admin/class");
+    } catch (e) {
+      let msg = "Không thể cập nhật lớp";
+      if (e.response?.data?.message) msg = e.response.data.message;
+      else if (e.response?.data?.error) msg = e.response.data.error;
+      error(msg);
+    } finally {
+      setSaving(false);
+      setPendingPayload(null);
     }
   }
 
@@ -713,7 +913,7 @@ export default function ClassEditPage() {
             isOnline ? "shadow-indigo-500/20" : "shadow-green-500/20"
           }`}
         >
-          <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <BackButton
@@ -817,6 +1017,46 @@ export default function ClassEditPage() {
                     </div>
                   )}
 
+                  {/* Room/Teacher conflict banner */}
+                  {(roomConflict || teacherConflict) && (
+                    <div className="p-3 rounded-lg bg-red-50 border border-red-300 text-xs text-red-700 leading-relaxed animate-pulse">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="h-4 w-4" />
+                        Phát hiện xung đột lịch!
+                      </div>
+                      {roomConflict && (
+                        <p className="mt-1">
+                          🏠{" "}
+                          <span className="font-medium">
+                            {roomConflict.roomName}
+                          </span>{" "}
+                          đã bận vào{" "}
+                          <span className="font-medium">
+                            {roomConflict.dayName}
+                          </span>{" "}
+                          ({roomConflict.slotTime})
+                        </p>
+                      )}
+                      {teacherConflict && (
+                        <p className="mt-1">
+                          👨‍🏫{" "}
+                          <span className="font-medium">
+                            {teacherConflict.teacherName}
+                          </span>{" "}
+                          đã bận vào{" "}
+                          <span className="font-medium">
+                            {teacherConflict.dayName}
+                          </span>{" "}
+                          ({teacherConflict.slotTime})
+                        </p>
+                      )}
+                      <p className="mt-2 text-[10px] text-red-600">
+                        Vui lòng chọn phòng/giáo viên khác hoặc thay đổi slot
+                        trong lịch học
+                      </p>
+                    </div>
+                  )}
+
                   {isDraft && (
                     <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-700 leading-relaxed">
                       <div className="font-semibold flex items-center gap-1">
@@ -859,7 +1099,7 @@ export default function ClassEditPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={handleDelete}
+                          onClick={openDeleteDialog}
                           disabled={deleting}
                           className="h-7 px-2.5 text-[10px] flex-shrink-0"
                         >
@@ -888,7 +1128,13 @@ export default function ClassEditPage() {
                       <Input
                         type="date"
                         value={startDate}
-                        min={todayStr}
+                        min={
+                          isPublic
+                            ? startDate
+                            : originalStartDate && originalStartDate < todayStr
+                            ? originalStartDate
+                            : todayStr
+                        }
                         onChange={(e) => setStartDate(e.target.value)}
                         className="h-9 text-sm"
                         disabled={isPublic}
@@ -1135,8 +1381,23 @@ export default function ClassEditPage() {
                         max={isOnline ? 30 : undefined}
                         value={capacity}
                         onChange={(e) => setCapacity(e.target.value)}
-                        className="h-9 text-sm"
+                        className={`h-9 text-sm ${
+                          isPublic &&
+                          capacity &&
+                          parseInt(capacity) < (cls?.currentStudents || 0)
+                            ? "border-red-500 focus:ring-red-500"
+                            : ""
+                        }`}
                       />
+                      {/* Cảnh báo real-time khi sĩ số < số học sinh hiện tại (lớp PUBLIC) */}
+                      {isPublic &&
+                        capacity &&
+                        parseInt(capacity) < (cls?.currentStudents || 0) && (
+                          <p className="text-[10px] text-red-600 mt-0.5 font-medium">
+                            ⚠️ Không thể giảm sĩ số xuống {capacity} vì lớp đang
+                            có {cls?.currentStudents} học sinh
+                          </p>
+                        )}
                       {!isOnline && selectedRoom?.capacity && (
                         <p className="text-[10px] text-gray-500 mt-0.5">
                           Tối đa: {selectedRoom.capacity}
@@ -1266,6 +1527,35 @@ export default function ClassEditPage() {
                 {/* Lớp DRAFT: hiện ScheduleGrid luôn để dễ xem phòng bận + lịch GV */}
                 {isDraft && (
                   <div className="mt-4">
+                    {/* Thông báo gợi ý chọn slot ngày bắt đầu */}
+                    {startDate && (
+                      <div className="mb-3 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-700 leading-relaxed">
+                        <div className="font-semibold flex items-center gap-1">
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          Chọn slot cho ngày bắt đầu trước
+                        </div>
+                        <p className="mt-0.5">
+                          Ngày bắt đầu được đánh dấu{" "}
+                          <span className="font-semibold text-emerald-800">
+                            màu xanh lá
+                          </span>{" "}
+                          trên lịch. Vui lòng chọn ít nhất 1 slot vào ngày bắt
+                          đầu, sau đó mới có thể chọn slot các ngày khác.
+                        </p>
+                      </div>
+                    )}
                     {/* Thông báo hướng dẫn */}
                     <div className="mb-3 p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-700 leading-relaxed">
                       <div className="font-semibold flex items-center gap-1">
@@ -1313,6 +1603,14 @@ export default function ClassEditPage() {
                       originalSelected={prevPickedSlots}
                       onToggle={toggleSlot}
                       disabled={!teacherId || (!isOnline && !roomId)}
+                      startDate={startDate}
+                      requireStartDayFirst={!!startDate}
+                      excludeOriginalFromRoomBusy={
+                        !isOnline && String(roomId) === String(originalRoomId)
+                      }
+                      excludeOriginalFromTeacherBusy={
+                        String(teacherId) === String(originalTeacherId)
+                      }
                     />
                   </div>
                 )}
@@ -1385,6 +1683,14 @@ export default function ClassEditPage() {
                           !teacherId ||
                           (!isOnline && !roomId)
                         }
+                        startDate={startDate}
+                        requireStartDayFirst={false}
+                        excludeOriginalFromRoomBusy={
+                          !isOnline && String(roomId) === String(originalRoomId)
+                        }
+                        excludeOriginalFromTeacherBusy={
+                          String(teacherId) === String(originalTeacherId)
+                        }
                       />
                     </div>
                   ))}
@@ -1441,7 +1747,103 @@ export default function ClassEditPage() {
           )}
         </div>
       </div>
-      {/* Modal xác nhận ngày kết thúc đã được bỏ. */}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <div className="text-center">
+          <div className="mx-auto w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="h-7 w-7 text-red-600" />
+          </div>
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-xl">Xác nhận xóa lớp học</DialogTitle>
+          </DialogHeader>
+          <DialogContent className="text-gray-500 mb-6">
+            Bạn có chắc chắn muốn xóa lớp <strong>"{cls?.name}"</strong> không?
+            <br />
+            <span className="text-red-500 font-medium">
+              Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn và không thể khôi
+              phục.
+            </span>
+          </DialogContent>
+          <DialogFooter className="flex justify-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleting}
+              className="min-w-[100px]"
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="min-w-[100px] bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Đang xóa...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Xóa
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </div>
+      </Dialog>
+
+      {/* Force Delete Content Confirmation Dialog */}
+      <Dialog
+        open={showForceDeleteDialog}
+        onOpenChange={setShowForceDeleteDialog}
+      >
+        <div className="text-center">
+          <div className="mx-auto w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="h-7 w-7 text-amber-600" />
+          </div>
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-xl">Xác nhận xóa nội dung</DialogTitle>
+          </DialogHeader>
+          <DialogContent className="text-gray-500 mb-6">
+            Lớp đang có nội dung buổi học và khóa học của giáo viên.
+            <br />
+            <span className="text-amber-600 font-medium">
+              Bạn có muốn xóa toàn bộ nội dung này để tiếp tục cập nhật?
+            </span>
+          </DialogContent>
+          <DialogFooter className="flex justify-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowForceDeleteDialog(false);
+                setPendingPayload(null);
+              }}
+              disabled={saving}
+              className="min-w-[100px]"
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              onClick={handleForceDeleteConfirm}
+              disabled={saving}
+              className="min-w-[100px] bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                "Xác nhận & Tiếp tục"
+              )}
+            </Button>
+          </DialogFooter>
+        </div>
+      </Dialog>
     </>
   );
 }

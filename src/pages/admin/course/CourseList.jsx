@@ -45,6 +45,7 @@ import { classService } from "../../../services/class/class.service.js";
 import { subjectService } from "../../../services/subject/subject.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import useDebounce from "../../../hooks/useDebounce.js";
+import { extractBaseCourseTitle } from "../../../utils/html-helpers.js";
 
 /**
  * Map màu + nhãn status
@@ -105,7 +106,7 @@ export default function AdminCourseList() {
 
   // Server-side pagination
   const [page, setPage] = useState(0);
-  const [size] = useState(5);
+  const [size, setSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -165,8 +166,7 @@ export default function AdminCourseList() {
           archived: countByStatus("ARCHIVED"),
           teacherCount: teacherMap.size,
         });
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
   }, []);
 
@@ -258,8 +258,7 @@ export default function AdminCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {
@@ -300,8 +299,7 @@ export default function AdminCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {
@@ -349,8 +347,7 @@ export default function AdminCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {
@@ -610,6 +607,15 @@ export default function AdminCourseList() {
               course.ownerTeacherName || course.createdByName || "Không rõ";
             const teacherEmail = course.teacherEmail || ""; // hiện BE chưa có
 
+            // Extract base course title and class name from clone title
+            const baseCourseTitle = extractBaseCourseTitle(course.title);
+            const className =
+              course.title !== baseCourseTitle
+                ? course.title
+                    .substring(baseCourseTitle.length)
+                    .replace(/^\s*[–-]\s*/, "")
+                : null;
+
             return (
               <div
                 key={course.id}
@@ -624,7 +630,7 @@ export default function AdminCourseList() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-3 flex-wrap">
                         <h2 className="text-lg font-semibold text-gray-900">
-                          {course.title}
+                          {baseCourseTitle}
                         </h2>
                         {course.code && (
                           <span className="text-sm text-gray-500">
@@ -632,6 +638,11 @@ export default function AdminCourseList() {
                           </span>
                         )}
                       </div>
+                      {className && (
+                        <p className="text-sm text-blue-600 font-medium">
+                          Lớp: {className}
+                        </p>
+                      )}
                       <p className="text-sm text-gray-500">
                         {course.subjectName || "Chưa có môn học"}
                       </p>
@@ -678,7 +689,9 @@ export default function AdminCourseList() {
                         <p className="text-xs text-gray-500">Ngày tạo</p>
                         <p className="text-sm text-gray-900">
                           {course.createdAt
-                            ? new Date(course.createdAt).toLocaleDateString("sv-SE")
+                            ? new Date(course.createdAt).toLocaleDateString(
+                                "sv-SE"
+                              )
                             : "—"}
                         </p>
                       </div>
@@ -710,15 +723,14 @@ export default function AdminCourseList() {
                       )}
                     </div>
 
-                    {/* Status + ID */}
-                    <div className="flex items-center justify-between gap-2">
+                    {/* Status */}
+                    <div className="flex items-center gap-2">
                       <Badge
                         className={`text-xs px-3 py-1 rounded-full ${statusCfg.className}`}
                       >
                         <StatusIcon className="w-3 h-3 mr-1 inline-block align-middle" />
                         <span className="align-middle">{statusCfg.label}</span>
                       </Badge>
-                      <p className="text-xs text-gray-500">ID: {course.id}</p>
                     </div>
 
                     {/* Actions */}
@@ -742,26 +754,46 @@ export default function AdminCourseList() {
       {/* ============ PAGINATION ============ */}
       <div className="flex items-center justify-between px-6 py-4 bg-white rounded-2xl shadow-sm border border-gray-100 mt-4">
         <div className="text-sm text-gray-500">
-          Hiển thị {visibleCourses.length} / {totalElements} khóa học
+          Trang {page + 1} / {Math.max(1, totalPages)} — Tổng {totalElements}{" "}
+          bản ghi
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0}
-            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-sm text-gray-700 px-3">
-            {page + 1} / {Math.max(1, totalPages)}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
-            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+        <div className="flex items-center gap-4">
+          {/* Size selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">Số bản ghi / trang:</span>
+            <select
+              value={size}
+              onChange={(e) => {
+                setSize(Number(e.target.value));
+                setPage(0);
+              }}
+              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+          {/* Page navigation */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-sm text-gray-700 px-3">
+              {page + 1} / {Math.max(1, totalPages)}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

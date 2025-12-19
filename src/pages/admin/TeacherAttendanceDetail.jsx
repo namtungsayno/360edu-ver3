@@ -32,11 +32,15 @@ import {
   Mail,
   Phone,
   Award,
+  Briefcase,
+  BarChart3,
+  Target,
 } from "lucide-react";
 
 import { teacherAttendanceService } from "../../services/teacher-attendance/teacher-attendance.service";
 import { useToast } from "../../hooks/use-toast.js";
 import { BackButton } from "../../components/common/BackButton";
+import { getImageUrl } from "../../utils/image";
 
 export default function TeacherAttendanceDetail() {
   const { teacherId } = useParams();
@@ -138,7 +142,7 @@ export default function TeacherAttendanceDetail() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-gray-50/50 min-h-screen">
       {/* Header */}
       <div className="flex items-center gap-4">
         <BackButton to="/home/admin/teacher-attendance" showLabel={false} />
@@ -155,274 +159,377 @@ export default function TeacherAttendanceDetail() {
         </div>
       </div>
 
-      {/* Teacher Info Card */}
-      <Card className="rounded-[14px]">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-6">
-            {/* Avatar */}
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {summary.avatar ? (
-                <img
-                  src={summary.avatar}
-                  alt={summary.teacherName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-white font-bold text-3xl">
-                  {summary.teacherName?.charAt(0) || "T"}
-                </span>
-              )}
-            </div>
+      {/* Teacher Profile Card - Redesigned */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="relative">
+          {/* Background gradient */}
+          <div className="h-24 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
 
-            {/* Info */}
-            <div className="flex-1">
-              <h2 className="text-xl font-semibold text-neutral-950 mb-2">
-                {summary.teacherName}
-              </h2>
-              <div className="flex flex-wrap gap-4 text-[13px] text-[#62748e]">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  {summary.email}
+          {/* Profile content */}
+          <div className="px-6 pb-6">
+            <div className="flex flex-col lg:flex-row lg:items-start gap-6 -mt-10">
+              {/* Avatar */}
+              <div className="relative flex-shrink-0">
+                <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-lg">
+                  <div className="w-full h-full rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                    {summary.avatar ? (
+                      <img
+                        src={getImageUrl(summary.avatar)}
+                        alt={summary.teacherName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-white font-bold text-2xl">
+                        {summary.teacherName?.charAt(0) || "T"}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  {summary.phone || "Chưa có SĐT"}
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <CheckCircle2 className="w-3 h-3 text-white" />
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
-                {summary.subjectNames?.map((subj, idx) => (
-                  <Badge
-                    key={idx}
-                    className="bg-blue-100 text-blue-700 border border-blue-200"
-                  >
-                    <GraduationCap className="w-3.5 h-3.5 mr-1" />
-                    {subj}
-                  </Badge>
-                ))}
+
+              {/* Info */}
+              <div className="flex-1 pt-4 lg:pt-2">
+                <h2 className="text-xl font-bold text-gray-900">
+                  {summary.teacherName}
+                </h2>
+                <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-500">
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="w-4 h-4" />
+                    {summary.email}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-4 h-4" />
+                    {summary.phone || "Chưa có SĐT"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {summary.subjectNames?.map((subj, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium"
+                    >
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      {subj}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Overall Rate */}
-            <div
-              className={`p-4 rounded-xl border ${getAttendanceColor(
-                summary.attendanceRate || 0
-              )}`}
-            >
-              <p className="text-3xl font-bold text-center">
-                {(summary.attendanceRate || 0).toFixed(1)}%
-              </p>
-              <p className="text-[11px] text-center mt-1">Tỷ lệ hoàn thành</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Month/Year Filter */}
-      <Card className="rounded-[14px]">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <span className="text-[13px] font-medium text-neutral-950">
-              Xem thống kê:
-            </span>
-            <Select
-              value={String(selectedMonth)}
-              onValueChange={(v) => setSelectedMonth(Number(v))}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map((m) => (
-                  <SelectItem key={m.value} value={String(m.value)}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={String(selectedYear)}
-              onValueChange={(v) => setSelectedYear(Number(v))}
-            >
-              <SelectTrigger className="w-[100px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map((y) => (
-                  <SelectItem key={y} value={String(y)}>
-                    {y}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-[11px] text-[#62748e]">Lớp phân công</p>
-                <p className="text-xl font-semibold text-neutral-950">
-                  {summary.totalAssignedClasses || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-[11px] text-[#62748e]">Tổng slot</p>
-                <p className="text-xl font-semibold text-neutral-950">
-                  {summary.totalScheduledSlots || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-[11px] text-[#62748e]">Đã điểm danh</p>
-                <p className="text-xl font-semibold text-neutral-950">
-                  {summary.totalCompletedSlots || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-[14px]">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-[11px] text-[#62748e]">Chờ điểm danh</p>
-                <p className="text-xl font-semibold text-neutral-950">
-                  {summary.totalPendingSlots || 0}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Class List */}
-      <Card className="rounded-[14px]">
-        <CardHeader className="border-b border-gray-100">
-          <CardTitle className="text-base font-semibold text-neutral-950">
-            Danh sách lớp được phân công ({summary.classDetails?.length || 0})
-          </CardTitle>
-          <p className="text-[12px] text-[#62748e] mt-1">
-            Click vào lớp để xem chi tiết chấm công từng buổi
-          </p>
-        </CardHeader>
-        <CardContent className="p-0">
-          {!summary.classDetails || summary.classDetails.length === 0 ? (
-            <div className="text-center py-12 text-[#62748e]">
-              <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>Giáo viên chưa được phân công lớp nào</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {summary.classDetails.map((cls) => {
-                const statusBadge = getStatusBadge(cls.status);
-                const completionRate =
-                  cls.totalSlots > 0
-                    ? (cls.completedSlots * 100) / cls.totalSlots
-                    : 0;
-
-                return (
-                  <div
-                    key={cls.classId}
-                    className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() =>
-                      navigate(
-                        `/home/admin/teacher-attendance/${teacherId}/class/${cls.classId}`
-                      )
-                    }
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                        <BookOpen className="w-6 h-6 text-indigo-600" />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-neutral-950 truncate">
-                            {cls.className}
-                          </h3>
-                          <Badge
-                            className={`text-[10px] ${statusBadge.className}`}
-                          >
-                            {statusBadge.label}
-                          </Badge>
-                        </div>
-                        <p className="text-[12px] text-[#62748e]">
-                          {cls.subjectName} • {cls.semesterName}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-6 flex-shrink-0">
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-neutral-950">
-                            {cls.totalSlots || 0}
-                          </p>
-                          <p className="text-[11px] text-[#62748e]">
-                            Tổng slot
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-green-600">
-                            {cls.completedSlots || 0}
-                          </p>
-                          <p className="text-[11px] text-[#62748e]">
-                            Hoàn thành
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-amber-600">
-                            {cls.pendingSlots || 0}
-                          </p>
-                          <p className="text-[11px] text-[#62748e]">Chờ</p>
-                        </div>
-                        <div className="text-center min-w-[60px]">
-                          <Badge
-                            className={`text-[11px] border ${getAttendanceColor(
-                              completionRate
-                            )}`}
-                          >
-                            {completionRate.toFixed(0)}%
-                          </Badge>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
-                      </div>
+              {/* Attendance Rate - Moved outside gradient area */}
+              <div className="flex-shrink-0 pt-4 lg:pt-2">
+                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                  <div className="relative w-24 h-24">
+                    <svg
+                      className="w-full h-full transform -rotate-90"
+                      viewBox="0 0 100 100"
+                    >
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        stroke="#e5e7eb"
+                        strokeWidth="8"
+                        fill="none"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        stroke={
+                          (summary.attendanceRate || 0) >= 90
+                            ? "#22c55e"
+                            : (summary.attendanceRate || 0) >= 70
+                            ? "#f59e0b"
+                            : "#ef4444"
+                        }
+                        strokeWidth="8"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeDasharray={`${
+                          ((summary.attendanceRate || 0) / 100) * 263.89
+                        } 263.89`}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span
+                        className={`text-xl font-bold ${
+                          (summary.attendanceRate || 0) >= 90
+                            ? "text-green-600"
+                            : (summary.attendanceRate || 0) >= 70
+                            ? "text-amber-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {(summary.attendanceRate || 0).toFixed(1)}%
+                      </span>
+                      <span className="text-[10px] text-gray-500 font-medium">
+                        Hoàn thành
+                      </span>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter & Stats Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Month/Year Filter */}
+        <div className="lg:col-span-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 h-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Thời gian</h3>
+                <p className="text-xs text-gray-500">Chọn tháng/năm thống kê</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Select
+                value={String(selectedMonth)}
+                onValueChange={(v) => setSelectedMonth(Number(v))}
+              >
+                <SelectTrigger className="bg-gray-50 border-gray-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((m) => (
+                    <SelectItem key={m.value} value={String(m.value)}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={String(selectedYear)}
+                onValueChange={(v) => setSelectedYear(Number(v))}
+              >
+                <SelectTrigger className="bg-gray-50 border-gray-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="lg:col-span-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+                  <Briefcase className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                  Lớp
+                </span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">
+                {summary.totalAssignedClasses || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Lớp phân công</p>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-200">
+                  <BarChart3 className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                  Slot
+                </span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">
+                {summary.totalScheduledSlots || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Tổng slot</p>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg shadow-green-200">
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                  Done
+                </span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">
+                {summary.totalCompletedSlots || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Đã điểm danh</p>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-200">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                  Chờ
+                </span>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">
+                {summary.totalPendingSlots || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Chờ điểm danh</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Class List - Redesigned */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  Danh sách lớp được phân công
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {summary.classDetails?.length || 0} lớp • Click để xem chi
+                  tiết chấm công
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {!summary.classDetails || summary.classDetails.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <BookOpen className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-500 font-medium">
+              Chưa có lớp nào được phân công
+            </p>
+            <p className="text-sm text-gray-400 mt-1">
+              Giáo viên sẽ xuất hiện ở đây khi được phân công lớp
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {summary.classDetails.map((cls, index) => {
+              const statusBadge = getStatusBadge(cls.status);
+              const completionRate =
+                cls.totalSlots > 0
+                  ? (cls.completedSlots * 100) / cls.totalSlots
+                  : 0;
+
+              return (
+                <div
+                  key={cls.classId}
+                  className="group px-6 py-4 hover:bg-gray-50/80 cursor-pointer transition-all duration-200"
+                  onClick={() =>
+                    navigate(
+                      `/home/admin/teacher-attendance/${teacherId}/class/${cls.classId}`
+                    )
+                  }
+                >
+                  <div className="flex items-center gap-5">
+                    {/* Class icon with index */}
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-200/50">
+                        <BookOpen className="w-6 h-6 text-white" />
+                      </div>
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full text-[10px] font-bold text-indigo-600 flex items-center justify-center shadow border border-gray-100">
+                        {index + 1}
+                      </span>
+                    </div>
+
+                    {/* Class info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                          {cls.className}
+                        </h4>
+                        <Badge
+                          className={`text-[10px] px-2 py-0.5 ${statusBadge.className}`}
+                        >
+                          {statusBadge.label}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {cls.subjectName} • {cls.semesterName}
+                      </p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="hidden md:flex items-center gap-8">
+                      <div className="text-center">
+                        <p className="text-lg font-bold text-gray-900">
+                          {cls.totalSlots || 0}
+                        </p>
+                        <p className="text-[11px] text-gray-500">Tổng slot</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold text-green-600">
+                          {cls.completedSlots || 0}
+                        </p>
+                        <p className="text-[11px] text-gray-500">Hoàn thành</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold text-amber-600">
+                          {cls.pendingSlots || 0}
+                        </p>
+                        <p className="text-[11px] text-gray-500">Chờ</p>
+                      </div>
+                    </div>
+
+                    {/* Completion rate badge */}
+                    <div
+                      className={`min-w-[64px] px-3 py-2 rounded-xl text-center ${
+                        completionRate >= 90
+                          ? "bg-green-50 border border-green-200"
+                          : completionRate >= 70
+                          ? "bg-amber-50 border border-amber-200"
+                          : completionRate >= 50
+                          ? "bg-orange-50 border border-orange-200"
+                          : "bg-red-50 border border-red-200"
+                      }`}
+                    >
+                      <p
+                        className={`text-lg font-bold ${
+                          completionRate >= 90
+                            ? "text-green-600"
+                            : completionRate >= 70
+                            ? "text-amber-600"
+                            : completionRate >= 50
+                            ? "text-orange-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {completionRate.toFixed(0)}%
+                      </p>
+                    </div>
+
+                    {/* Arrow */}
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

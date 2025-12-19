@@ -55,7 +55,12 @@ export const newsService = {
    */
   async createNews(newsData) {
     try {
-      const response = await http.post(API_ENDPOINTS.NEWS.CREATE, newsData);
+      // Chuyển status thành chữ HOA để phù hợp với backend enum
+      const data = {
+        ...newsData,
+        status: newsData.status?.toUpperCase() || "DRAFT",
+      };
+      const response = await http.post(API_ENDPOINTS.NEWS.CREATE, data);
       return response.data;
     } catch (error) {
       throw error;
@@ -70,7 +75,12 @@ export const newsService = {
    */
   async updateNews(id, newsData) {
     try {
-      const response = await http.put(API_ENDPOINTS.NEWS.UPDATE(id), newsData);
+      // Chuyển status thành chữ HOA để phù hợp với backend enum
+      const data = {
+        ...newsData,
+        status: newsData.status?.toUpperCase() || newsData.status,
+      };
+      const response = await http.put(API_ENDPOINTS.NEWS.UPDATE(id), data);
       return response.data;
     } catch (error) {
       throw error;
@@ -113,8 +123,9 @@ export const newsService = {
    */
   async updateStatus(id, status) {
     try {
+      // Chuyển status thành chữ HOA để phù hợp với backend enum
       const response = await http.patch(API_ENDPOINTS.NEWS.UPDATE_STATUS(id), {
-        status,
+        status: status?.toUpperCase() || status,
       });
       return response.data;
     } catch (error) {
@@ -130,6 +141,19 @@ export const newsService = {
   async incrementView(id) {
     try {
       const response = await http.post(API_ENDPOINTS.NEWS.INCREMENT_VIEW(id));
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Lấy thống kê số lượng tin tức theo trạng thái
+   * @returns {Promise} Response chứa { total, published, draft, hidden, scheduled }
+   */
+  async getStats() {
+    try {
+      const response = await http.get(API_ENDPOINTS.NEWS.STATS);
       return response.data;
     } catch (error) {
       throw error;

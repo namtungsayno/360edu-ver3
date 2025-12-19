@@ -59,7 +59,7 @@ const TeacherManagement = () => {
 
   // Server-side pagination
   const [page, setPage] = useState(0);
-  const pageSize = 5;
+  const [pageSize, setPageSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -128,7 +128,7 @@ const TeacherManagement = () => {
         setSubjects(Array.isArray(data) ? data : []);
       } catch (e) {
         toastRef.current.error("Không tải được danh sách môn học", "Môn học");
-        }
+      }
     })();
   }, []);
 
@@ -194,8 +194,7 @@ const TeacherManagement = () => {
                   .filter(Boolean);
                 return { ...t, subjects: normalized };
               }
-            } catch (e2) {
-              }
+            } catch (e2) {}
             return t;
           }
         })
@@ -206,7 +205,7 @@ const TeacherManagement = () => {
       setTotalPages(response.totalPages || 0);
     } catch (e) {
       toastRef.current.error("Không tải được danh sách giáo viên", "Giáo viên");
-      } finally {
+    } finally {
       setLoading(false);
     }
   }, [debouncedSearch, subjectFilter, page, pageSize]);
@@ -263,8 +262,7 @@ const TeacherManagement = () => {
           setSelectedSubjects(normalized.map((s) => s.id));
           return;
         }
-      } catch (e2) {
-        }
+      } catch (e2) {}
       // Nếu vẫn lỗi, mở panel với dữ liệu sẵn có
       setEditing(teacher);
       const currentSubjects = Array.isArray(teacher.subjects)
@@ -328,7 +326,7 @@ const TeacherManagement = () => {
               }
             } catch (parseErr) {
               // Bỏ qua lỗi parse, giữ thông điệp mặc định
-              }
+            }
             error(msg, "Chỉnh sửa môn dạy");
             return; // Dừng lại, không cập nhật môn phụ khi đổi môn chính bị chặn
           }
@@ -353,9 +351,9 @@ const TeacherManagement = () => {
           }
         } catch (parseErr) {
           // Bỏ qua lỗi parse, dùng thông điệp mặc định
-          }
-        error(msg, "Chỉnh sửa môn dạy");
         }
+        error(msg, "Chỉnh sửa môn dạy");
+      }
     })();
   };
 
@@ -582,26 +580,48 @@ const TeacherManagement = () => {
           <div className="text-sm text-gray-600">
             {loading
               ? "Đang tải..."
-              : `Hiển thị ${paged.length} / ${totalElements} giáo viên`}
+              : `Trang ${page + 1} / ${Math.max(
+                  1,
+                  totalPages
+                )} — Tổng ${totalElements} bản ghi`}
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
-              disabled={page === 0}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="text-sm text-gray-700 px-3">
-              {currentPage} / {Math.max(1, totalPages)}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
-              disabled={page >= totalPages - 1}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+          <div className="flex items-center gap-4">
+            {/* Size selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Số bản ghi / trang:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(0);
+                }}
+                className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+            {/* Page navigation */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
+                disabled={page === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-sm text-gray-700 px-3">
+                {page + 1} / {Math.max(1, totalPages)}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                className="inline-flex items-center px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
+                disabled={page >= totalPages - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

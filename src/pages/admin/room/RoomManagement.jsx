@@ -46,7 +46,7 @@ export default function ClassroomList() {
 
   // Server-side pagination
   const [page, setPage] = useState(0);
-  const [size] = useState(5);
+  const [size, setSize] = useState(10);
 
   // Server response data
   const [rooms, setRooms] = useState([]);
@@ -108,8 +108,9 @@ export default function ClassroomList() {
           ACTIVE: active,
           INACTIVE: normalized.length - active,
         });
-      } catch (e) {
-        }
+      } catch {
+        // Silently ignore error on initial load
+      }
     })();
   }, []);
 
@@ -131,7 +132,7 @@ export default function ClassroomList() {
       setRooms(content.map(normalizeRoom));
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
-    } catch (e) {
+    } catch {
       toastRef.current?.error?.("Lỗi tải danh sách phòng học");
     } finally {
       setLoading(false);
@@ -148,7 +149,6 @@ export default function ClassroomList() {
   }, [tab, debouncedQuery]);
 
   // Helpers
-  const curPage = page;
   const curSize = size;
   const pageItems = rooms;
 
@@ -166,8 +166,9 @@ export default function ClassroomList() {
         ACTIVE: active,
         INACTIVE: normalized.length - active,
       });
-    } catch (e) {
-      }
+    } catch {
+      // Silently ignore error on reload
+    }
   };
 
   // Toggle status
@@ -193,8 +194,17 @@ export default function ClassroomList() {
       // Reload data and counts
       fetchClassrooms();
       reloadCounts();
-    } catch {
-      toast?.error?.("Cập nhật thất bại");
+    } catch (err) {
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        err?.message ||
+        "";
+      toast?.error?.(
+        typeof errorMsg === "string" && errorMsg
+          ? errorMsg
+          : "Cập nhật thất bại"
+      );
     }
   };
 
@@ -268,16 +278,10 @@ export default function ClassroomList() {
       fetchClassrooms();
       reloadCounts();
     } catch (err) {
-      // Check for duplicate room name error from BE
-      const errorMsg = err?.response?.data?.message || err?.message || "";
-      if (
-        errorMsg.includes("Phòng học đã tồn tại") ||
-        errorMsg.toLowerCase().includes("room name")
-      ) {
-        toast?.error?.("Phòng học đã tồn tại");
-      } else {
-        toast?.error?.("Lưu thất bại");
-      }
+      // Hiển thị message lỗi từ BE
+      const errorMsg =
+        err?.response?.data?.message || err?.message || "Lưu thất bại";
+      toast?.error?.(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -660,14 +664,36 @@ export default function ClassroomList() {
                                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                   Sức chứa
                                 </label>
-                                <input
-                                  type="number"
-                                  name="capacity"
-                                  value={formData.capacity}
-                                  onChange={handleChange}
-                                  min="1"
-                                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                                />
+                                {(() => {
+                                  const hasClasses =
+                                    (currentRoom?.numClasses ||
+                                      currentRoom?.classCount ||
+                                      currentRoom?.soLop ||
+                                      0) > 0;
+                                  return (
+                                    <>
+                                      <input
+                                        type="number"
+                                        name="capacity"
+                                        value={formData.capacity}
+                                        onChange={handleChange}
+                                        min="1"
+                                        disabled={hasClasses}
+                                        className={`w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
+                                          hasClasses
+                                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                            : "bg-white"
+                                        }`}
+                                      />
+                                      {hasClasses && (
+                                        <p className="mt-1 text-xs text-amber-600">
+                                          ⚠️ Phòng đang có lớp học, không thể
+                                          sửa sức chứa
+                                        </p>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <div className="flex justify-end gap-2">
@@ -801,50 +827,70 @@ export default function ClassroomList() {
         {/* ============ PAGINATION ============ */}
         <div className="flex items-center justify-between px-6 py-4 bg-gray-50/50 border-t border-gray-100">
           <div className="text-sm text-gray-500">
-            Hiển thị {pageItems.length} / {totalElements} phòng học
+            Trang {page + 1} / {Math.max(1, totalPages)} — Tổng {totalElements}{" "}
+            bản ghi
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage(page - 1)}
-              disabled={page === 0}
-              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i;
-                } else if (page < 3) {
-                  pageNum = i;
-                } else if (page > totalPages - 4) {
-                  pageNum = totalPages - 5 + i;
-                } else {
-                  pageNum = page - 2 + i;
-                }
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setPage(pageNum)}
-                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
-                      page === pageNum
-                        ? "bg-gray-900 text-white shadow-lg"
-                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                    }`}
-                  >
-                    {pageNum + 1}
-                  </button>
-                );
-              })}
+          <div className="flex items-center gap-4">
+            {/* Size selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Số bản ghi / trang:</span>
+              <select
+                value={size}
+                onChange={(e) => {
+                  setSize(Number(e.target.value));
+                  setPage(0);
+                }}
+                className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
             </div>
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={page >= totalPages - 1}
-              className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            {/* Page navigation */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(page - 1)}
+                disabled={page === 0}
+                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i;
+                  } else if (page < 3) {
+                    pageNum = i;
+                  } else if (page > totalPages - 4) {
+                    pageNum = totalPages - 5 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                        page === pageNum
+                          ? "bg-gray-900 text-white shadow-lg"
+                          : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                      }`}
+                    >
+                      {pageNum + 1}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setPage(page + 1)}
+                disabled={page >= totalPages - 1}
+                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

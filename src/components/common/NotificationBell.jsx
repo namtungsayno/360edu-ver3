@@ -38,18 +38,17 @@ const NotificationBell = ({ variant = "default" }) => {
     try {
       const count = await NotificationService.getUnreadCount();
       setUnreadCount(count);
-    } catch (error) {
-      }
+    } catch (error) {}
   };
 
   const fetchNotifications = async (reset = false) => {
     if (loading) return;
-    
+
     setLoading(true);
     try {
       const currentPage = reset ? 0 : page;
       const data = await NotificationService.getNotifications(currentPage, 10);
-      
+
       if (reset) {
         setNotifications(data.content);
         setPage(1);
@@ -57,7 +56,7 @@ const NotificationBell = ({ variant = "default" }) => {
         setNotifications((prev) => [...prev, ...data.content]);
         setPage((prev) => prev + 1);
       }
-      
+
       setHasMore(!data.last);
     } catch (error) {
       toast({
@@ -73,7 +72,7 @@ const NotificationBell = ({ variant = "default" }) => {
   const handleToggle = () => {
     const willOpen = !isOpen;
     setIsOpen(willOpen);
-    
+
     if (willOpen) {
       fetchNotifications(true);
     }
@@ -87,8 +86,7 @@ const NotificationBell = ({ variant = "default" }) => {
         prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      }
+    } catch (error) {}
   };
 
   const handleMarkAllAsRead = async () => {
@@ -100,12 +98,11 @@ const NotificationBell = ({ variant = "default" }) => {
         title: "Thành công",
         description: "Đã đánh dấu tất cả đã đọc",
       });
-    } catch (error) {
-      }
+    } catch (error) {}
   };
 
   const handleNotificationClick = (notification) => {
-    // Chỉ đánh dấu đã đọc, không navigate đến link
+    // Đánh dấu đã đọc
     if (!notification.isRead) {
       NotificationService.markAsRead(notification.id);
       setNotifications((prev) =>
@@ -113,7 +110,29 @@ const NotificationBell = ({ variant = "default" }) => {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
-    // Không navigate - chỉ hiển thị thông báo trong dropdown
+
+    // Đóng dropdown và navigate đến link nếu có
+    setIsOpen(false);
+    if (notification.link) {
+      // Xử lý các link cũ không còn tồn tại
+      let targetLink = notification.link;
+
+      // Map các link cũ sang link mới
+      const linkMappings = {
+        "/home/student/schedule": "/home/my-schedule",
+        "/home/student/courses": "/home/courses",
+      };
+
+      // Kiểm tra và thay thế link cũ
+      for (const [oldPath, newPath] of Object.entries(linkMappings)) {
+        if (targetLink.startsWith(oldPath)) {
+          targetLink = targetLink.replace(oldPath, newPath);
+          break;
+        }
+      }
+
+      navigate(targetLink);
+    }
   };
 
   const handleDelete = async (id, e) => {
@@ -122,12 +141,11 @@ const NotificationBell = ({ variant = "default" }) => {
       await NotificationService.deleteNotification(id);
       const notification = notifications.find((n) => n.id === id);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
-      
+
       if (notification && !notification.isRead) {
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
-    } catch (error) {
-      }
+    } catch (error) {}
   };
 
   const handleScroll = (e) => {
@@ -143,8 +161,8 @@ const NotificationBell = ({ variant = "default" }) => {
       <button
         onClick={handleToggle}
         className={`relative p-2.5 rounded-full transition-all duration-200 ${
-          variant === "header" 
-            ? "text-white hover:bg-white/20 active:scale-95" 
+          variant === "header"
+            ? "text-white hover:bg-white/20 active:scale-95"
             : "text-gray-600 hover:bg-gray-100 hover:text-gray-800 active:scale-95"
         }`}
         aria-label="Thông báo"
@@ -193,13 +211,19 @@ const NotificationBell = ({ variant = "default" }) => {
                 <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                   <Bell className="h-10 w-10 text-gray-300" />
                 </div>
-                <p className="text-gray-500 font-medium">Không có thông báo nào</p>
-                <p className="text-gray-400 text-sm mt-1">Các thông báo mới sẽ hiển thị ở đây</p>
+                <p className="text-gray-500 font-medium">
+                  Không có thông báo nào
+                </p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Các thông báo mới sẽ hiển thị ở đây
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
                 {notifications.map((notification) => {
-                  const style = NotificationService.getNotificationStyle(notification.type);
+                  const style = NotificationService.getNotificationStyle(
+                    notification.type
+                  );
                   return (
                     <div
                       key={notification.id}
@@ -236,7 +260,9 @@ const NotificationBell = ({ variant = "default" }) => {
                         </p>
                         <div className="flex items-center gap-3 mt-2">
                           <span className="text-xs text-gray-400">
-                            {NotificationService.formatTime(notification.createdAt)}
+                            {NotificationService.formatTime(
+                              notification.createdAt
+                            )}
                           </span>
                         </div>
                       </div>
@@ -245,7 +271,9 @@ const NotificationBell = ({ variant = "default" }) => {
                       <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {!notification.isRead && (
                           <button
-                            onClick={(e) => handleMarkAsRead(notification.id, e)}
+                            onClick={(e) =>
+                              handleMarkAsRead(notification.id, e)
+                            }
                             className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
                             title="Đánh dấu đã đọc"
                           >

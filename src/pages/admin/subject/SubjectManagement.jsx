@@ -34,7 +34,7 @@ export default function SubjectManagement() {
 
   // Pagination state (server-side)
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(5);
+  const [size, setSize] = useState(10);
   const [sortBy] = useState("id");
   const [order] = useState("asc");
 
@@ -64,8 +64,7 @@ export default function SubjectManagement() {
           ACTIVE: active,
           INACTIVE: data.length - active,
         });
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
   }, []);
 

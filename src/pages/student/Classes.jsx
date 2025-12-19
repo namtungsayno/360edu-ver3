@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useToast } from "../../hooks/use-toast";
 import { enrollmentService } from "../../services/enrollment/enrollment.service";
+import { formatDateVN } from "../../helper/formatters";
 import { Badge } from "../../components/ui/Badge.jsx";
 import { Button } from "../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../components/ui/Card.jsx";
@@ -480,7 +481,8 @@ export default function Classes() {
                             )}
                             {c.startDate && c.endDate && (
                               <div>
-                                🕐 {c.startDate} → {c.endDate}
+                                🕐 {formatDateVN(c.startDate)} →{" "}
+                                {formatDateVN(c.endDate)}
                               </div>
                             )}
                           </div>

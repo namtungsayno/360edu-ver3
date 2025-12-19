@@ -30,4 +30,12 @@ export const attendanceApi = {
   // Get attendance detail by sessionId (preferred long-term)
   getBySession: (sessionId) =>
     http.get(`/attendance/session/${sessionId}`).then((r) => r.data),
+
+  // Check attendance status for multiple sessions
+  // sessionIdentifiers: array of strings in format "classId-yyyy-MM-dd-slotId"
+  // Returns: { "classId-yyyy-MM-dd-slotId": true/false, ... }
+  checkStatus: (sessionIdentifiers) =>
+    http
+      .post(`/attendance/check-status`, sessionIdentifiers)
+      .then((r) => r.data),
 };

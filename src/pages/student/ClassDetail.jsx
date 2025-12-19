@@ -13,6 +13,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { enrollmentService } from "../../services/enrollment/enrollment.service";
+import { formatDateVN } from "../../helper/formatters";
 import { Badge } from "../../components/ui/Badge.jsx";
 import { Button } from "../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../components/ui/Card.jsx";
@@ -160,7 +161,8 @@ export default function StudentClassDetail() {
                         <span className="font-medium">Thời gian</span>
                       </div>
                       <div className="ml-7 text-gray-600">
-                        {data.startDate} → {data.endDate}
+                        {formatDateVN(data.startDate)} →{" "}
+                        {formatDateVN(data.endDate)}
                       </div>
                     </div>
                   )}

@@ -4,6 +4,25 @@ export const formatCurrency = (amount) => {
   return `${n.toLocaleString("vi-VN")} ₫`;
 };
 
+/**
+ * Format date to Vietnamese format (dd/MM/yyyy)
+ * @param {string|Date} date - Date string or Date object
+ * @returns {string} Formatted date string (dd/MM/yyyy)
+ */
+export const formatDateVN = (date) => {
+  if (!date) return "";
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch {
+    return "";
+  }
+};
+
 // Convert day to Vietnamese label
 // Accepts both JS convention (0=Sun) and ISO convention (1=Mon..7=Sun)
 export const dayLabelVi = (day) => {

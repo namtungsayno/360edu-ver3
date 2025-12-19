@@ -17,7 +17,7 @@ import {
   hasConflict,
   buildIndexByFetchingDetails,
 } from "../../../helper/schedule-conflicts";
-import { dayLabelVi } from "../../../helper/formatters";
+import { dayLabelVi, formatDateVN } from "../../../helper/formatters";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
@@ -65,28 +65,6 @@ export default function ClassDetail() {
       return;
     }
 
-    // Helper to parse a YYYY-MM-DD as LOCAL date (avoid UTC shift)
-    const parseLocalDate = (dateStr) => {
-      if (!dateStr) return null;
-      const parts = String(dateStr).split("-").map(Number);
-      if (parts.length !== 3 || parts.some(Number.isNaN))
-        return new Date(dateStr);
-      const [y, m, d] = parts;
-      return new Date(y, m - 1, d);
-    };
-
-    // Block enroll only if start date is strictly after today (not same-day)
-    if (data?.startDate) {
-      const start = parseLocalDate(data.startDate);
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      if (start > todayStart) {
-        warning(
-          `Lớp sẽ mở vào ngày ${data.startDate}. Vui lòng liên hệ với chúng tôi để được tư vấn.`
-        );
-        return;
-      }
-    }
     // Check authentication trước
     if (!user) {
       // Chưa đăng nhập -> redirect về login
@@ -232,9 +210,12 @@ export default function ClassDetail() {
     return new Date(y, m - 1, d);
   };
 
-  // Consider class "not opened" only when start date is after today (strictly future),
-  // so same-day is allowed for registration.
-  const notOpened = (() => {
+  // Khi lớp được PUBLIC, học sinh có thể đăng ký ngay lập tức
+  // Không còn chặn đăng ký dựa trên startDate nữa
+  const notOpened = false;
+
+  // Chỉ hiển thị thông báo ngày bắt đầu (không block đăng ký)
+  const isUpcoming = (() => {
     if (!data?.startDate) return false;
     const start = parseLocalDate(data.startDate);
     const todayStart = new Date();
@@ -268,14 +249,16 @@ export default function ClassDetail() {
               </h1>
             </div>
 
-            {/* Opening notice */}
-            {notOpened && (
-              <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 px-3 py-2">
+            {/* Opening notice - Chỉ hiển thị thông tin ngày bắt đầu */}
+            {isUpcoming && (
+              <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 px-3 py-2">
                 <Calendar className="w-4 h-4" />
                 <span>
-                  Lớp sẽ mở vào ngày{" "}
-                  <span className="font-semibold">{data.startDate}</span>. Hiện
-                  chưa thể đăng ký.
+                  Lớp sẽ bắt đầu vào ngày{" "}
+                  <span className="font-semibold">
+                    {formatDateVN(data.startDate)}
+                  </span>
+                  . Đăng ký ngay để giữ chỗ!
                 </span>
               </div>
             )}
@@ -575,11 +558,13 @@ export default function ClassDetail() {
                     Đăng ký học
                   </h2>
 
-                  {notOpened && (
-                    <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 p-3 text-sm">
-                      Lớp sẽ mở vào ngày{" "}
-                      <span className="font-semibold">{data.startDate}</span>.
-                      Hiện chưa thể đăng ký trực tuyến.
+                  {isUpcoming && (
+                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 p-3 text-sm">
+                      Lớp sẽ bắt đầu vào ngày{" "}
+                      <span className="font-semibold">
+                        {formatDateVN(data.startDate)}
+                      </span>
+                      . Đăng ký ngay để giữ chỗ!
                     </div>
                   )}
 
@@ -703,16 +688,10 @@ export default function ClassDetail() {
                     <Button
                       onClick={handleEnroll}
                       disabled={enrolling}
-                      className={`w-full text-lg py-6 ${
-                        notOpened
-                          ? "bg-gray-300 text-gray-700 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700 text-white"
-                      }`}
+                      className="w-full text-lg py-6 bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       {enrolling
                         ? "Đang xử lý..."
-                        : notOpened
-                        ? "Chưa mở - Liên hệ tư vấn"
                         : user
                         ? "Đăng ký ngay"
                         : "Đăng nhập để đăng ký"}

@@ -732,8 +732,8 @@ function TeacherRankingTable({ data, loading }) {
   );
 }
 
-// Component biểu đồ doanh thu theo ngày - Modern Bar Chart với trend indicators
-function RevenueChart({ data, loading }) {
+// Component biểu đồ doanh thu theo ngày/tháng/năm - Modern Bar Chart với trend indicators
+function RevenueChart({ data, loading, filterMode = "day" }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -780,11 +780,19 @@ function RevenueChart({ data, loading }) {
       : 0;
   const isUpTrend = secondHalfRevenue >= firstHalfRevenue;
 
-  // Tìm ngày có doanh thu cao nhất
-  const maxRevenueDay = data.reduce(
+  // Tìm item có doanh thu cao nhất
+  const maxRevenueItem = data.reduce(
     (max, d) => (d.revenue > (max?.revenue || 0) ? d : max),
     null
   );
+
+  // Label cho peak
+  const peakLabel =
+    filterMode === "day"
+      ? "Ngày cao điểm"
+      : filterMode === "month"
+      ? "Tháng cao điểm"
+      : "Năm cao điểm";
 
   if (totalRevenue === 0) {
     return (
@@ -874,34 +882,37 @@ function RevenueChart({ data, loading }) {
         </div>
       </div>
 
-      {/* Peak Day Highlight */}
-      {maxRevenueDay && maxRevenueDay.revenue > 0 && (
+      {/* Peak Highlight */}
+      {maxRevenueItem && maxRevenueItem.revenue > 0 && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 rounded-xl border border-amber-200">
           <div className="w-8 h-8 bg-amber-400 rounded-lg flex items-center justify-center">
             <Trophy className="w-4 h-4 text-white" />
           </div>
           <div>
-            <span className="text-xs text-amber-600">Ngày cao điểm</span>
+            <span className="text-xs text-amber-600">{peakLabel}</span>
             <p className="text-sm font-bold text-amber-800">
-              {maxRevenueDay.label}: {formatCurrency(maxRevenueDay.revenue)} (
-              {maxRevenueDay.paymentCount} GD)
+              {maxRevenueItem.label}: {formatCurrency(maxRevenueItem.revenue)} (
+              {maxRevenueItem.paymentCount} GD)
             </p>
           </div>
         </div>
       )}
 
-      {/* Bar Chart */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4">
+      {/* Bar Chart - Responsive */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4 overflow-x-auto">
         <div
           className="flex items-end gap-1 h-40"
-          style={{ minHeight: "160px" }}
+          style={{
+            minHeight: "160px",
+            minWidth: data.length > 15 ? `${data.length * 35}px` : "100%",
+          }}
         >
           {data.map((item, idx) => {
             const heightPercent =
               maxRevenue > 0 ? (item.revenue / maxRevenue) * 100 : 0;
-            const isToday = idx === data.length - 1;
+            const isLast = idx === data.length - 1;
             const hasRevenue = item.revenue > 0;
-            const isPeak = item === maxRevenueDay;
+            const isPeak = item === maxRevenueItem;
 
             // Determine bar color based on position and value
             let barColorClass = "bg-gray-200";
@@ -909,7 +920,7 @@ function RevenueChart({ data, loading }) {
               if (isPeak) {
                 barColorClass =
                   "bg-gradient-to-t from-amber-500 via-yellow-400 to-amber-300";
-              } else if (isToday) {
+              } else if (isLast) {
                 barColorClass =
                   "bg-gradient-to-t from-blue-600 via-blue-500 to-blue-400";
               } else {
@@ -922,7 +933,10 @@ function RevenueChart({ data, loading }) {
               <div
                 key={idx}
                 className="flex-1 flex flex-col items-center group relative"
-                style={{ minWidth: "20px", maxWidth: "50px" }}
+                style={{
+                  minWidth: filterMode === "day" ? "28px" : "50px",
+                  maxWidth: filterMode === "year" ? "100px" : "60px",
+                }}
               >
                 {/* Bar */}
                 <div className="flex-1 w-full flex items-end justify-center px-0.5">
@@ -930,7 +944,7 @@ function RevenueChart({ data, loading }) {
                     className={`w-full rounded-t-md transition-all duration-500 ease-out hover:opacity-80 cursor-pointer ${barColorClass} ${
                       isPeak
                         ? "shadow-lg shadow-amber-300/50"
-                        : hasRevenue && isToday
+                        : hasRevenue && isLast
                         ? "shadow-md shadow-blue-300/50"
                         : ""
                     }`}
@@ -978,10 +992,10 @@ function RevenueChart({ data, loading }) {
 
                 {/* X Label */}
                 <span
-                  className={`text-[9px] mt-1.5 ${
+                  className={`text-[10px] mt-1.5 font-medium ${
                     isPeak
                       ? "text-amber-600 font-bold"
-                      : isToday
+                      : isLast
                       ? "text-blue-600 font-bold"
                       : hasRevenue
                       ? "text-gray-600"
@@ -991,8 +1005,8 @@ function RevenueChart({ data, loading }) {
                   {item.label}
                 </span>
 
-                {/* Today dot */}
-                {isToday && !isPeak && (
+                {/* Current indicator */}
+                {isLast && !isPeak && (
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-0.5 animate-pulse"></div>
                 )}
               </div>
@@ -1009,11 +1023,18 @@ function RevenueChart({ data, loading }) {
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-gradient-to-t from-amber-500 to-amber-300"></div>
-          <span>Ngày cao nhất</span>
+          <span>
+            {filterMode === "day"
+              ? "Ngày"
+              : filterMode === "month"
+              ? "Tháng"
+              : "Năm"}{" "}
+            cao nhất
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
-          <span>Hôm nay</span>
+          <span>Hiện tại</span>
         </div>
       </div>
     </div>
@@ -1147,7 +1168,18 @@ export default function ReportDashboard() {
   const [topTeacher, setTopTeacher] = useState(null);
   const [revenueByDay, setRevenueByDay] = useState([]);
   const [subjectRevenue, setSubjectRevenue] = useState([]);
-  const [days, setDays] = useState(30);
+
+  // Filter mode: "day" | "month" | "year"
+  const [filterMode, setFilterMode] = useState("day");
+  const [filterValue, setFilterValue] = useState(30); // 7, 14, 30 for day; 3, 6, 12 for month; 5 for year
+
+  // Calculate days to fetch based on filter mode and value
+  const daysToFetch = useMemo(() => {
+    if (filterMode === "day") return filterValue;
+    if (filterMode === "month") return filterValue * 31; // Approximate
+    if (filterMode === "year") return filterValue * 365;
+    return 30;
+  }, [filterMode, filterValue]);
 
   useEffect(() => {
     loadData();
@@ -1155,7 +1187,7 @@ export default function ReportDashboard() {
 
   useEffect(() => {
     loadRevenueByDay();
-  }, [days]);
+  }, [daysToFetch]);
 
   const loadData = async () => {
     try {
@@ -1166,7 +1198,7 @@ export default function ReportDashboard() {
           reportApi.getTeacherRevenue(),
           reportApi.getTopTeacher().catch(() => ({ data: null })),
           reportApi.getSubjectRevenue(),
-          reportApi.getRevenueByDay(days),
+          reportApi.getRevenueByDay(daysToFetch),
         ]);
 
       const totalDayRevenue = (dayRes.data || []).reduce(
@@ -1187,10 +1219,114 @@ export default function ReportDashboard() {
 
   const loadRevenueByDay = async () => {
     try {
-      const res = await reportApi.getRevenueByDay(days);
+      const res = await reportApi.getRevenueByDay(daysToFetch);
       setRevenueByDay(res.data || []);
     } catch (e) {}
   };
+
+  // Aggregate data based on filter mode
+  const chartData = useMemo(() => {
+    if (!revenueByDay || revenueByDay.length === 0) return [];
+
+    if (filterMode === "day") {
+      // Return raw data for day view (limit to filterValue)
+      return revenueByDay.slice(-filterValue);
+    }
+
+    if (filterMode === "month") {
+      // Aggregate by month - cần sort theo thứ tự thời gian
+      const now = new Date();
+      const currentMonth = now.getMonth(); // 0-11
+      const currentYear = now.getFullYear();
+
+      // Tạo danh sách các tháng cần hiển thị (từ cũ đến mới)
+      const monthsToShow = [];
+      for (let i = filterValue - 1; i >= 0; i--) {
+        const targetDate = new Date(currentYear, currentMonth - i, 1);
+        const month = targetDate.getMonth() + 1; // 1-12
+        const year = targetDate.getFullYear();
+        monthsToShow.push({
+          key: `${year}-${String(month).padStart(2, "0")}`,
+          label: `T${month}`,
+          month,
+          year,
+          revenue: 0,
+          paymentCount: 0,
+        });
+      }
+
+      // Map revenue data vào các tháng
+      revenueByDay.forEach((item) => {
+        // Parse date from label (format: "DD/MM")
+        const parts = item.label?.split("/");
+        if (parts && parts.length >= 2) {
+          const day = parseInt(parts[0]);
+          const month = parseInt(parts[1]);
+
+          // Xác định năm dựa trên logic: nếu tháng > tháng hiện tại thì là năm trước
+          let year = currentYear;
+          if (month > currentMonth + 1) {
+            year = currentYear - 1;
+          }
+
+          const key = `${year}-${String(month).padStart(2, "0")}`;
+          const monthData = monthsToShow.find((m) => m.key === key);
+          if (monthData) {
+            monthData.revenue += item.revenue || 0;
+            monthData.paymentCount += item.paymentCount || 0;
+          }
+        }
+      });
+
+      return monthsToShow.map(({ label, revenue, paymentCount }) => ({
+        label,
+        revenue,
+        paymentCount,
+      }));
+    }
+
+    if (filterMode === "year") {
+      // Aggregate by year
+      const yearMap = new Map();
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+
+      // Initialize last N years
+      for (let i = filterValue - 1; i >= 0; i--) {
+        const y = currentYear - i;
+        yearMap.set(y, { label: String(y), revenue: 0, paymentCount: 0 });
+      }
+
+      revenueByDay.forEach((item) => {
+        const parts = item.label?.split("/");
+        if (parts && parts.length >= 2) {
+          const month = parseInt(parts[1]);
+          // Xác định năm
+          let year = currentYear;
+          if (month > currentMonth) {
+            year = currentYear - 1;
+          }
+
+          if (yearMap.has(year)) {
+            const y = yearMap.get(year);
+            y.revenue += item.revenue || 0;
+            y.paymentCount += item.paymentCount || 0;
+          }
+        }
+      });
+      return Array.from(yearMap.values());
+    }
+
+    return revenueByDay;
+  }, [revenueByDay, filterMode, filterValue]);
+
+  // Get filter description
+  const filterDescription = useMemo(() => {
+    if (filterMode === "day") return `${filterValue} ngày gần nhất`;
+    if (filterMode === "month") return `${filterValue} tháng gần nhất`;
+    if (filterMode === "year") return `${filterValue} năm gần nhất`;
+    return "";
+  }, [filterMode, filterValue]);
 
   if (loading) {
     return (
@@ -1207,14 +1343,18 @@ export default function ReportDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <BarChart3 className="h-7 w-7 text-blue-600" />
-            Báo cáo & Thống kê
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Tổng quan hoạt động và doanh thu hệ thống 360edu
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
+            <BarChart3 className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Báo cáo & Thống kê
+            </h1>
+            <p className="text-sm text-gray-500">
+              Tổng quan hoạt động và doanh thu hệ thống 360edu
+            </p>
+          </div>
         </div>
         <ExportReportButton
           overview={overview}
@@ -1303,30 +1443,98 @@ export default function ReportDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Revenue chart + Teacher ranking */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Revenue by day chart */}
+          {/* Revenue by day/month/year chart */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
                 <h2 className="font-bold text-gray-900 flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-blue-600" />
-                  Doanh thu theo ngày
+                  Doanh thu theo thời gian
                 </h2>
                 <p className="text-sm text-gray-500">
-                  Biểu đồ doanh thu {days} ngày gần nhất
+                  Biểu đồ doanh thu {filterDescription}
                 </p>
               </div>
-              <select
-                value={days}
-                onChange={(e) => setDays(Number(e.target.value))}
-                className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value={7}>7 ngày</option>
-                <option value={14}>14 ngày</option>
-                <option value={30}>30 ngày</option>
-                <option value={60}>60 ngày</option>
-              </select>
+
+              {/* Filter Controls */}
+              <div className="flex items-center gap-2">
+                {/* Mode Tabs */}
+                <div className="flex bg-gray-100 rounded-lg p-0.5">
+                  <button
+                    onClick={() => {
+                      setFilterMode("day");
+                      setFilterValue(30);
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      filterMode === "day"
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    Ngày
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFilterMode("month");
+                      setFilterValue(6);
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      filterMode === "month"
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    Tháng
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFilterMode("year");
+                      setFilterValue(5);
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      filterMode === "year"
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    Năm
+                  </button>
+                </div>
+
+                {/* Value Select */}
+                <select
+                  value={filterValue}
+                  onChange={(e) => setFilterValue(Number(e.target.value))}
+                  className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[100px]"
+                >
+                  {filterMode === "day" && (
+                    <>
+                      <option value={7}>7 ngày</option>
+                      <option value={14}>14 ngày</option>
+                      <option value={30}>30 ngày</option>
+                    </>
+                  )}
+                  {filterMode === "month" && (
+                    <>
+                      <option value={3}>3 tháng</option>
+                      <option value={6}>6 tháng</option>
+                      <option value={12}>12 tháng</option>
+                    </>
+                  )}
+                  {filterMode === "year" && (
+                    <>
+                      <option value={3}>3 năm</option>
+                      <option value={5}>5 năm</option>
+                    </>
+                  )}
+                </select>
+              </div>
             </div>
-            <RevenueChart data={revenueByDay} loading={false} />
+            <RevenueChart
+              data={chartData}
+              loading={false}
+              filterMode={filterMode}
+            />
           </div>
 
           {/* Teacher ranking table */}

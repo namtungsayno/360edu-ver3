@@ -428,7 +428,13 @@ function SessionDetailModal({ classData, onClose }) {
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-blue-600" />
               <span className="font-medium">
-                {new Date(classData.date).toLocaleDateString("sv-SE")}
+                {(() => {
+                  const d = new Date(classData.date);
+                  const day = d.getDate().toString().padStart(2, "0");
+                  const month = (d.getMonth() + 1).toString().padStart(2, "0");
+                  const year = d.getFullYear();
+                  return `${day}/${month}/${year}`;
+                })()}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm">

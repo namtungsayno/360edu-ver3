@@ -34,3 +34,24 @@ export function truncateText(text, maxLength = 100) {
 export function stripAndTruncate(html, maxLength = 100) {
   return truncateText(stripHtmlTags(html), maxLength);
 }
+
+/**
+ * Extract base course title from clone course title
+ * Clone title format: "Course Name – Class Name" or "Course Name - Class Name"
+ * @param {string} title - Full course title (may include class name suffix)
+ * @returns {string} Base course title without class name suffix
+ */
+export function extractBaseCourseTitle(title) {
+  if (!title) return "";
+  // Try " – " first (em dash used in BE)
+  const emDashIndex = title.lastIndexOf(" – ");
+  if (emDashIndex > 0) {
+    return title.substring(0, emDashIndex).trim();
+  }
+  // Fallback to " - " (en dash/hyphen)
+  const dashIndex = title.lastIndexOf(" - ");
+  if (dashIndex > 0) {
+    return title.substring(0, dashIndex).trim();
+  }
+  return title;
+}

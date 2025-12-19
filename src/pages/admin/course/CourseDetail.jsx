@@ -17,7 +17,10 @@ import {
 } from "lucide-react";
 import { courseService } from "../../../services/course/course.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
-import { stripHtmlTags } from "../../../utils/html-helpers.js";
+import {
+  stripHtmlTags,
+  extractBaseCourseTitle,
+} from "../../../utils/html-helpers.js";
 import {
   DetailPageWrapper,
   DetailHeader,
@@ -112,8 +115,15 @@ export default function AdminCourseDetail() {
   const statusCfg = getStatusConfig(course.status);
   const StatusIcon = statusCfg.icon;
 
-  // Hiển thị đúng tiêu đề từ API (đã bao gồm tên class)
-  const displayTitle = course.title || "Khóa học";
+  // Extract base course title and class name from clone title
+  const baseCourseTitle = extractBaseCourseTitle(course.title);
+  const className =
+    course.title !== baseCourseTitle
+      ? course.title
+          .substring(baseCourseTitle.length)
+          .replace(/^\s*[–-]\s*/, "")
+      : null;
+  const displayTitle = baseCourseTitle || "Khóa học";
 
   const handleHide = () => {
     setCourse((prev) => ({ ...prev, status: "ARCHIVED" }));
@@ -150,7 +160,9 @@ export default function AdminCourseDetail() {
       {/* Header */}
       <DetailHeader
         title={displayTitle}
-        subtitle="Xem thông tin đầy đủ về khóa học"
+        subtitle={
+          className ? `Lớp: ${className}` : "Xem thông tin đầy đủ về khóa học"
+        }
         onBack={() => navigate(-1)}
         icon={BookOpen}
         iconColor="blue"
@@ -158,16 +170,6 @@ export default function AdminCourseDetail() {
           label: statusCfg.label,
           variant: statusCfg.variant,
         }}
-        actions={
-          <div className="flex gap-3">
-            {course.status !== "ARCHIVED" && (
-              <Button variant="outline" onClick={handleHide}>
-                <EyeOff className="w-4 h-4 mr-2" />
-                Lưu trữ
-              </Button>
-            )}
-          </div>
-        }
       />
 
       {/* Stats Cards */}
@@ -198,7 +200,6 @@ export default function AdminCourseDetail() {
       {/* Course Info */}
       <DetailSection title="Thông tin khóa học">
         <DetailFieldGrid columns={2}>
-          <DetailField label="ID khóa học" value={course.id} />
           <DetailField label="Tên khóa học" value={displayTitle} />
           <DetailField label="Môn học" value={course.subjectName || "—"} />
           <DetailField
@@ -212,7 +213,11 @@ export default function AdminCourseDetail() {
           />
           <DetailField
             label="Mô tả"
-            value={(course.description || "Chưa có mô tả").replace(/\[\[SOURCE:\d+\]\]/g, "").trim() || "Chưa có mô tả"}
+            value={
+              (course.description || "Chưa có mô tả")
+                .replace(/\[\[SOURCE:\d+\]\]/g, "")
+                .trim() || "Chưa có mô tả"
+            }
             className="md:col-span-2"
             isHtml={true}
           />

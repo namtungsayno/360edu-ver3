@@ -6,7 +6,13 @@ import { X, Copy, CheckCircle2, Loader2, Phone } from "lucide-react";
 import { paymentService } from "../../services/payment/payment.service";
 import { useToast } from "../../hooks/use-toast";
 
-export default function PaymentQRModal({ isOpen, onClose, classId, className, onPaymentCreated }) {
+export default function PaymentQRModal({
+  isOpen,
+  onClose,
+  classId,
+  className,
+  onPaymentCreated,
+}) {
   const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
@@ -21,7 +27,7 @@ export default function PaymentQRModal({ isOpen, onClose, classId, className, on
       setPaymentData(null);
       setCopied(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, classId]);
 
   const loadPaymentQR = async () => {
@@ -31,7 +37,10 @@ export default function PaymentQRModal({ isOpen, onClose, classId, className, on
       setPaymentData(data);
       if (onPaymentCreated) onPaymentCreated(data);
     } catch (e) {
-      const msg = e?.response?.data?.message || e?.message || "Không thể tạo QR thanh toán";
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        "Không thể tạo QR thanh toán";
       showError(msg, "Lỗi");
       onClose();
     } finally {
@@ -62,19 +71,34 @@ export default function PaymentQRModal({ isOpen, onClose, classId, className, on
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto"
       onClick={handleBackdropClick}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
-      <div 
+      <div
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden my-auto"
+        style={{ maxHeight: "90vh", overflowY: "auto" }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Thanh toán học phí</h2>
-            {className && <p className="text-sm text-gray-500 mt-0.5">{className}</p>}
+            <h2 className="text-lg font-bold text-gray-900">
+              Thanh toán học phí
+            </h2>
+            {className && (
+              <p className="text-sm text-gray-500 mt-0.5">{className}</p>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -110,7 +134,9 @@ export default function PaymentQRModal({ isOpen, onClose, classId, className, on
               <div className="w-1/2 p-8 flex flex-col justify-center">
                 {/* Amount */}
                 <div className="mb-6">
-                  <p className="text-sm text-gray-500 mb-1">Số tiền thanh toán</p>
+                  <p className="text-sm text-gray-500 mb-1">
+                    Số tiền thanh toán
+                  </p>
                   <p className="text-4xl font-bold text-blue-600">
                     {formatCurrency(paymentData.amount)}
                   </p>
@@ -118,7 +144,9 @@ export default function PaymentQRModal({ isOpen, onClose, classId, className, on
 
                 {/* Transfer Content */}
                 <div className="mb-6">
-                  <p className="text-sm text-gray-500 mb-2">Nội dung chuyển khoản</p>
+                  <p className="text-sm text-gray-500 mb-2">
+                    Nội dung chuyển khoản
+                  </p>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-gray-100 px-4 py-3 rounded-lg font-mono text-sm font-medium text-gray-800 break-all">
                       {paymentData.content}
@@ -126,13 +154,17 @@ export default function PaymentQRModal({ isOpen, onClose, classId, className, on
                     <button
                       onClick={handleCopyContent}
                       className={`flex-shrink-0 p-3 rounded-lg transition-all ${
-                        copied 
-                          ? "bg-green-100 text-green-600" 
+                        copied
+                          ? "bg-green-100 text-green-600"
                           : "bg-blue-100 text-blue-600 hover:bg-blue-200"
                       }`}
                       title="Sao chép"
                     >
-                      {copied ? <CheckCircle2 className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                      {copied ? (
+                        <CheckCircle2 className="w-5 h-5" />
+                      ) : (
+                        <Copy className="w-5 h-5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -140,7 +172,9 @@ export default function PaymentQRModal({ isOpen, onClose, classId, className, on
                 {/* Status */}
                 <div className="flex items-center gap-2 text-sm">
                   <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
-                  <span className="text-gray-600">Tự động xác nhận trong 1-5 phút</span>
+                  <span className="text-gray-600">
+                    Tự động xác nhận trong 1-5 phút
+                  </span>
                 </div>
               </div>
             </div>
@@ -149,11 +183,22 @@ export default function PaymentQRModal({ isOpen, onClose, classId, className, on
             <div className="px-6 py-4 bg-amber-50 border-t border-amber-100 flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-amber-700">
                 <CheckCircle2 className="w-4 h-4 text-green-600" />
-                <span>Bạn sẽ được <strong>tự động ghi danh</strong> sau khi thanh toán thành công</span>
+                <span>
+                  Bạn sẽ được <strong>tự động ghi danh</strong> sau khi thanh
+                  toán thành công
+                </span>
               </div>
               <div className="flex items-center gap-1.5 text-sm text-gray-500">
                 <Phone className="w-4 h-4" />
-                <span>Hỗ trợ: <a href="tel:0123456789" className="text-blue-600 font-medium">0123 456 789</a></span>
+                <span>
+                  Hỗ trợ:{" "}
+                  <a
+                    href="tel:0123456789"
+                    className="text-blue-600 font-medium"
+                  >
+                    0123 456 789
+                  </a>
+                </span>
               </div>
             </div>
           </>

@@ -354,13 +354,25 @@ export default function SubjectDetail() {
         <DetailHighlightCard
           icon={Calendar}
           label="Ngày tạo"
-          value={new Date(subject.createdAt).toLocaleDateString("sv-SE")}
+          value={(() => {
+            const d = new Date(subject.createdAt);
+            const day = d.getDate().toString().padStart(2, "0");
+            const month = (d.getMonth() + 1).toString().padStart(2, "0");
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
+          })()}
           color="blue"
         />
         <DetailHighlightCard
           icon={Clock}
           label="Cập nhật"
-          value={new Date(subject.updatedAt).toLocaleDateString("sv-SE")}
+          value={(() => {
+            const d = new Date(subject.updatedAt);
+            const day = d.getDate().toString().padStart(2, "0");
+            const month = (d.getMonth() + 1).toString().padStart(2, "0");
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
+          })()}
           color="green"
         />
       </div>

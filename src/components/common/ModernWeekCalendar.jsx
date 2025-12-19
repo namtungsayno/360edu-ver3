@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { ChevronLeft, ChevronRight, Calendar, Sparkles } from "lucide-react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
+import { ChevronLeft, ChevronRight, Calendar, Sparkles, X } from "lucide-react";
 import { Button } from "../ui/Button";
 import { startOfWeek, addDays, fmt, WEEK_DAYS } from "../../utils/date-helpers";
 
@@ -29,11 +29,39 @@ export default function ModernWeekCalendar({
   statsContent,
   headerActions,
 }) {
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const datePickerRef = useRef(null);
+
   const weekStart = useMemo(() => startOfWeek(currentWeek), [currentWeek]);
   const weekDates = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart]
   );
+
+  // Sync picker month/year with currentWeek when it changes
+  useEffect(() => {
+    setPickerMonth(currentWeek.getMonth());
+    setPickerYear(currentWeek.getFullYear());
+  }, [currentWeek]);
+
+  // Close date picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        datePickerRef.current &&
+        !datePickerRef.current.contains(event.target)
+      ) {
+        setShowDatePicker(false);
+      }
+    };
+
+    if (showDatePicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDatePicker]);
 
   const handlePrevWeek = () => {
     onWeekChange?.(addDays(currentWeek, -7));
@@ -47,7 +75,57 @@ export default function ModernWeekCalendar({
     onWeekChange?.(new Date());
   };
 
-  // Get accent color classes
+  // Date picker handlers
+  const handleDateSelect = (day) => {
+    const selectedDate = new Date(pickerYear, pickerMonth, day);
+    onWeekChange?.(selectedDate);
+    setShowDatePicker(false);
+  };
+
+  const handlePrevMonth = () => {
+    if (pickerMonth === 0) {
+      setPickerMonth(11);
+      setPickerYear((y) => y - 1);
+    } else {
+      setPickerMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (pickerMonth === 11) {
+      setPickerMonth(0);
+      setPickerYear((y) => y + 1);
+    } else {
+      setPickerMonth((m) => m + 1);
+    }
+  };
+
+  const getDaysInMonth = (month, year) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (month, year) => {
+    const day = new Date(year, month, 1).getDay();
+    // Convert Sunday (0) to 7, keep others
+    return day === 0 ? 7 : day;
+  };
+
+  const monthNames = [
+    "Tháng 1",
+    "Tháng 2",
+    "Tháng 3",
+    "Tháng 4",
+    "Tháng 5",
+    "Tháng 6",
+    "Tháng 7",
+    "Tháng 8",
+    "Tháng 9",
+    "Tháng 10",
+    "Tháng 11",
+    "Tháng 12",
+  ];
+
+  // Get accent color classes - moved up before renderDatePicker
   const getAccentClasses = (type) => {
     const colors = {
       indigo: {
@@ -78,6 +156,49 @@ export default function ModernWeekCalendar({
     return colors[accentColor]?.[type] || colors.indigo[type];
   };
 
+  const renderDatePicker = () => {
+    const daysInMonth = getDaysInMonth(pickerMonth, pickerYear);
+    const firstDay = getFirstDayOfMonth(pickerMonth, pickerYear);
+    const days = [];
+
+    // Empty cells before first day
+    for (let i = 1; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="h-8 w-8" />);
+    }
+
+    // Days of month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(pickerYear, pickerMonth, day);
+      const isSelected =
+        fmt(date, "yyyy-MM-dd") === fmt(currentWeek, "yyyy-MM-dd");
+      const isToday = fmt(date, "yyyy-MM-dd") === fmt(new Date(), "yyyy-MM-dd");
+      const isInCurrentWeek =
+        date >= weekStart && date <= addDays(weekStart, 6);
+
+      days.push(
+        <button
+          key={day}
+          onClick={() => handleDateSelect(day)}
+          className={`h-8 w-8 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-gray-100 
+            ${
+              isSelected
+                ? `${getAccentClasses("navBg")} ${getAccentClasses(
+                    "navText"
+                  )} border`
+                : ""
+            }
+            ${isToday && !isSelected ? "border-2 border-gray-300" : ""}
+            ${isInCurrentWeek && !isSelected ? "bg-gray-50" : ""}
+          `}
+        >
+          {day}
+        </button>
+      );
+    }
+
+    return days;
+  };
+
   return (
     <div className="space-y-4">
       {/* Navigation Header */}
@@ -99,24 +220,120 @@ export default function ModernWeekCalendar({
             </button>
           </div>
 
-          {/* Current Week Display */}
-          <div
-            className={`flex items-center gap-3 px-4 py-2 rounded-xl border ${getAccentClasses(
-              "navBg"
-            )}`}
-          >
-            <Calendar className={`h-5 w-5 ${getAccentClasses("navText")}`} />
-            <div>
-              <div
-                className={`text-sm font-bold ${getAccentClasses("navText")}`}
-              >
-                {fmt(weekStart, "dd/MM")} -{" "}
-                {fmt(addDays(weekStart, 6), "dd/MM/yyyy")}
+          {/* Current Week Display - Clickable for Date Picker */}
+          <div className="relative" ref={datePickerRef}>
+            <div
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className={`flex items-center gap-3 px-4 py-2 rounded-xl border cursor-pointer 
+                hover:shadow-md transition-all duration-200 ${getAccentClasses(
+                  "navBg"
+                )}`}
+              title="Bấm để chọn ngày"
+            >
+              <Calendar className={`h-5 w-5 ${getAccentClasses("navText")}`} />
+              <div>
+                <div
+                  className={`text-sm font-bold ${getAccentClasses("navText")}`}
+                >
+                  {fmt(weekStart, "dd/MM")} -{" "}
+                  {fmt(addDays(weekStart, 6), "dd/MM/yyyy")}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {fmt(weekStart, "MMMM yyyy")}
+                </div>
               </div>
-              <div className="text-xs text-gray-500">
-                {fmt(weekStart, "MMMM yyyy")}
-              </div>
+              <ChevronRight
+                className={`h-4 w-4 transition-transform duration-200 ${getAccentClasses(
+                  "navText"
+                )} ${showDatePicker ? "rotate-90" : ""}`}
+              />
             </div>
+
+            {/* Date Picker Popup */}
+            {showDatePicker && (
+              <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-lg border border-gray-200 p-4 z-50 min-w-[300px]">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <button
+                    onClick={handlePrevMonth}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-gray-600" />
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={pickerMonth}
+                      onChange={(e) => setPickerMonth(Number(e.target.value))}
+                      className="bg-transparent text-sm font-semibold text-gray-800 cursor-pointer focus:outline-none"
+                    >
+                      {monthNames.map((name, idx) => (
+                        <option key={idx} value={idx}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={pickerYear}
+                      onChange={(e) => setPickerYear(Number(e.target.value))}
+                      className="bg-transparent text-sm font-semibold text-gray-800 cursor-pointer focus:outline-none"
+                    >
+                      {Array.from(
+                        { length: 20 },
+                        (_, i) => pickerYear - 10 + i
+                      ).map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleNextMonth}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <ChevronRight className="h-5 w-5 text-gray-600" />
+                  </button>
+                </div>
+
+                {/* Day Labels */}
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((day) => (
+                    <div
+                      key={day}
+                      className="h-8 w-8 flex items-center justify-center text-xs font-medium text-gray-500"
+                    >
+                      {day}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-1">
+                  {renderDatePicker()}
+                </div>
+
+                {/* Quick Actions */}
+                <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between">
+                  <button
+                    onClick={() => {
+                      onWeekChange?.(new Date());
+                      setShowDatePicker(false);
+                    }}
+                    className={`text-xs font-medium ${getAccentClasses(
+                      "navText"
+                    )} hover:underline`}
+                  >
+                    Hôm nay
+                  </button>
+                  <button
+                    onClick={() => setShowDatePicker(false)}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Today Button */}

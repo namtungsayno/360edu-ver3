@@ -39,6 +39,7 @@ import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import GuestLayout from "../layouts/GuestLayout";
 import TeacherLayout from "../layouts/TeacherLayout.jsx";
+import ParentLayout from "../layouts/ParentLayout.jsx";
 import StudentClasses from "../pages/student/Classes.jsx";
 import StudentClassDetail from "../pages/student/ClassDetail.jsx";
 import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
@@ -91,7 +92,7 @@ import CreateTeacherPage from "../pages/admin/user/CreateTeacherPage.jsx";
 import AdminCourseList from "../pages/admin/course/CourseList.jsx";
 import AdminCourseDetail from "../pages/admin/course/CourseDetail.jsx";
 import AdminCourseCreate from "../pages/admin/course/AdminCourseCreate.jsx";
-import PaymentHistory from "../pages/admin/payment/PaymentHistory.jsx";
+import AdminPaymentHistory from "../pages/admin/payment/PaymentHistory.jsx";
 import TeacherAttendanceList from "../pages/admin/TeacherAttendanceList.jsx";
 import TeacherAttendanceDetail from "../pages/admin/TeacherAttendanceDetail.jsx";
 import TeacherClassAttendance from "../pages/admin/TeacherClassAttendance.jsx";
@@ -108,6 +109,16 @@ import TeacherCourseEdit from "../pages/teacher/course/TeacherCourseEdit.jsx";
 import TeachingContent from "../pages/teacher/content/TeachingContent.jsx";
 import TeachingContentDetail from "../pages/teacher/content/TeachingContentDetail.jsx";
 import TeacherResetPassword from "../pages/teacher/profile/TeacherResetPassword.jsx";
+
+// Parent pages
+import ParentDashboard from "../pages/parent/Dashboard.jsx";
+import ChildAttendance from "../pages/parent/attendance/ChildAttendance.jsx";
+import ChildSchedule from "../pages/parent/schedule/ChildSchedule.jsx";
+import ParentNotifications from "../pages/parent/notifications/ParentNotifications.jsx";
+import ParentPaymentHistory from "../pages/parent/payment/PaymentHistory.jsx";
+import ChildClasses from "../pages/parent/classes/ChildClasses.jsx";
+import ParentClassDetail from "../pages/parent/classes/ClassDetail.jsx";
+import ParentProfile from "../pages/parent/profile/ParentProfile.jsx";
 
 function AppRouter() {
   return (
@@ -223,7 +234,7 @@ function AppRouter() {
             <Route path="courses/create" element={<AdminCourseCreate />} />
             <Route path="courses/:id" element={<AdminCourseDetail />} />
             {/* Payment Management - Quản lý thanh toán */}
-            <Route path="payment" element={<PaymentHistory />} />
+            <Route path="payment" element={<AdminPaymentHistory />} />
             {/* Teacher Attendance - Chấm công giáo viên */}
             <Route
               path="teacher-attendance"
@@ -242,22 +253,39 @@ function AppRouter() {
           </Route>
         </Route>
         {/* Teacher ROUTES - Các route dành cho teacher (cần authentication) */}
-        <Route path="/home/teacher" element={<TeacherLayout />}>
-          <Route path="management" element={<TeacherManagement />} />
-          <Route path="schedule" element={<TeacherSchedule />} />
-          <Route path="security" element={<TeacherResetPassword />} />
-          <Route path="class/:classId" element={<TeacherClassDetail />} />
-          <Route path="content" element={<TeachingContent />} />
-          <Route path="content/:id" element={<TeachingContentDetail />} />
-          {/* Cho phép chỉnh sửa dưới nhánh Nội dung giảng dạy */}
-          <Route path="content/:id/edit" element={<TeacherCourseEdit />} />
-          <Route path="courses" element={<TeacherCourseList />} />
-          {/* ✅ khớp với navigate(`/home/teacher/courses/${id}/edit`) - chỉnh sửa khóa học */}
-          <Route path="courses/:id/edit" element={<TeacherCourseEdit />} />
-          {/* ✅ khớp với navigate(`/home/teacher/courses/${id}`) - xem chi tiết khóa học */}
-          <Route path="courses/:id" element={<TeacherCourseDetail />} />
-          {/* <Route path="attendance" element={<TeacherAttendance />} /> */}
-          {/* <Route path="attendance" element={<TeacherAttendance />} /> */}
+        <Route element={<RequireRole allow={["teacher"]} />}>
+          <Route path="/home/teacher" element={<TeacherLayout />}>
+            <Route path="management" element={<TeacherManagement />} />
+            <Route path="schedule" element={<TeacherSchedule />} />
+            <Route path="security" element={<TeacherResetPassword />} />
+            <Route path="class/:classId" element={<TeacherClassDetail />} />
+            <Route path="content" element={<TeachingContent />} />
+            <Route path="content/:id" element={<TeachingContentDetail />} />
+            {/* Cho phép chỉnh sửa dưới nhánh Nội dung giảng dạy */}
+            <Route path="content/:id/edit" element={<TeacherCourseEdit />} />
+            <Route path="courses" element={<TeacherCourseList />} />
+            {/* ✅ khớp với navigate(`/home/teacher/courses/${id}/edit`) - chỉnh sửa khóa học */}
+            <Route path="courses/:id/edit" element={<TeacherCourseEdit />} />
+            {/* ✅ khớp với navigate(`/home/teacher/courses/${id}`) - xem chi tiết khóa học */}
+            <Route path="courses/:id" element={<TeacherCourseDetail />} />
+            {/* <Route path="attendance" element={<TeacherAttendance />} /> */}
+            {/* <Route path="attendance" element={<TeacherAttendance />} /> */}
+          </Route>
+        </Route>
+
+        {/* PARENT ROUTES - Các route dành cho phụ huynh (cần authentication) */}
+        <Route element={<RequireRole allow={["parent"]} />}>
+          <Route path="/home/parent" element={<ParentLayout />}>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<ParentDashboard />} />
+            <Route path="classes" element={<ChildClasses />} />
+            <Route path="classes/:classId" element={<ParentClassDetail />} />
+            <Route path="schedule" element={<ChildSchedule />} />
+            <Route path="attendance" element={<ChildAttendance />} />
+            <Route path="payment" element={<ParentPaymentHistory />} />
+            <Route path="notifications" element={<ParentNotifications />} />
+            <Route path="profile" element={<ParentProfile />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

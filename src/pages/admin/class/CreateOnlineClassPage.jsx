@@ -83,6 +83,11 @@ export default function CreateOnlineClassPage() {
     loadTimeSlots();
   }, []);
 
+  // Reset pickedSlots khi startDate thay đổi (vì ngày bắt đầu mới có thể là thứ khác)
+  useEffect(() => {
+    setPickedSlots([]);
+  }, [startDate]);
+
   // Helpers for alias + random code (FE only)
   const makeTeacherAlias = useCallback((fullName) => {
     const removeDiacritics = (s) =>
@@ -141,8 +146,7 @@ export default function CreateOnlineClassPage() {
     try {
       const data = await subjectService.all();
       setSubjects(Array.isArray(data) ? data : []);
-    } catch (e) {
-      }
+    } catch (e) {}
   }
 
   async function loadCourses() {
@@ -264,8 +268,11 @@ export default function CreateOnlineClassPage() {
 
   const todayStr = useMemo(() => {
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now.toISOString().slice(0, 10);
+    // Lấy ngày theo múi giờ local (Việt Nam) thay vì UTC
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }, []);
 
   useEffect(() => {
@@ -485,7 +492,7 @@ export default function CreateOnlineClassPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50">
       {/* Header - Glassmorphism */}
       <div className="sticky top-0 z-20 backdrop-blur-xl bg-white/80 border-b border-white/20 shadow-lg shadow-indigo-500/20">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Left: Title */}
             <div className="flex items-center gap-4">
@@ -809,9 +816,13 @@ export default function CreateOnlineClassPage() {
                   <div className="px-4 py-2 rounded-xl text-white bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-md">
                     <h2 className="text-base font-bold">Chọn lịch học</h2>
                   </div>
-                  <div className="text-sm text-gray-500">
-                    Lọc ngày: <span className="font-medium">Không có</span>
-                  </div>
+                  {startDate && (
+                    <div className="text-sm text-gray-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                      <span className="text-emerald-700 font-medium">
+                        Chọn slot cho ngày bắt đầu trước
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -823,6 +834,8 @@ export default function CreateOnlineClassPage() {
                 selected={pickedSlots}
                 onToggle={toggleSlot}
                 disabled={!teacherId}
+                startDate={startDate}
+                requireStartDayFirst={!!startDate}
               />
             </div>
           </div>

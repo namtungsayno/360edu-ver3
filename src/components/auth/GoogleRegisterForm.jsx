@@ -41,15 +41,23 @@ export default function GoogleRegisterForm({
   useEffect(() => {
     const phone = formData.parentPhone.trim();
     if (!phone || !PHONE_REGEX.test(phone)) {
-      setParentPhoneStatus({ checking: false, exists: false, parentInfo: null });
+      setParentPhoneStatus({
+        checking: false,
+        exists: false,
+        parentInfo: null,
+      });
       return;
     }
 
     const timer = setTimeout(async () => {
       try {
-        setParentPhoneStatus({ checking: true, exists: false, parentInfo: null });
+        setParentPhoneStatus({
+          checking: true,
+          exists: false,
+          parentInfo: null,
+        });
         const response = await authApi.checkParentPhone(phone);
-        
+
         if (response.exists) {
           setParentPhoneStatus({
             checking: false,
@@ -57,10 +65,18 @@ export default function GoogleRegisterForm({
             parentInfo: response.parentInfo,
           });
         } else {
-          setParentPhoneStatus({ checking: false, exists: false, parentInfo: null });
+          setParentPhoneStatus({
+            checking: false,
+            exists: false,
+            parentInfo: null,
+          });
         }
       } catch (err) {
-        setParentPhoneStatus({ checking: false, exists: false, parentInfo: null });
+        setParentPhoneStatus({
+          checking: false,
+          exists: false,
+          parentInfo: null,
+        });
       }
     }, 800); // Debounce 800ms
 
@@ -85,7 +101,8 @@ export default function GoogleRegisterForm({
     if (!formData.studentPhone.trim()) {
       newErrors.studentPhone = "Vui lòng nhập số điện thoại học sinh.";
     } else if (!PHONE_REGEX.test(formData.studentPhone)) {
-      newErrors.studentPhone = "Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0).";
+      newErrors.studentPhone =
+        "Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0).";
     }
 
     if (!formData.parentFullName.trim()) {
@@ -95,7 +112,8 @@ export default function GoogleRegisterForm({
     if (!formData.parentPhone.trim()) {
       newErrors.parentPhone = "Vui lòng nhập số điện thoại phụ huynh.";
     } else if (!PHONE_REGEX.test(formData.parentPhone)) {
-      newErrors.parentPhone = "Số điện thoại phụ huynh không hợp lệ (10 số, bắt đầu bằng 0).";
+      newErrors.parentPhone =
+        "Số điện thoại phụ huynh không hợp lệ (10 số, bắt đầu bằng 0).";
     }
 
     if (!formData.parentEmail.trim()) {
@@ -181,7 +199,8 @@ export default function GoogleRegisterForm({
               </div>
             </div>
             <div className="mt-3 bg-white rounded-lg p-3 text-sm text-blue-700">
-              <span className="font-medium">📝 Lưu ý:</span> Vui lòng hoàn tất thông tin bên dưới để đăng ký tài khoản học sinh.
+              <span className="font-medium">📝 Lưu ý:</span> Vui lòng hoàn tất
+              thông tin bên dưới để đăng ký tài khoản học sinh.
             </div>
           </div>
 
@@ -260,7 +279,10 @@ export default function GoogleRegisterForm({
 
             {/* Parent Phone with Status */}
             <div className="space-y-2">
-              <label htmlFor="parentPhone" className="block text-sm font-medium text-gray-700">
+              <label
+                htmlFor="parentPhone"
+                className="block text-sm font-medium text-gray-700"
+              >
                 Số điện thoại phụ huynh <span className="text-red-500">*</span>
               </label>
               <Input
@@ -278,7 +300,7 @@ export default function GoogleRegisterForm({
                   {errors.parentPhone}
                 </p>
               )}
-              
+
               {/* Parent Phone Status */}
               {parentPhoneStatus.checking && (
                 <p className="text-sm text-blue-600 flex items-center gap-2">
@@ -286,7 +308,7 @@ export default function GoogleRegisterForm({
                   Đang kiểm tra số điện thoại...
                 </p>
               )}
-              
+
               {parentPhoneStatus.exists && parentPhoneStatus.parentInfo && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
                   <div className="flex items-start gap-2">
@@ -296,23 +318,31 @@ export default function GoogleRegisterForm({
                         Phụ huynh đã có trong hệ thống
                       </p>
                       <p className="text-green-700 mt-1">
-                        <span className="font-medium">{parentPhoneStatus.parentInfo.fullName}</span> đã có{" "}
-                        {parentPhoneStatus.parentInfo.childCount} con đăng ký tại 360edu.
+                        <span className="font-medium">
+                          {parentPhoneStatus.parentInfo.fullName}
+                        </span>{" "}
+                        đã có {parentPhoneStatus.parentInfo.childCount} con đăng
+                        ký tại 360edu.
                       </p>
                       <p className="text-green-600 text-xs mt-1">
-                        Hệ thống sẽ liên kết tài khoản của bạn với phụ huynh này.
+                        Hệ thống sẽ liên kết tài khoản của bạn với phụ huynh
+                        này.
                       </p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {!parentPhoneStatus.checking && !parentPhoneStatus.exists && formData.parentPhone && PHONE_REGEX.test(formData.parentPhone) && (
-                <p className="text-sm text-gray-600 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  Phụ huynh chưa có trong hệ thống. Hệ thống sẽ tạo tài khoản phụ huynh mới.
-                </p>
-              )}
+              {!parentPhoneStatus.checking &&
+                !parentPhoneStatus.exists &&
+                formData.parentPhone &&
+                PHONE_REGEX.test(formData.parentPhone) && (
+                  <p className="text-sm text-gray-600 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    Phụ huynh chưa có trong hệ thống. Hệ thống sẽ tạo tài khoản
+                    phụ huynh mới.
+                  </p>
+                )}
             </div>
 
             {/* Submit Buttons */}
@@ -423,9 +453,7 @@ function Field({
           {error}
         </p>
       )}
-      {helper && !error && (
-        <p className="text-sm text-gray-500">{helper}</p>
-      )}
+      {helper && !error && <p className="text-sm text-gray-500">{helper}</p>}
     </div>
   );
 }
@@ -442,4 +470,3 @@ Field.propTypes = {
   showPassword: PropTypes.bool,
   onTogglePassword: PropTypes.func,
 };
-
