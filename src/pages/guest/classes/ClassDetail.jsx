@@ -287,8 +287,8 @@ export default function ClassDetail() {
                   className="text-gray-700 leading-relaxed rich-text-content"
                   dangerouslySetInnerHTML={{
                     __html:
-                      data.description ||
-                      "Khóa học Toán 10 học kỳ 1 bao gồm toán bổ trợ kiến thức cơ bản từ Đại số, Hình học phẳng và Lượng giác. Phương pháp giảng dạy kết hợp lý thuyết với thực hành; giúp học sinh nắm vững kiến thức và phát triển tư duy toán học.",
+                      (data.description || "Khóa học Toán 10 học kỳ 1 bao gồm toán bổ trợ kiến thức cơ bản từ Đại số, Hình học phẳng và Lượng giác. Phương pháp giảng dạy kết hợp lý thuyết với thực hành; giúp học sinh nắm vững kiến thức và phát triển tư duy toán học.")
+                        .replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, ""),
                   }}
                 />
               </CardContent>

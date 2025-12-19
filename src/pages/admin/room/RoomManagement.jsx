@@ -475,6 +475,7 @@ export default function ClassroomList() {
                     onChange={handleChange}
                     placeholder="VD: 40"
                     min="1"
+                    lang="en"
                     className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   />
                 </div>
@@ -673,6 +674,7 @@ export default function ClassroomList() {
                                   value={formData.capacity}
                                   onChange={handleChange}
                                   min="1"
+                                  lang="en"
                                   className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                 />
                               </div>

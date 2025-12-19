@@ -246,7 +246,7 @@ export default function StudentCourseDetail() {
               </h3>
               <div
                 className="text-[13px] text-[#45556c] leading-relaxed rich-text-content"
-                dangerouslySetInnerHTML={{ __html: course.description }}
+                dangerouslySetInnerHTML={{ __html: course.description?.replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, "") }}
               />
             </div>
           )}

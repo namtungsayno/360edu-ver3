@@ -407,30 +407,17 @@ export default function TeacherProfileEdit() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Ảnh đại diện (URL)
-                  </label>
-                  <Input
-                    name="avatarUrl"
-                    value={form.avatarUrl}
-                    onChange={handleChange}
-                    placeholder="Dán URL ảnh"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Chọn file ảnh
-                  </label>
-                  <input
-                    type="file"
-                    name="avatarFile"
-                    accept="image/*"
-                    onChange={handleChange}
-                    className="mt-1 block w-full text-sm"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Ảnh đại diện
+                </label>
+                <input
+                  type="file"
+                  name="avatarFile"
+                  accept="image/*"
+                  onChange={handleChange}
+                  className="mt-1 block w-full text-sm"
+                />
               </div>
 
               {error && (

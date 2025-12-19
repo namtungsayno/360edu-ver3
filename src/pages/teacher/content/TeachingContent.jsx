@@ -302,7 +302,7 @@ export default function TeachingContent() {
                         <div
                           className="text-sm text-[#45556c] line-clamp-2 rich-text-content"
                           dangerouslySetInnerHTML={{
-                            __html: course.description,
+                            __html: course.description.replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, ""),
                           }}
                         />
                       )}

@@ -34,3 +34,26 @@ export function truncateText(text, maxLength = 100) {
 export function stripAndTruncate(html, maxLength = 100) {
   return truncateText(stripHtmlTags(html), maxLength);
 }
+
+/**
+ * Remove [[SOURCE:xxx]] and [[OWNER:xxx]] tags from description
+ * These tags are used internally to track course templates and ownership
+ * @param {string} text - Text that may contain SOURCE/OWNER tags
+ * @returns {string} Clean text without SOURCE/OWNER tags
+ */
+export function removeSourceTags(text) {
+  if (!text) return "";
+  return text.replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, "").trim();
+}
+
+/**
+ * Clean HTML for display - removes SOURCE tags and optionally strips HTML
+ * @param {string} html - HTML string that may contain SOURCE tags
+ * @param {boolean} stripTags - Whether to strip HTML tags as well
+ * @returns {string} Clean text
+ */
+export function cleanHtmlForDisplay(html, stripTags = false) {
+  if (!html) return "";
+  const cleaned = removeSourceTags(html);
+  return stripTags ? stripHtmlTags(cleaned) : cleaned;
+}

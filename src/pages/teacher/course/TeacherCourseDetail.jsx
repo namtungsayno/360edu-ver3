@@ -196,7 +196,7 @@ export default function TeacherCourseDetail() {
         <DetailSection title="Mô tả khóa học" icon={FileText}>
           <div
             className="text-sm text-gray-700 leading-relaxed rich-text-content"
-            dangerouslySetInnerHTML={{ __html: course.description }}
+            dangerouslySetInnerHTML={{ __html: course.description?.replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, "") }}
           />
         </DetailSection>
       )}

@@ -212,7 +212,7 @@ export default function AdminCourseDetail() {
           />
           <DetailField
             label="Mô tả"
-            value={(course.description || "Chưa có mô tả").replace(/\[\[SOURCE:\d+\]\]/g, "").trim() || "Chưa có mô tả"}
+            value={(course.description || "Chưa có mô tả").replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, "").trim() || "Chưa có mô tả"}
             className="md:col-span-2"
             isHtml={true}
           />

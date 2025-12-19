@@ -2,7 +2,6 @@
 // Component cho phép giáo viên upload tài liệu cho bài học (lesson)
 import { useState, useEffect, useRef } from "react";
 import { Badge } from "../ui/Badge.jsx";
-import { Input } from "../ui/Input.jsx";
 import {
   Upload,
   FileText,
@@ -48,12 +47,7 @@ export default function LessonMaterialUpload({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragOver, setDragOver] = useState(false);
 
-  // Link upload states
-  const [linkUrl, setLinkUrl] = useState("");
-  const [addingLink, setAddingLink] = useState(false);
 
-  // Tab state: 'file' or 'link'
-  const [uploadTab, setUploadTab] = useState("file");
 
   // Delete confirmation state
   const [deleteConfirm, setDeleteConfirm] = useState({
@@ -109,34 +103,6 @@ export default function LessonMaterialUpload({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-    }
-  }
-
-  // Handle add link
-  async function handleAddLink() {
-    if (!linkUrl.trim()) {
-      error("Vui lòng nhập đường dẫn");
-      return;
-    }
-
-    // Validate URL
-    try {
-      new URL(linkUrl);
-    } catch {
-      error("Đường dẫn không hợp lệ");
-      return;
-    }
-
-    try {
-      setAddingLink(true);
-      const result = await lessonMaterialService.addLink(lessonId, linkUrl);
-      setMaterials((prev) => [result, ...prev]);
-      setLinkUrl("");
-      success("Thêm link thành công!");
-    } catch (e) {
-      error("Không thể thêm link");
-    } finally {
-      setAddingLink(false);
     }
   }
 
@@ -222,109 +188,56 @@ export default function LessonMaterialUpload({
       {/* Upload section - chỉ hiển thị khi không phải readOnly */}
       {!readOnly && (
         <div className="space-y-3">
-          {/* Tabs */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setUploadTab("file")}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
-                uploadTab === "file"
-                  ? "bg-purple-100 text-purple-700"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <Upload className="w-3 h-3 inline mr-1" />
-              Upload file
-            </button>
-            <button
-              onClick={() => setUploadTab("link")}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
-                uploadTab === "link"
-                  ? "bg-purple-100 text-purple-700"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <Link className="w-3 h-3 inline mr-1" />
-              Thêm link
-            </button>
-          </div>
-
           {/* File Upload */}
-          {uploadTab === "file" && (
-            <div
-              className={`border-2 border-dashed rounded-xl p-4 transition-all ${
-                dragOver
-                  ? "border-purple-500 bg-purple-50"
-                  : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/50"
-              }`}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={(e) => handleFileSelect(e.target.files)}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.jpg,.jpeg,.png,.gif,.mp4,.mp3"
-              />
+          <div
+            className={`border-2 border-dashed rounded-xl p-4 transition-all ${
+              dragOver
+                ? "border-purple-500 bg-purple-50"
+                : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/50"
+            }`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={(e) => handleFileSelect(e.target.files)}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.jpg,.jpeg,.png,.gif,.mp4,.mp3"
+            />
 
-              {uploading ? (
-                <div className="text-center py-2">
-                  <Loader2 className="w-6 h-6 animate-spin text-purple-500 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
-                    Đang upload... {uploadProgress}%
-                  </p>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                    <div
-                      className="bg-purple-500 h-1.5 rounded-full transition-all"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
+            {uploading ? (
+              <div className="text-center py-2">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-500 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">
+                  Đang upload... {uploadProgress}%
+                </p>
+                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                  <div
+                    className="bg-purple-500 h-1.5 rounded-full transition-all"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
                 </div>
-              ) : (
-                <div
-                  className="text-center py-2 cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">
-                    Kéo thả file hoặc{" "}
-                    <span className="text-purple-600 font-medium">
-                      chọn file
-                    </span>
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    PDF, Word, Excel, PowerPoint, ảnh, video (tối đa 50MB)
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Link Upload */}
-          {uploadTab === "link" && (
-            <div className="flex gap-2">
-              <Input
-                placeholder="Nhập URL (https://...)"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddLink()}
-                className="flex-1 text-sm"
-              />
-              <button
-                onClick={handleAddLink}
-                disabled={addingLink || !linkUrl.trim()}
-                className="px-4 py-2 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+              </div>
+            ) : (
+              <div
+                className="text-center py-2 cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
               >
-                {addingLink ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Link className="w-4 h-4" />
-                )}
-                Thêm
-              </button>
-            </div>
-          )}
+                <Upload className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">
+                  Kéo thả file hoặc{" "}
+                  <span className="text-purple-600 font-medium">
+                    chọn file
+                  </span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  PDF, Word, Excel, PowerPoint, ảnh, video (tối đa 50MB)
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

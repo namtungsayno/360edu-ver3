@@ -197,7 +197,7 @@ const ClassDetail = () => {
             <h2 className="text-xl font-bold mb-4">Thông tin lớp học</h2>
             <div
               className="text-gray-700 mb-4 prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: classDetail.description }}
+              dangerouslySetInnerHTML={{ __html: classDetail.description?.replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, "") }}
             />
 
             {classDetail.objectives && classDetail.objectives.length > 0 && (

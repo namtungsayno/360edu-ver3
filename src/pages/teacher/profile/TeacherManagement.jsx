@@ -573,22 +573,7 @@ export default function TeacherManagement() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700">
-                          Ảnh đại diện (URL)
-                        </label>
-                        <Input
-                          name="avatarUrl"
-                          value={form.avatarUrl}
-                          onChange={handleChange}
-                          placeholder="Dán URL ảnh hoặc dùng 'Chọn file' bên cạnh"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Ưu tiên dùng URL ảnh. Nếu không có, chọn file để xem
-                          thử.
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">
-                          Chọn file ảnh
+                          Ảnh đại diện
                         </label>
                         <input
                           type="file"

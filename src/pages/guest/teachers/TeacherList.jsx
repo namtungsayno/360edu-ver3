@@ -1,5 +1,5 @@
 //src/pages/guest/TeacherList.jsx
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { teacherApi } from "../../../services/teacher/teacher.api";
 import { subjectService } from "../../../services/subject/subject.service";
@@ -17,11 +17,14 @@ import {
   X,
   Loader2,
   GraduationCap,
+  Briefcase,
 } from "lucide-react";
 import useDebounce from "../../../hooks/useDebounce";
 
 export default function TeacherList() {
   const { onNavigate } = useOutletContext();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get("search") || "";
 
   // === SERVER-SIDE PAGINATION STATE ===
   const [teachers, setTeachers] = useState([]);
@@ -35,7 +38,13 @@ export default function TeacherList() {
   const [totalElements, setTotalElements] = useState(0);
 
   // Filters
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
+
+  // === SYNC URL SEARCH PARAM WITH STATE ===
+  useEffect(() => {
+    setSearchQuery(urlSearch);
+  }, [urlSearch]);
+
   const debouncedQuery = useDebounce(searchQuery, 400);
   const [selectedSubjectId, setSelectedSubjectId] = useState("");
 
@@ -86,11 +95,13 @@ export default function TeacherList() {
           : teacher.degree || "Giáo viên",
         courses: teacher.classCount || 0,
         rating: teacher.rating || 0,
-        // Chỉ hiển thị degree trong card, specialization có HTML nên bỏ qua
-        achievements: [teacher.degree].filter(Boolean),
         avatar: teacher.avatarUrl,
         bio: teacher.bio,
         workplace: teacher.workplace,
+        // First item from each category
+        firstCertificate: teacher.firstCertificate,
+        firstExperience: teacher.firstExperience,
+        firstEducation: teacher.firstEducation,
       }));
 
       setTeachers(enrichedTeachers);
@@ -296,18 +307,18 @@ export default function TeacherList() {
                           </span>
                         </div>
                       )}
-                      {/* Rating badge */}
-                      <div className="absolute top-2 right-2 bg-yellow-400 text-gray-900 px-2 py-1 rounded-full text-xs font-bold">
-                        ⭐ {teacher.rating}
-                      </div>
                     </div>
 
                     <CardContent className="p-4 flex flex-col">
-                      <h3 className="text-lg font-semibold mb-1">
+                      <h3 className="text-lg font-semibold mb-1 text-center">
                         {teacher.name}
                       </h3>
-                      <Badge className="mb-2">{teacher.subject}</Badge>
-                      <p className="text-gray-600 text-sm mb-3">
+                      <div className="flex flex-wrap justify-center gap-1 mb-2">
+                        {teacher.subject.split(", ").map((subj, idx) => (
+                          <Badge key={idx} className="text-xs">{subj}</Badge>
+                        ))}
+                      </div>
+                      <p className="text-gray-600 text-sm mb-3 text-center">
                         {teacher.experience}
                       </p>
 
@@ -319,33 +330,37 @@ export default function TeacherList() {
                           </p>
                           <p className="text-xs text-gray-500">Lớp học</p>
                         </div>
-                        <div className="text-center">
-                          <p className="text-lg font-bold text-yellow-600">
-                            {teacher.rating > 0
-                              ? teacher.rating.toFixed(1)
-                              : "N/A"}
-                          </p>
-                          <p className="text-xs text-gray-500">Đánh giá</p>
-                        </div>
                       </div>
 
-                      {/* Achievements */}
-                      <div className="h-12 mb-3 overflow-hidden">
-                        {teacher.achievements.length > 0 && (
-                          <div className="space-y-1">
-                            {teacher.achievements
-                              .slice(0, 2)
-                              .map((achievement, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-center gap-2 text-xs text-gray-600"
-                                >
-                                  <Award className="w-3 h-3 text-yellow-500 shrink-0" />
-                                  <span className="line-clamp-1">
-                                    {achievement}
-                                  </span>
-                                </div>
-                              ))}
+                      {/* Credentials - Certificate, Experience, Education */}
+                      <div className="space-y-1.5 mb-3 min-h-[60px]">
+                        {teacher.firstCertificate && (
+                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                            <Award className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                            <span className="line-clamp-1">
+                              {teacher.firstCertificate.title}
+                            </span>
+                          </div>
+                        )}
+                        {teacher.firstExperience && (
+                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                            <Briefcase className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                            <span className="line-clamp-1">
+                              {teacher.firstExperience.position} - {teacher.firstExperience.company}
+                            </span>
+                          </div>
+                        )}
+                        {teacher.firstEducation && (
+                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                            <GraduationCap className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                            <span className="line-clamp-1">
+                              {teacher.firstEducation.degree} - {teacher.firstEducation.school}
+                            </span>
+                          </div>
+                        )}
+                        {!teacher.firstCertificate && !teacher.firstExperience && !teacher.firstEducation && (
+                          <div className="text-xs text-gray-400 italic text-center">
+                            Chưa cập nhật thông tin
                           </div>
                         )}
                       </div>

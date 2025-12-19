@@ -184,7 +184,7 @@ const ChildClasses = () => {
               {classItem.description && (
                 <div
                   className="text-sm text-gray-600 mb-4 prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: classItem.description }}
+                  dangerouslySetInnerHTML={{ __html: classItem.description?.replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, "") }}
                 />
               )}
 

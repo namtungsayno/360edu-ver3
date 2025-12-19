@@ -75,17 +75,27 @@ export default function GuestLayout() {
           navigate("/home/profile");
           break;
         case "classes":
-          navigate("/home/classes");
+          if (page.search) {
+            navigate(`/home/classes?search=${encodeURIComponent(page.search)}`);
+          } else {
+            navigate("/home/classes");
+          }
           break;
         case "class":
-          if (page.classId) {
+          if (page.id) {
+            navigate(`/home/classes/${page.id}`);
+          } else if (page.classId) {
             navigate(`/home/classes/${page.classId}`);
           } else {
             navigate("/home/classes");
           }
           break;
         case "teachers":
-          navigate("/home/teachers");
+          if (page.search) {
+            navigate(`/home/teachers?search=${encodeURIComponent(page.search)}`);
+          } else {
+            navigate("/home/teachers");
+          }
           break;
         case "news":
           if (page.id) {
@@ -105,8 +115,12 @@ export default function GuestLayout() {
           break;
         case "teacher":
           // Navigate to teacher detail page
-          if (page.teacherId) {
+          if (page.id) {
+            navigate(`/home/teachers/${page.id}`);
+          } else if (page.teacherId) {
             navigate(`/home/teachers/${page.teacherId}`);
+          } else if (page.search) {
+            navigate(`/home/teachers?search=${encodeURIComponent(page.search)}`);
           } else {
             navigate("/home/teachers");
           }

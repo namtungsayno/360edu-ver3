@@ -27,7 +27,6 @@ import {
   MapPin,
   Eye,
   EyeOff,
-  Link,
   Check,
   Loader2,
 } from "lucide-react";
@@ -63,9 +62,6 @@ export default function StudentProfile() {
 
   // Avatar upload state
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [showAvatarUrlModal, setShowAvatarUrlModal] = useState(false);
-  const [avatarUrlInput, setAvatarUrlInput] = useState("");
-  const [savingAvatarUrl, setSavingAvatarUrl] = useState(false);
 
   // Password change state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -178,36 +174,6 @@ export default function StudentProfile() {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-    }
-  }
-
-  async function handleSaveAvatarUrl() {
-    if (!avatarUrlInput.trim()) {
-      showError("Vui lòng nhập URL ảnh");
-      return;
-    }
-
-    try {
-      setSavingAvatarUrl(true);
-      // Update profile with new avatar URL
-      const updated = await studentProfileService.updateProfile({
-        avatarUrl: avatarUrlInput.trim(),
-      });
-      const newAvatarUrl = updated.avatarUrl + "?t=" + Date.now(); // Add timestamp to force reload
-      setProfile({ ...updated, avatarUrl: newAvatarUrl });
-      setShowAvatarUrlModal(false);
-      setAvatarUrlInput("");
-
-      // Update user context to refresh Header avatar immediately
-      if (user) {
-        setUser((prevUser) => ({ ...prevUser, avatarUrl: newAvatarUrl }));
-      }
-
-      success("Cập nhật ảnh đại diện thành công");
-    } catch (e) {
-      showError(e.displayMessage || "Cập nhật thất bại");
-    } finally {
-      setSavingAvatarUrl(false);
     }
   }
 
@@ -346,17 +312,6 @@ export default function StudentProfile() {
                     <Camera className="w-5 h-5" />
                   )}
                 </button>
-                {/* URL button overlay */}
-                <button
-                  onClick={() => {
-                    setAvatarUrlInput(profile?.avatarUrl || "");
-                    setShowAvatarUrlModal(true);
-                  }}
-                  className="absolute bottom-0 left-0 w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
-                  title="Nhập URL ảnh"
-                >
-                  <Link className="w-5 h-5" />
-                </button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -365,14 +320,10 @@ export default function StudentProfile() {
                   className="hidden"
                 />
               </div>
-              <div className="text-xs text-[#62748e] mt-2 text-center space-y-1">
+              <div className="text-xs text-[#62748e] mt-2 text-center">
                 <p>
                   <Camera className="w-3 h-3 inline mr-1" />
-                  Upload ảnh
-                </p>
-                <p>
-                  <Link className="w-3 h-3 inline mr-1" />
-                  Nhập URL
+                  Click để upload ảnh
                 </p>
               </div>
             </div>
@@ -806,86 +757,6 @@ export default function StudentProfile() {
                   disabled={changingPassword}
                 >
                   {changingPassword ? "Đang xử lý..." : "Đổi mật khẩu"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Avatar URL Modal */}
-      {showAvatarUrlModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md rounded-[14px]">
-            <CardHeader className="border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Link className="w-5 h-5 text-purple-600" />
-                  Nhập URL ảnh đại diện
-                </CardTitle>
-                <button
-                  onClick={() => {
-                    setShowAvatarUrlModal(false);
-                    setAvatarUrlInput("");
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {/* Preview */}
-              {avatarUrlInput && (
-                <div className="flex justify-center">
-                  <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200">
-                    <img
-                      src={avatarUrlInput}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = "none";
-                      }}
-                      onLoad={(e) => {
-                        e.target.style.display = "block";
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="avatarUrl">URL ảnh</Label>
-                <Input
-                  id="avatarUrl"
-                  type="url"
-                  value={avatarUrlInput}
-                  onChange={(e) => setAvatarUrlInput(e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                />
-                <p className="text-xs text-[#62748e]">
-                  Nhập đường dẫn URL đến ảnh của bạn (hỗ trợ JPEG, PNG, GIF,
-                  WebP)
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setShowAvatarUrlModal(false);
-                    setAvatarUrlInput("");
-                  }}
-                >
-                  Hủy
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={handleSaveAvatarUrl}
-                  disabled={savingAvatarUrl || !avatarUrlInput.trim()}
-                >
-                  {savingAvatarUrl ? "Đang lưu..." : "Lưu ảnh"}
                 </Button>
               </div>
             </CardContent>

@@ -521,7 +521,7 @@ function DetailPanel({
             </h3>
             <div
               className="text-sm text-gray-600 leading-relaxed p-4 bg-gray-50 rounded-xl rich-text-content"
-              dangerouslySetInnerHTML={{ __html: cls.description }}
+              dangerouslySetInnerHTML={{ __html: cls.description?.replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, "") }}
             />
           </div>
         )}

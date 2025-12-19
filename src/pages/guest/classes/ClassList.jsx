@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
   Users,
@@ -23,6 +23,8 @@ import useDebounce from "../../../hooks/useDebounce";
 
 export default function ClassList() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get("search") || "";
 
   // === SERVER-SIDE PAGINATION STATE ===
   const [loading, setLoading] = useState(false);
@@ -36,14 +38,19 @@ export default function ClassList() {
   const [totalElements, setTotalElements] = useState(0);
 
   // Filter states - sent to BE
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
+
+  // === SYNC URL SEARCH PARAM WITH STATE ===
+  useEffect(() => {
+    setSearchQuery(urlSearch);
+  }, [urlSearch]);
   const debouncedQuery = useDebounce(searchQuery, 400);
 
   const [selectedSubjectId, setSelectedSubjectId] = useState(""); // For BE filter
   const [selectedTeacherId, setSelectedTeacherId] = useState(""); // For BE filter
   const [isOnline, setIsOnline] = useState(null); // null = all, true = online, false = offline
   const [selectedSlots, setSelectedSlots] = useState([]); // FE filter (BE doesn't support time slots)
-  const [priceRange, setPriceRange] = useState([2000000, 10000000]); // FE filter
+  const [priceRange, setPriceRange] = useState([0, 15000000]); // FE filter
 
   // Dropdown data
   const [subjects, setSubjects] = useState([]);
@@ -68,7 +75,7 @@ export default function ClassList() {
   // === RESET PAGE WHEN FILTERS CHANGE ===
   useEffect(() => {
     setPage(0);
-  }, [debouncedQuery, selectedSubjectId, selectedTeacherId, isOnline]);
+  }, [debouncedQuery, selectedSubjectId, selectedTeacherId, isOnline, selectedSlots, priceRange]);
 
   // === FETCH CLASSES WITH SERVER-SIDE PAGINATION ===
   const fetchClasses = useCallback(async () => {
@@ -76,11 +83,16 @@ export default function ClassList() {
     setError("");
 
     try {
+      // Check if price range is not default to send to BE
+      const isDefaultPriceRange = priceRange[0] === 0 && priceRange[1] === 15000000;
+      
       const response = await classApi.listPaginated({
         search: debouncedQuery,
         status: "ALL", // Guest always sees PUBLIC classes (BE filters DRAFT)
         isOnline: isOnline,
         teacherUserId: selectedTeacherId || null,
+        minPrice: !isDefaultPriceRange ? priceRange[0] : null,
+        maxPrice: !isDefaultPriceRange ? priceRange[1] : null,
         page,
         size,
         sortBy: "id",
@@ -119,15 +131,19 @@ export default function ClassList() {
         });
       }
 
-      // 3. Filter by price range
-      content = content.filter((c) => {
-        const price = c.price || 0;
-        if (price === 0) return true;
-        return price >= priceRange[0] && price <= priceRange[1];
-      });
+      // 3. Price range filter - Now handled by BE, removed FE filter
 
       // 4. Always hide DRAFT classes for guests
       content = content.filter((c) => c.status !== "DRAFT");
+
+      // 5. Sort: Push full classes to the end
+      content.sort((a, b) => {
+        const aFull = (a.currentStudents || 0) >= (a.maxStudents || 30);
+        const bFull = (b.currentStudents || 0) >= (b.maxStudents || 30);
+        if (aFull && !bFull) return 1;
+        if (!aFull && bFull) return -1;
+        return 0;
+      });
 
       setClasses(content);
       setTotalPages(response.totalPages || 0);
@@ -184,7 +200,7 @@ export default function ClassList() {
     setSelectedTeacherId("");
     setIsOnline(null);
     setSelectedSlots([]);
-    setPriceRange([2000000, 10000000]);
+    setPriceRange([0, 15000000]);
   };
 
   // Count active filters
@@ -194,7 +210,7 @@ export default function ClassList() {
     selectedTeacherId,
     isOnline !== null,
     selectedSlots.length > 0,
-    priceRange[0] !== 2000000 || priceRange[1] !== 10000000,
+    priceRange[0] !== 0 || priceRange[1] !== 15000000,
   ].filter(Boolean).length;
 
   // Gradient backgrounds cho các cards
@@ -509,8 +525,8 @@ export default function ClassList() {
                           </label>
                           <input
                             type="range"
-                            min="2000000"
-                            max="10000000"
+                            min="0"
+                            max="15000000"
                             step="500000"
                             value={priceRange[0]}
                             onChange={(e) => {
@@ -533,8 +549,8 @@ export default function ClassList() {
                           </label>
                           <input
                             type="range"
-                            min="2000000"
-                            max="10000000"
+                            min="0"
+                            max="15000000"
                             step="500000"
                             value={priceRange[1]}
                             onChange={(e) => {
@@ -623,15 +639,15 @@ export default function ClassList() {
                               </span>
                             );
                           })}
-                          {(priceRange[0] !== 2000000 ||
-                            priceRange[1] !== 10000000) && (
+                          {(priceRange[0] !== 0 ||
+                            priceRange[1] !== 15000000) && (
                             <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
                               {formatPrice(priceRange[0])} -{" "}
                               {formatPrice(priceRange[1])}
                               <X
                                 className="w-3.5 h-3.5 cursor-pointer hover:text-orange-900"
                                 onClick={() =>
-                                  setPriceRange([2000000, 10000000])
+                                  setPriceRange([0, 15000000])
                                 }
                               />
                             </span>
@@ -696,17 +712,28 @@ export default function ClassList() {
                       const maxStudents = c.maxStudents || 30;
                       const enrollmentPercentage =
                         (currentStudents / maxStudents) * 100;
+                      const isFull = currentStudents >= maxStudents;
 
                       return (
                         <Card
                           key={c.id}
-                          className={`group overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border-2 flex flex-col h-full ${
-                            c.status === "DRAFT"
-                              ? "border-amber-300"
-                              : "border-transparent hover:border-blue-200"
+                          className={`group overflow-hidden transition-all duration-300 cursor-pointer border-2 flex flex-col h-full relative ${
+                            isFull
+                              ? "opacity-60 grayscale-[30%] border-gray-300 hover:opacity-80 hover:grayscale-0"
+                              : c.status === "DRAFT"
+                              ? "border-amber-300 hover:shadow-2xl hover:-translate-y-2"
+                              : "border-transparent hover:border-blue-200 hover:shadow-2xl hover:-translate-y-2"
                           }`}
                           onClick={() => goDetail(c.id)}
                         >
+                          {/* Full Class Overlay Badge */}
+                          {isFull && (
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                              <div className="bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl transform -rotate-12 border-4 border-white">
+                                <span className="font-bold text-lg tracking-wider">ĐÃ ĐẦY</span>
+                              </div>
+                            </div>
+                          )}
                           {/* Card Header với Gradient & Overlay */}
                           <div
                             className={`bg-gradient-to-br ${
@@ -814,27 +841,37 @@ export default function ClassList() {
                             <div className="flex-1"></div>
 
                             {/* Enrollment Progress */}
-                            <div className="mb-4 bg-gray-50 rounded-lg p-3">
+                            <div className={`mb-4 rounded-lg p-3 ${isFull ? 'bg-red-50 ring-2 ring-red-200' : 'bg-gray-50'}`}>
                               <div className="flex items-center justify-between text-xs mb-2">
-                                <span className="text-gray-600 font-medium">
-                                  Đã đăng ký
+                                <span className={`font-medium ${isFull ? 'text-red-600' : 'text-gray-600'}`}>
+                                  {isFull ? '🚫 Lớp đã đầy' : 'Đã đăng ký'}
                                 </span>
-                                <span className="font-bold text-blue-600">
+                                <span className={`font-bold ${isFull ? 'text-red-600' : 'text-blue-600'}`}>
                                   {currentStudents}/{maxStudents}
                                 </span>
                               </div>
                               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div
-                                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    isFull 
+                                      ? 'bg-gradient-to-r from-red-500 to-red-600' 
+                                      : 'bg-gradient-to-r from-blue-500 to-purple-500'
+                                  }`}
                                   style={{ width: `${enrollmentPercentage}%` }}
                                 />
                               </div>
                             </div>
 
                             {/* CTA Button */}
-                            <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all">
+                            <Button 
+                              className={`w-full shadow-lg group-hover:shadow-xl transition-all ${
+                                isFull
+                                  ? 'bg-gray-400 hover:bg-gray-500 text-white'
+                                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                              }`}
+                            >
                               <span className="font-medium">
-                                Xem chi tiết lớp học
+                                {isFull ? 'Xem chi tiết' : 'Xem chi tiết lớp học'}
                               </span>
                             </Button>
                           </CardContent>

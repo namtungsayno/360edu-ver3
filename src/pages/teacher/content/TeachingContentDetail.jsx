@@ -124,7 +124,7 @@ export default function TeachingContentDetail() {
           {course.description && (
             <div
               className="text-sm text-[#45556c] mb-4 rich-text-content"
-              dangerouslySetInnerHTML={{ __html: course.description }}
+              dangerouslySetInnerHTML={{ __html: course.description?.replace(/\[\[(SOURCE|OWNER):\d+\]\]/g, "") }}
             />
           )}
           <div className="flex gap-6">

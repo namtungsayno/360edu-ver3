@@ -169,10 +169,13 @@ export default RichTextEditor;
 export function RichTextContent({ content, className = "" }) {
   if (!content) return null;
 
+  // Remove internal tags like [[SOURCE:xxx]], [[OWNER:xxx]], [[CLASS_ID:xxx]], [[CLASS_NAME:xxx]]
+  const cleanedContent = content.replace(/\[\[(SOURCE|OWNER|CLASS_ID|CLASS_NAME):[^\]]+\]\]/g, "");
+
   return (
     <div
       className={`rich-text-content ${className}`}
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: cleanedContent }}
     />
   );
 }

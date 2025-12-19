@@ -45,6 +45,7 @@ import { classService } from "../../../services/class/class.service.js";
 import { subjectService } from "../../../services/subject/subject.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import useDebounce from "../../../hooks/useDebounce.js";
+import { removeSourceTags } from "../../../utils/html-helpers.js";
 
 /**
  * Map màu + nhãn status
@@ -639,7 +640,7 @@ export default function AdminCourseList() {
                         <div
                           className="text-sm text-gray-600 line-clamp-3 rich-text-content"
                           dangerouslySetInnerHTML={{
-                            __html: course.description,
+                            __html: removeSourceTags(course.description),
                           }}
                         />
                       )}

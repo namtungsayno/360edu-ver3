@@ -108,16 +108,17 @@ export default function Header({ onNavigate, currentPage }) {
   }, [showSearchDropdown]);
 
   // Handle search result click
-  const handleSearchResultClick = (type, id) => {
+  const handleSearchResultClick = (type, item) => {
     setShowSearchDropdown(false);
     setSearchQuery("");
     if (type === "class") {
-      onNavigate({ type: "class", id });
+      onNavigate({ type: "class", id: item.id });
     } else if (type === "teacher") {
-      onNavigate({ type: "teacher", id });
+      // Use userId for teacher detail navigation
+      onNavigate({ type: "teacher", id: item.userId });
     } else if (type === "subject") {
-      // Navigate to classes filtered by subject
-      onNavigate({ type: "classes" });
+      // Navigate to classes filtered by subject name
+      onNavigate({ type: "classes", search: item.name });
     }
   };
 
@@ -231,28 +232,50 @@ export default function Header({ onNavigate, currentPage }) {
                             <GraduationCap className="w-4 h-4 text-blue-600" />
                             <span className="text-sm font-medium text-gray-700">Lớp học</span>
                           </div>
-                          {searchResults.classes.map((cls) => (
-                            <button
-                              key={`class-${cls.id}`}
-                              onClick={() => handleSearchResultClick("class", cls.id)}
-                              className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
-                            >
-                              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                <GraduationCap className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 truncate">{cls.name}</p>
-                                <p className="text-sm text-gray-500 truncate">
-                                  {cls.teacherName} • {cls.subjectName}
-                                </p>
-                              </div>
-                              {cls.price && (
-                                <span className="text-sm font-medium text-green-600">
-                                  {new Intl.NumberFormat("vi-VN").format(cls.price)}đ
-                                </span>
-                              )}
-                            </button>
-                          ))}
+                          {searchResults.classes.map((cls) => {
+                            const currentStudents = cls.currentStudents || 0;
+                            const maxStudents = cls.maxStudents || 30;
+                            const isFull = currentStudents >= maxStudents;
+                            
+                            return (
+                              <button
+                                key={`class-${cls.id}`}
+                                onClick={() => handleSearchResultClick("class", cls)}
+                                className={`w-full px-4 py-3 text-left transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0 relative ${
+                                  isFull 
+                                    ? "bg-gray-50 opacity-70 hover:opacity-90 hover:bg-gray-100" 
+                                    : "hover:bg-blue-50"
+                                }`}
+                              >
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  isFull ? "bg-gray-200" : "bg-blue-100"
+                                }`}>
+                                  <GraduationCap className={`w-5 h-5 ${isFull ? "text-gray-500" : "text-blue-600"}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className={`font-medium truncate ${isFull ? "text-gray-500" : "text-gray-900"}`}>
+                                      {cls.name}
+                                    </p>
+                                    {isFull && (
+                                      <span className="px-2 py-0.5 text-xs font-bold bg-red-100 text-red-600 rounded-full whitespace-nowrap">
+                                        ĐÃ ĐẦY
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-500 truncate">
+                                    {cls.teacherName} • {cls.subjectName}
+                                    {!isFull && ` • ${currentStudents}/${maxStudents} học sinh`}
+                                  </p>
+                                </div>
+                                {cls.price && (
+                                  <span className={`text-sm font-medium ${isFull ? "text-gray-400" : "text-green-600"}`}>
+                                    {new Intl.NumberFormat("vi-VN").format(cls.price)}đ
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
 
@@ -266,7 +289,7 @@ export default function Header({ onNavigate, currentPage }) {
                           {searchResults.teachers.map((teacher) => (
                             <button
                               key={`teacher-${teacher.id}`}
-                              onClick={() => handleSearchResultClick("teacher", teacher.id)}
+                              onClick={() => handleSearchResultClick("teacher", teacher)}
                               className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
                             >
                               <ImageWithFallback
@@ -296,7 +319,7 @@ export default function Header({ onNavigate, currentPage }) {
                           {searchResults.subjects.map((subject) => (
                             <button
                               key={`subject-${subject.id}`}
-                              onClick={() => handleSearchResultClick("subject", subject.id)}
+                              onClick={() => handleSearchResultClick("subject", subject)}
                               className="w-full px-4 py-3 text-left hover:bg-green-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
                             >
                               <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
@@ -304,9 +327,6 @@ export default function Header({ onNavigate, currentPage }) {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-gray-900 truncate">{subject.name}</p>
-                                <p className="text-sm text-gray-500 truncate">
-                                  Mã: {subject.code}
-                                </p>
                               </div>
                             </button>
                           ))}

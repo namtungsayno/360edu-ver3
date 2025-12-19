@@ -14,7 +14,7 @@
  * - Điều hướng đến các trang con (lớp học, khóa học)
  */
 
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   Video,
@@ -45,6 +45,7 @@ import { stripHtmlTags, stripAndTruncate } from "../../../utils/html-helpers";
 export default function Home() {
   // Nhận onNavigate function từ GuestLayout qua context
   const { onNavigate } = useOutletContext();
+  const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [news, setNews] = useState([]);
   const [teachers, setTeachers] = useState([]);
