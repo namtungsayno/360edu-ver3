@@ -59,6 +59,14 @@ export default function ClassDetail() {
   }, [classId]);
 
   const handleEnroll = async () => {
+    // Kiểm tra nếu lớp đã đầy
+    const currentStudentsCount = data?.currentStudents || 0;
+    const maxStudentsCount = data?.maxStudents || 30;
+    if (currentStudentsCount >= maxStudentsCount) {
+      showError("Lớp học này đã đầy, vui lòng chọn lớp khác!", "Không thể đăng ký");
+      return;
+    }
+
     // Nếu đã enrolled trong session này, báo toast
     if (isEnrolled) {
       info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
@@ -200,6 +208,7 @@ export default function ClassDetail() {
   const maxStudents = data.maxStudents || 30;
   const availableSlots = maxStudents - currentStudents;
   const enrollmentPercentage = (currentStudents / maxStudents) * 100;
+  const isFull = currentStudents >= maxStudents; // Check if class is full
   // Helper to parse a YYYY-MM-DD as LOCAL date (avoid UTC shift)
   const parseLocalDate = (dateStr) => {
     if (!dateStr) return null;
@@ -571,20 +580,28 @@ export default function ClassDetail() {
                   {/* Enrollment Progress */}
                   <div className="mb-6">
                     <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-gray-600">
-                        Còn {availableSlots} chỗ
+                      <span className={isFull ? "text-red-600 font-medium" : "text-gray-600"}>
+                        {isFull ? "🚫 Lớp đã đầy" : `Còn ${availableSlots} chỗ`}
                       </span>
-                      <span className="font-bold text-blue-600">
+                      <span className={`font-bold ${isFull ? "text-red-600" : "text-blue-600"}`}>
                         {currentStudents}/{maxStudents}
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-blue-600 h-2 rounded-full transition-all"
+                        className={`h-2 rounded-full transition-all ${
+                          isFull ? "bg-red-600" : "bg-blue-600"
+                        }`}
                         style={{ width: `${enrollmentPercentage}%` }}
                       ></div>
                     </div>
-                    {availableSlots <= 5 && availableSlots > 0 && (
+                    {isFull && (
+                      <div className="flex items-center gap-1 mt-2 text-red-600 text-sm">
+                        <Clock className="w-4 h-4" />
+                        <span>Lớp đã hết chỗ, vui lòng chọn lớp khác!</span>
+                      </div>
+                    )}
+                    {!isFull && availableSlots <= 5 && availableSlots > 0 && (
                       <div className="flex items-center gap-1 mt-2 text-orange-600 text-sm">
                         <Clock className="w-4 h-4" />
                         <span>Chỉ còn {availableSlots} chỗ trống!</span>
@@ -651,7 +668,9 @@ export default function ClassDetail() {
                         Giá mỗi buổi:
                       </span>
                       <span className="text-gray-900 font-medium">
-                        {data.pricePerSession
+                        {data.pricePerSession === 0
+                          ? <span className="text-green-600 font-bold">Miễn phí</span>
+                          : data.pricePerSession
                           ? `${data.pricePerSession.toLocaleString()}đ`
                           : "Liên hệ"}
                       </span>
@@ -678,6 +697,10 @@ export default function ClassDetail() {
                           const sessions =
                             data.totalSessions || data.sessionsGenerated || 0;
                           const total = price * sessions;
+                          // Nếu price = 0 thì miễn phí
+                          if (price === 0) {
+                            return <span className="text-green-600">Miễn phí</span>;
+                          }
                           return total > 0
                             ? `${total.toLocaleString()}đ`
                             : "Liên hệ";
@@ -687,10 +710,16 @@ export default function ClassDetail() {
 
                     <Button
                       onClick={handleEnroll}
-                      disabled={enrolling}
-                      className="w-full text-lg py-6 bg-blue-600 hover:bg-blue-700 text-white"
+                      disabled={enrolling || isFull}
+                      className={`w-full text-lg py-6 ${
+                        isFull 
+                          ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed text-white" 
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                      }`}
                     >
-                      {enrolling
+                      {isFull
+                        ? "Lớp đã đầy - Không thể đăng ký"
+                        : enrolling
                         ? "Đang xử lý..."
                         : user
                         ? "Đăng ký ngay"

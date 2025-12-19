@@ -26,7 +26,6 @@ import {
   LogOut,
   Calendar,
   BookOpen,
-  Users,
   Loader2,
 } from "lucide-react";
 import { Button } from "../ui/Button";
@@ -107,17 +106,19 @@ export default function Header({ onNavigate, currentPage }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSearchDropdown]);
 
-  // Handle search result click
-  const handleSearchResultClick = (type, id) => {
+  // Handle search result click - Navigate to ClassList with filter params
+  const handleSearchResultClick = (type, item) => {
     setShowSearchDropdown(false);
     setSearchQuery("");
     if (type === "class") {
-      onNavigate({ type: "class", id });
+      // Navigate directly to class detail
+      onNavigate({ type: "class", id: item.id });
     } else if (type === "teacher") {
-      onNavigate({ type: "teacher", id });
+      // Navigate directly to teacher detail page
+      onNavigate({ type: "teacher", teacherId: item.userId || item.id });
     } else if (type === "subject") {
-      // Navigate to classes filtered by subject
-      onNavigate({ type: "classes" });
+      // Navigate to ClassList filtered by subject
+      onNavigate({ type: "classes", subjectId: item.id, subjectName: item.name });
     }
   };
 
@@ -231,62 +232,60 @@ export default function Header({ onNavigate, currentPage }) {
                             <GraduationCap className="w-4 h-4 text-blue-600" />
                             <span className="text-sm font-medium text-gray-700">Lớp học</span>
                           </div>
-                          {searchResults.classes.map((cls) => (
-                            <button
-                              key={`class-${cls.id}`}
-                              onClick={() => handleSearchResultClick("class", cls.id)}
-                              className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
-                            >
-                              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                <GraduationCap className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 truncate">{cls.name}</p>
-                                <p className="text-sm text-gray-500 truncate">
-                                  {cls.teacherName} • {cls.subjectName}
-                                </p>
-                              </div>
-                              {cls.price && (
-                                <span className="text-sm font-medium text-green-600">
-                                  {new Intl.NumberFormat("vi-VN").format(cls.price)}đ
-                                </span>
-                              )}
-                            </button>
-                          ))}
+                          {searchResults.classes.map((cls) => {
+                            const currentStudents = cls.currentStudents || 0;
+                            const maxStudents = cls.maxStudents || 30;
+                            const isFull = currentStudents >= maxStudents;
+                            
+                            return (
+                              <button
+                                key={`class-${cls.id}`}
+                                onClick={() => handleSearchResultClick("class", cls)}
+                                className={`w-full px-4 py-3 text-left transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0 relative ${
+                                  isFull 
+                                    ? "bg-gray-50 opacity-70 hover:opacity-90 hover:bg-gray-100" 
+                                    : "hover:bg-blue-50"
+                                }`}
+                              >
+                                {/* Icon */}
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  isFull ? "bg-gray-200" : "bg-blue-100"
+                                }`}>
+                                  <GraduationCap className={`w-5 h-5 ${isFull ? "text-gray-500" : "text-blue-600"}`} />
+                                </div>
+                                
+                                {/* Thông tin */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className={`font-medium truncate ${isFull ? "text-gray-500" : "text-gray-900"}`}>
+                                      {cls.name}
+                                    </p>
+                                    {/* Badge ĐÃ ĐẦY */}
+                                    {isFull && (
+                                      <span className="px-2 py-0.5 text-xs font-bold bg-red-100 text-red-600 rounded-full whitespace-nowrap">
+                                        ĐÃ ĐẦY
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-500 truncate">
+                                    {cls.teacherName} • {cls.subjectName}
+                                    {!isFull && ` • ${currentStudents}/${maxStudents} học sinh`}
+                                  </p>
+                                </div>
+                                
+                                {/* Giá */}
+                                {cls.price && (
+                                  <span className={`text-sm font-medium ${isFull ? "text-gray-400" : "text-green-600"}`}>
+                                    {new Intl.NumberFormat("vi-VN").format(cls.price)}đ
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
 
-                      {/* Teachers Results */}
-                      {searchResults.teachers?.length > 0 && (
-                        <div>
-                          <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
-                            <Users className="w-4 h-4 text-purple-600" />
-                            <span className="text-sm font-medium text-gray-700">Giáo viên</span>
-                          </div>
-                          {searchResults.teachers.map((teacher) => (
-                            <button
-                              key={`teacher-${teacher.id}`}
-                              onClick={() => handleSearchResultClick("teacher", teacher.id)}
-                              className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
-                            >
-                              <ImageWithFallback
-                                src={teacher.avatarUrl}
-                                alt={teacher.fullName}
-                                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                                fallbackType="avatar"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 truncate">{teacher.fullName}</p>
-                                <p className="text-sm text-gray-500 truncate">
-                                  {teacher.specialization || "Giáo viên"}
-                                </p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Subjects Results */}
+                      {/* Subjects Results - Đơn giản, chỉ hiển thị tên */}
                       {searchResults.subjects?.length > 0 && (
                         <div>
                           <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
@@ -296,18 +295,11 @@ export default function Header({ onNavigate, currentPage }) {
                           {searchResults.subjects.map((subject) => (
                             <button
                               key={`subject-${subject.id}`}
-                              onClick={() => handleSearchResultClick("subject", subject.id)}
-                              className="w-full px-4 py-3 text-left hover:bg-green-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                              onClick={() => handleSearchResultClick("subject", subject)}
+                              className="w-full px-4 py-2.5 text-left hover:bg-green-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
                             >
-                              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                                <BookOpen className="w-5 h-5 text-green-600" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 truncate">{subject.name}</p>
-                                <p className="text-sm text-gray-500 truncate">
-                                  Mã: {subject.code}
-                                </p>
-                              </div>
+                              <BookOpen className="w-4 h-4 text-green-500" />
+                              <span className="font-medium text-gray-900 truncate">{subject.name}</span>
                             </button>
                           ))}
                         </div>

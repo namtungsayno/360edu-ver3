@@ -75,10 +75,22 @@ export default function GuestLayout() {
           navigate("/home/profile");
           break;
         case "classes":
-          navigate("/home/classes");
+          // Support filter params: subjectId, teacherId, search
+          {
+            const params = new URLSearchParams();
+            if (page.subjectId) params.set("subjectId", page.subjectId);
+            if (page.subjectName) params.set("subjectName", page.subjectName);
+            if (page.teacherId) params.set("teacherId", page.teacherId);
+            if (page.teacherName) params.set("teacherName", page.teacherName);
+            if (page.search) params.set("search", page.search);
+            const queryString = params.toString();
+            navigate(queryString ? `/home/classes?${queryString}` : "/home/classes");
+          }
           break;
         case "class":
-          if (page.classId) {
+          if (page.id) {
+            navigate(`/home/classes/${page.id}`);
+          } else if (page.classId) {
             navigate(`/home/classes/${page.classId}`);
           } else {
             navigate("/home/classes");

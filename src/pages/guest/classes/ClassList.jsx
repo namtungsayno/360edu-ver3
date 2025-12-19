@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
   Users,
@@ -23,6 +23,7 @@ import useDebounce from "../../../hooks/useDebounce";
 
 export default function ClassList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // === SERVER-SIDE PAGINATION STATE ===
   const [loading, setLoading] = useState(false);
@@ -43,11 +44,40 @@ export default function ClassList() {
   const [selectedTeacherId, setSelectedTeacherId] = useState(""); // For BE filter
   const [isOnline, setIsOnline] = useState(null); // null = all, true = online, false = offline
   const [selectedSlots, setSelectedSlots] = useState([]); // FE filter (BE doesn't support time slots)
-  const [priceRange, setPriceRange] = useState([2000000, 10000000]); // FE filter
+  const [priceRange, setPriceRange] = useState([0, 10000000]); // For BE filter
+  const debouncedPriceRange = useDebounce(priceRange, 500); // Debounce price range for smooth slider
 
   // Dropdown data
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
+
+  // === READ URL PARAMS AND SET FILTERS (only on mount) ===
+  useEffect(() => {
+    const subjectIdParam = searchParams.get("subjectId");
+    const teacherIdParam = searchParams.get("teacherId");
+    const searchParam = searchParams.get("search");
+    const isOnlineParam = searchParams.get("isOnline");
+    const slotsParam = searchParams.get("slots");
+    const minPriceParam = searchParams.get("minPrice");
+    const maxPriceParam = searchParams.get("maxPrice");
+    const pageParam = searchParams.get("page");
+
+    if (subjectIdParam) setSelectedSubjectId(subjectIdParam);
+    if (teacherIdParam) setSelectedTeacherId(teacherIdParam);
+    if (searchParam) setSearchQuery(searchParam);
+    if (isOnlineParam !== null) {
+      setIsOnline(isOnlineParam === "true" ? true : isOnlineParam === "false" ? false : null);
+    }
+    if (slotsParam) setSelectedSlots(slotsParam.split(",").filter(Boolean));
+    if (minPriceParam || maxPriceParam) {
+      setPriceRange([
+        minPriceParam ? parseInt(minPriceParam) : 0,
+        maxPriceParam ? parseInt(maxPriceParam) : 10000000,
+      ]);
+    }
+    if (pageParam) setPage(parseInt(pageParam));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   // === LOAD DROPDOWN DATA ===
   useEffect(() => {
@@ -68,7 +98,7 @@ export default function ClassList() {
   // === RESET PAGE WHEN FILTERS CHANGE ===
   useEffect(() => {
     setPage(0);
-  }, [debouncedQuery, selectedSubjectId, selectedTeacherId, isOnline]);
+  }, [debouncedQuery, selectedSubjectId, selectedTeacherId, isOnline, debouncedPriceRange]);
 
   // === FETCH CLASSES WITH SERVER-SIDE PAGINATION ===
   const fetchClasses = useCallback(async () => {
@@ -81,6 +111,8 @@ export default function ClassList() {
         status: "ALL", // Guest always sees PUBLIC classes (BE filters DRAFT)
         isOnline: isOnline,
         teacherUserId: selectedTeacherId || null,
+        subjectId: selectedSubjectId || null, // Filter by subject ID on backend
+        // Price filter done on client-side because totalPrice = pricePerSession * sessions
         page,
         size,
         sortBy: "id",
@@ -89,18 +121,8 @@ export default function ClassList() {
 
       let content = response.content || [];
 
-      // === CLIENT-SIDE FILTERS (not supported by BE) ===
-      // 1. Filter by subject (if BE doesn't support subjectId filter)
-      if (selectedSubjectId) {
-        const subjectName = subjects.find(
-          (s) => String(s.id) === String(selectedSubjectId)
-        )?.name;
-        if (subjectName) {
-          content = content.filter((c) => c.subjectName === subjectName);
-        }
-      }
-
-      // 2. Filter by time slots
+      // === CLIENT-SIDE FILTERS (only for features not supported by BE) ===
+      // 1. Filter by time slots (BE doesn't support time slot filter)
       if (selectedSlots.length > 0) {
         content = content.filter((c) => {
           if (!Array.isArray(c.schedule) || c.schedule.length === 0)
@@ -119,15 +141,33 @@ export default function ClassList() {
         });
       }
 
-      // 3. Filter by price range
-      content = content.filter((c) => {
-        const price = c.price || 0;
-        if (price === 0) return true;
-        return price >= priceRange[0] && price <= priceRange[1];
-      });
+      // 2. Filter by price range (totalPrice = pricePerSession * totalSessions)
+      const [minPrice, maxPrice] = debouncedPriceRange;
+      if (minPrice > 0 || maxPrice < 10000000) {
+        content = content.filter((c) => {
+          // Tính tổng giá: price từ backend hoặc fallback tính toán
+          const totalPrice = c.price || ((c.pricePerSession || 0) * (c.totalSessions || 0));
+          // Lớp miễn phí (pricePerSession = 0) luôn được hiển thị khi minPrice = 0
+          const isFreeClass = c.pricePerSession === 0;
+          if (isFreeClass && minPrice === 0) return true;
+          // Loại bỏ lớp không có giá (chưa set pricePerSession) khi user filter
+          if (totalPrice === 0 && !isFreeClass) return false;
+          return totalPrice >= minPrice && totalPrice <= maxPrice;
+        });
+      }
 
-      // 4. Always hide DRAFT classes for guests
+      // 3. Always hide DRAFT classes for guests
       content = content.filter((c) => c.status !== "DRAFT");
+
+      // 4. Sort: Push full classes to the end
+      content.sort((a, b) => {
+        const aFull = (a.currentStudents || 0) >= (a.maxStudents || 30);
+        const bFull = (b.currentStudents || 0) >= (b.maxStudents || 30);
+        
+        if (aFull && !bFull) return 1;   // a full, b không -> a đi sau
+        if (!aFull && bFull) return -1;  // a không full, b full -> a đi trước
+        return 0;                         // Giữ nguyên thứ tự
+      });
 
       setClasses(content);
       setTotalPages(response.totalPages || 0);
@@ -143,18 +183,36 @@ export default function ClassList() {
     selectedTeacherId,
     isOnline,
     selectedSlots,
-    priceRange,
+    debouncedPriceRange,
     page,
     size,
-    subjects,
   ]);
 
   useEffect(() => {
     fetchClasses();
   }, [fetchClasses]);
 
-  // === NAVIGATION ===
-  const goDetail = (id) => navigate(`/home/classes/${id}`);
+  // === NAVIGATION (preserve filters in URL) ===
+  const goDetail = (id) => {
+    // Build query string with current filters to restore when back
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("search", searchQuery);
+    if (selectedSubjectId) params.set("subjectId", selectedSubjectId);
+    if (selectedTeacherId) params.set("teacherId", selectedTeacherId);
+    if (isOnline !== null) params.set("isOnline", String(isOnline));
+    if (selectedSlots.length > 0) params.set("slots", selectedSlots.join(","));
+    if (priceRange[0] !== 0) params.set("minPrice", String(priceRange[0]));
+    if (priceRange[1] !== 10000000) params.set("maxPrice", String(priceRange[1]));
+    if (page > 0) params.set("page", String(page));
+    
+    // Update current URL with filters (so back button works)
+    const queryString = params.toString();
+    if (queryString) {
+      window.history.replaceState(null, "", `/home/classes?${queryString}`);
+    }
+    
+    navigate(`/home/classes/${id}`);
+  };
 
   // === TIME SLOTS ===
   const timeSlots = [
@@ -184,7 +242,9 @@ export default function ClassList() {
     setSelectedTeacherId("");
     setIsOnline(null);
     setSelectedSlots([]);
-    setPriceRange([2000000, 10000000]);
+    setPriceRange([0, 10000000]);
+    // Clear URL params
+    setSearchParams({});
   };
 
   // Count active filters
@@ -194,7 +254,7 @@ export default function ClassList() {
     selectedTeacherId,
     isOnline !== null,
     selectedSlots.length > 0,
-    priceRange[0] !== 2000000 || priceRange[1] !== 10000000,
+    priceRange[0] !== 0 || priceRange[1] !== 10000000,
   ].filter(Boolean).length;
 
   // Gradient backgrounds cho các cards
@@ -348,6 +408,34 @@ export default function ClassList() {
 
         {/* Main Content with Sidebar */}
         <div className="max-w-[1920px] mx-auto px-6 py-8">
+          {/* Filter Applied Banner - Hiển thị khi có filter từ URL */}
+          {(searchParams.get("subjectName") || searchParams.get("teacherName") || searchParams.get("search")) && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-5 h-5 text-blue-600" />
+                <span className="text-blue-800">
+                  Đang lọc theo: 
+                  {searchParams.get("subjectName") && (
+                    <span className="font-semibold ml-1">Môn học "{searchParams.get("subjectName")}"</span>
+                  )}
+                  {searchParams.get("teacherName") && (
+                    <span className="font-semibold ml-1">Giáo viên "{searchParams.get("teacherName")}"</span>
+                  )}
+                  {searchParams.get("search") && (
+                    <span className="font-semibold ml-1">Từ khóa "{searchParams.get("search")}"</span>
+                  )}
+                </span>
+              </div>
+              <button 
+                onClick={clearFilters}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+              >
+                <X className="w-4 h-4" />
+                Xóa bộ lọc
+              </button>
+            </div>
+          )}
+
           <div className="flex gap-6">
             {/* Left Sidebar - Scrollable Filter Panel */}
             <aside className="w-80 flex-shrink-0">
@@ -509,7 +597,7 @@ export default function ClassList() {
                           </label>
                           <input
                             type="range"
-                            min="2000000"
+                            min="0"
                             max="10000000"
                             step="500000"
                             value={priceRange[0]}
@@ -533,7 +621,7 @@ export default function ClassList() {
                           </label>
                           <input
                             type="range"
-                            min="2000000"
+                            min="0"
                             max="10000000"
                             step="500000"
                             value={priceRange[1]}
@@ -644,10 +732,10 @@ export default function ClassList() {
                     {activeFiltersCount > 0 && (
                       <Button
                         onClick={clearFilters}
-                        className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 h-10 text-sm font-medium"
+                        className="w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white h-11 text-sm font-bold shadow-lg hover:shadow-xl transition-all"
                       >
                         <X className="w-4 h-4 mr-2" />
-                        Xóa tất cả bộ lọc
+                         Xóa tất cả bộ lọc ({activeFiltersCount})
                       </Button>
                     )}
                   </div>
@@ -696,17 +784,28 @@ export default function ClassList() {
                       const maxStudents = c.maxStudents || 30;
                       const enrollmentPercentage =
                         (currentStudents / maxStudents) * 100;
+                      const isFull = currentStudents >= maxStudents;
 
                       return (
                         <Card
                           key={c.id}
-                          className={`group overflow-hidden hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer border-2 flex flex-col h-full ${
-                            c.status === "DRAFT"
-                              ? "border-amber-300"
-                              : "border-transparent hover:border-blue-200"
+                          className={`group overflow-hidden transition-all duration-300 cursor-pointer border-2 flex flex-col h-full relative ${
+                            isFull
+                              ? "opacity-60 grayscale-[30%] border-gray-300 hover:opacity-80 hover:grayscale-0"
+                              : c.status === "DRAFT"
+                              ? "border-amber-300 hover:shadow-2xl hover:-translate-y-2"
+                              : "border-transparent hover:border-blue-200 hover:shadow-2xl hover:-translate-y-2"
                           }`}
                           onClick={() => goDetail(c.id)}
                         >
+                          {/* ===== BADGE "ĐÃ ĐẦY" OVERLAY ===== */}
+                          {isFull && (
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                              <div className="bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl transform -rotate-12 border-4 border-white">
+                                <span className="font-bold text-lg tracking-wider">ĐÃ ĐẦY</span>
+                              </div>
+                            </div>
+                          )}
                           {/* Card Header với Gradient & Overlay */}
                           <div
                             className={`bg-gradient-to-br ${
@@ -715,7 +814,9 @@ export default function ClassList() {
                           >
                             <div
                               className={`absolute inset-0 ${
-                                c.status === "DRAFT"
+                                isFull
+                                  ? "bg-white/30"
+                                  : c.status === "DRAFT"
                                   ? "bg-white/30"
                                   : "bg-black/10 group-hover:bg-black/20"
                               } transition-all`}
@@ -734,6 +835,12 @@ export default function ClassList() {
                                 >
                                   {c.online ? " Online" : " Offline"}
                                 </Badge>
+                                {/* Badge Miễn phí khi pricePerSession = 0 */}
+                                {(c.pricePerSession === 0 || (c.price === 0 && c.totalSessions > 0)) && (
+                                  <Badge className="bg-green-600/95 text-white backdrop-blur-sm shadow-lg w-fit font-bold animate-pulse">
+                                    🎁 Miễn phí
+                                  </Badge>
+                                )}
                                 {(() => {
                                   const b = getDerivedBadge(c);
                                   return b ? (
@@ -814,27 +921,37 @@ export default function ClassList() {
                             <div className="flex-1"></div>
 
                             {/* Enrollment Progress */}
-                            <div className="mb-4 bg-gray-50 rounded-lg p-3">
+                            <div className={`mb-4 rounded-lg p-3 ${isFull ? 'bg-red-50 ring-2 ring-red-200' : 'bg-gray-50'}`}>
                               <div className="flex items-center justify-between text-xs mb-2">
-                                <span className="text-gray-600 font-medium">
-                                  Đã đăng ký
+                                <span className={`font-medium ${isFull ? 'text-red-600' : 'text-gray-600'}`}>
+                                  {isFull ? '🚫 Lớp đã đầy' : 'Đã đăng ký'}
                                 </span>
-                                <span className="font-bold text-blue-600">
+                                <span className={`font-bold ${isFull ? 'text-red-600' : 'text-blue-600'}`}>
                                   {currentStudents}/{maxStudents}
                                 </span>
                               </div>
                               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div
-                                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    isFull 
+                                      ? 'bg-gradient-to-r from-red-500 to-red-600' 
+                                      : 'bg-gradient-to-r from-blue-500 to-purple-500'
+                                  }`}
                                   style={{ width: `${enrollmentPercentage}%` }}
                                 />
                               </div>
                             </div>
 
                             {/* CTA Button */}
-                            <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg group-hover:shadow-xl transition-all">
+                            <Button 
+                              className={`w-full shadow-lg group-hover:shadow-xl transition-all ${
+                                isFull
+                                  ? 'bg-gray-400 hover:bg-gray-500 text-white'
+                                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                              }`}
+                            >
                               <span className="font-medium">
-                                Xem chi tiết lớp học
+                                {isFull ? 'Xem chi tiết' : 'Xem chi tiết lớp học'}
                               </span>
                             </Button>
                           </CardContent>

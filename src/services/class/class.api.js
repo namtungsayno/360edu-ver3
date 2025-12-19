@@ -7,23 +7,29 @@ export const classApi = {
 
   /**
    * GET /classes/paginated - Lấy classes với phân trang từ server
-   * @param {Object} params - { search, status, isOnline, teacherUserId, page, size, sortBy, order }
+   * @param {Object} params - { search, status, isOnline, teacherUserId, subjectId, minPrice, maxPrice, page, size, sortBy, order }
    * @returns {Promise<{content: Array, totalElements: number, totalPages: number, ...}>}
    */
   listPaginated: (params = {}) => {
     const {
       search = "",
       status = "ALL", // ALL, DRAFT, PUBLIC, ARCHIVED
-      isOnline = null, // null = all, true = online, false = offline
+      isOnline = null, // null = all, true = false, false = offline
       teacherUserId = null,
+      subjectId = null, // Filter by subject ID
+      minPrice = null, // Filter by min price
+      maxPrice = null, // Filter by max price
       page = 0,
       size = 10,
       sortBy = "id",
       order = "asc",
     } = params;
     const queryParams = { search, status, page, size, sortBy, order };
-    if (isOnline !== null) queryParams.isOnline = isOnline;
+    if (isOnline !== null) queryParams.online = isOnline;
     if (teacherUserId) queryParams.teacherUserId = teacherUserId;
+    if (subjectId) queryParams.subjectId = subjectId;
+    if (minPrice !== null) queryParams.minPrice = minPrice;
+    if (maxPrice !== null) queryParams.maxPrice = maxPrice;
     return http
       .get(`/classes/paginated`, { params: queryParams })
       .then((r) => r.data);
