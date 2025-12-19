@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "../../components/ui/Badge";
 import { Card, CardContent } from "../../components/ui/Card";
-import { formatCurrency } from "../../helper/formatters";
+import { formatCurrency, formatDateVN } from "../../helper/formatters";
 import { stripHtmlTags } from "../../utils/html-helpers";
 
 // Helper to convert day index to Vietnamese label
@@ -239,6 +239,9 @@ export default function ClassPreview({
             {/* Description */}
             <Card>
               <CardContent className="p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  Giới thiệu lớp học
+                </h2>
                 <div
                   className="text-gray-700 leading-relaxed rich-text-content"
                   dangerouslySetInnerHTML={{
@@ -280,11 +283,11 @@ export default function ClassPreview({
                       <span className="font-medium">Khai giảng</span>
                     </div>
                     <div className="ml-7 text-gray-600">
-                      {startDate || "Chưa xác định"}
+                      {formatDateVN(startDate) || "Chưa xác định"}
                     </div>
                     {endDate && (
                       <div className="ml-7 text-gray-500 text-sm mt-1">
-                        Kết thúc: {endDate}
+                        Kết thúc: {formatDateVN(endDate)}
                       </div>
                     )}
                   </div>

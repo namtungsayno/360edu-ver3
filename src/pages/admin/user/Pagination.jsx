@@ -25,18 +25,21 @@ export default function Pagination({
         Trang <b>{page + 1}</b> / {totalPages} — Tổng <b>{total}</b> bản ghi
       </div>
 
-      <div className="flex items-center gap-2">
-        <select
-          className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"
-          value={size}
-          onChange={(e) => onSizeChange(Number(e.target.value))}
-        >
-          {[5, 10, 20, 50].map((n) => (
-            <option key={n} value={n}>
-              {n} / trang
-            </option>
-          ))}
-        </select>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">Số bản ghi / trang:</span>
+          <select
+            className="h-9 rounded-md border border-gray-300 bg-white px-2 text-sm"
+            value={size}
+            onChange={(e) => onSizeChange(Number(e.target.value))}
+          >
+            {[10, 20, 50].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="flex items-center gap-1">
           <button

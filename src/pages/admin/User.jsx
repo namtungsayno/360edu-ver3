@@ -34,7 +34,7 @@ export default function UserManagement() {
 
   // Server-side pagination
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(5);
+  const [size, setSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -50,15 +50,15 @@ export default function UserManagement() {
     PARENT: 0,
   });
 
-
-
   // Load stats once
   useEffect(() => {
     (async () => {
       try {
         const arr = await userService.list();
         // Filter out ADMIN users
-        const allUsers = (Array.isArray(arr) ? arr : []).filter((u) => u.role !== "ADMIN");
+        const allUsers = (Array.isArray(arr) ? arr : []).filter(
+          (u) => u.role !== "ADMIN"
+        );
         const stu = allUsers.filter((u) => u.role === "STUDENT").length;
         const tea = allUsers.filter((u) => u.role === "TEACHER").length;
         const par = allUsers.filter((u) => u.role === "PARENT").length;
@@ -68,8 +68,7 @@ export default function UserManagement() {
           TEACHER: tea,
           PARENT: par,
         });
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
   }, []);
 
@@ -93,7 +92,9 @@ export default function UserManagement() {
       });
 
       // Filter out ADMIN users from display
-      const content = (response.content || []).filter((u) => u.role !== "ADMIN");
+      const content = (response.content || []).filter(
+        (u) => u.role !== "ADMIN"
+      );
       setUsers(content);
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
@@ -113,7 +114,9 @@ export default function UserManagement() {
     try {
       const arr = await userService.list();
       // Filter out ADMIN users
-      const allUsers = (Array.isArray(arr) ? arr : []).filter((u) => u.role !== "ADMIN");
+      const allUsers = (Array.isArray(arr) ? arr : []).filter(
+        (u) => u.role !== "ADMIN"
+      );
       const stu = allUsers.filter((u) => u.role === "STUDENT").length;
       const tea = allUsers.filter((u) => u.role === "TEACHER").length;
       const par = allUsers.filter((u) => u.role === "PARENT").length;
@@ -123,8 +126,7 @@ export default function UserManagement() {
         TEACHER: tea,
         PARENT: par,
       });
-    } catch (e) {
-      }
+    } catch (e) {}
   };
 
   // Data for rendering
@@ -143,18 +145,19 @@ export default function UserManagement() {
   const handleToggleStatus = async (u) => {
     try {
       // Nếu là giáo viên, luôn fetch realtime classCount để chắc chắn
-      if (u.role === "TEACHER") {
+      if (u.role === "TEACHER" && u.active) {
         const live = await teacherService.getByUserId(u.id);
         const liveCount = live?.classCount ?? 0;
         // Chặn vô hiệu hóa nếu còn lớp chưa hoàn thành
-        if (u.active && liveCount > 0) {
+        if (liveCount > 0) {
           error(
-            `Giáo viên đang được sử dụng bởi ${liveCount} lớp chưa hoàn thành, không thể vô hiệu hóa.`
+            `Giáo viên đang được phân công ${liveCount} lớp chưa hoàn thành, không thể vô hiệu hóa.`
           );
           return;
         }
       }
 
+      // Gọi API update status - Backend sẽ validate thêm cho Student và Parent
       await userService.updateStatus(u.id, !u.active);
       // Reload data from server
       fetchUsers();
@@ -163,7 +166,12 @@ export default function UserManagement() {
         u.active ? "Đã vô hiệu hóa người dùng" : "Đã kích hoạt người dùng"
       );
     } catch (e) {
-      error(e.displayMessage || "Cập nhật trạng thái thất bại");
+      // Backend trả về message chi tiết cho từng loại user
+      error(
+        e.displayMessage ||
+          e?.response?.data?.message ||
+          "Cập nhật trạng thái thất bại"
+      );
     }
   };
 
@@ -321,8 +329,6 @@ export default function UserManagement() {
           />
         </div>
       </div>
-
-
     </div>
   );
 }

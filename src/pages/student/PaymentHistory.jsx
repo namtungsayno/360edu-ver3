@@ -2,18 +2,23 @@
 // Trang lịch sử thanh toán cho học sinh
 
 import { useEffect, useState } from "react";
-import { 
-  CreditCard, 
-  CheckCircle, 
-  Clock, 
-  XCircle, 
+import {
+  CreditCard,
+  CheckCircle,
+  Clock,
+  XCircle,
   Calendar,
   ChevronLeft,
   ChevronRight,
   Receipt,
-  BookOpen
+  BookOpen,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/Card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { paymentService } from "../../services/payment/payment.service";
@@ -88,9 +93,14 @@ export default function PaymentHistory() {
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     const d = new Date(dateString);
-    const datePart = d.toLocaleDateString("sv-SE");
-    const timePart = d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    return `${datePart} ${timePart}`;
+    const day = d.getDate().toString().padStart(2, "0");
+    const month = (d.getMonth() + 1).toString().padStart(2, "0");
+    const year = d.getFullYear();
+    const timePart = d.toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${day}/${month}/${year} ${timePart}`;
   };
 
   return (
@@ -101,7 +111,7 @@ export default function PaymentHistory() {
           <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
         </div>
-        
+
         <div className="max-w-7xl mx-auto px-6 py-8 relative z-10">
           <div className="flex flex-col items-center gap-4">
             <div className="text-center">
@@ -122,7 +132,7 @@ export default function PaymentHistory() {
               </div>
               <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                 <div className="text-2xl font-bold">
-                  {payments.filter(p => p.status === "PAID").length}
+                  {payments.filter((p) => p.status === "PAID").length}
                 </div>
                 <div className="text-xs text-green-100">Đã thanh toán</div>
               </div>
@@ -189,7 +199,9 @@ export default function PaymentHistory() {
                               {payment.paidAt && (
                                 <>
                                   <span>•</span>
-                                  <span>Thanh toán: {formatDate(payment.paidAt)}</span>
+                                  <span>
+                                    Thanh toán: {formatDate(payment.paidAt)}
+                                  </span>
                                 </>
                               )}
                             </div>
@@ -217,7 +229,8 @@ export default function PaymentHistory() {
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between mt-6 pt-4 border-t">
                     <p className="text-sm text-gray-600">
-                      Trang {page + 1} / {totalPages} ({totalElements} giao dịch)
+                      Trang {page + 1} / {totalPages} ({totalElements} giao
+                      dịch)
                     </p>
                     <div className="flex gap-2">
                       <Button

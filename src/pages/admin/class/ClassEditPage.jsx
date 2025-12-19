@@ -64,6 +64,8 @@ export default function ClassEditPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [originalStartDate, setOriginalStartDate] = useState(""); // Ngày bắt đầu ban đầu của lớp
+  const [originalRoomId, setOriginalRoomId] = useState(""); // Phòng ban đầu của lớp
+  const [originalTeacherId, setOriginalTeacherId] = useState(""); // GV ban đầu của lớp
   const [pricePerSession, setPricePerSession] = useState("");
   const [name, setName] = useState("");
 
@@ -78,9 +80,12 @@ export default function ClassEditPage() {
   const [teacherBusy, setTeacherBusy] = useState([]);
   const [roomBusy, setRoomBusy] = useState([]);
   const [pickedSlots, setPickedSlots] = useState([]); // grid selections
-  // Room conflict state for PUBLIC classes
+  // Room conflict state
   const [roomConflict, setRoomConflict] = useState(null); // { roomName, className, dayName, slotTime }
   const [checkingRoomConflict, setCheckingRoomConflict] = useState(false);
+  // Teacher conflict state
+  const [teacherConflict, setTeacherConflict] = useState(null); // { teacherName, className, dayName, slotTime }
+  const [checkingTeacherConflict, setCheckingTeacherConflict] = useState(false);
   // Toggle edit/view for schedule
   const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [prevPickedSlots, setPrevPickedSlots] = useState([]);
@@ -156,6 +161,7 @@ export default function ClassEditPage() {
           setCourseId(String(data.courseId || ""));
           // Always store teacher's USER ID in state; backend expects userId in teacherId field
           setTeacherId(String(data.teacherUserId || ""));
+          setOriginalTeacherId(String(data.teacherUserId || "")); // Lưu GV ban đầu
           setDesc(data.description || "");
           setCapacity(String(data.maxStudents || ""));
           setTotalSessions(String(data.totalSessions || ""));
@@ -169,6 +175,7 @@ export default function ClassEditPage() {
             setMeetingLink(data.meetingLink || "");
           } else {
             setRoomId(String(data.roomId || ""));
+            setOriginalRoomId(String(data.roomId || "")); // Lưu phòng ban đầu
           }
           // Map existing schedule -> pickedSlots (approximate week representation)
           if (Array.isArray(data.schedule)) {
@@ -214,6 +221,24 @@ export default function ClassEditPage() {
 
   // Track initial subjectId to avoid resetting teacherId on first load
   const [initialSubjectId, setInitialSubjectId] = useState(null);
+
+  // Track previous startDate to detect user changes
+  const [prevStartDate, setPrevStartDate] = useState(null);
+
+  // Reset pickedSlots khi startDate thay đổi (DRAFT mode) - chỉ khi người dùng thay đổi, không phải load ban đầu
+  useEffect(() => {
+    if (!cls || cls.status !== "DRAFT") return;
+    // Bỏ qua lần set đầu tiên (khi load data)
+    if (prevStartDate === null) {
+      setPrevStartDate(startDate);
+      return;
+    }
+    // Nếu startDate thay đổi so với lần trước, reset pickedSlots
+    if (startDate && startDate !== prevStartDate) {
+      setPickedSlots([]);
+      setPrevStartDate(startDate);
+    }
+  }, [startDate, cls, prevStartDate]);
 
   // Load dependent lists when subject changes
   useEffect(() => {
@@ -345,24 +370,33 @@ export default function ClassEditPage() {
     loadRoomBusy();
   }, [loadRoomBusy]);
 
-  // Check room conflict for PUBLIC classes when room changes
+  // Check room conflict when room changes - works for both DRAFT and PUBLIC classes
   const checkRoomConflict = useCallback(async () => {
-    // Only check for PUBLIC classes when changing room
-    if (!cls || cls.status !== "PUBLIC" || cls.online || !roomId) {
+    // Skip for online classes or no room selected
+    if (!cls || cls.online || !roomId || !startDate) {
       setRoomConflict(null);
       return;
     }
-    // If room hasn't changed from original, no need to check
-    const originalRoomId = cls.roomId || cls.room?.id;
+
+    // If room hasn't changed from original, no conflict to check
     if (String(roomId) === String(originalRoomId)) {
+      setRoomConflict(null);
+      return;
+    }
+
+    // No picked slots = nothing to conflict
+    if (pickedSlots.length === 0) {
       setRoomConflict(null);
       return;
     }
 
     setCheckingRoomConflict(true);
     try {
-      const fromDate = new Date(startDate || cls.startDate).toISOString();
-      const toDate = new Date(endDate || cls.endDate).toISOString();
+      // Fetch busy slots for NEW room (full year range)
+      const fromDate = new Date(startDate).toISOString();
+      const toDate = new Date(
+        new Date(startDate).getTime() + 365 * 24 * 60 * 60 * 1000
+      ).toISOString();
       const busyData = await classroomService.getFreeBusy(
         roomId,
         fromDate,
@@ -420,6 +454,12 @@ export default function ClassEditPage() {
             slotTime: `${busyTime} - ${endH}:${endM}`,
             className: busy.className || "lớp khác", // BE might include this
           });
+          // Show toast warning immediately
+          error(
+            `⚠️ Phòng ${selectedRoom?.name || "đã chọn"} đang bận vào ${
+              dayNames[busyDow]
+            } (${busyTime} - ${endH}:${endM}). Vui lòng chọn phòng khác hoặc đổi slot!`
+          );
           return;
         }
       }
@@ -430,11 +470,117 @@ export default function ClassEditPage() {
     } finally {
       setCheckingRoomConflict(false);
     }
-  }, [cls, roomId, startDate, endDate, pickedSlots, rooms]);
+  }, [cls, roomId, originalRoomId, startDate, pickedSlots, rooms]);
 
   useEffect(() => {
     checkRoomConflict();
   }, [checkRoomConflict]);
+
+  // Check teacher conflict when teacher changes
+  const checkTeacherConflict = useCallback(async () => {
+    // Skip if no teacher or no start date
+    if (!cls || !teacherId || !startDate) {
+      setTeacherConflict(null);
+      return;
+    }
+
+    // If teacher hasn't changed from original, no conflict to check
+    if (String(teacherId) === String(originalTeacherId)) {
+      setTeacherConflict(null);
+      return;
+    }
+
+    // No picked slots = nothing to conflict
+    if (pickedSlots.length === 0) {
+      setTeacherConflict(null);
+      return;
+    }
+
+    setCheckingTeacherConflict(true);
+    try {
+      // Fetch busy slots for NEW teacher (full year range)
+      const fromDate = new Date(startDate).toISOString();
+      const toDate = new Date(
+        new Date(startDate).getTime() + 365 * 24 * 60 * 60 * 1000
+      ).toISOString();
+      const busyData = await teacherService.getFreeBusy(
+        teacherId,
+        fromDate,
+        toDate
+      );
+
+      if (!Array.isArray(busyData) || busyData.length === 0) {
+        setTeacherConflict(null);
+        return;
+      }
+
+      // Get this class's schedule pattern (dayOfWeek + timeSlot)
+      const thisClassSlots = pickedSlots.map((slot) => {
+        const d = new Date(slot.isoStart);
+        const dow = d.getDay(); // 0-6
+        const h = String(d.getHours()).padStart(2, "0");
+        const m = String(d.getMinutes()).padStart(2, "0");
+        return { dow, time: `${h}:${m}` };
+      });
+
+      // Check if any busy slot overlaps with this class's schedule
+      for (const busy of busyData) {
+        if (!busy.start || !busy.end) continue;
+        const busyStart = new Date(busy.start);
+        const busyDow = busyStart.getDay();
+        const busyH = String(busyStart.getHours()).padStart(2, "0");
+        const busyM = String(busyStart.getMinutes()).padStart(2, "0");
+        const busyTime = `${busyH}:${busyM}`;
+
+        // Check if this busy slot matches any of our class's slots
+        const conflict = thisClassSlots.find(
+          (s) => s.dow === busyDow && s.time === busyTime
+        );
+
+        if (conflict) {
+          const dayNames = [
+            "Chủ nhật",
+            "Thứ 2",
+            "Thứ 3",
+            "Thứ 4",
+            "Thứ 5",
+            "Thứ 6",
+            "Thứ 7",
+          ];
+          const selectedTeacher = teachers.find(
+            (t) => String(t.userId) === String(teacherId)
+          );
+          const busyEnd = new Date(busy.end);
+          const endH = String(busyEnd.getHours()).padStart(2, "0");
+          const endM = String(busyEnd.getMinutes()).padStart(2, "0");
+
+          setTeacherConflict({
+            teacherName: selectedTeacher?.fullName || "Giáo viên đã chọn",
+            dayName: dayNames[busyDow],
+            slotTime: `${busyTime} - ${endH}:${endM}`,
+            className: busy.className || "lớp khác",
+          });
+          // Show toast warning immediately
+          error(
+            `⚠️ GV ${selectedTeacher?.fullName || "đã chọn"} đang bận vào ${
+              dayNames[busyDow]
+            } (${busyTime} - ${endH}:${endM}). Vui lòng chọn giáo viên khác hoặc đổi slot!`
+          );
+          return;
+        }
+      }
+
+      setTeacherConflict(null);
+    } catch (e) {
+      setTeacherConflict(null);
+    } finally {
+      setCheckingTeacherConflict(false);
+    }
+  }, [cls, teacherId, originalTeacherId, startDate, pickedSlots, teachers]);
+
+  useEffect(() => {
+    checkTeacherConflict();
+  }, [checkTeacherConflict]);
 
   function toggleSlot(slot) {
     const targetKey = slotKey(slot);
@@ -564,8 +710,9 @@ export default function ClassEditPage() {
   }
 
   const step1Valid = useMemo(() => {
-    // Block if room conflict exists for PUBLIC classes
+    // Block if room or teacher conflict exists
     if (roomConflict) return false;
+    if (teacherConflict) return false;
 
     // Block nếu sĩ số < số học sinh hiện tại (lớp PUBLIC)
     if (
@@ -623,6 +770,7 @@ export default function ClassEditPage() {
     cls?.currentStudents,
     selectedRoom,
     roomConflict,
+    teacherConflict,
   ]);
 
   async function handleSave() {
@@ -765,7 +913,7 @@ export default function ClassEditPage() {
             isOnline ? "shadow-indigo-500/20" : "shadow-green-500/20"
           }`}
         >
-          <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <BackButton
@@ -865,6 +1013,46 @@ export default function ClassEditPage() {
                         {isOnline
                           ? "Chỉ sửa được Link Meet và Sĩ số"
                           : "Chỉ sửa được Phòng học và Sĩ số"}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Room/Teacher conflict banner */}
+                  {(roomConflict || teacherConflict) && (
+                    <div className="p-3 rounded-lg bg-red-50 border border-red-300 text-xs text-red-700 leading-relaxed animate-pulse">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="h-4 w-4" />
+                        Phát hiện xung đột lịch!
+                      </div>
+                      {roomConflict && (
+                        <p className="mt-1">
+                          🏠{" "}
+                          <span className="font-medium">
+                            {roomConflict.roomName}
+                          </span>{" "}
+                          đã bận vào{" "}
+                          <span className="font-medium">
+                            {roomConflict.dayName}
+                          </span>{" "}
+                          ({roomConflict.slotTime})
+                        </p>
+                      )}
+                      {teacherConflict && (
+                        <p className="mt-1">
+                          👨‍🏫{" "}
+                          <span className="font-medium">
+                            {teacherConflict.teacherName}
+                          </span>{" "}
+                          đã bận vào{" "}
+                          <span className="font-medium">
+                            {teacherConflict.dayName}
+                          </span>{" "}
+                          ({teacherConflict.slotTime})
+                        </p>
+                      )}
+                      <p className="mt-2 text-[10px] text-red-600">
+                        Vui lòng chọn phòng/giáo viên khác hoặc thay đổi slot
+                        trong lịch học
                       </p>
                     </div>
                   )}
@@ -1339,6 +1527,35 @@ export default function ClassEditPage() {
                 {/* Lớp DRAFT: hiện ScheduleGrid luôn để dễ xem phòng bận + lịch GV */}
                 {isDraft && (
                   <div className="mt-4">
+                    {/* Thông báo gợi ý chọn slot ngày bắt đầu */}
+                    {startDate && (
+                      <div className="mb-3 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-700 leading-relaxed">
+                        <div className="font-semibold flex items-center gap-1">
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          Chọn slot cho ngày bắt đầu trước
+                        </div>
+                        <p className="mt-0.5">
+                          Ngày bắt đầu được đánh dấu{" "}
+                          <span className="font-semibold text-emerald-800">
+                            màu xanh lá
+                          </span>{" "}
+                          trên lịch. Vui lòng chọn ít nhất 1 slot vào ngày bắt
+                          đầu, sau đó mới có thể chọn slot các ngày khác.
+                        </p>
+                      </div>
+                    )}
                     {/* Thông báo hướng dẫn */}
                     <div className="mb-3 p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-700 leading-relaxed">
                       <div className="font-semibold flex items-center gap-1">
@@ -1386,6 +1603,14 @@ export default function ClassEditPage() {
                       originalSelected={prevPickedSlots}
                       onToggle={toggleSlot}
                       disabled={!teacherId || (!isOnline && !roomId)}
+                      startDate={startDate}
+                      requireStartDayFirst={!!startDate}
+                      excludeOriginalFromRoomBusy={
+                        !isOnline && String(roomId) === String(originalRoomId)
+                      }
+                      excludeOriginalFromTeacherBusy={
+                        String(teacherId) === String(originalTeacherId)
+                      }
                     />
                   </div>
                 )}
@@ -1457,6 +1682,14 @@ export default function ClassEditPage() {
                           !isEditingSchedule ||
                           !teacherId ||
                           (!isOnline && !roomId)
+                        }
+                        startDate={startDate}
+                        requireStartDayFirst={false}
+                        excludeOriginalFromRoomBusy={
+                          !isOnline && String(roomId) === String(originalRoomId)
+                        }
+                        excludeOriginalFromTeacherBusy={
+                          String(teacherId) === String(originalTeacherId)
                         }
                       />
                     </div>

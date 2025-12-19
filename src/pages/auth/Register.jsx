@@ -41,6 +41,20 @@ import {
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const PHONE_REGEX = /^0\d{9}$/; // 10 số, bắt đầu bằng 0
 
+// Helper functions để che thông tin bảo mật
+const maskEmail = (email) => {
+  if (!email) return "";
+  const [localPart, domain] = email.split("@");
+  if (!domain || localPart.length < 2) return email;
+  return `${localPart.slice(0, 2)}****@${domain}`;
+};
+
+const maskPhone = (phone) => {
+  if (!phone) return "";
+  if (phone.length < 3) return phone;
+  return `****${phone.slice(-3)}`;
+};
+
 export default function Register() {
   const nav = useNavigate();
   const { success, error } = useToast();
@@ -103,7 +117,8 @@ export default function Register() {
           parentInfo: response.parentInfo,
         });
       }
-    } catch (err) {
+    } catch {
+      // Error handled silently
     } finally {
       setCheckingParent(false);
     }
@@ -354,7 +369,11 @@ export default function Register() {
                         name="parentPhone"
                         type="tel"
                         required
-                        value={formData.parentPhone}
+                        value={
+                          parentConfirmed
+                            ? maskPhone(formData.parentPhone)
+                            : formData.parentPhone
+                        }
                         onChange={handleInputChange}
                         onBlur={handleParentPhoneBlur}
                         placeholder="0xxxxxxxxx"
@@ -365,7 +384,7 @@ export default function Register() {
                             ? "border-green-400 bg-green-50/50"
                             : "border-gray-200"
                         }`}
-                        disabled={checkingParent}
+                        disabled={checkingParent || parentConfirmed}
                       />
                       {checkingParent && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -408,7 +427,11 @@ export default function Register() {
                         name="parentEmail"
                         type="email"
                         required
-                        value={formData.parentEmail}
+                        value={
+                          parentConfirmed
+                            ? maskEmail(formData.parentEmail)
+                            : formData.parentEmail
+                        }
                         onChange={handleInputChange}
                         placeholder="email@example.com"
                         className={`w-full pl-9 py-2.5 bg-gray-50/50 border rounded-xl transition-all duration-300 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 text-sm ${
@@ -813,25 +836,26 @@ export default function Register() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Email:</span>
                 <span className="font-semibold text-gray-900">
-                  {parentConfirmDialog.parentInfo?.email || "—"}
+                  {(() => {
+                    const email = parentConfirmDialog.parentInfo?.email;
+                    if (!email) return "—";
+                    const [localPart, domain] = email.split("@");
+                    if (!domain || localPart.length < 2) return email;
+                    return `${localPart.slice(0, 2)}****@${domain}`;
+                  })()}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Số điện thoại:</span>
                 <span className="font-semibold text-gray-900">
-                  {parentConfirmDialog.parentInfo?.phone || "—"}
+                  {(() => {
+                    const phone = parentConfirmDialog.parentInfo?.phone;
+                    if (!phone) return "—";
+                    if (phone.length < 3) return phone;
+                    return `****${phone.slice(-3)}`;
+                  })()}
                 </span>
               </div>
-              {parentConfirmDialog.parentInfo?.childCount > 0 && (
-                <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                  <span className="text-sm text-gray-500">
-                    Số con đang học:
-                  </span>
-                  <span className="font-semibold text-purple-600">
-                    {parentConfirmDialog.parentInfo?.childCount} học sinh
-                  </span>
-                </div>
-              )}
             </div>
 
             <div className="flex gap-3">

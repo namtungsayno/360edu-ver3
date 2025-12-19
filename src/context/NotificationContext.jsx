@@ -19,6 +19,19 @@ export function NotificationProvider({ children }) {
     return id;
   }, []);
 
+  // Thêm toast error/warning - xóa toast error/warning cũ trước khi thêm mới (tránh tràn màn hình)
+  const addErrorToast = useCallback((toast) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => {
+      // Xóa tất cả toast error/warning cũ, giữ lại success/info
+      const filtered = prev.filter(
+        (t) => t.type !== "error" && t.type !== "warning"
+      );
+      return [...filtered, { ...toast, id }];
+    });
+    return id;
+  }, []);
+
   // Xóa toast theo ID
   const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -37,18 +50,19 @@ export function NotificationProvider({ children }) {
     [addToast]
   );
 
+  // Error và Warning dùng addErrorToast để tránh stack nhiều toast
   const error = useCallback(
     (message, title = "Lỗi") => {
-      return addToast({ type: "error", title, message });
+      return addErrorToast({ type: "error", title, message });
     },
-    [addToast]
+    [addErrorToast]
   );
 
   const warning = useCallback(
     (message, title = "Cảnh báo") => {
-      return addToast({ type: "warning", title, message });
+      return addErrorToast({ type: "warning", title, message });
     },
-    [addToast]
+    [addErrorToast]
   );
 
   const info = useCallback(

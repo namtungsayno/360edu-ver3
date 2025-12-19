@@ -1,10 +1,21 @@
 // pages/parent/schedule/ChildSchedule.jsx
 import { useEffect, useState, useMemo } from "react";
-import { Calendar, Clock, User, MapPin, BookOpen, Monitor } from "lucide-react";
+import {
+  User,
+  MapPin,
+  BookOpen,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
 import PageTitle from "../../../components/common/PageTitle";
 import { Card } from "../../../components/ui/Card";
-import ModernWeekCalendar from "../../../components/common/ModernWeekCalendar";
+import ModernWeekCalendar, {
+  CalendarEventCard,
+  CalendarStatusBadge,
+} from "../../../components/common/ModernWeekCalendar";
 import { parentApi } from "../../../services/parent/parent.api";
+import { timeslotService } from "../../../services/timeslot/timeslot.service";
 import { startOfWeek, addDays, fmt } from "../../../utils/date-helpers";
 
 const ChildSchedule = () => {
@@ -13,8 +24,30 @@ const ChildSchedule = () => {
   const [selectedChild, setSelectedChild] = useState(null);
   const [scheduleData, setScheduleData] = useState([]);
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [allTimeSlots, setAllTimeSlots] = useState([]);
 
   const weekStart = useMemo(() => startOfWeek(currentWeek), [currentWeek]);
+
+  // Fetch all time slots on mount
+  useEffect(() => {
+    const fetchTimeSlots = async () => {
+      try {
+        const slots = await timeslotService.list();
+        // Transform to calendar format
+        const formattedSlots = slots.map((slot, index) => ({
+          id: slot.id || index + 1,
+          label: `Slot ${index + 1}`,
+          time: `${slot.startTime}-${slot.endTime}`,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        }));
+        setAllTimeSlots(formattedSlots);
+      } catch (error) {
+        console.error("Error fetching time slots:", error);
+      }
+    };
+    fetchTimeSlots();
+  }, []);
 
   useEffect(() => {
     fetchChildren();
@@ -74,13 +107,24 @@ const ChildSchedule = () => {
     }
   };
 
+  // Helper function to normalize time format (remove seconds if present)
+  const normalizeTime = (time) => {
+    if (!time) return "";
+    // Convert "16:00:00" to "16:00"
+    const parts = String(time).split(":");
+    return parts.slice(0, 2).join(":");
+  };
+
   // Group schedules by date and timeslot
   const groupedSchedules = useMemo(() => {
     const groups = {};
     scheduleData.forEach((session) => {
       if (!session.date || !session.startTime || !session.endTime) return;
       const dayKey = fmt(new Date(session.date), "yyyy-MM-dd");
-      const slotKey = `${session.startTime}-${session.endTime}`;
+      // Normalize time format to ensure matching
+      const normalizedStart = normalizeTime(session.startTime);
+      const normalizedEnd = normalizeTime(session.endTime);
+      const slotKey = `${normalizedStart}-${normalizedEnd}`;
       const key = `${dayKey}_${slotKey}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(session);
@@ -88,40 +132,28 @@ const ChildSchedule = () => {
     return groups;
   }, [scheduleData]);
 
-  // Get unique time slots - ensure we have all time slots
+  // Use all time slots from API (same as Admin/Teacher)
   const timeSlots = useMemo(() => {
-    const slots = new Map();
-    scheduleData.forEach((s) => {
-      if (!s.startTime || !s.endTime) return;
-      const key = `${s.startTime}-${s.endTime}`;
-      if (!slots.has(key)) {
-        slots.set(key, {
-          id: slots.size + 1,
-          label: `${s.startTime} - ${s.endTime}`,
-          time: key,
-          startTime: s.startTime,
-          endTime: s.endTime,
-        });
-      }
-    });
-    // Sort by start time
-    return Array.from(slots.values()).sort((a, b) => {
-      if (a.startTime < b.startTime) return -1;
-      if (a.startTime > b.startTime) return 1;
-      return 0;
-    });
-  }, [scheduleData]);
+    // Normalize time format in slots
+    return allTimeSlots.map((slot) => ({
+      ...slot,
+      time: `${normalizeTime(slot.startTime)}-${normalizeTime(slot.endTime)}`,
+      startTime: normalizeTime(slot.startTime),
+      endTime: normalizeTime(slot.endTime),
+    }));
+  }, [allTimeSlots]);
 
   const getEventsForSlot = (dayId, slotId) => {
     // dayId từ WEEK_DAYS là 1-7 (T2-CN), cần convert sang index 0-6
-    // slotId từ timeSlots là 1,2,3..., cần convert sang index 0,1,2...
     const dayIndex = dayId - 1; // 1->0, 2->1, ..., 7->6
-    const slotIndex = slotId - 1; // 1->0, 2->1, ...
 
     const date = addDays(weekStart, dayIndex);
     const dayKey = fmt(date, "yyyy-MM-dd");
-    const slot = timeSlots[slotIndex];
+
+    // Find the slot by ID from normalized timeSlots
+    const slot = timeSlots.find((s) => s.id === slotId);
     if (!slot) return [];
+
     const key = `${dayKey}_${slot.time}`;
     return groupedSchedules[key] || [];
   };
@@ -142,51 +174,109 @@ const ChildSchedule = () => {
   });
 
   const renderEvent = (event) => {
+    // Determine attendance status display with enhanced styling
+    const getAttendanceDisplay = () => {
+      switch (event.attendanceStatus) {
+        case "PRESENT":
+          return {
+            label: "Có mặt",
+            icon: CheckCircle,
+            gradientClass: "from-emerald-500 to-green-500",
+            glowClass: "bg-emerald-400",
+            ringClass: "ring-emerald-400",
+            shadowClass: "shadow-emerald-200",
+          };
+        case "ABSENT":
+          return {
+            label: "Vắng mặt",
+            icon: XCircle,
+            gradientClass: "from-red-500 to-rose-500",
+            glowClass: "bg-red-400",
+            ringClass: "ring-red-400",
+            shadowClass: "shadow-red-200",
+          };
+        case "LATE":
+          return {
+            label: "Đi muộn",
+            icon: AlertCircle,
+            gradientClass: "from-amber-500 to-orange-500",
+            glowClass: "bg-amber-400",
+            ringClass: "ring-amber-400",
+            shadowClass: "shadow-amber-200",
+          };
+        case "UNMARKED":
+        default:
+          return null; // Không hiển thị badge nếu chưa điểm danh
+      }
+    };
+
+    const attendanceDisplay = getAttendanceDisplay();
+    const hasAttendance = attendanceDisplay !== null;
+    const AttendanceIcon = attendanceDisplay?.icon;
+
     return (
-      <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg border border-blue-200 transition-all cursor-pointer group">
-        <div className="flex items-start gap-2 mb-2">
-          <BookOpen className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm text-gray-900 truncate">
-              {event.subjectName}
-            </p>
-            <p className="text-xs text-gray-600 truncate">{event.className}</p>
+      <CalendarEventCard
+        key={event.id}
+        variant="info"
+        className={`cursor-pointer relative ${
+          hasAttendance
+            ? `ring-2 ${attendanceDisplay.ringClass} ring-offset-1`
+            : ""
+        }`}
+      >
+        {/* Attendance status badge - positioned at top right corner */}
+        {hasAttendance && (
+          <div className="absolute -top-1.5 -right-1.5 z-10">
+            <div className="relative">
+              {/* Glow effect */}
+              <div
+                className={`absolute inset-0 ${attendanceDisplay.glowClass} rounded-full blur-sm animate-pulse`}
+              ></div>
+              {/* Badge */}
+              <div
+                className={`relative flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r ${attendanceDisplay.gradientClass} text-white text-[9px] font-bold rounded-full shadow-lg ${attendanceDisplay.shadowClass}`}
+              >
+                <AttendanceIcon className="h-3 w-3" />
+                <span>{attendanceDisplay.label}</span>
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Subject name */}
+        <div
+          className="font-semibold text-xs truncate mb-1 pr-16"
+          title={event.subjectName}
+        >
+          {event.subjectName}
         </div>
 
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-xs text-gray-600">
-            <User className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate">{event.teacherName}</span>
-          </div>
+        {/* Class name */}
+        <div className="text-[10px] text-gray-500 truncate mb-1">
+          {event.className}
+        </div>
+
+        {/* Teacher name */}
+        <div className="flex items-center gap-1 text-[10px] text-gray-600 mb-1.5">
+          <User className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate">{event.teacherName}</span>
+        </div>
+
+        {/* Room info */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <CalendarStatusBadge status="info">
+            <BookOpen className="h-2.5 w-2.5" />
+            Lịch học
+          </CalendarStatusBadge>
+
           {event.room && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-600">
-              <MapPin className="w-3 h-3 flex-shrink-0" />
-              <span className="truncate">Phòng {event.room}</span>
-            </div>
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-violet-50 text-violet-700 border border-violet-200">
+              <MapPin className="h-2.5 w-2.5" />
+              {event.room}
+            </span>
           )}
         </div>
-
-        {/* Status badge */}
-        <div className="mt-2 flex items-center justify-between">
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-            ${
-              event.status === "COMPLETED"
-                ? "bg-green-100 text-green-700"
-                : event.status === "CANCELLED"
-                ? "bg-red-100 text-red-700"
-                : "bg-blue-100 text-blue-700"
-            }`}
-          >
-            {event.status === "COMPLETED"
-              ? "Đã học"
-              : event.status === "CANCELLED"
-              ? "Đã hủy"
-              : "Sắp diễn ra"}
-          </span>
-        </div>
-      </div>
+      </CalendarEventCard>
     );
   };
 

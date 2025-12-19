@@ -1,21 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+// src/pages/admin/news/NewsList.jsx
+// ✨ REDESIGN - Consistent với RoomManagement, SubjectManagement
+// 🔄 SERVER-SIDE PAGINATION
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../../components/ui/Card";
-import { Input } from "../../../components/ui/Input";
-import { Button } from "../../../components/ui/Button";
-import { Badge } from "../../../components/ui/Badge";
-import {
-  Dialog,
-  DialogHeader,
-  DialogTitle,
-  DialogContent,
-  DialogFooter,
-} from "../../../components/ui/Dialog";
 import {
   Search,
   Plus,
@@ -31,191 +18,209 @@ import {
   Send,
   Trash2,
   AlertTriangle,
+  Layers,
+  Calendar,
+  User,
+  Tag,
+  ExternalLink,
 } from "lucide-react";
+import { Button } from "../../../components/ui/Button";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../components/ui/Tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/Select";
+  Dialog,
+  DialogHeader,
+  DialogTitle,
+  DialogContent,
+  DialogFooter,
+} from "../../../components/ui/Dialog";
 import { newsService } from "../../../services/news/news.service";
+import { formatDateVN } from "../../../helper/formatters";
 import { useToast } from "../../../hooks/use-toast";
 import useDebounce from "../../../hooks/useDebounce";
+
+const STATUS_FILTERS = ["all", "published", "draft"];
 
 export default function NewsList() {
   const navigate = useNavigate();
   const { success, error: showError } = useToast();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const toastRef = useRef({ success, showError });
 
-  // Server-side pagination state
+  useEffect(() => {
+    toastRef.current = { success, showError };
+  }, [success, showError]);
+
+  // Filter & Search
+  const [tab, setTab] = useState("all");
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 300);
+
+  // Server-side pagination
   const [page, setPage] = useState(0);
-  const [size, setSize] = useState(5);
+  const [size, setSize] = useState(10);
+
+  // Server response data
+  const [news, setNews] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [loading, setLoading] = useState(false);
 
-  // Stats for tab badges (loaded once)
-  const [stats, setStats] = useState({
-    total: 0,
-    published: 0,
-    draft: 0,
-  });
+  // Stats counts (load all once for tabs)
+  const [counts, setCounts] = useState({ all: 0, published: 0, draft: 0 });
+
+  // Expanded row for preview
+  const [expandedId, setExpandedId] = useState(null);
 
   // State for delete confirmation
   const [deleteId, setDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Debounced search query for API calls
-  const debouncedSearch = useDebounce(searchQuery, 300);
-
-  // Dữ liệu tin tức từ API
-  const [news, setNews] = useState([]);
-
-  // Fetch stats for tab badges (load once)
-  const fetchStats = useCallback(async () => {
-    try {
-      const statsData = await newsService.getStats();
-      setStats({
-        total: statsData.total || 0,
-        published: statsData.published || 0,
-        draft: statsData.draft || 0,
-      });
-    } catch (err) {}
+  // Load counts once for stats
+  useEffect(() => {
+    (async () => {
+      try {
+        const statsData = await newsService.getStats();
+        setCounts({
+          all: statsData.total || 0,
+          published: statsData.published || 0,
+          draft: statsData.draft || 0,
+        });
+      } catch {
+        // Silently ignore
+      }
+    })();
   }, []);
 
-  // Handle delete news
-  const handleDelete = async (id) => {
-    try {
-      setDeleting(true);
-      await newsService.deleteNews(id);
-      success("Đã xóa tin tức thành công!");
-      setDeleteId(null);
-      fetchNews();
-      fetchStats();
-    } catch (err) {
-      showError(err.displayMessage || "Không thể xóa tin tức");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  // Handle unpublish (move to draft)
-  const handleMoveToDraft = async (id) => {
-    try {
-      await newsService.updateStatus(id, "draft");
-      success("Đã chuyển tin tức về nháp!");
-      fetchNews();
-      fetchStats();
-    } catch (err) {
-      showError(err.displayMessage || "Không thể chuyển về nháp");
-    }
-  };
-
-  // Fetch danh sách tin tức với server-side pagination
+  // Server-side fetch with pagination
   const fetchNews = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-
-      // Build params for API call
       const params = {
         page,
         size,
       };
-
-      // Add search if provided
-      if (debouncedSearch.trim()) {
-        params.search = debouncedSearch.trim();
+      if (debouncedQuery.trim()) {
+        params.search = debouncedQuery.trim();
+      }
+      if (tab !== "all") {
+        params.status = tab;
       }
 
-      // Add status filter if not "all"
-      if (statusFilter !== "all") {
-        params.status = statusFilter;
-      }
-
-      // Real API call
       const response = await newsService.getNews(params);
       const pageData = response.data || response;
       const newsData = pageData.content || [];
       setNews(newsData);
       setTotalElements(pageData.totalElements || 0);
       setTotalPages(pageData.totalPages || 0);
-    } catch (err) {
-      setError(err.displayMessage || "Không thể tải danh sách tin tức");
+    } catch {
+      toastRef.current?.showError?.("Lỗi tải danh sách tin tức");
       setNews([]);
       setTotalElements(0);
       setTotalPages(0);
     } finally {
       setLoading(false);
     }
-  }, [page, size, debouncedSearch, statusFilter]);
+  }, [tab, debouncedQuery, page, size]);
 
-  // Reset page when search or filter changes
-  useEffect(() => {
-    setPage(0);
-  }, [debouncedSearch, statusFilter]);
-
-  // Fetch news when pagination/filter changes
   useEffect(() => {
     fetchNews();
   }, [fetchNews]);
 
-  // Fetch stats once on mount
+  // Reset page when tab or search changes
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
-
-  // Handle tab change
-  const handleTabChange = (value) => {
-    setStatusFilter(value);
     setPage(0);
-  };
+  }, [tab, debouncedQuery]);
 
-  const getStatusBadge = (status) => {
-    const normalizedStatus = status?.toLowerCase();
-    switch (normalizedStatus) {
-      case "published":
-        return (
-          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 font-medium">
-            <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-            Đã xuất bản
-          </Badge>
-        );
-      case "draft":
-        return (
-          <Badge className="bg-amber-100 text-amber-700 border-amber-200 font-medium">
-            <FileText className="h-3.5 w-3.5 mr-1.5" />
-            Bản nháp
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-slate-100 text-slate-600 border-slate-200">
-            Không xác định
-          </Badge>
-        );
+  // Reload counts after changes
+  const reloadCounts = async () => {
+    try {
+      const statsData = await newsService.getStats();
+      setCounts({
+        all: statsData.total || 0,
+        published: statsData.published || 0,
+        draft: statsData.draft || 0,
+      });
+    } catch {
+      // Silently ignore
     }
   };
 
-  // Xuất bản tin tức từ draft
-  const handlePublish = async (id) => {
+  // Handle delete
+  const handleDelete = async (id) => {
+    try {
+      setDeleting(true);
+      await newsService.deleteNews(id);
+      toastRef.current?.success?.("Đã xóa tin tức thành công!");
+      setDeleteId(null);
+      setExpandedId(null);
+      fetchNews();
+      reloadCounts();
+    } catch (err) {
+      toastRef.current?.showError?.(
+        err.displayMessage || "Không thể xóa tin tức"
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Handle publish
+  const handlePublish = async (id, e) => {
+    e?.stopPropagation();
     try {
       await newsService.updateStatus(id, "published");
+      toastRef.current?.success?.("Đã xuất bản tin tức thành công!");
       fetchNews();
-      fetchStats();
-      success("Đã xuất bản tin tức thành công!");
+      reloadCounts();
     } catch (err) {
-      showError(err.displayMessage || "Không thể xuất bản tin tức");
+      toastRef.current?.showError?.(
+        err.displayMessage || "Không thể xuất bản tin tức"
+      );
     }
+  };
+
+  // Handle move to draft
+  const handleMoveToDraft = async (id, e) => {
+    e?.stopPropagation();
+    try {
+      await newsService.updateStatus(id, "draft");
+      toastRef.current?.success?.("Đã chuyển tin tức về nháp!");
+      fetchNews();
+      reloadCounts();
+    } catch (err) {
+      toastRef.current?.showError?.(
+        err.displayMessage || "Không thể chuyển về nháp"
+      );
+    }
+  };
+
+  // Toggle expand row
+  const toggleExpand = (id) => {
+    setExpandedId(expandedId === id ? null : id);
+  };
+
+  // Get status badge
+  const getStatusBadge = (status) => {
+    const normalizedStatus = status?.toLowerCase();
+    if (normalizedStatus === "published") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+          <CheckCircle className="w-3 h-3" />
+          Đã xuất bản
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+        <FileText className="w-3 h-3" />
+        Bản nháp
+      </span>
+    );
+  };
+
+  // Get tab label
+  const getTabLabel = (filter) => {
+    if (filter === "all") return "Tất cả";
+    if (filter === "published") return "Đã xuất bản";
+    return "Bản nháp";
   };
 
   return (
@@ -232,341 +237,461 @@ export default function NewsList() {
                 Quản lý tin tức
               </h1>
               <p className="text-sm text-gray-500">
-                Quản lý và đăng tin tức, thông báo cho học viên và phụ huynh
+                Click vào dòng để xem chi tiết • Quản lý tin tức và thông báo
               </p>
             </div>
           </div>
-          <Button
+          <button
             onClick={() => navigate("/home/admin/news/create")}
-            className="bg-rose-600 hover:bg-rose-700"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-sm font-medium rounded-xl hover:shadow-lg hover:shadow-rose-200 transition-all duration-200 hover:-translate-y-0.5"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="w-4 h-4" />
             Tạo tin tức mới
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* ============ STATS CARDS ============ */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 p-5 group hover:shadow-lg transition-shadow">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Tổng tin tức */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-600 to-slate-700 rounded-2xl p-5 text-white shadow-lg shadow-slate-500/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white/70">Tổng tin tức</p>
-              <p className="text-3xl font-bold text-white mt-1">
-                {stats.total}
+              <p className="text-slate-200 text-sm font-medium mb-1">
+                Tổng tin tức
               </p>
+              <p className="text-3xl font-bold">{counts.all}</p>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <FileText className="w-7 h-7 text-white" />
+            <div className="p-3 bg-white/20 rounded-xl">
+              <Layers className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-white/5" />
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="absolute -right-2 -bottom-2 w-16 h-16 bg-white/10 rounded-full" />
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-5 group hover:shadow-lg hover:shadow-emerald-200 transition-shadow">
+        {/* Đã xuất bản */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white/70">Đã xuất bản</p>
-              <p className="text-3xl font-bold text-white mt-1">
-                {stats.published}
+              <p className="text-emerald-100 text-sm font-medium mb-1">
+                Đã xuất bản
               </p>
+              <p className="text-3xl font-bold">{counts.published}</p>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <CheckCircle className="w-7 h-7 text-white" />
+            <div className="p-3 bg-white/20 rounded-xl">
+              <CheckCircle className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-white/5" />
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="absolute -right-2 -bottom-2 w-16 h-16 bg-white/10 rounded-full" />
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 p-5 group hover:shadow-lg hover:shadow-amber-200 transition-shadow">
+        {/* Bản nháp */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-5 text-white shadow-lg shadow-amber-500/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white/70">Bản nháp</p>
-              <p className="text-3xl font-bold text-white mt-1">
-                {stats.draft}
+              <p className="text-amber-100 text-sm font-medium mb-1">
+                Bản nháp
               </p>
+              <p className="text-3xl font-bold">{counts.draft}</p>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Edit className="w-7 h-7 text-white" />
+            <div className="p-3 bg-white/20 rounded-xl">
+              <FileText className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-white/5" />
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="absolute -right-2 -bottom-2 w-16 h-16 bg-white/10 rounded-full" />
         </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-rose-600 mb-2" />
-          <p className="text-gray-500">Đang tải danh sách tin tức...</p>
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && !loading && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center">
-          <div className="text-red-600 mb-2">⚠️</div>
-          <p className="text-gray-500 mb-4">{error}</p>
-          <Button onClick={fetchNews} variant="outline">
-            Thử lại
-          </Button>
-        </div>
-      )}
-
-      {/* ============ TOOLBAR & LIST ============ */}
-      {!loading && !error && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Toolbar */}
-          <div className="p-4 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Danh sách tin tức
-              </h2>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <Input
-                    placeholder="Tìm kiếm tin tức..."
-                    className="pl-10 w-[400px] h-11 text-base rounded-xl"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                <Select
-                  value={String(size)}
-                  onValueChange={(v) => {
-                    setSize(Number(v));
-                    setPage(0);
-                  }}
+      {/* ============ TOOLBAR ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Filter tabs */}
+          <div className="flex items-center gap-2">
+            {STATUS_FILTERS.map((f) => {
+              const isActive = tab === f;
+              const label = getTabLabel(f);
+              const count = counts[f];
+              return (
+                <button
+                  key={f}
+                  onClick={() => setTab(f)}
+                  className={`
+                    relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-gray-900 text-white shadow-lg shadow-gray-300"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                    }
+                  `}
                 >
-                  <SelectTrigger className="w-[80px] h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                  {label}
+                  <span
+                    className={`ml-1.5 px-1.5 py-0.5 rounded-md text-xs ${
+                      isActive ? "bg-white/20" : "bg-gray-200"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Content */}
-          <div className="p-4">
-            <Tabs
-              value={statusFilter}
-              onValueChange={handleTabChange}
-              className="space-y-4"
-            >
-              <TabsList className="bg-gray-100/80 p-1 rounded-xl">
-                <TabsTrigger
-                  value="all"
-                  className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
-                >
-                  Tất cả ({stats.total})
-                </TabsTrigger>
-                <TabsTrigger
-                  value="published"
-                  className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
-                >
-                  <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                  Đã xuất bản ({stats.published})
-                </TabsTrigger>
-                <TabsTrigger
-                  value="draft"
-                  className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
-                >
-                  <FileText className="h-3.5 w-3.5 mr-1.5" />
-                  Bản nháp ({stats.draft})
-                </TabsTrigger>
-              </TabsList>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm tin tức..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="pl-10 pr-4 py-2.5 w-72 bg-gray-50 border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all"
+            />
+          </div>
+        </div>
+      </div>
 
-              {/* Single content for all tabs - data is filtered by server */}
-              <div className="space-y-4">
-                {news.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <Newspaper className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>Không có tin tức nào</p>
+      {/* ============ TABLE WITH INLINE EXPANSION ============ */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gray-50/80 border-b border-gray-100">
+          <div className="col-span-1 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            STT
+          </div>
+          <div className="col-span-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Tiêu đề
+          </div>
+          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Ngày tạo
+          </div>
+          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Tác giả
+          </div>
+          <div className="col-span-2 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
+            Trạng thái
+          </div>
+        </div>
+
+        {/* Table Body */}
+        <div className="divide-y divide-gray-50">
+          {loading ? (
+            <div className="px-6 py-16 text-center">
+              <div className="inline-flex items-center gap-3 text-gray-500">
+                <Loader2 className="w-5 h-5 animate-spin text-rose-600" />
+                Đang tải...
+              </div>
+            </div>
+          ) : news.length === 0 ? (
+            <div className="px-6 py-16 text-center">
+              <Newspaper className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">Không có tin tức nào</p>
+            </div>
+          ) : (
+            news.map((item, idx) => {
+              const isExpanded = expandedId === item.id;
+              const rowNum = page * size + idx + 1;
+              const isDraft = item.status?.toLowerCase() === "draft";
+
+              return (
+                <div key={item.id} className="group">
+                  {/* ============ COLLAPSED ROW ============ */}
+                  <div
+                    onClick={() => toggleExpand(item.id)}
+                    className={`
+                      grid grid-cols-12 gap-4 px-6 py-4 cursor-pointer transition-all duration-200
+                      ${isExpanded ? "bg-rose-50/50" : "hover:bg-gray-50/80"}
+                    `}
+                  >
+                    {/* STT */}
+                    <div className="col-span-1 flex items-center">
+                      <span className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 text-xs font-semibold text-gray-600">
+                        {rowNum}
+                      </span>
+                    </div>
+
+                    {/* Tiêu đề + thumbnail */}
+                    <div className="col-span-5 flex items-center gap-3 min-w-0">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                          <Newspaper className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">
+                          {item.title}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {item.views || 0} lượt xem
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Ngày tạo */}
+                    <div className="col-span-2 flex items-center">
+                      <span className="text-sm text-gray-600">
+                        {formatDateVN(item.date)}
+                      </span>
+                    </div>
+
+                    {/* Tác giả */}
+                    <div className="col-span-2 flex items-center">
+                      <span className="text-sm text-gray-600 truncate">
+                        {item.author || "—"}
+                      </span>
+                    </div>
+
+                    {/* Trạng thái */}
+                    <div className="col-span-2 flex items-center justify-center">
+                      {getStatusBadge(item.status)}
+                    </div>
                   </div>
-                ) : (
-                  news.map((item) => (
-                    <Card
-                      key={item.id}
-                      className="hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => navigate(`/home/admin/news/${item.id}`)}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex gap-6">
-                          {item.imageUrl ? (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.title}
-                              className="h-64 w-64 rounded-lg object-cover flex-shrink-0 self-center"
-                            />
-                          ) : (
-                            <div className="flex items-center justify-center h-64 w-64 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white flex-shrink-0 self-center">
-                              <Newspaper className="h-24 w-24" />
-                            </div>
-                          )}
 
+                  {/* ============ EXPANDED PANEL ============ */}
+                  {isExpanded && (
+                    <div className="px-6 pb-6 bg-gradient-to-b from-rose-50/50 to-white animate-in slide-in-from-top-2 duration-200">
+                      <div className="pt-2 border-t border-rose-100">
+                        <div className="flex gap-6 mt-4">
+                          {/* Image Preview */}
+                          <div className="flex-shrink-0">
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.title}
+                                className="w-48 h-32 rounded-xl object-cover shadow-md"
+                              />
+                            ) : (
+                              <div className="w-48 h-32 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-md">
+                                <Newspaper className="w-12 h-12 text-white" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Content */}
                           <div className="flex-1 space-y-3">
-                            <div className="flex items-center gap-3">
-                              <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
-                                {item.title}
-                              </h3>
-                              {getStatusBadge(item.status)}
-                            </div>
-                            <div
-                              className="text-sm text-slate-600 rich-text-content"
-                              dangerouslySetInnerHTML={{ __html: item.excerpt }}
-                            />
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              {(typeof item.tags === "string"
-                                ? item.tags
-                                    .split(",")
-                                    .map((tag) => tag.trim())
-                                    .filter(Boolean)
-                                : item.tags || []
-                              ).map((tag, index) => (
-                                <Badge
-                                  key={index}
-                                  variant="outline"
-                                  className="text-xs border border-slate-200 bg-slate-50 text-slate-700"
-                                >
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-slate-600 mt-2">
-                              <span>{item.date}</span>
-                              <span>{item.views} lượt xem</span>
-                              <span>Bởi: {item.author}</span>
-                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {item.title}
+                            </h3>
 
-                            {/* Action Buttons - Theo nghĩép vụ mới */}
-                            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                              {/* DRAFT: Sửa, Xuất bản, Xóa */}
-                              {item.status?.toLowerCase() === "draft" && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(`/home/admin/news/create`, {
-                                        state: { draft: item },
-                                      });
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4 mr-1.5" />
-                                    Sửa
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePublish(item.id);
-                                    }}
-                                  >
-                                    <Send className="h-4 w-4 mr-1.5" />
-                                    Xuất bản
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeleteId(item.id);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1.5" />
-                                    Xóa
-                                  </Button>
-                                </>
-                              )}
+                            {/* Excerpt */}
+                            {item.excerpt && (
+                              <div
+                                className="text-sm text-gray-600 line-clamp-2"
+                                dangerouslySetInnerHTML={{
+                                  __html: item.excerpt,
+                                }}
+                              />
+                            )}
 
-                              {/* PUBLISHED: Ẩn (đưa về draft), Xóa */}
-                              {item.status?.toLowerCase() === "published" && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleMoveToDraft(item.id);
-                                    }}
+                            {/* Tags */}
+                            {item.tags && (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Tag className="w-3.5 h-3.5 text-gray-400" />
+                                {(typeof item.tags === "string"
+                                  ? item.tags.split(",").map((t) => t.trim())
+                                  : item.tags
+                                ).map((tag, i) => (
+                                  <span
+                                    key={i}
+                                    className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md"
                                   >
-                                    <EyeOff className="h-4 w-4 mr-1.5" />
-                                    Ẩn tin (về nháp)
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeleteId(item.id);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-1.5" />
-                                    Xóa
-                                  </Button>
-                                </>
-                              )}
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Meta info */}
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {formatDateVN(item.date)}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <User className="w-3.5 h-3.5" />
+                                {item.author || "Admin"}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Eye className="w-3.5 h-3.5" />
+                                {item.views || 0} lượt xem
+                              </span>
                             </div>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </Tabs>
 
-            {/* Pagination */}
-            {totalPages > 0 && (
-              <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
-                <p className="text-sm text-gray-500">
-                  Hiển thị {news.length} / {totalElements} tin tức
-                </p>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
+                        {/* Action Buttons */}
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                          <button
+                            onClick={() =>
+                              navigate(`/home/admin/news/${item.id}`)
+                            }
+                            className="inline-flex items-center gap-1.5 text-sm text-rose-600 hover:text-rose-700 font-medium"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Xem chi tiết
+                          </button>
+
+                          <div className="flex items-center gap-2">
+                            {/* DRAFT: Sửa, Xuất bản, Xóa */}
+                            {isDraft && (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/home/admin/news/create`, {
+                                      state: { draft: item },
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                  Sửa
+                                </button>
+                                <button
+                                  onClick={(e) => handlePublish(item.id, e)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg hover:shadow-md transition-all"
+                                >
+                                  <Send className="w-4 h-4" />
+                                  Xuất bản
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteId(item.id);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Xóa
+                                </button>
+                              </>
+                            )}
+
+                            {/* PUBLISHED: Ẩn, Xóa */}
+                            {!isDraft && (
+                              <>
+                                <button
+                                  onClick={(e) => handleMoveToDraft(item.id, e)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+                                >
+                                  <EyeOff className="w-4 h-4" />
+                                  Ẩn tin
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteId(item.id);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Xóa
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* ============ PAGINATION ============ */}
+        {totalElements > 0 && (
+          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Trang {page + 1} / {totalPages} — Tổng {totalElements} bản ghi
+              </p>
+
+              <div className="flex items-center gap-4">
+                {/* Size selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">
+                    Số bản ghi / trang:
+                  </span>
+                  <select
+                    value={size}
+                    onChange={(e) => {
+                      setSize(Number(e.target.value));
+                      setPage(0);
+                    }}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+
+                {/* Page navigation */}
+                <div className="flex items-center gap-2">
+                  <button
                     onClick={() => setPage((p) => Math.max(0, p - 1))}
                     disabled={page === 0}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </Button>
-                  <span className="text-xs text-gray-600 px-2">
-                    {page + 1} / {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-7 w-7"
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i;
+                      } else if (page < 3) {
+                        pageNum = i;
+                      } else if (page > totalPages - 4) {
+                        pageNum = totalPages - 5 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
+                            page === pageNum
+                              ? "bg-rose-600 text-white shadow-md"
+                              : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                          }`}
+                        >
+                          {pageNum + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
                     onClick={() =>
                       setPage((p) => Math.min(totalPages - 1, p + 1))
                     }
                     disabled={page >= totalPages - 1}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Delete Confirmation Dialog */}
+      {/* ============ DELETE CONFIRMATION DIALOG ============ */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <div className="text-center">
           <div className="mx-auto w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4">

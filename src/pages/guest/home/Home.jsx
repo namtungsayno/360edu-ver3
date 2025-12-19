@@ -39,7 +39,7 @@ import { ImageWithFallback } from "../../../components/ui/ImageWithFallback";
 import { classService } from "../../../services/class/class.service";
 import { newsService } from "../../../services/news/news.service";
 import { teacherService } from "../../../services/teacher/teacher.service";
-import { dayLabelVi } from "../../../helper/formatters";
+import { dayLabelVi, formatDateVN } from "../../../helper/formatters";
 import { stripHtmlTags, stripAndTruncate } from "../../../utils/html-helpers";
 
 export default function Home() {
@@ -161,7 +161,9 @@ export default function Home() {
               )}
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
-                <span>Khai giảng: {cls.startDate || "01/11/2024"}</span>
+                <span>
+                  Khai giảng: {formatDateVN(cls.startDate) || "01/11/2024"}
+                </span>
               </div>
             </div>
             {/* Spacer to push content below to bottom */}
@@ -219,7 +221,7 @@ export default function Home() {
         const data = await classService.list();
         setClasses(data || []);
       } catch (error) {
-        } finally {
+      } finally {
         setLoading(false);
       }
     };
@@ -241,7 +243,7 @@ export default function Home() {
           .slice(0, 3);
         setNews(publishedNews);
       } catch (error) {
-        } finally {
+      } finally {
         setNewsLoading(false);
       }
     };
@@ -325,7 +327,7 @@ export default function Home() {
         }));
         setTeachers(enrichedTeachers.slice(0, 10)); // Show first 10 teachers for carousel
       } catch (error) {
-        } finally {
+      } finally {
         setTeachersLoading(false);
       }
     };
@@ -772,7 +774,12 @@ export default function Home() {
                     const formatDate = (dateString) => {
                       if (!dateString) return "";
                       const date = new Date(dateString);
-                      return date.toLocaleDateString("sv-SE");
+                      const day = date.getDate().toString().padStart(2, "0");
+                      const month = (date.getMonth() + 1)
+                        .toString()
+                        .padStart(2, "0");
+                      const year = date.getFullYear();
+                      return `${day}/${month}/${year}`;
                     };
 
                     return (

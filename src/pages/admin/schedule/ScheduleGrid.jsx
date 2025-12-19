@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { timeslotService } from "../../../services/timeslot/timeslot.service";
-import { Check, X, Clock, User, Home } from "lucide-react";
+import { Check, X, Clock, User, Home, Lock } from "lucide-react";
 
 // Helpers
 function addDays(base, n) {
@@ -42,6 +42,15 @@ function isOverlapping(aStart, aEnd, bStart, bEnd) {
   return as < be && bs < ae;
 }
 
+/**
+ * Lấy thứ trong tuần (0-6, 0 = Chủ nhật) từ ngày
+ */
+function getDayOfWeek(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return d.getDay();
+}
+
 export default function ScheduleGrid({
   weekStart,
   teacherBusy = [],
@@ -51,8 +60,25 @@ export default function ScheduleGrid({
   timeSlots: propTimeSlots = [],
   onToggle,
   disabled = false,
+  startDate = null, // Ngày bắt đầu đã chọn (yyyy-MM-dd)
+  requireStartDayFirst = false, // Bắt buộc chọn slot ngày bắt đầu trước
+  // Khi phòng/GV thay đổi, không nên loại trừ originalSelected khỏi busy check
+  excludeOriginalFromRoomBusy = true, // true = loại trừ slot cũ khỏi room busy (phòng không đổi)
+  excludeOriginalFromTeacherBusy = true, // true = loại trừ slot cũ khỏi teacher busy (GV không đổi)
 }) {
   const [internalSlots, setInternalSlots] = useState([]);
+
+  // Xác định thứ của ngày bắt đầu (0-6, 0 = CN)
+  const startDayOfWeek = useMemo(() => getDayOfWeek(startDate), [startDate]);
+
+  // Kiểm tra xem đã chọn slot nào ở ngày bắt đầu chưa
+  const hasSelectedStartDaySlot = useMemo(() => {
+    if (!requireStartDayFirst || startDayOfWeek === null) return true;
+    return selected.some((s) => {
+      const d = new Date(s.isoStart);
+      return d.getDay() === startDayOfWeek;
+    });
+  }, [selected, startDayOfWeek, requireStartDayFirst]);
 
   // Fetch timeslots nếu parent không truyền
   useEffect(() => {
@@ -136,7 +162,9 @@ export default function ScheduleGrid({
   }, [roomBusy, timeSlots]);
 
   function isTeacherBusySlot(slotObj) {
-    if (isOriginalSelected(slotObj)) return false;
+    // Chỉ loại trừ originalSelected nếu GV không đổi
+    if (excludeOriginalFromTeacherBusy && isOriginalSelected(slotObj))
+      return false;
     const d = new Date(slotObj.isoStart);
     const isoDay = d.getDay() === 0 ? 7 : d.getDay();
     const pattern = `${isoDay}-${slotObj.slotId}`;
@@ -149,7 +177,9 @@ export default function ScheduleGrid({
   }
 
   function isRoomBusySlot(slotObj) {
-    if (isOriginalSelected(slotObj)) return false;
+    // Chỉ loại trừ originalSelected nếu phòng không đổi
+    if (excludeOriginalFromRoomBusy && isOriginalSelected(slotObj))
+      return false;
     const d = new Date(slotObj.isoStart);
     const isoDay = d.getDay() === 0 ? 7 : d.getDay();
     const pattern = `${isoDay}-${slotObj.slotId}`;
@@ -189,12 +219,19 @@ export default function ScheduleGrid({
                 </div>
               </div>
 
-              {/* Day Headers */}
+              {/* Day Headers - Chỉ hiển thị thứ, không hiển thị ngày tháng */}
               {weekdayNames.map((day, index) => {
                 const date = weekDates[index];
-                const isToday =
-                  fmt(date, "yyyy-MM-dd") === fmt(new Date(), "yyyy-MM-dd");
-                const dayNum = date.getDate();
+                const jsDay = date.getDay(); // 0 = CN, 1-6 = T2-T7
+                const isStartDay =
+                  requireStartDayFirst &&
+                  startDayOfWeek !== null &&
+                  jsDay === startDayOfWeek;
+                const isDimmed =
+                  requireStartDayFirst &&
+                  startDayOfWeek !== null &&
+                  !hasSelectedStartDaySlot &&
+                  jsDay !== startDayOfWeek;
 
                 return (
                   <div
@@ -202,12 +239,14 @@ export default function ScheduleGrid({
                     className={`relative p-4 border-b border-gray-200 ${
                       index < 6 ? "border-r border-gray-100" : ""
                     } bg-gradient-to-br ${
-                      isToday
-                        ? "from-blue-500 via-blue-600 to-indigo-600"
+                      isStartDay
+                        ? "from-emerald-500 via-emerald-600 to-teal-600"
+                        : isDimmed
+                        ? "from-gray-300 via-gray-400 to-gray-500"
                         : "from-indigo-500 via-indigo-600 to-purple-600"
-                    }`}
+                    } transition-all duration-300`}
                   >
-                    {isToday && (
+                    {isStartDay && (
                       <div className="absolute top-2 right-2">
                         <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -215,20 +254,31 @@ export default function ScheduleGrid({
                         </span>
                       </div>
                     )}
+                    {isDimmed && (
+                      <div className="absolute top-2 right-2">
+                        <Lock className="h-3 w-3 text-white/60" />
+                      </div>
+                    )}
                     <div className="text-center">
-                      <div className="text-white/80 text-xs font-medium uppercase tracking-wider">
+                      <div
+                        className={`text-lg font-bold ${
+                          isDimmed ? "text-white/60" : "text-white"
+                        }`}
+                      >
                         {day.short}
                       </div>
                       <div
-                        className={`text-2xl font-bold mt-1 ${
-                          isToday ? "text-white" : "text-white/90"
+                        className={`text-xs mt-1 ${
+                          isDimmed ? "text-white/40" : "text-white/70"
                         }`}
                       >
-                        {dayNum}
+                        {day.full}
                       </div>
-                      <div className="text-white/60 text-xs mt-1">
-                        {fmt(date, "dd/MM")}
-                      </div>
+                      {isStartDay && (
+                        <div className="mt-1 text-[10px] text-white/90 font-medium bg-white/20 rounded px-1.5 py-0.5 inline-block">
+                          Ngày bắt đầu
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -264,55 +314,98 @@ export default function ScheduleGrid({
                   .fill(0)
                   .map((_, dayIdx) => {
                     const d = weekDates[dayIdx];
+                    const jsDay = d.getDay(); // 0 = CN, 1-6 = T2-T7
                     const sObj = buildSlot(d, slot);
                     const sel = isSelected(sObj);
                     const wasOriginal = isOriginalSelected(sObj);
                     const teacherB = isTeacherBusySlot(sObj);
                     const roomB = isRoomBusySlot(sObj);
                     const busy = teacherB || roomB;
-                    const isToday =
-                      fmt(d, "yyyy-MM-dd") === fmt(new Date(), "yyyy-MM-dd");
+
+                    // Kiểm tra xem cell này có bị khóa không (chưa chọn slot ngày bắt đầu)
+                    const isStartDay =
+                      requireStartDayFirst &&
+                      startDayOfWeek !== null &&
+                      jsDay === startDayOfWeek;
+                    const isDayLocked =
+                      requireStartDayFirst &&
+                      startDayOfWeek !== null &&
+                      !hasSelectedStartDaySlot &&
+                      jsDay !== startDayOfWeek;
+                    // Ngày bắt đầu: cho phép click nếu không disabled và (là slot cũ HOẶC không bận)
+                    // Ngày khác: cho phép click nếu không disabled, không bị lock, và (là slot cũ HOẶC không bận)
+                    const canClick =
+                      !disabled && !isDayLocked && (wasOriginal || !busy);
 
                     return (
                       <div
                         key={dayIdx + "-" + slot.id}
-                        onClick={() =>
-                          !disabled &&
-                          (wasOriginal || !busy) &&
-                          onToggle?.(sObj)
-                        }
+                        onClick={() => canClick && onToggle?.(sObj)}
                         className={`p-2 min-h-[100px] transition-all duration-200 ${
                           dayIdx < 6 ? "border-r border-gray-100" : ""
-                        } ${isToday ? "bg-blue-50/30" : ""} ${
-                          !disabled && !busy
+                        } ${isStartDay && !sel ? "bg-emerald-50/50" : ""} ${
+                          isDayLocked ? "bg-gray-50/50" : ""
+                        } ${
+                          canClick
                             ? "cursor-pointer hover:bg-gray-50"
+                            : isDayLocked
+                            ? "cursor-not-allowed"
                             : ""
                         }`}
                       >
-                        <div className="h-full flex items-center justify-center">
+                        <div className="h-full flex items-center justify-center relative">
+                          {/* Icon khóa nhỏ ở góc cho các ngày bị lock */}
+                          {isDayLocked && !sel && (
+                            <div className="absolute top-0 right-0 p-1">
+                              <Lock className="h-3 w-3 text-gray-400" />
+                            </div>
+                          )}
+
                           {sel ? (
-                            <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-200 transform hover:scale-105 transition-transform">
+                            <div
+                              className={`flex flex-col items-center gap-2 p-3 rounded-xl text-white shadow-lg transform hover:scale-105 transition-transform ${
+                                isStartDay
+                                  ? "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-200"
+                                  : "bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-200"
+                              }`}
+                            >
                               <Check className="h-5 w-5" />
                               <span className="text-xs font-semibold">
                                 {wasOriginal ? "Slot cũ" : "Đã chọn"}
                               </span>
                             </div>
                           ) : teacherB ? (
-                            <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-red-50 to-rose-100 border border-red-200 text-red-600">
+                            <div
+                              className={`flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-red-50 to-rose-100 border border-red-200 text-red-600 ${
+                                isDayLocked ? "opacity-60" : ""
+                              }`}
+                            >
                               <User className="h-5 w-5" />
                               <span className="text-xs font-semibold">
                                 GV bận
                               </span>
                             </div>
                           ) : roomB ? (
-                            <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 text-gray-500">
+                            <div
+                              className={`flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300 text-gray-500 ${
+                                isDayLocked ? "opacity-60" : ""
+                              }`}
+                            >
                               <Home className="h-5 w-5" />
                               <span className="text-xs font-semibold">
                                 P. bận
                               </span>
                             </div>
                           ) : (
-                            <div className="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-emerald-300 hover:text-emerald-500 hover:bg-emerald-50/50 transition-all">
+                            <div
+                              className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-dashed transition-all ${
+                                isDayLocked
+                                  ? "border-gray-200 text-gray-400 opacity-60"
+                                  : isStartDay
+                                  ? "border-emerald-300 text-emerald-500 hover:border-emerald-400 hover:bg-emerald-50/50"
+                                  : "border-gray-200 text-gray-400 hover:border-emerald-300 hover:text-emerald-500 hover:bg-emerald-50/50"
+                              }`}
+                            >
                               <div className="w-6 h-6 rounded-full border-2 border-current flex items-center justify-center">
                                 <span className="text-lg leading-none">+</span>
                               </div>
@@ -330,7 +423,7 @@ export default function ScheduleGrid({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-6 text-sm bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+      <div className="flex flex-wrap items-center gap-4 md:gap-6 text-sm bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
         <span className="font-semibold text-gray-700">Chú thích:</span>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-300"></div>
@@ -348,6 +441,20 @@ export default function ScheduleGrid({
           <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm"></div>
           <span className="text-gray-600">Đã chọn</span>
         </div>
+        {requireStartDayFirst && (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm"></div>
+              <span className="text-gray-600">Ngày bắt đầu</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full border border-gray-300 flex items-center justify-center relative">
+                <Lock className="w-2 h-2 text-gray-400" />
+              </div>
+              <span className="text-gray-600">Đang khóa</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

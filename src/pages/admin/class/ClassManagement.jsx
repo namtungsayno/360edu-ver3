@@ -9,9 +9,14 @@ import React, {
   useRef,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { dayLabelVi, formatCurrency } from "../../../helper/formatters";
+import {
+  dayLabelVi,
+  formatCurrency,
+  formatDateVN,
+} from "../../../helper/formatters";
 import { classService } from "../../../services/class/class.service";
 import { classApi } from "../../../services/class/class.api";
+import { teacherApi } from "../../../services/teacher/teacher.api";
 import { useToast } from "../../../hooks/use-toast";
 import useDebounce from "../../../hooks/useDebounce";
 import {
@@ -465,8 +470,12 @@ function DetailPanel({
                 <p className="text-xs text-gray-500">Thời gian khóa học</p>
                 <p className="text-sm font-medium text-gray-900">
                   {cls.startDate && cls.endDate
-                    ? `${cls.startDate} → ${cls.endDate}`
-                    : cls.startDate || cls.endDate || "Chưa xác định"}
+                    ? `${formatDateVN(cls.startDate)} → ${formatDateVN(
+                        cls.endDate
+                      )}`
+                    : formatDateVN(cls.startDate) ||
+                      formatDateVN(cls.endDate) ||
+                      "Chưa xác định"}
                 </p>
               </div>
             </div>
@@ -642,11 +651,13 @@ export default function ClassManagementV2() {
   const debouncedQuery = useDebounce(query, 300);
   const [classType, setClassType] = useState(""); // "", "online", "offline"
   const [statusFilter, setStatusFilter] = useState(""); // "", "DRAFT", "PUBLIC"
+  const [teacherFilter, setTeacherFilter] = useState(""); // teacherUserId
   const [showFilters, setShowFilters] = useState(false);
+  const [teachers, setTeachers] = useState([]); // List of teachers for filter
 
   // Server-side pagination
   const [page, setPage] = useState(0);
-  const [size] = useState(5);
+  const [size, setSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -672,6 +683,18 @@ export default function ClassManagementV2() {
   // Draft classes approaching start date (warning)
   const [draftApproaching, setDraftApproaching] = useState([]);
 
+  // Load teachers for filter
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await teacherApi.list();
+        setTeachers(Array.isArray(data) ? data : []);
+      } catch {
+        // Failed to load teachers
+      }
+    })();
+  }, []);
+
   // Load stats once
   useEffect(() => {
     (async () => {
@@ -691,28 +714,30 @@ export default function ClassManagementV2() {
           draft,
           published,
         });
-      } catch (e) {
+      } catch {
         // Failed to load stats
       }
     })();
   }, []);
 
   // Load draft classes approaching start date
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await classApi.getDraftApproaching();
-        setDraftApproaching(Array.isArray(data) ? data : []);
-      } catch (e) {
-        // Failed to load draft approaching
-      }
-    })();
+  const reloadDraftApproaching = useCallback(async () => {
+    try {
+      const data = await classApi.getDraftApproaching();
+      setDraftApproaching(Array.isArray(data) ? data : []);
+    } catch {
+      // Failed to load draft approaching
+    }
   }, []);
+
+  useEffect(() => {
+    reloadDraftApproaching();
+  }, [reloadDraftApproaching]);
 
   // Reset page when filters change
   useEffect(() => {
     setPage(0);
-  }, [debouncedQuery, classType, statusFilter]);
+  }, [debouncedQuery, classType, statusFilter, teacherFilter]);
 
   // Map FE filters to BE params
   const mapStatusToBE = (status) => {
@@ -734,6 +759,7 @@ export default function ClassManagementV2() {
         search: debouncedQuery,
         status: mapStatusToBE(statusFilter),
         isOnline,
+        teacherUserId: teacherFilter || null,
         page,
         size,
         sortBy: "id",
@@ -744,13 +770,13 @@ export default function ClassManagementV2() {
       setClasses(content);
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
-    } catch (e) {
+    } catch {
       setClasses([]);
       toastRef.current.showError("Không thể tải danh sách lớp học");
     } finally {
       setLoading(false);
     }
-  }, [debouncedQuery, classType, statusFilter, page, size]);
+  }, [debouncedQuery, classType, statusFilter, teacherFilter, page, size]);
 
   useEffect(() => {
     loadClasses();
@@ -766,7 +792,7 @@ export default function ClassManagementV2() {
       const draft = allClasses.filter((c) => c.status === "DRAFT").length;
       const published = allClasses.filter((c) => c.status === "PUBLIC").length;
       setStats({ total: allClasses.length, online, offline, draft, published });
-    } catch (e) {
+    } catch {
       // Failed to reload stats
     }
   };
@@ -788,8 +814,9 @@ export default function ClassManagementV2() {
       await classService.publish(selectedClass.id);
       await loadClasses();
       await reloadStats();
+      await reloadDraftApproaching();
       success("Đã xuất bản lớp học thành công");
-    } catch (e) {
+    } catch {
       showError("Không thể xuất bản lớp học");
     } finally {
       setUpdating(false);
@@ -805,6 +832,7 @@ export default function ClassManagementV2() {
       setSelectedId(null);
       await loadClasses();
       await reloadStats();
+      await reloadDraftApproaching();
       success("Đã xóa lớp học thành công");
     } catch (e) {
       let msg = "Không thể xóa lớp học";
@@ -938,7 +966,7 @@ export default function ClassManagementV2() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-gray-500">
-                            Ngày bắt đầu: {cls.startDate}
+                            Ngày bắt đầu: {formatDateVN(cls.startDate)}
                           </span>
                           <button
                             onClick={() =>
@@ -1012,6 +1040,18 @@ export default function ClassManagementV2() {
                   <option value="DRAFT">📝 Bản nháp</option>
                   <option value="PUBLIC">✅ Đã xuất bản</option>
                 </select>
+                <select
+                  value={teacherFilter}
+                  onChange={(e) => setTeacherFilter(e.target.value)}
+                  className="px-3 py-2 text-sm bg-gray-50 border-0 rounded-lg focus:ring-2 focus:ring-blue-500 min-w-[160px]"
+                >
+                  <option value="">Tất cả giáo viên</option>
+                  {teachers.map((t) => (
+                    <option key={t.userId} value={t.userId}>
+                      👨‍🏫 {t.fullName}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
@@ -1043,28 +1083,50 @@ export default function ClassManagementV2() {
           <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100 bg-gray-50/50">
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-500">
-                Hiển thị {filtered.length} / {totalElements} lớp học
+                Trang {page + 1} / {Math.max(1, totalPages)} — Tổng{" "}
+                {totalElements} bản ghi
               </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-xs text-gray-600 px-2">
-                  {page + 1} / {Math.max(1, totalPages)}
-                </span>
-                <button
-                  onClick={() =>
-                    setPage((p) => Math.min(totalPages - 1, p + 1))
-                  }
-                  disabled={page >= totalPages - 1}
-                  className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+              <div className="flex items-center gap-4">
+                {/* Size selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">
+                    Số bản ghi / trang:
+                  </span>
+                  <select
+                    value={size}
+                    onChange={(e) => {
+                      setSize(Number(e.target.value));
+                      setPage(0);
+                    }}
+                    className="px-2 py-1 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+                {/* Page navigation */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs text-gray-600 px-2">
+                    {page + 1} / {Math.max(1, totalPages)}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setPage((p) => Math.min(totalPages - 1, p + 1))
+                    }
+                    disabled={page >= totalPages - 1}
+                    className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

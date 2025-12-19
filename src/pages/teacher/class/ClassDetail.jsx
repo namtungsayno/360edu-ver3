@@ -32,6 +32,7 @@ import {
   Plus,
   Mail,
   Send,
+  AlertTriangle,
 } from "lucide-react";
 import { parentNotificationService } from "../../../services/notification/parent-notification.service";
 import { scheduleService } from "../../../services/schedule/schedule.service";
@@ -107,6 +108,32 @@ export default function ClassDetail() {
     }
   })();
 
+  /**
+   * Kiểm tra buổi học có phải là buổi học ĐÃ QUA không
+   * - true: Buổi học đã qua (trước ngày hôm nay) → không cho phép điểm danh
+   * - false: Buổi học đang diễn ra hôm nay → cho phép điểm danh
+   */
+  const isPastSession = (() => {
+    try {
+      const s = parseLocalDate(sessionDateStr); // Ngày buổi học
+      const t = parseLocalDate(todayStr); // Ngày hôm nay
+      if (!s || !t) return false;
+      t.setHours(0, 0, 0, 0);
+      s.setHours(0, 0, 0, 0);
+      return s < t; // So sánh: ngày buổi học < ngày hôm nay?
+    } catch {
+      return false;
+    }
+  })();
+
+  /**
+   * Kiểm tra có được phép điểm danh không
+   * - Chỉ cho phép điểm danh trong ngày diễn ra buổi học (hôm nay)
+   * - Không cho phép điểm danh nếu buổi học chưa diễn ra (tương lai)
+   * - Không cho phép điểm danh nếu buổi học đã qua (quá khứ)
+   */
+  const isAttendanceDisabled = isFutureSession || isPastSession;
+
   // ═══════════════════════════════════════════════════════════════════════════
   // PHẦN 3: TOAST NOTIFICATIONS - Hiển thị thông báo
   // ═══════════════════════════════════════════════════════════════════════════
@@ -126,6 +153,10 @@ export default function ClassDetail() {
   const [editMode, setEditMode] = useState(false); // Đang ở chế độ sửa điểm danh?
   const [originalDetails, setOriginalDetails] = useState([]); // Backup dữ liệu gốc để hủy thay đổi
   const [currentSessionId, setCurrentSessionId] = useState(null); // Session ID từ attendance response
+
+  // State cho modal cảnh báo khi rời trang mà chưa điểm danh
+  const [showLeaveWarning, setShowLeaveWarning] = useState(false); // Hiển thị modal cảnh báo?
+  const [pendingNavigation, setPendingNavigation] = useState(null); // URL đích khi muốn điều hướng
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PHẦN 6: STATE GỬI THÔNG BÁO PHỤ HUYNH
@@ -167,6 +198,75 @@ export default function ClassDetail() {
    * - "ADMIN": Đang dùng khóa học gốc từ Admin
    */
   const sourceType = usingPersonalCourse ? "CLASS_PERSONAL" : "ADMIN";
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHẦN 8: CẢNH BÁO KHI CHƯA LƯU ĐIỂM DANH
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Kiểm tra xem có học sinh nào chưa được điểm danh không
+   * - true: Có học sinh chưa điểm danh (status là UNMARKED, "-", null hoặc undefined)
+   */
+  const hasUnmarkedStudents = attendanceDetails.some(
+    (a) => !a.status || a.status === "-" || a.status === "UNMARKED"
+  );
+
+  /**
+   * Kiểm tra xem có cần cảnh báo khi rời trang không
+   * - Có thay đổi chưa lưu (hasChanges)
+   * - HOẶC có học sinh chưa điểm danh và đang trong ngày học (không phải tương lai/quá khứ)
+   */
+  const shouldWarnOnLeave =
+    hasChanges || (hasUnmarkedStudents && !isAttendanceDisabled);
+
+  // Cảnh báo khi người dùng cố rời trang (đóng tab/refresh) mà chưa lưu điểm danh
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (shouldWarnOnLeave) {
+        e.preventDefault();
+        e.returnValue = hasChanges
+          ? "Bạn có thay đổi điểm danh chưa lưu. Bạn có chắc muốn rời trang?"
+          : "Bạn chưa hoàn thành điểm danh. Bạn có chắc muốn rời trang?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [shouldWarnOnLeave, hasChanges]);
+
+  /**
+   * Hàm xử lý điều hướng an toàn - kiểm tra và hiển thị cảnh báo nếu cần
+   * @param {string} path - Đường dẫn muốn điều hướng đến
+   */
+  const handleSafeNavigate = (path) => {
+    if (shouldWarnOnLeave) {
+      setPendingNavigation(path);
+      setShowLeaveWarning(true);
+    } else {
+      navigate(path);
+    }
+  };
+
+  /**
+   * Xác nhận rời trang - điều hướng đến URL đang chờ
+   */
+  const confirmLeave = () => {
+    setShowLeaveWarning(false);
+    // Điều hướng đến URL đang chờ hoặc mặc định về schedule
+    const targetPath = pendingNavigation || "/home/teacher/schedule";
+    setPendingNavigation(null);
+    navigate(targetPath);
+  };
+
+  /**
+   * Hủy rời trang - đóng modal và ở lại trang hiện tại
+   */
+  const cancelLeave = () => {
+    setShowLeaveWarning(false);
+    setPendingNavigation(null);
+  };
+
   // Load dữ liệu
   useEffect(() => {
     if (!classId) return;
@@ -200,7 +300,7 @@ export default function ClassDetail() {
         // Auto-enter edit mode if nothing marked yet
         if (
           attendanceList.every((a) => !a.status || a.status === "-") &&
-          !isFutureSession
+          !isAttendanceDisabled
         ) {
           setEditMode(true);
         }
@@ -251,8 +351,7 @@ export default function ClassDetail() {
               if (sourceMatch) {
                 baseCourseId = parseInt(sourceMatch[1], 10);
               }
-            } catch (err) {
-              }
+            } catch (err) {}
           }
 
           // 2. Load Course gốc Admin - từ baseCourseId (nếu tìm được) hoặc từ Subject
@@ -263,8 +362,7 @@ export default function ClassDetail() {
               );
               setAdminCourseData(loadedAdminCourse);
               setBaseCourseIdState(baseCourseId);
-            } catch (err) {
-              }
+            } catch (err) {}
           }
 
           // 3. Fallback: Nếu không tìm được từ SOURCE tag, thử lấy từ Subject's courses
@@ -287,8 +385,7 @@ export default function ClassDetail() {
                 setAdminCourseData(loadedAdminCourse);
                 setBaseCourseIdState(adminCourse.id);
               }
-            } catch (err) {
-              }
+            } catch (err) {}
           }
 
           // Default: hiển thị course gốc Admin (nếu có), hoặc Personal course
@@ -409,6 +506,10 @@ export default function ClassDetail() {
     try {
       if (isFutureSession) {
         error("Chưa đến ngày diễn ra buổi học, không thể điểm danh.");
+        return;
+      }
+      if (isPastSession) {
+        error("Đã hết ngày diễn ra buổi học, không thể điểm danh.");
         return;
       }
       // Filter students that have attendance marked (status not "-")
@@ -600,7 +701,10 @@ export default function ClassDetail() {
   if (!classDetail) {
     return (
       <div className="p-6">
-        <BackButton onClick={() => navigate(-1)} showLabel={false} />
+        <BackButton
+          onClick={() => handleSafeNavigate("/home/teacher/schedule")}
+          showLabel={false}
+        />
         <div className="flex items-center justify-center py-12">
           <p className="text-gray-500">Không tìm thấy thông tin lớp học</p>
         </div>
@@ -610,10 +714,113 @@ export default function ClassDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      {/* Modal cảnh báo khi rời trang mà chưa điểm danh */}
+      {showLeaveWarning && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-y-auto p-4"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in zoom-in-95 duration-200 my-auto"
+            style={{ maxHeight: "90vh", overflowY: "auto" }}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">
+                    Chưa hoàn thành điểm danh!
+                  </h3>
+                  <p className="text-sm opacity-90">
+                    Vui lòng xác nhận trước khi rời trang
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                  <Users className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  {hasChanges ? (
+                    <>
+                      <p className="font-semibold text-gray-900">
+                        Bạn có thay đổi chưa lưu!
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Dữ liệu điểm danh đã thay đổi nhưng chưa được lưu. Nếu
+                        rời trang, các thay đổi sẽ bị mất.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-gray-900">
+                        Bạn chưa hoàn thành điểm danh!
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Còn{" "}
+                        <span className="font-semibold text-amber-600">
+                          {
+                            attendanceDetails.filter(
+                              (a) =>
+                                !a.status ||
+                                a.status === "-" ||
+                                a.status === "UNMARKED"
+                            ).length
+                          }
+                        </span>{" "}
+                        học sinh chưa được điểm danh. Bạn có muốn rời trang
+                        không?
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 mt-6">
+                <Button
+                  onClick={cancelLeave}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <Check className="w-4 h-4 mr-2" />Ở lại điểm danh
+                </Button>
+                <Button
+                  onClick={confirmLeave}
+                  variant="outline"
+                  className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-100"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Rời trang
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <BackButton onClick={() => navigate(-1)} showLabel={false} />
+          <BackButton
+            onClick={() => handleSafeNavigate("/home/teacher/schedule")}
+            showLabel={false}
+          />
           <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
             <BookOpen className="h-7 w-7 text-white" />
           </div>
@@ -896,7 +1103,7 @@ export default function ClassDetail() {
                   {hasChanges && (
                     <Button
                       onClick={handleSaveAttendance}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      className="bg-blue-600 hover:bg-blue-700 text-white animate-pulse shadow-lg shadow-blue-200"
                     >
                       <Save className="h-4 w-4 mr-2" />
                       Lưu điểm danh
@@ -905,6 +1112,12 @@ export default function ClassDetail() {
                   <Button
                     variant="outline"
                     onClick={() => {
+                      if (hasChanges) {
+                        const confirmLeave = window.confirm(
+                          "Bạn có thay đổi điểm danh chưa lưu. Bạn có chắc muốn hủy?"
+                        );
+                        if (!confirmLeave) return;
+                      }
                       setAttendanceDetails(originalDetails);
                       setHasChanges(false);
                       setEditMode(false);
@@ -915,18 +1128,47 @@ export default function ClassDetail() {
                 </div>
               ) : (
                 <Button
-                  onClick={() => !isFutureSession && setEditMode(true)}
-                  disabled={isFutureSession}
+                  onClick={() => !isAttendanceDisabled && setEditMode(true)}
+                  disabled={isAttendanceDisabled}
                   className={`text-white ${
-                    isFutureSession
+                    isAttendanceDisabled
                       ? "bg-gray-300 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700"
                   }`}
                 >
-                  {isFutureSession ? "Chưa đến ngày học" : "Sửa điểm danh"}
+                  {isFutureSession
+                    ? "Chưa đến ngày học"
+                    : isPastSession
+                    ? "Đã hết ngày điểm danh"
+                    : "Sửa điểm danh"}
                 </Button>
               )}
             </div>
+
+            {/* Banner cảnh báo chưa lưu điểm danh */}
+            {hasChanges && editMode && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-300 rounded-xl flex items-center gap-3 animate-pulse">
+                <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-amber-800">
+                    Bạn có thay đổi điểm danh chưa lưu!
+                  </p>
+                  <p className="text-sm text-amber-700">
+                    Vui lòng nhấn nút "Lưu điểm danh" để lưu lại thay đổi trước
+                    khi rời khỏi trang.
+                  </p>
+                </div>
+                <Button
+                  onClick={handleSaveAttendance}
+                  className="bg-amber-500 hover:bg-amber-600 text-white flex-shrink-0"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Lưu ngay
+                </Button>
+              </div>
+            )}
 
             {/* Student List */}
             <div className="space-y-3">
@@ -1515,10 +1757,7 @@ export default function ClassDetail() {
                   >
                     <SessionMaterialUpload
                       sessionId={currentSessionId}
-                      readOnly={
-                        isFutureSession ||
-                        (!contentEditMode && hasExistingContent)
-                      }
+                      readOnly={!contentEditMode && hasExistingContent}
                     />
                     {!contentEditMode && hasExistingContent && (
                       <p className="text-xs text-gray-400 mt-2 text-center">
@@ -1624,9 +1863,9 @@ export default function ClassDetail() {
               </div>
               <Button
                 onClick={handleSendParentNotification}
-                disabled={sendingNotification || isFutureSession}
+                disabled={sendingNotification || isAttendanceDisabled}
                 className={`h-12 px-6 rounded-xl shadow-lg transition-all duration-300 ${
-                  sendingNotification || isFutureSession
+                  sendingNotification || isAttendanceDisabled
                     ? "bg-gray-300 cursor-not-allowed"
                     : "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-blue-200 hover:shadow-xl hover:scale-[1.02]"
                 } text-white font-medium`}
@@ -1644,10 +1883,12 @@ export default function ClassDetail() {
                 )}
               </Button>
             </div>
-            {isFutureSession && (
+            {isAttendanceDisabled && (
               <p className="text-xs text-orange-600 mt-3 flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                Chưa đến ngày diễn ra buổi học, không thể gửi thông báo
+                {isFutureSession
+                  ? "Chưa đến ngày diễn ra buổi học, không thể gửi thông báo"
+                  : "Đã hết ngày diễn ra buổi học, không thể gửi thông báo"}
               </p>
             )}
           </CardContent>

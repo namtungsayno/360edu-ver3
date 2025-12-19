@@ -98,4 +98,18 @@ export const attendanceService = {
       note: it.note || "",
     }));
   },
+
+  /**
+   * Check attendance status for multiple sessions
+   * @param {Array<{classId: number, date: string, slotId: number}>} sessions
+   * @returns {Promise<Map<string, boolean>>} Map of session key to attendance status
+   */
+  async checkAttendanceStatus(sessions) {
+    // Convert sessions to identifiers: "classId-yyyy-MM-dd-slotId"
+    const identifiers = sessions.map(
+      (s) => `${s.classId}-${s.date}-${s.slotId}`
+    );
+
+    return attendanceApi.checkStatus(identifiers);
+  },
 };

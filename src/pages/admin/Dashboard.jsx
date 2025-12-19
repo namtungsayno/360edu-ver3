@@ -813,15 +813,20 @@ export default function Dashboard() {
           courseApi.list().catch(() => []),
         ]);
 
-      // Calculate stats - Tổng học viên = chỉ STUDENT (không tính PARENT)
+      // Calculate stats - Tổng học viên = chỉ STUDENT active (không tính PARENT và inactive)
       // BE returns roles as array: ["ROLE_STUDENT"], etc.
       const studentCount = Array.isArray(users)
         ? users.filter((u) => {
             const roles = u.roles || [];
-            return roles.some((r) => r === "ROLE_STUDENT" || r === "STUDENT");
+            const isStudent = roles.some(
+              (r) => r === "ROLE_STUDENT" || r === "STUDENT"
+            );
+            const isActive = u.active !== false; // active mặc định true nếu không có field
+            return isStudent && isActive;
           }).length
         : 0;
 
+      // Teachers đã được filter từ BE (chỉ trả về active teachers)
       const teacherCount = Array.isArray(teachers) ? teachers.length : 0;
       const classCount = Array.isArray(classes) ? classes.length : 0;
       // Lớp hoạt động = status PUBLIC và có học sinh tham gia (currentStudents > 0)
@@ -1042,14 +1047,22 @@ export default function Dashboard() {
       const newsItems = response?.content || [];
 
       setRecentNews(
-        newsItems.slice(0, 3).map((n) => ({
-          id: n.id,
-          title: n.title,
-          date: n.createdAt
-            ? new Date(n.createdAt).toLocaleDateString("sv-SE")
-            : "N/A",
-          status: n.status?.toLowerCase() || "draft",
-        }))
+        newsItems.slice(0, 3).map((n) => {
+          let dateFormatted = "N/A";
+          if (n.createdAt) {
+            const d = new Date(n.createdAt);
+            const day = d.getDate().toString().padStart(2, "0");
+            const month = (d.getMonth() + 1).toString().padStart(2, "0");
+            const year = d.getFullYear();
+            dateFormatted = `${day}/${month}/${year}`;
+          }
+          return {
+            id: n.id,
+            title: n.title,
+            date: dateFormatted,
+            status: n.status?.toLowerCase() || "draft",
+          };
+        })
       );
     } catch (error) {
     } finally {

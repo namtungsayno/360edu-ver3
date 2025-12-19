@@ -113,8 +113,17 @@ export default function Login() {
 
       if (errorMsg.includes("mật khẩu")) {
         setErrors({ password: "Mật khẩu không chính xác" });
-      } else if (errorMsg.includes("tên đăng nhập")) {
+      } else if (
+        errorMsg.includes("tên đăng nhập") ||
+        errorMsg.includes("không tồn tại")
+      ) {
         setErrors({ username: "Tên đăng nhập không tồn tại" });
+      } else if (
+        errorMsg.includes("vô hiệu hóa") ||
+        errorMsg.includes("bị khóa")
+      ) {
+        // Tài khoản bị vô hiệu hóa hoặc bị khóa - clear errors, chỉ hiển thị toast
+        setErrors({ username: "", password: "" });
       } else {
         setErrors({ username: "", password: "" });
       }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../../hooks/use-toast";
 import { Button } from "../../../components/ui/Button.jsx";
@@ -17,8 +17,10 @@ import {
   BookOpen,
   User,
   ExternalLink,
+  CheckCircle,
 } from "lucide-react";
 import { scheduleService } from "../../../services/schedule/schedule.service";
+import { attendanceService } from "../../../services/attendance/attendance.service";
 import ModernWeekCalendar, {
   CalendarEventCard,
   CalendarStatusBadge,
@@ -39,6 +41,7 @@ function ScheduleManagement() {
   const [teachers, setTeachers] = useState([]);
   const [timeSlots, setTimeSlots] = useState([]);
   const [weekSchedule, setWeekSchedule] = useState([]);
+  const [attendanceStatus, setAttendanceStatus] = useState({}); // Map of session key to attendance status
 
   // Calculate week start based on currentWeek
   const weekStart = useMemo(() => {
@@ -113,6 +116,43 @@ function ScheduleManagement() {
     return filtered;
   }, [weekSchedule, selectedTeacher, classTypeFilter, weekStart]);
 
+  // Fetch attendance status when filteredSchedule changes
+  const fetchAttendanceStatus = useCallback(async () => {
+    if (filteredSchedule.length === 0) {
+      setAttendanceStatus({});
+      return;
+    }
+
+    try {
+      // Collect all sessions to check attendance status
+      const sessionsToCheck = filteredSchedule.map((s) => {
+        const dayIdx = WEEK_DAYS.findIndex((d) => d.id === s.day);
+        const slotDate = addDays(weekStart, dayIdx);
+        const dateStr = fmt(slotDate, "yyyy-MM-dd");
+        return {
+          classId: s.classId,
+          date: dateStr,
+          slotId: s.slotId,
+        };
+      });
+
+      const statusMap = await attendanceService.checkAttendanceStatus(
+        sessionsToCheck
+      );
+      setAttendanceStatus(statusMap);
+    } catch (e) {
+      console.error("Failed to fetch attendance status:", e);
+    }
+  }, [filteredSchedule, weekStart]);
+
+  useEffect(() => {
+    fetchAttendanceStatus();
+
+    // Auto-refresh attendance status every 30 seconds for realtime updates
+    const intervalId = setInterval(fetchAttendanceStatus, 30000);
+    return () => clearInterval(intervalId);
+  }, [fetchAttendanceStatus]);
+
   const scheduleLookup = useMemo(() => {
     const map = {};
     for (const item of filteredSchedule) {
@@ -154,16 +194,42 @@ function ScheduleManagement() {
 
   // Render class card for calendar
   const renderClassEvent = (classData, dayId, slotId) => {
+    // Calculate date for this slot
+    const dayIdx = WEEK_DAYS.findIndex((d) => d.id === dayId);
+    const slotDate = addDays(weekStart, dayIdx);
+    const dateStr = fmt(slotDate, "yyyy-MM-dd");
+
+    // Build attendance status key
+    const attendanceKey = `${classData.classId}-${dateStr}-${slotId}`;
+    const hasAttendance = attendanceStatus[attendanceKey] === true;
+
     return (
       <CalendarEventCard
         key={classData.id}
         variant={classData.isOnline ? "info" : "warning"}
         onClick={() => openClassDetail(classData)}
-        className="cursor-pointer"
+        className={`cursor-pointer relative ${
+          hasAttendance ? "ring-2 ring-emerald-400 ring-offset-1" : ""
+        }`}
       >
+        {/* Attendance status indicator - positioned at top right corner */}
+        {hasAttendance && (
+          <div className="absolute -top-1.5 -right-1.5 z-10">
+            <div className="relative">
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-emerald-400 rounded-full blur-sm animate-pulse"></div>
+              {/* Badge */}
+              <div className="relative flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white text-[9px] font-bold rounded-full shadow-lg shadow-emerald-200">
+                <CheckCircle className="h-3 w-3" />
+                <span>Đã điểm danh</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Class name */}
         <div
-          className="font-semibold text-xs truncate mb-1"
+          className="font-semibold text-xs truncate mb-1 pr-16"
           title={classData.className}
         >
           {classData.className}
