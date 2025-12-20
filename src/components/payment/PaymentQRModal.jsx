@@ -2,9 +2,12 @@
 // Modal hiển thị QR code thanh toán học phí - Layout ngang đẹp
 
 import { useState, useEffect, useRef } from "react";
-import { X, Copy, CheckCircle2, Loader2, Phone } from "lucide-react";
+import { X, Copy, CheckCircle2, Loader2, Phone, Clock, AlertTriangle } from "lucide-react";
 import { paymentService } from "../../services/payment/payment.service";
 import { useToast } from "../../hooks/use-toast";
+
+// Thời gian hết hạn QR code (15 phút)
+const QR_EXPIRY_MINUTES = 15;
 
 export default function PaymentQRModal({
   isOpen,
@@ -18,17 +21,44 @@ export default function PaymentQRModal({
   const [paymentData, setPaymentData] = useState(null);
   const [copied, setCopied] = useState(false);
   const modalRef = useRef(null);
+  
+  // Countdown state
+  const [timeLeft, setTimeLeft] = useState(QR_EXPIRY_MINUTES * 60); // seconds
+  const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
     if (isOpen && classId) {
       loadPaymentQR();
+      // Reset countdown when modal opens
+      setTimeLeft(QR_EXPIRY_MINUTES * 60);
+      setIsExpired(false);
     }
     if (!isOpen) {
       setPaymentData(null);
       setCopied(false);
+      setTimeLeft(QR_EXPIRY_MINUTES * 60);
+      setIsExpired(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, classId]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!isOpen || !paymentData || isExpired) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsExpired(true);
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isOpen, paymentData, isExpired]);
 
   const loadPaymentQR = async () => {
     setLoading(true);
@@ -59,6 +89,20 @@ export default function PaymentQRModal({
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN").format(amount || 0) + "đ";
+  };
+
+  // Format countdown time as MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // Refresh QR code when expired
+  const handleRefreshQR = () => {
+    setTimeLeft(QR_EXPIRY_MINUTES * 60);
+    setIsExpired(false);
+    loadPaymentQR();
   };
 
   // Click outside to close
@@ -119,15 +163,45 @@ export default function PaymentQRModal({
             {/* Main Content - 2 columns */}
             <div className="flex">
               {/* Left - QR Code */}
-              <div className="w-1/2 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 border-r p-6">
-                <img
-                  src={paymentData.qrImageUrl}
-                  alt="VietQR"
-                  className="w-full h-auto max-h-96 object-contain"
-                  onError={(e) => {
-                    e.target.src = "/assets/images/qr-placeholder.png";
-                  }}
-                />
+              <div className="w-1/2 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 border-r p-6">
+                {/* Countdown Timer */}
+                <div className={`flex items-center gap-2 mb-4 px-4 py-2 rounded-full ${
+                  isExpired 
+                    ? "bg-red-100 text-red-700" 
+                    : timeLeft <= 60 
+                      ? "bg-amber-100 text-amber-700" 
+                      : "bg-blue-100 text-blue-700"
+                }`}>
+                  <Clock className="w-4 h-4" />
+                  <span className="font-mono font-semibold">
+                    {isExpired ? "Hết hạn" : formatTime(timeLeft)}
+                  </span>
+                </div>
+
+                {/* QR Code or Expired State */}
+                {isExpired ? (
+                  <div className="flex flex-col items-center justify-center p-8">
+                    <AlertTriangle className="w-16 h-16 text-amber-500 mb-4" />
+                    <p className="text-gray-700 font-medium text-center mb-4">
+                      Mã QR đã hết hạn
+                    </p>
+                    <button
+                      onClick={handleRefreshQR}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      Tạo mã mới
+                    </button>
+                  </div>
+                ) : (
+                  <img
+                    src={paymentData.qrImageUrl}
+                    alt="VietQR"
+                    className="w-full h-auto max-h-80 object-contain"
+                    onError={(e) => {
+                      e.target.src = "/assets/images/qr-placeholder.png";
+                    }}
+                  />
+                )}
               </div>
 
               {/* Right - Payment Details */}

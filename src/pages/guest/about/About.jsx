@@ -248,7 +248,7 @@ export default function About() {
                     </div>
                     <div>
                       <p className="font-medium">Địa chỉ</p>
-                      <p className="text-white/80 text-sm">123 Nguyễn Văn Linh, Quận 7, TP.HCM</p>
+                      <p className="text-white/80 text-sm">Đại học FPT, Khu Công nghệ cao Hòa Lạc, Km 29, Đại lộ Thăng Long, Thạch Thất, Hà Nội</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -257,7 +257,7 @@ export default function About() {
                     </div>
                     <div>
                       <p className="font-medium">Điện thoại</p>
-                      <p className="text-white/80 text-sm">0123 456 789</p>
+                      <p className="text-white/80 text-sm">024 7300 1866</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -284,29 +284,26 @@ export default function About() {
               {/* Right - CTA */}
               <div className="bg-white/10 backdrop-blur-sm p-10 md:p-12 flex flex-col justify-center">
                 <h3 className="text-2xl font-bold text-white mb-4">
-                  Đăng ký tư vấn miễn phí
+                  Bắt đầu ngay
                 </h3>
                 <p className="text-white/80 mb-8">
-                  Để lại thông tin, chúng tôi sẽ liên hệ tư vấn chi tiết về các khóa học phù hợp với bạn.
+                  Đăng nhập để trải nghiệm đầy đủ các tính năng và đăng ký các khóa học phù hợp với bạn.
                 </p>
                 <div className="space-y-4">
-                  <Button
-                    onClick={() => onNavigate({ type: "register" })}
-                    size="lg"
-                    className="w-full bg-white text-blue-600 hover:bg-gray-100 shadow-xl"
+                  <button
+                    onClick={() => onNavigate({ type: "login" })}
+                    className="w-full h-11 px-8 rounded-md bg-white text-blue-700 hover:bg-gray-100 shadow-xl font-semibold inline-flex items-center justify-center transition-colors"
                   >
-                    <GraduationCap className="w-5 h-5 mr-2" />
-                    Đăng ký học ngay
-                  </Button>
-                  <Button
+                    <Users className="w-5 h-5 mr-2" />
+                    Đăng nhập ngay
+                  </button>
+                  <button
                     onClick={() => onNavigate({ type: "classes" })}
-                    size="lg"
-                    variant="outline"
-                    className="w-full border-white text-white hover:bg-white/10"
+                    className="w-full h-11 px-8 rounded-md border-2 border-white bg-transparent text-white hover:bg-white hover:text-blue-700 font-semibold inline-flex items-center justify-center transition-colors"
                   >
                     <BookOpen className="w-5 h-5 mr-2" />
                     Xem danh sách lớp học
-                  </Button>
+                  </button>
                 </div>
               </div>
             </div>

@@ -302,21 +302,19 @@ const NotificationBell = ({ variant = "default" }) => {
             )}
           </div>
 
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="bg-white border-t border-gray-100">
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  navigate("/home/notifications");
-                }}
-                className="w-full py-3.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
-              >
-                Xem tất cả thông báo
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+          {/* Footer - Luôn hiển thị nút xem tất cả */}
+          <div className="bg-white border-t border-gray-100">
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                navigate("/home/notifications");
+              }}
+              className="w-full py-3.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+            >
+              Xem tất cả thông báo
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -33,7 +33,7 @@
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { RequireRole } from "../utils/RouteGuards.jsx";
+import { RequireRole, RequireAuth } from "../utils/RouteGuards.jsx";
 
 import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
@@ -122,6 +122,9 @@ import ChildClasses from "../pages/parent/classes/ChildClasses.jsx";
 import ParentClassDetail from "../pages/parent/classes/ClassDetail.jsx";
 import ParentProfile from "../pages/parent/profile/ParentProfile.jsx";
 
+// 404 Not Found page
+import NotFound from "../pages/NotFound.jsx";
+
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -178,16 +181,22 @@ function AppRouter() {
             element={<StudentProfile />}
           />{" "}
           {/* Profile học sinh */}
-          <Route
-            path="/home/notifications"
-            element={<AllNotifications />}
-          />{" "}
-          {/* Tất cả thông báo */}
-          <Route
-            path="/home/payment-history"
-            element={<StudentPaymentHistory />}
-          />{" "}
-          {/* Lịch sử thanh toán */}
+        </Route>
+
+        {/* PROTECTED STUDENT ROUTES - Yêu cầu đăng nhập */}
+        <Route element={<RequireAuth />}>
+          <Route element={<GuestLayout />}>
+            <Route
+              path="/home/notifications"
+              element={<AllNotifications />}
+            />{" "}
+            {/* Tất cả thông báo */}
+            <Route
+              path="/home/payment-history"
+              element={<StudentPaymentHistory />}
+            />{" "}
+            {/* Lịch sử thanh toán */}
+          </Route>
         </Route>
         {/* ADMIN ROUTES - Các route dành cho admin (cần authentication) */}
         <Route element={<RequireRole allow={["admin"]} />}>
@@ -295,6 +304,9 @@ function AppRouter() {
             <Route path="profile" element={<ParentProfile />} />
           </Route>
         </Route>
+
+        {/* 404 NOT FOUND - Catch-all route cho các URL không hợp lệ */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

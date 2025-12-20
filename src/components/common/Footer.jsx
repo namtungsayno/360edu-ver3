@@ -129,25 +129,6 @@ export function Footer() {
           </div>
         </div>
       </div>
-
-      {/* Bottom Footer */}
-      <div className="border-t border-gray-800">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-gray-400 text-center md:text-left">
-              © 2025 360edu Management System. All rights reserved.
-            </p>
-            <div className="flex gap-6">
-              <Link to="/home/terms" className="text-gray-400 hover:text-blue-400 transition-colors">
-                Điều khoản dịch vụ
-              </Link>
-              <Link to="/home/privacy" className="text-gray-400 hover:text-blue-400 transition-colors">
-                Chính sách bảo mật
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
     </footer>
   );
 }

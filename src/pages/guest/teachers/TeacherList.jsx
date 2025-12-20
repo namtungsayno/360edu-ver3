@@ -277,7 +277,13 @@ export default function TeacherList() {
                 return (
                   <Card
                     key={teacher.id}
-                    className="group hover:shadow-lg transition-shadow overflow-hidden"
+                    className="group hover:shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer hover:-translate-y-2 h-full flex flex-col"
+                    onClick={() =>
+                      onNavigate({
+                        type: "teacher",
+                        teacherId: teacher.userId,
+                      })
+                    }
                   >
                     {/* Avatar Background */}
                     <div className="h-56 bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center relative">
@@ -296,18 +302,16 @@ export default function TeacherList() {
                           </span>
                         </div>
                       )}
-                      {/* Rating badge */}
-                      <div className="absolute top-2 right-2 bg-yellow-400 text-gray-900 px-2 py-1 rounded-full text-xs font-bold">
-                        ⭐ {teacher.rating}
-                      </div>
                     </div>
 
-                    <CardContent className="p-4 flex flex-col">
-                      <h3 className="text-lg font-semibold mb-1">
+                    <CardContent className="p-4 flex flex-col flex-1">
+                      <h3 className="text-lg font-semibold mb-1 line-clamp-1">
                         {teacher.name}
                       </h3>
-                      <Badge className="mb-2">{teacher.subject}</Badge>
-                      <p className="text-gray-600 text-sm mb-3">
+                      <div className="h-14 mb-2 overflow-hidden">
+                        <Badge className="line-clamp-2">{teacher.subject}</Badge>
+                      </div>
+                      <p className="text-gray-600 text-sm mb-3 line-clamp-1">
                         {teacher.experience}
                       </p>
 
@@ -319,18 +323,10 @@ export default function TeacherList() {
                           </p>
                           <p className="text-xs text-gray-500">Lớp học</p>
                         </div>
-                        <div className="text-center">
-                          <p className="text-lg font-bold text-yellow-600">
-                            {teacher.rating > 0
-                              ? teacher.rating.toFixed(1)
-                              : "N/A"}
-                          </p>
-                          <p className="text-xs text-gray-500">Đánh giá</p>
-                        </div>
                       </div>
 
                       {/* Achievements */}
-                      <div className="h-12 mb-3 overflow-hidden">
+                      <div className="h-12 mb-3 overflow-hidden flex-1">
                         {teacher.achievements.length > 0 && (
                           <div className="space-y-1">
                             {teacher.achievements
@@ -352,13 +348,14 @@ export default function TeacherList() {
 
                       {/* Button */}
                       <Button
-                        onClick={() =>
+                        onClick={(e) => {
+                          e.stopPropagation();
                           onNavigate({
                             type: "teacher",
                             teacherId: teacher.userId,
-                          })
-                        }
-                        className="w-full bg-purple-600 text-white hover:bg-purple-700 transition-colors text-sm mt-auto"
+                          });
+                        }}
+                        className="w-full bg-purple-600 text-white hover:bg-purple-700 transition-colors text-sm"
                         size="sm"
                       >
                         Xem hồ sơ
