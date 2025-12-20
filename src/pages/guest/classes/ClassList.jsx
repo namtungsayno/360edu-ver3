@@ -114,7 +114,7 @@ export default function ClassList() {
       }
       try {
         const myClasses = await enrollmentService.listMyClasses();
-        const ids = new Set((myClasses || []).map(c => c.classId || c.id));
+        const ids = new Set((myClasses || []).map((c) => c.classId || c.id));
         setEnrolledClassIds(ids);
       } catch {
         // User might not have any enrolled classes
@@ -848,7 +848,9 @@ export default function ClassList() {
                           {isEnrolled && (
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
                               <div className="bg-green-600 text-white px-5 py-3 rounded-lg shadow-2xl transform -rotate-12 border-4 border-white">
-                                <span className="font-bold text-base tracking-wider">ĐÃ ĐĂNG KÝ</span>
+                                <span className="font-bold text-base tracking-wider">
+                                  ĐÃ ĐĂNG KÝ
+                                </span>
                               </div>
                             </div>
                           )}
@@ -979,10 +981,11 @@ export default function ClassList() {
                             <div className="flex-1"></div>
 
                             {/* Enrollment Progress */}
-<<<<<<< HEAD
                             <div
                               className={`mb-4 rounded-lg p-3 ${
-                                isFull
+                                isEnrolled
+                                  ? "bg-green-50 ring-2 ring-green-200"
+                                  : isFull
                                   ? "bg-red-50 ring-2 ring-red-200"
                                   : "bg-gray-50"
                               }`}
@@ -990,59 +993,39 @@ export default function ClassList() {
                               <div className="flex items-center justify-between text-xs mb-2">
                                 <span
                                   className={`font-medium ${
-                                    isFull ? "text-red-600" : "text-gray-600"
+                                    isEnrolled
+                                      ? "text-green-600"
+                                      : isFull
+                                      ? "text-red-600"
+                                      : "text-gray-600"
                                   }`}
                                 >
-                                  {isFull ? "🚫 Lớp đã đầy" : "Đã đăng ký"}
+                                  {isEnrolled
+                                    ? "✓ Bạn đã đăng ký"
+                                    : isFull
+                                    ? " Lớp đã đầy"
+                                    : "Đã đăng ký"}
                                 </span>
                                 <span
                                   className={`font-bold ${
-                                    isFull ? "text-red-600" : "text-blue-600"
+                                    isEnrolled
+                                      ? "text-green-600"
+                                      : isFull
+                                      ? "text-red-600"
+                                      : "text-blue-600"
                                   }`}
                                 >
-=======
-                            <div className={`mb-4 rounded-lg p-3 ${
-                              isEnrolled 
-                                ? 'bg-green-50 ring-2 ring-green-200' 
-                                : isFull 
-                                ? 'bg-red-50 ring-2 ring-red-200' 
-                                : 'bg-gray-50'
-                            }`}>
-                              <div className="flex items-center justify-between text-xs mb-2">
-                                <span className={`font-medium ${
-                                  isEnrolled 
-                                    ? 'text-green-600' 
-                                    : isFull 
-                                    ? 'text-red-600' 
-                                    : 'text-gray-600'
-                                }`}>
-                                  {isEnrolled ? '✓ Bạn đã đăng ký' : isFull ? ' Lớp đã đầy' : 'Đã đăng ký'}
-                                </span>
-                                <span className={`font-bold ${
-                                  isEnrolled 
-                                    ? 'text-green-600' 
-                                    : isFull 
-                                    ? 'text-red-600' 
-                                    : 'text-blue-600'
-                                }`}>
->>>>>>> origin/master
                                   {currentStudents}/{maxStudents}
                                 </span>
                               </div>
                               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full rounded-full transition-all duration-500 ${
-<<<<<<< HEAD
-                                    isFull
+                                    isEnrolled
+                                      ? "bg-gradient-to-r from-green-500 to-green-600"
+                                      : isFull
                                       ? "bg-gradient-to-r from-red-500 to-red-600"
                                       : "bg-gradient-to-r from-blue-500 to-purple-500"
-=======
-                                    isEnrolled
-                                      ? 'bg-gradient-to-r from-green-500 to-green-600'
-                                      : isFull 
-                                      ? 'bg-gradient-to-r from-red-500 to-red-600' 
-                                      : 'bg-gradient-to-r from-blue-500 to-purple-500'
->>>>>>> origin/master
                                   }`}
                                   style={{ width: `${enrollmentPercentage}%` }}
                                 />
@@ -1053,14 +1036,18 @@ export default function ClassList() {
                             <Button
                               className={`w-full shadow-lg group-hover:shadow-xl transition-all ${
                                 isEnrolled
-                                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                                  ? "bg-green-600 hover:bg-green-700 text-white"
                                   : isFull
-                                  ? 'bg-gray-400 hover:bg-gray-500 text-white'
-                                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                                  ? "bg-gray-400 hover:bg-gray-500 text-white"
+                                  : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                               }`}
                             >
                               <span className="font-medium">
-                                {isEnrolled ? 'Đã đăng ký - Xem chi tiết' : isFull ? 'Xem chi tiết' : 'Xem chi tiết lớp học'}
+                                {isEnrolled
+                                  ? "Đã đăng ký - Xem chi tiết"
+                                  : isFull
+                                  ? "Xem chi tiết"
+                                  : "Xem chi tiết lớp học"}
                               </span>
                             </Button>
                           </CardContent>
