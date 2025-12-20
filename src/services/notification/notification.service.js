@@ -64,7 +64,7 @@ const NotificationService = {
     const date = new Date(dateString);
     const now = new Date();
     const diff = now - date;
-    
+
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
@@ -73,7 +73,7 @@ const NotificationService = {
     if (minutes < 60) return `${minutes} phút trước`;
     if (hours < 24) return `${hours} giờ trước`;
     if (days < 7) return `${days} ngày trước`;
-    
+
     return date.toLocaleDateString("vi-VN");
   },
 
@@ -144,11 +144,13 @@ const NotificationService = {
       },
     };
 
-    return styles[type] || {
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
-      dotColor: "bg-blue-500",
-    };
+    return (
+      styles[type] || {
+        color: "text-blue-600",
+        bgColor: "bg-blue-100",
+        dotColor: "bg-blue-500",
+      }
+    );
   },
 };
 

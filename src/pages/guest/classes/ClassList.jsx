@@ -70,7 +70,13 @@ export default function ClassList() {
     if (teacherIdParam) setSelectedTeacherId(teacherIdParam);
     if (searchParam) setSearchQuery(searchParam);
     if (isOnlineParam !== null) {
-      setIsOnline(isOnlineParam === "true" ? true : isOnlineParam === "false" ? false : null);
+      setIsOnline(
+        isOnlineParam === "true"
+          ? true
+          : isOnlineParam === "false"
+          ? false
+          : null
+      );
     }
     if (slotsParam) setSelectedSlots(slotsParam.split(",").filter(Boolean));
     if (minPriceParam || maxPriceParam) {
@@ -93,7 +99,7 @@ export default function ClassList() {
         ]);
         setSubjects(subjectData || []);
         setTeachers(teacherData || []);
-      } catch (e) {
+      } catch {
         // Failed to load filter data
       }
     })();
@@ -108,7 +114,7 @@ export default function ClassList() {
       }
       try {
         const myClasses = await enrollmentService.listMyClasses();
-        const ids = new Set((myClasses || []).map(c => c.classId || c.id));
+        const ids = new Set((myClasses || []).map((c) => c.classId || c.id));
         setEnrolledClassIds(ids);
       } catch {
         // User might not have any enrolled classes
@@ -119,7 +125,13 @@ export default function ClassList() {
   // === RESET PAGE WHEN FILTERS CHANGE ===
   useEffect(() => {
     setPage(0);
-  }, [debouncedQuery, selectedSubjectId, selectedTeacherId, isOnline, debouncedPriceRange]);
+  }, [
+    debouncedQuery,
+    selectedSubjectId,
+    selectedTeacherId,
+    isOnline,
+    debouncedPriceRange,
+  ]);
 
   // === FETCH CLASSES WITH SERVER-SIDE PAGINATION ===
   const fetchClasses = useCallback(async () => {
@@ -167,7 +179,8 @@ export default function ClassList() {
       if (minPrice > 0 || maxPrice < 10000000) {
         content = content.filter((c) => {
           // Tính tổng giá: price từ backend hoặc fallback tính toán
-          const totalPrice = c.price || ((c.pricePerSession || 0) * (c.totalSessions || 0));
+          const totalPrice =
+            c.price || (c.pricePerSession || 0) * (c.totalSessions || 0);
           // Lớp miễn phí (pricePerSession = 0) luôn được hiển thị khi minPrice = 0
           const isFreeClass = c.pricePerSession === 0;
           if (isFreeClass && minPrice === 0) return true;
@@ -184,16 +197,16 @@ export default function ClassList() {
       content.sort((a, b) => {
         const aFull = (a.currentStudents || 0) >= (a.maxStudents || 30);
         const bFull = (b.currentStudents || 0) >= (b.maxStudents || 30);
-        
-        if (aFull && !bFull) return 1;   // a full, b không -> a đi sau
-        if (!aFull && bFull) return -1;  // a không full, b full -> a đi trước
-        return 0;                         // Giữ nguyên thứ tự
+
+        if (aFull && !bFull) return 1; // a full, b không -> a đi sau
+        if (!aFull && bFull) return -1; // a không full, b full -> a đi trước
+        return 0; // Giữ nguyên thứ tự
       });
 
       setClasses(content);
       setTotalPages(response.totalPages || 0);
       setTotalElements(response.totalElements || 0);
-    } catch (e) {
+    } catch {
       setError("Không tải được danh sách lớp. Vui lòng thử lại.");
     } finally {
       setLoading(false);
@@ -223,15 +236,16 @@ export default function ClassList() {
     if (isOnline !== null) params.set("isOnline", String(isOnline));
     if (selectedSlots.length > 0) params.set("slots", selectedSlots.join(","));
     if (priceRange[0] !== 0) params.set("minPrice", String(priceRange[0]));
-    if (priceRange[1] !== 10000000) params.set("maxPrice", String(priceRange[1]));
+    if (priceRange[1] !== 10000000)
+      params.set("maxPrice", String(priceRange[1]));
     if (page > 0) params.set("page", String(page));
-    
+
     // Update current URL with filters (so back button works)
     const queryString = params.toString();
     if (queryString) {
       window.history.replaceState(null, "", `/home/classes?${queryString}`);
     }
-    
+
     navigate(`/home/classes/${id}`);
   };
 
@@ -430,24 +444,32 @@ export default function ClassList() {
         {/* Main Content with Sidebar */}
         <div className="max-w-[1920px] mx-auto px-6 py-8">
           {/* Filter Applied Banner - Hiển thị khi có filter từ URL */}
-          {(searchParams.get("subjectName") || searchParams.get("teacherName") || searchParams.get("search")) && (
+          {(searchParams.get("subjectName") ||
+            searchParams.get("teacherName") ||
+            searchParams.get("search")) && (
             <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="w-5 h-5 text-blue-600" />
                 <span className="text-blue-800">
-                  Đang lọc theo: 
+                  Đang lọc theo:
                   {searchParams.get("subjectName") && (
-                    <span className="font-semibold ml-1">Môn học "{searchParams.get("subjectName")}"</span>
+                    <span className="font-semibold ml-1">
+                      Môn học "{searchParams.get("subjectName")}"
+                    </span>
                   )}
                   {searchParams.get("teacherName") && (
-                    <span className="font-semibold ml-1">Giáo viên "{searchParams.get("teacherName")}"</span>
+                    <span className="font-semibold ml-1">
+                      Giáo viên "{searchParams.get("teacherName")}"
+                    </span>
                   )}
                   {searchParams.get("search") && (
-                    <span className="font-semibold ml-1">Từ khóa "{searchParams.get("search")}"</span>
+                    <span className="font-semibold ml-1">
+                      Từ khóa "{searchParams.get("search")}"
+                    </span>
                   )}
                 </span>
               </div>
-              <button 
+              <button
                 onClick={clearFilters}
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
               >
@@ -756,7 +778,7 @@ export default function ClassList() {
                         className="w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white h-11 text-sm font-bold shadow-lg hover:shadow-xl transition-all"
                       >
                         <X className="w-4 h-4 mr-2" />
-                         Xóa tất cả bộ lọc ({activeFiltersCount})
+                        Xóa tất cả bộ lọc ({activeFiltersCount})
                       </Button>
                     )}
                   </div>
@@ -826,14 +848,18 @@ export default function ClassList() {
                           {isEnrolled && (
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
                               <div className="bg-green-600 text-white px-5 py-3 rounded-lg shadow-2xl transform -rotate-12 border-4 border-white">
-                                <span className="font-bold text-base tracking-wider">ĐÃ ĐĂNG KÝ</span>
+                                <span className="font-bold text-base tracking-wider">
+                                  ĐÃ ĐĂNG KÝ
+                                </span>
                               </div>
                             </div>
                           )}
                           {!isEnrolled && isFull && (
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
                               <div className="bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl transform -rotate-12 border-4 border-white">
-                                <span className="font-bold text-lg tracking-wider">ĐÃ ĐẦY</span>
+                                <span className="font-bold text-lg tracking-wider">
+                                  ĐÃ ĐẦY
+                                </span>
                               </div>
                             </div>
                           )}
@@ -869,7 +895,8 @@ export default function ClassList() {
                                   {c.online ? " Online" : " Offline"}
                                 </Badge>
                                 {/* Badge Miễn phí khi pricePerSession = 0 */}
-                                {(c.pricePerSession === 0 || (c.price === 0 && c.totalSessions > 0)) && (
+                                {(c.pricePerSession === 0 ||
+                                  (c.price === 0 && c.totalSessions > 0)) && (
                                   <Badge className="bg-green-600/95 text-white backdrop-blur-sm shadow-lg w-fit font-bold animate-pulse">
                                     🎁 Miễn phí
                                   </Badge>
@@ -954,30 +981,40 @@ export default function ClassList() {
                             <div className="flex-1"></div>
 
                             {/* Enrollment Progress */}
-                            <div className={`mb-4 rounded-lg p-3 ${
-                              isEnrolled 
-                                ? 'bg-green-50 ring-2 ring-green-200' 
-                                : isFull 
-                                ? 'bg-red-50 ring-2 ring-red-200' 
-                                : 'bg-gray-50'
-                            }`}>
+                            <div
+                              className={`mb-4 rounded-lg p-3 ${
+                                isEnrolled
+                                  ? "bg-green-50 ring-2 ring-green-200"
+                                  : isFull
+                                  ? "bg-red-50 ring-2 ring-red-200"
+                                  : "bg-gray-50"
+                              }`}
+                            >
                               <div className="flex items-center justify-between text-xs mb-2">
-                                <span className={`font-medium ${
-                                  isEnrolled 
-                                    ? 'text-green-600' 
-                                    : isFull 
-                                    ? 'text-red-600' 
-                                    : 'text-gray-600'
-                                }`}>
-                                  {isEnrolled ? '✓ Bạn đã đăng ký' : isFull ? ' Lớp đã đầy' : 'Đã đăng ký'}
+                                <span
+                                  className={`font-medium ${
+                                    isEnrolled
+                                      ? "text-green-600"
+                                      : isFull
+                                      ? "text-red-600"
+                                      : "text-gray-600"
+                                  }`}
+                                >
+                                  {isEnrolled
+                                    ? "✓ Bạn đã đăng ký"
+                                    : isFull
+                                    ? " Lớp đã đầy"
+                                    : "Đã đăng ký"}
                                 </span>
-                                <span className={`font-bold ${
-                                  isEnrolled 
-                                    ? 'text-green-600' 
-                                    : isFull 
-                                    ? 'text-red-600' 
-                                    : 'text-blue-600'
-                                }`}>
+                                <span
+                                  className={`font-bold ${
+                                    isEnrolled
+                                      ? "text-green-600"
+                                      : isFull
+                                      ? "text-red-600"
+                                      : "text-blue-600"
+                                  }`}
+                                >
                                   {currentStudents}/{maxStudents}
                                 </span>
                               </div>
@@ -985,10 +1022,10 @@ export default function ClassList() {
                                 <div
                                   className={`h-full rounded-full transition-all duration-500 ${
                                     isEnrolled
-                                      ? 'bg-gradient-to-r from-green-500 to-green-600'
-                                      : isFull 
-                                      ? 'bg-gradient-to-r from-red-500 to-red-600' 
-                                      : 'bg-gradient-to-r from-blue-500 to-purple-500'
+                                      ? "bg-gradient-to-r from-green-500 to-green-600"
+                                      : isFull
+                                      ? "bg-gradient-to-r from-red-500 to-red-600"
+                                      : "bg-gradient-to-r from-blue-500 to-purple-500"
                                   }`}
                                   style={{ width: `${enrollmentPercentage}%` }}
                                 />
@@ -996,17 +1033,21 @@ export default function ClassList() {
                             </div>
 
                             {/* CTA Button */}
-                            <Button 
+                            <Button
                               className={`w-full shadow-lg group-hover:shadow-xl transition-all ${
                                 isEnrolled
-                                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                                  ? "bg-green-600 hover:bg-green-700 text-white"
                                   : isFull
-                                  ? 'bg-gray-400 hover:bg-gray-500 text-white'
-                                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                                  ? "bg-gray-400 hover:bg-gray-500 text-white"
+                                  : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                               }`}
                             >
                               <span className="font-medium">
-                                {isEnrolled ? 'Đã đăng ký - Xem chi tiết' : isFull ? 'Xem chi tiết' : 'Xem chi tiết lớp học'}
+                                {isEnrolled
+                                  ? "Đã đăng ký - Xem chi tiết"
+                                  : isFull
+                                  ? "Xem chi tiết"
+                                  : "Xem chi tiết lớp học"}
                               </span>
                             </Button>
                           </CardContent>

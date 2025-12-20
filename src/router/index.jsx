@@ -45,6 +45,7 @@ import StudentClassDetail from "../pages/student/ClassDetail.jsx";
 import StudentCourseDetail from "../pages/student/CourseDetail.jsx";
 import StudentProfile from "../pages/student/StudentProfile.jsx";
 import StudentSchedule from "../pages/student/StudentSchedule.jsx";
+import StudentAttendance from "../pages/student/StudentAttendance.jsx";
 import AllNotifications from "../pages/student/AllNotifications.jsx";
 import StudentPaymentHistory from "../pages/student/PaymentHistory.jsx";
 
@@ -60,6 +61,7 @@ import ClassDetail from "../pages/guest/classes/ClassDetail.jsx";
 import GuestNewsList from "../pages/guest/news/NewsList.jsx";
 import NewsDetail from "../pages/guest/news/NewsDetail.jsx";
 import About from "../pages/guest/about/About";
+import NotFound from "../pages/guest/NotFound.jsx";
 
 // ADMIN PAGES - Các trang dành cho admin (cần đăng nhập)
 import Dashboard from "../pages/admin/Dashboard";
@@ -82,6 +84,7 @@ import AdminClassDetail from "../pages/admin/schedule/AdminClassDetail.jsx";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
+import ResetPassword from "../pages/auth/ResetPassword";
 import GoogleCallback from "../pages/auth/GoogleCallback";
 import SubjectManagement from "../pages/admin/subject/SubjectManagement.jsx";
 import CreateSubjectManagement from "../pages/admin/subject/CreateSubjectManagement.jsx";
@@ -120,9 +123,6 @@ import ChildClasses from "../pages/parent/classes/ChildClasses.jsx";
 import ParentClassDetail from "../pages/parent/classes/ClassDetail.jsx";
 import ParentProfile from "../pages/parent/profile/ParentProfile.jsx";
 
-// 404 Not Found page
-import NotFound from "../pages/NotFound.jsx";
-
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -134,6 +134,7 @@ function AppRouter() {
           <Route path="/home/login" element={<Login />} />
           <Route path="/home/register" element={<Register />} />
           <Route path="/home/forgot-password" element={<ForgotPassword />} />
+          <Route path="/home/reset-password" element={<ResetPassword />} />
         </Route>
         {/* GOOGLE AUTH CALLBACK - Xử lý OAuth redirect */}
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
@@ -161,6 +162,11 @@ function AppRouter() {
             element={<StudentClassDetail />}
           />{" "}
           {/* Chi tiết lớp đã đăng ký */}
+          <Route
+            path="/home/my-classes/:classId/attendance"
+            element={<StudentAttendance />}
+          />{" "}
+          {/* Điểm danh của học sinh */}
           <Route path="/home/my-schedule" element={<StudentSchedule />} />{" "}
           {/* Lịch học của học sinh */}
           <Route
@@ -178,10 +184,7 @@ function AppRouter() {
         {/* PROTECTED STUDENT ROUTES - Yêu cầu đăng nhập */}
         <Route element={<RequireAuth />}>
           <Route element={<GuestLayout />}>
-            <Route
-              path="/home/notifications"
-              element={<AllNotifications />}
-            />{" "}
+            <Route path="/home/notifications" element={<AllNotifications />} />{" "}
             {/* Tất cả thông báo */}
             <Route
               path="/home/payment-history"

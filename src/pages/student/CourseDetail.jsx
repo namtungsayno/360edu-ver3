@@ -52,6 +52,12 @@ function getFileIcon(fileType) {
   return File;
 }
 
+// Helper to remove internal SOURCE tag from description
+function cleanDescription(desc) {
+  if (!desc) return "";
+  return desc.replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "").trim();
+}
+
 export default function StudentCourseDetail() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -79,7 +85,24 @@ export default function StudentCourseDetail() {
       setLoading(true);
 
       // Load course detail
-      const courseData = await courseService.getCourseDetail(id);
+      let courseData = await courseService.getCourseDetail(id);
+
+      // Check if this course is a clone (has SOURCE tag) - if so, load base course
+      const sourceMatch = (courseData.description || "").match(
+        /\[\[SOURCE:(\d+)\]\]/
+      );
+      if (sourceMatch && sourceMatch[1]) {
+        const baseCourseId = sourceMatch[1];
+        try {
+          // Load base course instead of clone
+          const baseCourse = await courseService.getCourseDetail(baseCourseId);
+          courseData = baseCourse;
+        } catch (e) {
+          // If base course not found, continue with clone course
+          console.log("Base course not found, using clone course");
+        }
+      }
+
       setCourse(courseData);
 
       // Mở tất cả chapters mặc định
@@ -112,8 +135,7 @@ export default function StudentCourseDetail() {
           if (sessionsData && sessionsData.length > 0) {
             setActiveTab("schedule");
           }
-        } catch (e) {
-          }
+        } catch (e) {}
       }
     } catch (e) {
       error("Không thể tải thông tin khóa học");
@@ -156,7 +178,7 @@ export default function StudentCourseDetail() {
           [lessonId]: materials || [],
         }));
       } catch (e) {
-        } finally {
+      } finally {
         setLoadingMaterials((prev) => ({ ...prev, [lessonId]: false }));
       }
     }
@@ -239,14 +261,16 @@ export default function StudentCourseDetail() {
 
         <CardContent className="pt-6 space-y-6">
           {/* Description */}
-          {course.description && (
+          {course.description && cleanDescription(course.description) && (
             <div>
               <h3 className="text-sm font-semibold text-neutral-950 mb-2">
                 Mô tả khóa học
               </h3>
               <div
                 className="text-[13px] text-[#45556c] leading-relaxed rich-text-content"
-                dangerouslySetInnerHTML={{ __html: course.description }}
+                dangerouslySetInnerHTML={{
+                  __html: cleanDescription(course.description),
+                }}
               />
             </div>
           )}

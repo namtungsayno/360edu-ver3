@@ -261,7 +261,7 @@ export default function ClassroomList() {
       return;
     }
     if (!formData.capacity || Number(formData.capacity) <= 0) {
-      toast?.error?.("Vui lòng nhập sức chứa hợp lệ");
+      toast?.error?.("Vui lòng nhập sức chứa hợp lệ (tối thiểu 1 người)");
       return;
     }
 

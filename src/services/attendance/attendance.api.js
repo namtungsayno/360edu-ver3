@@ -38,4 +38,8 @@ export const attendanceApi = {
     http
       .post(`/attendance/check-status`, sessionIdentifiers)
       .then((r) => r.data),
+
+  // Get student's own attendance for a class
+  getMyAttendanceForClass: (classId) =>
+    http.get(`/attendance/my-attendance/class/${classId}`).then((r) => r.data),
 };

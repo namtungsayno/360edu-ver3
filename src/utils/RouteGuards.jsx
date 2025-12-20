@@ -42,7 +42,9 @@ export function RequireRole({ allow = [] }) {
   if (loading) return <AuthLoading />;
   if (!user) return <Navigate to="/home/login" replace state={{ from: loc }} />;
   const normalizedAllow = allow.map((a) => normalizeRole(a));
-  const ok = user.roles?.some((r) => normalizedAllow.includes(normalizeRole(r)));
+  const ok = user.roles?.some((r) =>
+    normalizedAllow.includes(normalizeRole(r))
+  );
   if (!ok) return <Navigate to={landingPathByRoles(user.roles)} replace />;
   return <Outlet />;
 }
