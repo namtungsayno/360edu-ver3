@@ -61,6 +61,7 @@ import ClassDetail from "../pages/guest/classes/ClassDetail.jsx";
 import GuestNewsList from "../pages/guest/news/NewsList.jsx";
 import NewsDetail from "../pages/guest/news/NewsDetail.jsx";
 import About from "../pages/guest/about/About";
+import NotFound from "../pages/guest/NotFound.jsx";
 
 // ADMIN PAGES - Các trang dành cho admin (cần đăng nhập)
 import Dashboard from "../pages/admin/Dashboard";
@@ -121,9 +122,6 @@ import ParentPaymentHistory from "../pages/parent/payment/PaymentHistory.jsx";
 import ChildClasses from "../pages/parent/classes/ChildClasses.jsx";
 import ParentClassDetail from "../pages/parent/classes/ClassDetail.jsx";
 import ParentProfile from "../pages/parent/profile/ParentProfile.jsx";
-
-// 404 Not Found page
-import NotFound from "../pages/NotFound.jsx";
 
 function AppRouter() {
   return (
@@ -186,10 +184,7 @@ function AppRouter() {
         {/* PROTECTED STUDENT ROUTES - Yêu cầu đăng nhập */}
         <Route element={<RequireAuth />}>
           <Route element={<GuestLayout />}>
-            <Route
-              path="/home/notifications"
-              element={<AllNotifications />}
-            />{" "}
+            <Route path="/home/notifications" element={<AllNotifications />} />{" "}
             {/* Tất cả thông báo */}
             <Route
               path="/home/payment-history"

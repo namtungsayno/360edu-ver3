@@ -20,20 +20,20 @@ export function GuestOnly() {
 // Chỉ cho người đã đăng nhập truy cập
 export function RequireAuth() {
   const { user, loading } = useAuth();
-  const loc = useLocation();
   if (loading) return null;
-  if (!user) return <Navigate to="/home/login" replace state={{ from: loc }} />;
+  if (!user) return <Navigate to="/home/login" replace />;
   return <Outlet />;
 }
 
 // ✅ CHÚ Ý: export đúng tên RequireRole
 export function RequireRole({ allow = [] }) {
   const { user, loading } = useAuth();
-  const loc = useLocation();
   if (loading) return null;
-  if (!user) return <Navigate to="/home/login" replace state={{ from: loc }} />;
+  if (!user) return <Navigate to="/home/login" replace />;
   const normalizedAllow = allow.map((a) => normalizeRole(a));
-  const ok = user.roles?.some((r) => normalizedAllow.includes(normalizeRole(r)));
+  const ok = user.roles?.some((r) =>
+    normalizedAllow.includes(normalizeRole(r))
+  );
   if (!ok) return <Navigate to={landingPathByRoles(user.roles)} replace />;
   return <Outlet />;
 }

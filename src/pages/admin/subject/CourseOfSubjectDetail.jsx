@@ -52,9 +52,7 @@ export default function CourseOfSubjectDetail() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-6xl mx-auto">
-          <p className="text-gray-500">Đang tải khóa học...</p>
-        </div>
+        <p className="text-gray-500">Đang tải khóa học...</p>
       </div>
     );
   }
@@ -62,14 +60,12 @@ export default function CourseOfSubjectDetail() {
   if (!course) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-6xl mx-auto">
-          <BackButton
-            to={`/home/admin/subject/${subjectId}`}
-            variant="outline"
-            showLabel={false}
-          />
-          <div className="mt-6 text-gray-500">Không tìm thấy khóa học</div>
-        </div>
+        <BackButton
+          to={`/home/admin/subject/${subjectId}`}
+          variant="outline"
+          showLabel={false}
+        />
+        <div className="mt-6 text-gray-500">Không tìm thấy khóa học</div>
       </div>
     );
   }
@@ -261,307 +257,302 @@ export default function CourseOfSubjectDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div
-        className="mx-auto"
-        style={{ maxWidth: editMode ? "1600px" : "1280px" }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <BackButton
-              to={`/home/admin/subject/${subjectId}`}
-              showLabel={false}
-            />
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
-              <BookOpen className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Chi tiết khóa học
-              </h1>
-            </div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <BackButton
+            to={`/home/admin/subject/${subjectId}`}
+            showLabel={false}
+          />
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
+            <BookOpen className="h-7 w-7 text-white" />
           </div>
-          {!editMode && (
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center"
-              onClick={handleEnterEdit}
-            >
-              <Pencil className="w-4 h-4 mr-2" /> Chỉnh sửa nội dung
-            </Button>
-          )}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Chi tiết khóa học
+            </h1>
+          </div>
         </div>
-
-        {errorMsg && (
-          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-            {errorMsg}
-          </div>
+        {!editMode && (
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center"
+            onClick={handleEnterEdit}
+          >
+            <Pencil className="w-4 h-4 mr-2" /> Chỉnh sửa nội dung
+          </Button>
         )}
+      </div>
 
-        {/* Split layout khi edit */}
-        <div
-          className={
-            editMode ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "space-y-6"
-          }
-        >
-          {/* Preview */}
-          <div className="space-y-6">
-            <Card className="border border-gray-200 rounded-[14px] bg-white">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-                    <BookOpen className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="space-y-1 flex-1">
-                    <h2 className="text-xl font-semibold text-neutral-950">
-                      {previewSource.title}
-                    </h2>
-                    {previewSource.description && (
-                      <div
-                        className="text-sm text-[#45556c] rich-text-content"
-                        dangerouslySetInnerHTML={{
-                          __html: previewSource.description,
-                        }}
-                      />
-                    )}
-                    <div className="flex gap-4 mt-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                          <Layers className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-[#62748e]">Số chương</p>
-                          <p className="text-sm font-semibold text-neutral-950">
-                            {chapterCount}
-                          </p>
-                        </div>
+      {errorMsg && (
+        <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Split layout khi edit */}
+      <div
+        className={
+          editMode ? "grid grid-cols-1 lg:grid-cols-2 gap-6" : "space-y-6"
+        }
+      >
+        {/* Preview */}
+        <div className="space-y-6">
+          <Card className="border border-gray-200 rounded-[14px] bg-white">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+                  <BookOpen className="w-8 h-8 text-white" />
+                </div>
+                <div className="space-y-1 flex-1">
+                  <h2 className="text-xl font-semibold text-neutral-950">
+                    {previewSource.title}
+                  </h2>
+                  {previewSource.description && (
+                    <div
+                      className="text-sm text-[#45556c] rich-text-content"
+                      dangerouslySetInnerHTML={{
+                        __html: previewSource.description,
+                      }}
+                    />
+                  )}
+                  <div className="flex gap-4 mt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <Layers className="w-4 h-4 text-blue-600" />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
-                          <FileText className="w-4 h-4 text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-[#62748e]">Số bài học</p>
-                          <p className="text-sm font-semibold text-neutral-950">
-                            {lessonCount}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="text-xs text-[#62748e]">Số chương</p>
+                        <p className="text-sm font-semibold text-neutral-950">
+                          {chapterCount}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-[#62748e]">Số bài học</p>
+                        <p className="text-sm font-semibold text-neutral-950">
+                          {lessonCount}
+                        </p>
                       </div>
                     </div>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+          {/* Chapters preview */}
+          {previewSource.chapters && previewSource.chapters.length > 0 ? (
+            <Card className="border border-gray-200 rounded-[14px] bg-white">
+              <CardContent className="p-6 space-y-4">
+                <h3 className="text-lg font-bold text-neutral-950">
+                  Chương & Bài học
+                </h3>
+                <div className="space-y-4">
+                  {previewSource.chapters.map((ch, idx) => (
+                    <div
+                      key={ch.id || idx}
+                      className="border border-gray-200 rounded-lg p-4"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Layers className="w-4 h-4 text-blue-600" />
+                        <span className="font-semibold">
+                          Chương {idx + 1}: {ch.title}
+                        </span>
+                      </div>
+                      {ch.lessons && ch.lessons.length > 0 ? (
+                        <ul className="list-disc pl-6 text-sm text-[#45556c]">
+                          {ch.lessons.map((ls, i) => (
+                            <li key={ls.id || i}>
+                              Bài {i + 1}: {ls.title}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-[#62748e]">
+                          Chương này chưa có bài học
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
-            {/* Chapters preview */}
-            {previewSource.chapters && previewSource.chapters.length > 0 ? (
-              <Card className="border border-gray-200 rounded-[14px] bg-white">
-                <CardContent className="p-6 space-y-4">
-                  <h3 className="text-lg font-bold text-neutral-950">
+          ) : (
+            <Card className="border border-gray-200 rounded-[14px] bg-white">
+              <CardContent className="p-6 text-sm text-[#62748e]">
+                Khóa học chưa có dữ liệu chương/bài học.
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        {/* Edit form */}
+        {editMode && (
+          <div className="space-y-6">
+            {/* Khóa học info (title readonly) */}
+            <Card className="border border-gray-200 rounded-[14px] bg-white">
+              <CardContent className="p-6 space-y-4">
+                <h3 className="text-lg font-semibold text-neutral-950">
+                  Chỉnh sửa nội dung
+                </h3>
+                <div>
+                  <label className="block text-xs font-medium text-[#62748e] mb-1">
+                    Tên khóa học (không thay đổi)
+                  </label>
+                  <Input
+                    value={course.title}
+                    disabled
+                    className="bg-gray-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#62748e] mb-1">
+                    Mô tả khóa học
+                  </label>
+                  <RichTextEditor
+                    value={editableCourse.description || ""}
+                    onChange={(content) => {
+                      setEditableCourse((prev) => ({
+                        ...prev,
+                        description: content,
+                      }));
+                    }}
+                    placeholder="Nhập mô tả khóa học"
+                    simple
+                    minHeight="150px"
+                    maxHeight="300px"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            {/* Chapters editor */}
+            <Card className="border border-gray-200 rounded-[14px] bg-white">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-neutral-950">
                     Chương & Bài học
-                  </h3>
-                  <div className="space-y-4">
-                    {previewSource.chapters.map((ch, idx) => (
-                      <div
-                        key={ch.id || idx}
-                        className="border border-gray-200 rounded-lg p-4"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <Layers className="w-4 h-4 text-blue-600" />
-                          <span className="font-semibold">
-                            Chương {idx + 1}: {ch.title}
-                          </span>
-                        </div>
-                        {ch.lessons && ch.lessons.length > 0 ? (
-                          <ul className="list-disc pl-6 text-sm text-[#45556c]">
-                            {ch.lessons.map((ls, i) => (
-                              <li key={ls.id || i}>
-                                Bài {i + 1}: {ls.title}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="text-sm text-[#62748e]">
-                            Chương này chưa có bài học
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="border border-gray-200 rounded-[14px] bg-white">
-                <CardContent className="p-6 text-sm text-[#62748e]">
-                  Khóa học chưa có dữ liệu chương/bài học.
-                </CardContent>
-              </Card>
-            )}
-          </div>
-          {/* Edit form */}
-          {editMode && (
-            <div className="space-y-6">
-              {/* Khóa học info (title readonly) */}
-              <Card className="border border-gray-200 rounded-[14px] bg-white">
-                <CardContent className="p-6 space-y-4">
-                  <h3 className="text-lg font-semibold text-neutral-950">
-                    Chỉnh sửa nội dung
-                  </h3>
-                  <div>
-                    <label className="block text-xs font-medium text-[#62748e] mb-1">
-                      Tên khóa học (không thay đổi)
-                    </label>
-                    <Input
-                      value={course.title}
-                      disabled
-                      className="bg-gray-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-[#62748e] mb-1">
-                      Mô tả khóa học
-                    </label>
-                    <RichTextEditor
-                      value={editableCourse.description || ""}
-                      onChange={(content) => {
-                        setEditableCourse((prev) => ({
-                          ...prev,
-                          description: content,
-                        }));
-                      }}
-                      placeholder="Nhập mô tả khóa học"
-                      simple
-                      minHeight="150px"
-                      maxHeight="300px"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-              {/* Chapters editor */}
-              <Card className="border border-gray-200 rounded-[14px] bg-white">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-neutral-950">
-                      Chương & Bài học
-                    </h4>
-                    <Button
-                      type="button"
-                      className="bg-green-600 hover:bg-green-700 text-white h-9 px-3"
-                      onClick={addChapter}
+                  </h4>
+                  <Button
+                    type="button"
+                    className="bg-green-600 hover:bg-green-700 text-white h-9 px-3"
+                    onClick={addChapter}
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Thêm chương
+                  </Button>
+                </div>
+                <div className="space-y-4">
+                  {(editableCourse.chapters || []).map((ch, idx) => (
+                    <div
+                      key={ch.id || idx}
+                      className="border border-gray-200 rounded-lg p-4 space-y-3"
                     >
-                      <Plus className="w-4 h-4 mr-1" /> Thêm chương
-                    </Button>
-                  </div>
-                  <div className="space-y-4">
-                    {(editableCourse.chapters || []).map((ch, idx) => (
-                      <div
-                        key={ch.id || idx}
-                        className="border border-gray-200 rounded-lg p-4 space-y-3"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1 space-y-2">
-                            <label className="block text-[11px] font-medium text-[#62748e]">
-                              Tiêu đề chương #{idx + 1}
-                            </label>
-                            <Input
-                              value={ch.title}
-                              onChange={(e) =>
-                                updateChapterTitle(idx, e.target.value)
-                              }
-                            />
-                            <label className="block text-[11px] font-medium text-[#62748e] mt-2">
-                              Mô tả chương
-                            </label>
-                            <Textarea
-                              rows={3}
-                              value={stripHtmlTags(ch.description || "")}
-                              onChange={(e) =>
-                                updateChapterDescription(idx, e.target.value)
-                              }
-                              placeholder="Nhập mô tả chương..."
-                            />
-                          </div>
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 space-y-2">
+                          <label className="block text-[11px] font-medium text-[#62748e]">
+                            Tiêu đề chương #{idx + 1}
+                          </label>
+                          <Input
+                            value={ch.title}
+                            onChange={(e) =>
+                              updateChapterTitle(idx, e.target.value)
+                            }
+                          />
+                          <label className="block text-[11px] font-medium text-[#62748e] mt-2">
+                            Mô tả chương
+                          </label>
+                          <Textarea
+                            rows={3}
+                            value={stripHtmlTags(ch.description || "")}
+                            onChange={(e) =>
+                              updateChapterDescription(idx, e.target.value)
+                            }
+                            placeholder="Nhập mô tả chương..."
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9 text-red-600 border-red-300 hover:bg-red-50"
+                          onClick={() => removeChapter(idx)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {/* Lessons */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-[#62748e]">
+                            Bài học
+                          </span>
                           <Button
                             type="button"
                             variant="outline"
-                            className="h-9 text-red-600 border-red-300 hover:bg-red-50"
-                            onClick={() => removeChapter(idx)}
+                            className="h-8 px-2 text-xs"
+                            onClick={() => addLesson(idx)}
                           >
-                            <X className="w-4 h-4" />
+                            <Plus className="w-3 h-3 mr-1" /> Thêm bài
                           </Button>
                         </div>
-                        {/* Lessons */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-medium text-[#62748e]">
-                              Bài học
-                            </span>
+                        {(ch.lessons || []).map((ls, li) => (
+                          <div
+                            key={ls.id || li}
+                            className="flex items-center gap-2"
+                          >
+                            <Input
+                              value={ls.title}
+                              onChange={(e) =>
+                                updateLessonTitle(idx, li, e.target.value)
+                              }
+                              className="flex-1"
+                            />
                             <Button
                               type="button"
                               variant="outline"
-                              className="h-8 px-2 text-xs"
-                              onClick={() => addLesson(idx)}
+                              className="h-8 px-2 text-red-600 border-red-300 hover:bg-red-50"
+                              onClick={() => removeLesson(idx, li)}
                             >
-                              <Plus className="w-3 h-3 mr-1" /> Thêm bài
+                              <X className="w-3 h-3" />
                             </Button>
                           </div>
-                          {(ch.lessons || []).map((ls, li) => (
-                            <div
-                              key={ls.id || li}
-                              className="flex items-center gap-2"
-                            >
-                              <Input
-                                value={ls.title}
-                                onChange={(e) =>
-                                  updateLessonTitle(idx, li, e.target.value)
-                                }
-                                className="flex-1"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-8 px-2 text-red-600 border-red-300 hover:bg-red-50"
-                                onClick={() => removeLesson(idx, li)}
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ))}
-                          {(!ch.lessons || ch.lessons.length === 0) && (
-                            <p className="text-[11px] text-[#62748e] italic">
-                              Chưa có bài học nào.
-                            </p>
-                          )}
-                        </div>
+                        ))}
+                        {(!ch.lessons || ch.lessons.length === 0) && (
+                          <p className="text-[11px] text-[#62748e] italic">
+                            Chưa có bài học nào.
+                          </p>
+                        )}
                       </div>
-                    ))}
-                    {(editableCourse.chapters || []).length === 0 && (
-                      <p className="text-xs text-[#62748e] italic">
-                        Chưa có chương nào. Nhấn "Thêm chương" để bắt đầu.
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-              {/* Actions */}
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleSave}
-                  className="bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center"
-                  disabled={saving}
-                >
-                  <Save className="w-4 h-4 mr-2" />{" "}
-                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={saving}
-                >
-                  Hủy
-                </Button>
-              </div>
+                    </div>
+                  ))}
+                  {(editableCourse.chapters || []).length === 0 && (
+                    <p className="text-xs text-[#62748e] italic">
+                      Chưa có chương nào. Nhấn "Thêm chương" để bắt đầu.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={handleSave}
+                className="bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center"
+                disabled={saving}
+              >
+                <Save className="w-4 h-4 mr-2" />{" "}
+                {saving ? "Đang lưu..." : "Lưu thay đổi"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={saving}
+              >
+                Hủy
+              </Button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

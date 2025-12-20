@@ -14,8 +14,8 @@
  * - Split screen layout với banner và form
  */
 
-import { useState } from "react";
-import { useOutletContext, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import Logo from "../../components/common/Logo";
@@ -23,6 +23,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { landingPathByRoles } from "../../utils/auth-landing";
 import { authService } from "../../services/auth/auth.service";
 import { useToast } from "../../hooks/use-toast";
+import { teacherApi } from "../../services/teacher/teacher.api";
 import {
   Eye,
   EyeOff,
@@ -30,9 +31,7 @@ import {
   Lock,
   ArrowRight,
   Sparkles,
-  BookOpen,
-  GraduationCap,
-  Users,
+  Star,
 } from "lucide-react";
 import { cacheLastPassword } from "../../utils/last-login";
 
@@ -42,8 +41,6 @@ export default function Login() {
   const { success, error } = useToast();
 
   const nav = useNavigate();
-  const loc = useLocation();
-  const from = loc.state?.from?.pathname;
 
   const [formData, setFormData] = useState({
     username: "",
@@ -53,6 +50,24 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [teachers, setTeachers] = useState([]);
+
+  // Fetch teachers for showcase
+  useEffect(() => {
+    async function fetchTeachers() {
+      try {
+        const data = await teacherApi.list();
+        // Lấy tối đa 6 giáo viên có avatar
+        const teachersWithAvatar = (data || [])
+          .filter((t) => t.avatarUrl)
+          .slice(0, 6);
+        setTeachers(teachersWithAvatar);
+      } catch (e) {
+        // Ignore error - just don't show teachers
+      }
+    }
+    fetchTeachers();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -99,10 +114,8 @@ export default function Login() {
       cacheLastPassword(formData.password);
       success("Đăng nhập thành công! Chào mừng bạn trở lại 👋");
 
-      const to = from || landingPathByRoles(me.roles);
-
       setTimeout(() => {
-        nav(to, { replace: true });
+        nav(landingPathByRoles(me.roles), { replace: true });
       }, 500);
     } catch (ex) {
       const errorMsg =
@@ -189,30 +202,149 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-6">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-105 cursor-default group">
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Users className="w-5 h-5 text-white" />
+          {/* Teacher Showcase - Premium Creative Layout */}
+          {teachers.length > 0 && (
+            <div className="space-y-6">
+              {/* Animated Title */}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="flex items-center gap-1">
+                    <Star
+                      className="w-6 h-6 text-yellow-400 fill-yellow-400 animate-bounce"
+                      style={{ animationDuration: "2s" }}
+                    />
+                    <Star
+                      className="w-5 h-5 text-yellow-300 fill-yellow-300 animate-bounce"
+                      style={{
+                        animationDuration: "2.2s",
+                        animationDelay: "0.1s",
+                      }}
+                    />
+                    <Star
+                      className="w-4 h-4 text-yellow-200 fill-yellow-200 animate-bounce"
+                      style={{
+                        animationDuration: "2.4s",
+                        animationDelay: "0.2s",
+                      }}
+                    />
+                  </div>
+                  {/* Sparkle effect */}
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-ping" />
+                </div>
+                <div>
+                  <p className="text-white font-bold text-xl tracking-wide">
+                    Đội ngũ giảng viên
+                  </p>
+                  <p className="text-pink-200 text-sm font-medium">
+                    Tận tâm • Chuyên nghiệp • Sáng tạo
+                  </p>
+                </div>
               </div>
-              <p className="text-2xl font-bold text-white">10K+</p>
-              <p className="text-white/60 text-sm">Học viên</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-105 cursor-default group">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <BookOpen className="w-5 h-5 text-white" />
+
+              {/* Teacher Cards - Spread Layout */}
+              <div className="flex gap-5 mt-4 flex-wrap">
+                {teachers.slice(0, 5).map((teacher, index) => {
+                  const rotations = [-5, 3, -3, 4, -4];
+                  const rotate = rotations[index] || 0;
+
+                  return (
+                    <div
+                      key={teacher.id || index}
+                      className="group cursor-pointer relative"
+                      style={{
+                        animation: `float ${
+                          3 + index * 0.4
+                        }s ease-in-out infinite`,
+                        animationDelay: `${index * 0.15}s`,
+                      }}
+                    >
+                      {/* Outer glow ring */}
+                      <div
+                        className="absolute -inset-4 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-500"
+                        style={{
+                          background:
+                            "conic-gradient(from 0deg, #f472b6, #c084fc, #60a5fa, #34d399, #fbbf24, #f472b6)",
+                          filter: "blur(20px)",
+                        }}
+                      />
+
+                      {/* Card container - BIGGER SIZE */}
+                      <div
+                        className="relative w-36 h-44 rounded-2xl overflow-hidden shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:shadow-pink-500/50"
+                        style={{
+                          transform: `rotate(${rotate}deg)`,
+                          border: "4px solid rgba(255,255,255,0.5)",
+                        }}
+                      >
+                        {/* Image */}
+                        <img
+                          src={teacher.avatarUrl}
+                          alt={teacher.fullName || "Giáo viên"}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125"
+                          onError={(e) => {
+                            e.target.parentElement.parentElement.style.display =
+                              "none";
+                          }}
+                        />
+
+                        {/* Gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                        {/* Shimmer effect on hover */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+
+                        {/* Teacher info at bottom */}
+                        <div className="absolute bottom-0 left-0 right-0 p-2 transform translate-y-0 group-hover:-translate-y-1 transition-transform duration-300">
+                          <p className="text-white text-xs font-bold text-center truncate drop-shadow-lg">
+                            {teacher.fullName || "Giáo viên"}
+                          </p>
+                          {teacher.subjectName && (
+                            <p className="text-white/70 text-[10px] text-center truncate">
+                              {teacher.subjectName}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Verified badge */}
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 scale-0 group-hover:scale-100">
+                          <svg
+                            className="w-3 h-3 text-white"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Floating hearts on hover */}
+                      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:-translate-y-2">
+                        <span className="text-lg animate-pulse">💜</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <p className="text-2xl font-bold text-white">500+</p>
-              <p className="text-white/60 text-sm">Khóa học</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-105 cursor-default group">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <GraduationCap className="w-5 h-5 text-white" />
+
+              {/* Bottom tagline with animated underline */}
+              <div className="relative inline-block mt-4">
+                <p className="text-white/80 text-sm">
+                  <span className="text-pink-300 font-semibold">
+                    Hơn {teachers.length} giáo viên
+                  </span>{" "}
+                  đang chờ đồng hành cùng bạn ✨
+                </p>
+                <div
+                  className="absolute -bottom-1 left-0 h-0.5 bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 animate-pulse"
+                  style={{ width: "100%" }}
+                />
               </div>
-              <p className="text-2xl font-bold text-white">100+</p>
-              <p className="text-white/60 text-sm">Giáo viên</p>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

@@ -59,6 +59,8 @@ export default function CreateOnlineClassPage() {
   const [timeSlots, setTimeSlots] = useState([]);
   // Random code for class name (1 letter + 1 digit)
   const [randomCode, setRandomCode] = useState("");
+  // Validation: track when to show errors
+  const [showErrors, setShowErrors] = useState(false);
 
   const [weekStart] = useState(() => {
     const now = new Date();
@@ -360,6 +362,57 @@ export default function CreateOnlineClassPage() {
     meetingLink,
   ]);
 
+  // Compute field-level errors for validation feedback
+  const fieldErrors = useMemo(() => {
+    const errors = {};
+    if (!startDate) errors.startDate = "Vui lòng chọn ngày bắt đầu";
+    else if (startDate < todayStr)
+      errors.startDate = "Ngày bắt đầu phải từ hôm nay trở đi";
+    if (!subjectId) errors.subjectId = "Vui lòng chọn môn học";
+    if (subjectId && !teacherId) errors.teacherId = "Vui lòng chọn giáo viên";
+    if (subjectId && courses.length > 0 && !courseId)
+      errors.courseId = "Vui lòng chọn khóa học";
+    if (!meetingLink) errors.meetingLink = "Vui lòng nhập link meet";
+    else if (!isValidUrl(meetingLink))
+      errors.meetingLink =
+        "Link meet không hợp lệ (cần bắt đầu bằng http:// hoặc https://)";
+    if (!totalSessions) errors.totalSessions = "Vui lòng nhập số buổi";
+    else if (parseInt(totalSessions) <= 0)
+      errors.totalSessions = "Số buổi phải lớn hơn 0";
+    if (!capacity) errors.capacity = "Vui lòng nhập sĩ số";
+    else if (parseInt(capacity) <= 0) errors.capacity = "Sĩ số phải lớn hơn 0";
+    else if (parseInt(capacity) > 30)
+      errors.capacity = "Lớp online tối đa 30 học sinh";
+    if (pricePerSession === "")
+      errors.pricePerSession = "Vui lòng nhập giá/buổi";
+    else if (parseInt(pricePerSession) < 0)
+      errors.pricePerSession = "Giá/buổi không được âm";
+    if (pickedSlots.length === 0)
+      errors.schedule = "Vui lòng chọn ít nhất 1 slot lịch học";
+    return errors;
+  }, [
+    startDate,
+    todayStr,
+    subjectId,
+    teacherId,
+    courses.length,
+    courseId,
+    meetingLink,
+    totalSessions,
+    capacity,
+    pricePerSession,
+    pickedSlots.length,
+  ]);
+
+  // Handle continue button - show errors if invalid
+  const handleContinue = () => {
+    if (step1Valid) {
+      setCurrentStep(2);
+    } else {
+      setShowErrors(true);
+    }
+  };
+
   function mapSlotsToSchedule() {
     const scheduleMap = new Map();
     pickedSlots.forEach((slot) => {
@@ -581,18 +634,42 @@ export default function CreateOnlineClassPage() {
                       value={startDate}
                       min={todayStr}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="h-9 text-sm"
+                      className={`h-9 text-sm ${
+                        showErrors && fieldErrors.startDate
+                          ? "border-red-500 focus:ring-red-500"
+                          : ""
+                      }`}
                     />
+                    {showErrors && fieldErrors.startDate && (
+                      <p className="text-[10px] text-red-500 mt-0.5">
+                        {fieldErrors.startDate}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
                       Ngày kết thúc
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-400 font-normal">
+                        <svg
+                          className="w-3 h-3"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        Đã khóa
+                      </span>
                     </label>
                     <Input
                       type="date"
                       value={endDate}
                       readOnly
-                      className="h-9 text-sm bg-gray-50"
+                      disabled
+                      className="h-9 text-sm bg-gray-100 cursor-not-allowed pointer-events-none"
                     />
                   </div>
                 </div>
@@ -607,7 +684,13 @@ export default function CreateOnlineClassPage() {
                       value={String(subjectId)}
                       onValueChange={setSubjectId}
                     >
-                      <SelectTrigger className="h-9 text-sm w-full">
+                      <SelectTrigger
+                        className={`h-9 text-sm w-full ${
+                          showErrors && fieldErrors.subjectId
+                            ? "border-red-500"
+                            : ""
+                        }`}
+                      >
                         <SelectValue placeholder="Chọn môn" />
                       </SelectTrigger>
                       <SelectContent>
@@ -618,6 +701,11 @@ export default function CreateOnlineClassPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {showErrors && fieldErrors.subjectId && (
+                      <p className="text-[10px] text-red-500 mt-0.5">
+                        {fieldErrors.subjectId}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -628,7 +716,13 @@ export default function CreateOnlineClassPage() {
                       onValueChange={setTeacherId}
                       disabled={!subjectId}
                     >
-                      <SelectTrigger className="h-9 text-sm w-full">
+                      <SelectTrigger
+                        className={`h-9 text-sm w-full ${
+                          showErrors && fieldErrors.teacherId
+                            ? "border-red-500"
+                            : ""
+                        }`}
+                      >
                         <SelectValue placeholder="Chọn GV" />
                       </SelectTrigger>
                       <SelectContent>
@@ -639,6 +733,11 @@ export default function CreateOnlineClassPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {showErrors && fieldErrors.teacherId && (
+                      <p className="text-[10px] text-red-500 mt-0.5">
+                        {fieldErrors.teacherId}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -656,7 +755,11 @@ export default function CreateOnlineClassPage() {
                         >
                           <SelectTrigger
                             className={`h-auto min-h-[36px] text-sm py-2 ${
-                              !courseId ? "border-amber-300" : ""
+                              showErrors && fieldErrors.courseId
+                                ? "border-red-500"
+                                : !courseId
+                                ? "border-amber-300"
+                                : ""
                             }`}
                           >
                             <SelectValue
@@ -672,10 +775,16 @@ export default function CreateOnlineClassPage() {
                             ))}
                           </SelectContent>
                         </Select>
-                        {!courseId && (
-                          <p className="text-[10px] text-amber-600 mt-0.5">
-                            Vui lòng chọn khóa học
+                        {showErrors && fieldErrors.courseId ? (
+                          <p className="text-[10px] text-red-500 mt-0.5">
+                            {fieldErrors.courseId}
                           </p>
+                        ) : (
+                          !courseId && (
+                            <p className="text-[10px] text-amber-600 mt-0.5">
+                              Vui lòng chọn khóa học
+                            </p>
+                          )
                         )}
                       </>
                     ) : (
@@ -720,8 +829,17 @@ export default function CreateOnlineClassPage() {
                       value={meetingLink}
                       onChange={(e) => setMeetingLink(e.target.value)}
                       placeholder="https://meet..."
-                      className="h-9 text-sm"
+                      className={`h-9 text-sm ${
+                        showErrors && fieldErrors.meetingLink
+                          ? "border-red-500 focus:ring-red-500"
+                          : ""
+                      }`}
                     />
+                    {showErrors && fieldErrors.meetingLink && (
+                      <p className="text-[10px] text-red-500 mt-0.5">
+                        {fieldErrors.meetingLink}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -733,8 +851,17 @@ export default function CreateOnlineClassPage() {
                       value={totalSessions}
                       onChange={(e) => setTotalSessions(e.target.value)}
                       placeholder="24"
-                      className="h-9 text-sm"
+                      className={`h-9 text-sm ${
+                        showErrors && fieldErrors.totalSessions
+                          ? "border-red-500 focus:ring-red-500"
+                          : ""
+                      }`}
                     />
+                    {showErrors && fieldErrors.totalSessions && (
+                      <p className="text-[10px] text-red-500 mt-0.5">
+                        {fieldErrors.totalSessions}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -751,8 +878,17 @@ export default function CreateOnlineClassPage() {
                       value={capacity}
                       onChange={(e) => setCapacity(e.target.value)}
                       placeholder="Max 30"
-                      className="h-9 text-sm"
+                      className={`h-9 text-sm ${
+                        showErrors && fieldErrors.capacity
+                          ? "border-red-500 focus:ring-red-500"
+                          : ""
+                      }`}
                     />
+                    {showErrors && fieldErrors.capacity && (
+                      <p className="text-[10px] text-red-500 mt-0.5">
+                        {fieldErrors.capacity}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -766,8 +902,17 @@ export default function CreateOnlineClassPage() {
                         setPricePerSession(digitsOnly(e.target.value))
                       }
                       placeholder="150.000"
-                      className="h-9 text-sm"
+                      className={`h-9 text-sm ${
+                        showErrors && fieldErrors.pricePerSession
+                          ? "border-red-500 focus:ring-red-500"
+                          : ""
+                      }`}
                     />
+                    {showErrors && fieldErrors.pricePerSession && (
+                      <p className="text-[10px] text-red-500 mt-0.5">
+                        {fieldErrors.pricePerSession}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -800,28 +945,49 @@ export default function CreateOnlineClassPage() {
 
                 {/* Action Button */}
                 <Button
-                  onClick={() => setCurrentStep(2)}
-                  disabled={!step1Valid}
-                  className="w-full h-10 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/30 mt-2"
+                  onClick={handleContinue}
+                  disabled={false}
+                  className={`w-full h-10 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/30 mt-2 ${
+                    !step1Valid && showErrors ? "opacity-90" : ""
+                  }`}
                 >
                   Tiếp tục
                 </Button>
+                {showErrors && Object.keys(fieldErrors).length > 0 && (
+                  <p className="text-xs text-red-500 text-center mt-2">
+                    Vui lòng điền đầy đủ các trường bắt buộc
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Right: Chọn lịch học - Expanded */}
-            <div className="rounded-2xl p-5 bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg shadow-indigo-500/20">
+            <div
+              className={`rounded-2xl p-5 bg-white/80 backdrop-blur-xl border shadow-lg shadow-indigo-500/20 ${
+                showErrors && fieldErrors.schedule
+                  ? "border-red-300"
+                  : "border-white/20"
+              }`}
+            >
               <div className="mb-4">
                 <div className="flex items-center justify-between">
                   <div className="px-4 py-2 rounded-xl text-white bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-md">
                     <h2 className="text-base font-bold">Chọn lịch học</h2>
                   </div>
-                  {startDate && (
-                    <div className="text-sm text-gray-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-                      <span className="text-emerald-700 font-medium">
-                        Chọn slot cho ngày bắt đầu trước
+                  {showErrors && fieldErrors.schedule ? (
+                    <div className="text-sm text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">
+                      <span className="font-medium">
+                        {fieldErrors.schedule}
                       </span>
                     </div>
+                  ) : (
+                    startDate && (
+                      <div className="text-sm text-gray-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                        <span className="text-emerald-700 font-medium">
+                          Chọn slot cho ngày bắt đầu trước
+                        </span>
+                      </div>
+                    )
                   )}
                 </div>
               </div>
