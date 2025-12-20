@@ -1052,17 +1052,6 @@ export default function ClassList() {
                             {/* CTA Button */}
                             <Button
                               className={`w-full shadow-lg group-hover:shadow-xl transition-all ${
-<<<<<<< HEAD
-                                isFull
-                                  ? "bg-gray-400 hover:bg-gray-500 text-white"
-                                  : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                              }`}
-                            >
-                              <span className="font-medium">
-                                {isFull
-                                  ? "Xem chi tiết"
-                                  : "Xem chi tiết lớp học"}
-=======
                                 isEnrolled
                                   ? 'bg-green-600 hover:bg-green-700 text-white'
                                   : isFull
@@ -1072,7 +1061,6 @@ export default function ClassList() {
                             >
                               <span className="font-medium">
                                 {isEnrolled ? 'Đã đăng ký - Xem chi tiết' : isFull ? 'Xem chi tiết' : 'Xem chi tiết lớp học'}
->>>>>>> origin/master
                               </span>
                             </Button>
                           </CardContent>
