@@ -73,17 +73,6 @@ export default function Classes() {
     setFilteredClasses(result);
   }, [searchQuery, selectedSubject, selectedTeacher, classes]);
 
-  const isFirstSessionToday = (c) => {
-    const today = new Date();
-    const pad = (n) => String(n).padStart(2, "0");
-    const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(
-      today.getDate()
-    )}`;
-    const firstDate = c.firstSessionDate || c.startDate;
-    if (!firstDate) return false;
-    return String(firstDate).slice(0, 10) === todayStr;
-  };
-
   const goDetail = (id, c) => {
     // Chặn lớp đầy slot (nếu dữ liệu có)
     const current = Number(c.currentStudents || 0);
@@ -91,14 +80,6 @@ export default function Classes() {
     if (max > 0 && current >= max) {
       showError("Lớp học đã đầy slot, vui lòng chọn lớp khác", "Lớp đầy");
       return;
-    }
-
-    // Xác nhận nếu lớp bắt đầu hôm nay
-    if (isFirstSessionToday(c)) {
-      const ok = window.confirm(
-        `Lớp này bắt đầu học hôm nay. Bạn có muốn tiếp tục vào chi tiết lớp (đang học)?`
-      );
-      if (!ok) return;
     }
 
     navigate(`/home/my-classes/${id}`);

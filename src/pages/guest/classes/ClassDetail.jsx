@@ -50,13 +50,26 @@ export default function ClassDetail() {
         const cls = await classService.getPublicDetail(classId);
         setData(cls || null);
         if (!cls) setError("Không tìm thấy lớp.");
+        
+        // Check if user is already enrolled in this class
+        if (user) {
+          try {
+            const myClasses = await enrollmentService.listMyClasses();
+            const alreadyEnrolled = (myClasses || []).some(
+              (c) => (c.classId || c.id) === classId
+            );
+            setIsEnrolled(alreadyEnrolled);
+          } catch {
+            // Ignore error - user might not have any classes
+          }
+        }
       } catch (e) {
         setError("Không tải được dữ liệu lớp.");
       } finally {
         setLoading(false);
       }
     })();
-  }, [classId]);
+  }, [classId, user]);
 
   const handleEnroll = async () => {
     // Kiểm tra nếu lớp đã đầy
@@ -710,14 +723,18 @@ export default function ClassDetail() {
 
                     <Button
                       onClick={handleEnroll}
-                      disabled={enrolling || isFull}
+                      disabled={enrolling || isFull || isEnrolled}
                       className={`w-full text-lg py-6 ${
-                        isFull 
+                        isEnrolled
+                          ? "bg-green-600 hover:bg-green-600 cursor-not-allowed text-white"
+                          : isFull 
                           ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed text-white" 
                           : "bg-blue-600 hover:bg-blue-700 text-white"
                       }`}
                     >
-                      {isFull
+                      {isEnrolled
+                        ? "Đã Đăng Ký"
+                        : isFull
                         ? "Lớp đã đầy - Không thể đăng ký"
                         : enrolling
                         ? "Đang xử lý..."
@@ -725,6 +742,12 @@ export default function ClassDetail() {
                         ? "Đăng ký ngay"
                         : "Đăng nhập để đăng ký"}
                     </Button>
+
+                    {isEnrolled && (
+                      <p className="mt-2 text-center text-sm text-green-600 font-medium">
+                        Bạn đã đăng ký lớp học này
+                      </p>
+                    )}
 
                     <div className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-gray-200 bg-gray-100 text-gray-600 h-11 text-sm font-medium cursor-not-allowed">
                       Liên hệ: 0963398714 để được tư vấn

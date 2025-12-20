@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useContext } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
@@ -14,6 +14,8 @@ import {
 import { classApi } from "../../../services/class/class.api";
 import { subjectService } from "../../../services/subject/subject.service";
 import { teacherService } from "../../../services/teacher/teacher.service";
+import { enrollmentService } from "../../../services/enrollment/enrollment.service";
+import AuthContext from "../../../context/AuthContext";
 import { Badge } from "../../../components/ui/Badge.jsx";
 import { Button } from "../../../components/ui/Button.jsx";
 import { Card, CardContent } from "../../../components/ui/Card.jsx";
@@ -24,10 +26,12 @@ import useDebounce from "../../../hooks/useDebounce";
 export default function ClassList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useContext(AuthContext);
 
   // === SERVER-SIDE PAGINATION STATE ===
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState([]);
+  const [enrolledClassIds, setEnrolledClassIds] = useState(new Set()); // Track enrolled classes
   const [error, setError] = useState("");
 
   // Pagination
@@ -94,6 +98,23 @@ export default function ClassList() {
       }
     })();
   }, []);
+
+  // === LOAD ENROLLED CLASSES (for logged-in users) ===
+  useEffect(() => {
+    (async () => {
+      if (!user) {
+        setEnrolledClassIds(new Set());
+        return;
+      }
+      try {
+        const myClasses = await enrollmentService.listMyClasses();
+        const ids = new Set((myClasses || []).map(c => c.classId || c.id));
+        setEnrolledClassIds(ids);
+      } catch {
+        // User might not have any enrolled classes
+      }
+    })();
+  }, [user]);
 
   // === RESET PAGE WHEN FILTERS CHANGE ===
   useEffect(() => {
@@ -785,12 +806,15 @@ export default function ClassList() {
                       const enrollmentPercentage =
                         (currentStudents / maxStudents) * 100;
                       const isFull = currentStudents >= maxStudents;
+                      const isEnrolled = enrolledClassIds.has(c.id);
 
                       return (
                         <Card
                           key={c.id}
                           className={`group overflow-hidden transition-all duration-300 cursor-pointer border-2 flex flex-col h-full relative ${
-                            isFull
+                            isEnrolled
+                              ? "opacity-70 border-green-400 hover:opacity-90"
+                              : isFull
                               ? "opacity-60 grayscale-[30%] border-gray-300 hover:opacity-80 hover:grayscale-0"
                               : c.status === "DRAFT"
                               ? "border-amber-300 hover:shadow-2xl hover:-translate-y-2"
@@ -798,8 +822,15 @@ export default function ClassList() {
                           }`}
                           onClick={() => goDetail(c.id)}
                         >
-                          {/* ===== BADGE "ĐÃ ĐẦY" OVERLAY ===== */}
-                          {isFull && (
+                          {/* ===== BADGE "ĐÃ ĐĂNG KÝ" hoặc "ĐÃ ĐẦY" OVERLAY ===== */}
+                          {isEnrolled && (
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                              <div className="bg-green-600 text-white px-5 py-3 rounded-lg shadow-2xl transform -rotate-12 border-4 border-white">
+                                <span className="font-bold text-base tracking-wider">ĐÃ ĐĂNG KÝ</span>
+                              </div>
+                            </div>
+                          )}
+                          {!isEnrolled && isFull && (
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
                               <div className="bg-red-600 text-white px-6 py-3 rounded-lg shadow-2xl transform -rotate-12 border-4 border-white">
                                 <span className="font-bold text-lg tracking-wider">ĐÃ ĐẦY</span>
@@ -814,7 +845,9 @@ export default function ClassList() {
                           >
                             <div
                               className={`absolute inset-0 ${
-                                isFull
+                                isEnrolled
+                                  ? "bg-green-900/20"
+                                  : isFull
                                   ? "bg-white/30"
                                   : c.status === "DRAFT"
                                   ? "bg-white/30"
@@ -921,19 +954,39 @@ export default function ClassList() {
                             <div className="flex-1"></div>
 
                             {/* Enrollment Progress */}
-                            <div className={`mb-4 rounded-lg p-3 ${isFull ? 'bg-red-50 ring-2 ring-red-200' : 'bg-gray-50'}`}>
+                            <div className={`mb-4 rounded-lg p-3 ${
+                              isEnrolled 
+                                ? 'bg-green-50 ring-2 ring-green-200' 
+                                : isFull 
+                                ? 'bg-red-50 ring-2 ring-red-200' 
+                                : 'bg-gray-50'
+                            }`}>
                               <div className="flex items-center justify-between text-xs mb-2">
-                                <span className={`font-medium ${isFull ? 'text-red-600' : 'text-gray-600'}`}>
-                                  {isFull ? ' Lớp đã đầy' : 'Đã đăng ký'}
+                                <span className={`font-medium ${
+                                  isEnrolled 
+                                    ? 'text-green-600' 
+                                    : isFull 
+                                    ? 'text-red-600' 
+                                    : 'text-gray-600'
+                                }`}>
+                                  {isEnrolled ? '✓ Bạn đã đăng ký' : isFull ? ' Lớp đã đầy' : 'Đã đăng ký'}
                                 </span>
-                                <span className={`font-bold ${isFull ? 'text-red-600' : 'text-blue-600'}`}>
+                                <span className={`font-bold ${
+                                  isEnrolled 
+                                    ? 'text-green-600' 
+                                    : isFull 
+                                    ? 'text-red-600' 
+                                    : 'text-blue-600'
+                                }`}>
                                   {currentStudents}/{maxStudents}
                                 </span>
                               </div>
                               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full rounded-full transition-all duration-500 ${
-                                    isFull 
+                                    isEnrolled
+                                      ? 'bg-gradient-to-r from-green-500 to-green-600'
+                                      : isFull 
                                       ? 'bg-gradient-to-r from-red-500 to-red-600' 
                                       : 'bg-gradient-to-r from-blue-500 to-purple-500'
                                   }`}
@@ -945,13 +998,15 @@ export default function ClassList() {
                             {/* CTA Button */}
                             <Button 
                               className={`w-full shadow-lg group-hover:shadow-xl transition-all ${
-                                isFull
+                                isEnrolled
+                                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                                  : isFull
                                   ? 'bg-gray-400 hover:bg-gray-500 text-white'
                                   : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
                               }`}
                             >
                               <span className="font-medium">
-                                {isFull ? 'Xem chi tiết' : 'Xem chi tiết lớp học'}
+                                {isEnrolled ? 'Đã đăng ký - Xem chi tiết' : isFull ? 'Xem chi tiết' : 'Xem chi tiết lớp học'}
                               </span>
                             </Button>
                           </CardContent>

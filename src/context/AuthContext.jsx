@@ -19,15 +19,12 @@ export const AuthProvider = ({ children }) => {
     // Validate saved user on mount
     const validateSavedUser = () => {
       const savedUser = authService.loadSavedUser();
-      const token = localStorage.getItem('edu360_jwt');
       
-      // Only restore user if we have both user data and valid token
-      if (savedUser && token) {
+      // Trust savedUser if exists - JWT is stored in HTTP-only cookie (not accessible via JS)
+      // The cookie will be sent automatically with each request and validated by backend
+      // If cookie is expired/invalid, API will return 401 and we'll handle it there
+      if (savedUser) {
         setUser(savedUser);
-      } else if (savedUser && !token) {
-        // User data exists but no token - invalid state, clear it
-        localStorage.removeItem('auth_user');
-        setUser(null);
       }
       
       setLoading(false);

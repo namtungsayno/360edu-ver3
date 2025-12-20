@@ -45,6 +45,16 @@ http.interceptors.request.use(
 http.interceptors.response.use(
   (r) => r,
   (err) => {
+    // Handle 401 Unauthorized - session expired, redirect to login
+    if (err?.response?.status === 401) {
+      // Clear localStorage and redirect to login
+      localStorage.removeItem('auth_user');
+      // Only redirect if not already on login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/home/login';
+      }
+    }
+    
     // Extract message from various response formats
     const data = err?.response?.data;
     let message = null;
