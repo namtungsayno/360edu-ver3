@@ -43,6 +43,7 @@ import { courseApi } from "../../../services/course/course.api.js";
 import { courseService } from "../../../services/course/course.service.js";
 import { classService } from "../../../services/class/class.service.js";
 import { subjectService } from "../../../services/subject/subject.service.js";
+import { teacherService } from "../../../services/teacher/teacher.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import useDebounce from "../../../hooks/useDebounce.js";
 import { extractBaseCourseTitle } from "../../../utils/html-helpers.js";
@@ -99,6 +100,7 @@ export default function AdminCourseList() {
   // ====== DATA STATE ======
   const [courses, setCourses] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [classMap, setClassMap] = useState({}); // { [classId]: classDetail }
   const [sourceCourseMap, setSourceCourseMap] = useState({}); // { [sourceId]: courseDetail }
@@ -126,14 +128,18 @@ export default function AdminCourseList() {
   const [selectedSubjectId, setSelectedSubjectId] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  // ====== LOAD SUBJECTS ======
+  // ====== LOAD SUBJECTS & TEACHERS ======
   useEffect(() => {
     (async () => {
       try {
-        const data = await subjectService.all();
-        setSubjects(Array.isArray(data) ? data : []);
-      } catch (e) {
-        toastRef.current("Không thể tải danh sách môn học");
+        const [subjectData, teacherData] = await Promise.all([
+          subjectService.all(),
+          teacherService.list(),
+        ]);
+        setSubjects(Array.isArray(subjectData) ? subjectData : []);
+        setTeachers(Array.isArray(teacherData) ? teacherData : []);
+      } catch {
+        toastRef.current("Không thể tải dữ liệu bộ lọc");
       }
     })();
   }, []);
@@ -204,9 +210,8 @@ export default function AdminCourseList() {
 
       const response = await courseApi.listPaginated(params);
       const content = response.content || [];
-      // Filter only teacher courses (có ownerTeacherId)
-      const teacherCourses = content.filter((c) => !!c.ownerTeacherId);
-      setCourses(teacherCourses);
+      // Server đã filter chỉ teacher courses (có ownerTeacherId)
+      setCourses(content);
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
     } catch (e) {
@@ -355,18 +360,13 @@ export default function AdminCourseList() {
     };
   }, [courses, courseIdToClass]);
 
-  // ====== TEACHER OPTIONS (từ dữ liệu course hiện có) ======
+  // ====== TEACHER OPTIONS (từ API) ======
   const teacherOptions = useMemo(() => {
-    const map = new Map();
-    courses.forEach((c) => {
-      const id = c.ownerTeacherId ?? c.createdByUserId;
-      const name = c.ownerTeacherName ?? c.createdByName ?? "Không rõ";
-      if (id && !map.has(id)) {
-        map.set(id, { id, name });
-      }
-    });
-    return Array.from(map.values());
-  }, [courses]);
+    return teachers.map((t) => ({
+      id: t.userId || t.id,
+      name: t.fullName || t.name || "Không rõ",
+    }));
+  }, [teachers]);
 
   // ====== VISIBLE COURSES (now directly from server) ======
   const visibleCourses = courses;
@@ -435,36 +435,6 @@ export default function AdminCourseList() {
             </div>
             <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
-        </div>
-
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-500 to-gray-600 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-white/80">Nháp</p>
-              <p className="text-2xl font-bold text-white mt-1">
-                {stats.draft}
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
-        </div>
-
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-500 to-slate-600 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-white/80">Đã lưu trữ</p>
-              <p className="text-2xl font-bold text-white mt-1">
-                {stats.archived}
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <AlertCircle className="w-6 h-6 text-white" />
             </div>
           </div>
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
@@ -650,7 +620,9 @@ export default function AdminCourseList() {
                         <div
                           className="text-sm text-gray-600 line-clamp-3 rich-text-content"
                           dangerouslySetInnerHTML={{
-                            __html: course.description,
+                            __html: (course.description || "")
+                              .replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "")
+                              .trim(),
                           }}
                         />
                       )}

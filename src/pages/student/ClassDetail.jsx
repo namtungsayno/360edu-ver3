@@ -317,7 +317,7 @@ export default function StudentClassDetail() {
                     <Button
                       className="w-full bg-blue-600 hover:bg-blue-700"
                       onClick={() => {
-                        // TODO: Navigate to attendance or materials
+                        navigate(`/home/my-classes/${data.classId}/attendance`);
                       }}
                     >
                       Xem điểm danh

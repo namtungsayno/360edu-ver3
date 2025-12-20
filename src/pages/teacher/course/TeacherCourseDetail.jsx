@@ -38,6 +38,12 @@ import { courseService } from "../../../services/course/course.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import { stripHtmlTags } from "../../../utils/html-helpers.js";
 
+// Helper to remove internal SOURCE tag from description
+function cleanDescription(desc) {
+  if (!desc) return "";
+  return desc.replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "").trim();
+}
+
 function getStatusConfig(status) {
   const normalized = String(status || "").toUpperCase();
 
@@ -91,7 +97,24 @@ export default function TeacherCourseDetail() {
   async function loadCourseDetail() {
     try {
       setLoading(true);
-      const data = await courseService.getCourseDetail(id);
+      let data = await courseService.getCourseDetail(id);
+
+      // Check if this course is a clone (has SOURCE tag) - if so, load base course
+      const sourceMatch = (data.description || "").match(
+        /\[\[SOURCE:(\d+)\]\]/
+      );
+      if (sourceMatch && sourceMatch[1]) {
+        const baseCourseId = sourceMatch[1];
+        try {
+          // Load base course instead of clone
+          const baseCourse = await courseService.getCourseDetail(baseCourseId);
+          data = baseCourse;
+        } catch (e) {
+          // If base course not found, continue with clone course
+          console.log("Base course not found, using clone course");
+        }
+      }
+
       setCourse(data);
 
       // Mở tất cả chapters mặc định
@@ -196,7 +219,9 @@ export default function TeacherCourseDetail() {
         <DetailSection title="Mô tả khóa học" icon={FileText}>
           <div
             className="text-sm text-gray-700 leading-relaxed rich-text-content"
-            dangerouslySetInnerHTML={{ __html: course.description }}
+            dangerouslySetInnerHTML={{
+              __html: cleanDescription(course.description),
+            }}
           />
         </DetailSection>
       )}

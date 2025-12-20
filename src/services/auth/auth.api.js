@@ -22,9 +22,21 @@ export const authApi = {
       .post("/auth/signup", payload, { withCredentials: false })
       .then((r) => r.data),
 
-  //  Quên mật khẩu - gửi email để nhận mật khẩu mới
+  //  Quên mật khẩu - gửi email để nhận link đặt lại mật khẩu
   forgotPassword: (email) =>
     http.post("/auth/forgot-password", { email }).then((r) => r.data),
+
+  //  Validate reset password token
+  validateResetToken: (token) =>
+    http
+      .get(`/auth/validate-reset-token?token=${encodeURIComponent(token)}`)
+      .then((r) => r.data),
+
+  //  Reset password với token
+  resetPassword: (token, newPassword) =>
+    http
+      .post("/auth/reset-password", { token, newPassword })
+      .then((r) => r.data),
 
   //  Google OAuth - Lấy URL đăng nhập Google
   getGoogleOAuthUrl() {
@@ -43,9 +55,7 @@ export const authApi = {
   //  Google OAuth - Exchange code for user info
   // Gửi authorization code lên BE để xử lý
   googleAuth: (code, redirectUri = GOOGLE_REDIRECT_URI) =>
-    http
-      .post("/auth/google", { code, redirectUri })
-      .then((r) => r.data),
+    http.post("/auth/google", { code, redirectUri }).then((r) => r.data),
 
   //  Google OAuth - Complete registration với thông tin phụ huynh
   googleRegister: (data) =>
@@ -53,5 +63,7 @@ export const authApi = {
 
   //  Check if parent phone exists in system
   checkParentPhone: (phone) =>
-    http.get(`/auth/check-parent-phone?phone=${encodeURIComponent(phone)}`).then((r) => r.data),
+    http
+      .get(`/auth/check-parent-phone?phone=${encodeURIComponent(phone)}`)
+      .then((r) => r.data),
 };

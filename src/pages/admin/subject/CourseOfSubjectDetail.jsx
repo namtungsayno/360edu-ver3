@@ -17,6 +17,7 @@ import { Textarea } from "../../../components/ui/Textarea.jsx";
 import RichTextEditor from "../../../components/ui/RichTextEditor";
 import { BackButton } from "../../../components/common/BackButton";
 import { useToast } from "../../../hooks/use-toast";
+import { stripHtmlTags } from "../../../utils/html-helpers.js";
 
 export default function CourseOfSubjectDetail() {
   const { id: subjectId, courseId } = useParams();
@@ -260,7 +261,10 @@ export default function CourseOfSubjectDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+      <div
+        className="mx-auto"
+        style={{ maxWidth: editMode ? "1600px" : "1280px" }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -468,10 +472,11 @@ export default function CourseOfSubjectDetail() {
                             </label>
                             <Textarea
                               rows={3}
-                              value={ch.description || ""}
+                              value={stripHtmlTags(ch.description || "")}
                               onChange={(e) =>
                                 updateChapterDescription(idx, e.target.value)
                               }
+                              placeholder="Nhập mô tả chương..."
                             />
                           </div>
                           <Button
