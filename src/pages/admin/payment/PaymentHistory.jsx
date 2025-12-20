@@ -46,6 +46,11 @@ const STATUS_LABELS = {
     color: "bg-red-100 text-red-800",
     icon: XCircle,
   },
+  CANCELLED: {
+    label: "Đã hủy",
+    color: "bg-gray-100 text-gray-800",
+    icon: XCircle,
+  },
 };
 
 export default function PaymentHistory() {
@@ -321,6 +326,7 @@ export default function PaymentHistory() {
             <option value="">Tất cả trạng thái</option>
             <option value="PENDING">Chờ thanh toán</option>
             <option value="PAID">Đã thanh toán</option>
+            <option value="CANCELLED">Đã hủy</option>
           </select>
 
           <button
@@ -435,8 +441,7 @@ export default function PaymentHistory() {
                       </td>
                       <td className="px-4 py-3">
                         <p
-                          className="text-sm text-gray-700 max-w-[200px] truncate"
-                          title={p.content}
+                          className="text-sm text-gray-700 font-mono bg-gray-50 px-2 py-1 rounded break-all"
                         >
                           {p.content}
                         </p>

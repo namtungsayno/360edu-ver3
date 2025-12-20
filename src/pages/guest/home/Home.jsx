@@ -414,9 +414,9 @@ export default function Home() {
                 key={index}
                 className="group hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-200"
               >
-                <CardContent className="p-6">
+                <CardContent className="p-8 pt-8">
                   <div
-                    className={`w-14 h-14 ${feature.iconBg} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
+                    className={`w-14 h-14 ${feature.iconBg} rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}
                   >
                     <feature.icon className={`w-7 h-7 ${feature.iconColor}`} />
                   </div>
