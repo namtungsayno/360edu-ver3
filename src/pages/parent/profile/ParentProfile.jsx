@@ -4,8 +4,10 @@ import { User, Mail, Phone, MapPin, Edit, Save, X, Users } from "lucide-react";
 import PageTitle from "../../../components/common/PageTitle";
 import { Card } from "../../../components/ui/Card";
 import { parentApi } from "../../../services/parent/parent.api";
+import { useAuth } from "../../../hooks/useAuth";
 
 const ParentProfile = () => {
+  const { user, setUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [profile, setProfile] = useState(null);
@@ -44,6 +46,20 @@ const ParentProfile = () => {
       const response = await parentApi.updateProfile(editedProfile);
       setProfile(response);
       setEditing(false);
+      
+      // Sync updated info to AuthContext and localStorage to prevent logout on navigation
+      if (user) {
+        const updatedUser = {
+          ...user,
+          fullName: response.fullName || user.fullName,
+          email: response.email || user.email,
+          phoneNumber: response.phoneNumber || user.phoneNumber,
+        };
+        setUser(updatedUser);
+        try {
+          localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+        } catch {}
+      }
     } catch (error) {
       console.error("Error updating profile:", error);
     }

@@ -147,6 +147,22 @@ export default function StudentProfile() {
       const updated = await studentProfileService.updateProfile(editForm);
       setProfile(updated);
       setIsEditing(false);
+      
+      // Sync updated info to AuthContext and localStorage to prevent logout on navigation
+      if (user) {
+        const updatedUser = {
+          ...user,
+          fullName: updated.fullName || user.fullName,
+          email: updated.email || user.email,
+          phoneNumber: updated.phoneNumber || user.phoneNumber,
+        };
+        setUser(updatedUser);
+        // Also update localStorage directly
+        try {
+          localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+        } catch {}
+      }
+      
       success("Cập nhật profile thành công");
     } catch (e) {
       showError(e.displayMessage || "Cập nhật thất bại");
