@@ -15,6 +15,9 @@ import {
   ChevronRight,
   AlertTriangle,
   Wallet,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { paymentService } from "../../../services/payment/payment.service";
 import { useToast } from "../../../hooks/use-toast";
@@ -63,6 +66,10 @@ export default function PaymentHistory() {
   });
   const [searchInput, setSearchInput] = useState("");
 
+  // Sort state
+  const [sortField, setSortField] = useState("createdAt"); // createdAt | paidAt
+  const [sortDir, setSortDir] = useState("desc"); // asc | desc
+
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState({
     open: false,
@@ -75,7 +82,7 @@ export default function PaymentHistory() {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, size, filters]);
+  }, [page, size, filters, sortField, sortDir]);
 
   const loadData = async () => {
     setLoading(true);
@@ -85,6 +92,8 @@ export default function PaymentHistory() {
           ...filters,
           page,
           size,
+          sortBy: sortField,
+          sortDir: sortDir,
         }),
         paymentService.getStats(),
       ]);
@@ -108,6 +117,31 @@ export default function PaymentHistory() {
   const handleStatusFilter = (status) => {
     setPage(0);
     setFilters((prev) => ({ ...prev, status: status || "" }));
+  };
+
+  // Handle column sorting
+  const handleSort = (field) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDir((prev) => (prev === "desc" ? "asc" : "desc"));
+    } else {
+      // New field, default to desc (newest first)
+      setSortField(field);
+      setSortDir("desc");
+    }
+    setPage(0);
+  };
+
+  // Render sort icon for column header
+  const renderSortIcon = (field) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />;
+    }
+    return sortDir === "desc" ? (
+      <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
+    ) : (
+      <ArrowUp className="w-3.5 h-3.5 text-emerald-600" />
+    );
   };
 
   const openConfirmDialog = (payment) => {
@@ -145,10 +179,8 @@ export default function PaymentHistory() {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount || 0);
+    const formatted = new Intl.NumberFormat("vi-VN").format(amount || 0);
+    return `${formatted} VND`;
   };
 
   const formatDateTime = (dateStr) => {
@@ -289,7 +321,6 @@ export default function PaymentHistory() {
             <option value="">Tất cả trạng thái</option>
             <option value="PENDING">Chờ thanh toán</option>
             <option value="PAID">Đã thanh toán</option>
-            <option value="FAILED">Thất bại</option>
           </select>
 
           <button
@@ -322,11 +353,23 @@ export default function PaymentHistory() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
                   Trạng thái
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                  Thời gian tạo
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                  onClick={() => handleSort("createdAt")}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Thời gian tạo</span>
+                    {renderSortIcon("createdAt")}
+                  </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
-                  Thời gian TT
+                <th 
+                  className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                  onClick={() => handleSort("paidAt")}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Thời gian TT</span>
+                    {renderSortIcon("paidAt")}
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">
                   Thao tác

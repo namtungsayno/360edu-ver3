@@ -15,7 +15,7 @@ export const paymentService = {
 
   /**
    * Admin: Lấy danh sách payments
-   * @param {Object} filters - { status, search, classId, from, to, page, size }
+   * @param {Object} filters - { status, search, classId, from, to, page, size, sortBy, sortDir }
    */
   async listPayments(filters = {}) {
     const params = {
@@ -27,6 +27,9 @@ export const paymentService = {
     if (filters.classId) params.classId = filters.classId;
     if (filters.from) params.from = filters.from;
     if (filters.to) params.to = filters.to;
+    // Sort parameters
+    if (filters.sortBy) params.sortBy = filters.sortBy;
+    if (filters.sortDir) params.sortDir = filters.sortDir;
 
     return paymentApi.getPayments(params);
   },
