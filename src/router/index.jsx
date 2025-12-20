@@ -120,6 +120,9 @@ import ChildClasses from "../pages/parent/classes/ChildClasses.jsx";
 import ParentClassDetail from "../pages/parent/classes/ClassDetail.jsx";
 import ParentProfile from "../pages/parent/profile/ParentProfile.jsx";
 
+// 404 Not Found page
+import NotFound from "../pages/NotFound.jsx";
+
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -287,6 +290,9 @@ function AppRouter() {
             <Route path="profile" element={<ParentProfile />} />
           </Route>
         </Route>
+
+        {/* 404 NOT FOUND - Catch-all route cho các URL không hợp lệ */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
