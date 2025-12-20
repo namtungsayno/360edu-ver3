@@ -120,7 +120,7 @@ export default function About() {
             <Button
               onClick={() => onNavigate({ type: "classes" })}
               size="lg"
-              className="bg-white text-blue-600 hover:bg-gray-100 shadow-xl"
+              variant="outline-white"
             >
               <BookOpen className="w-5 h-5 mr-2" />
               Khám phá lớp học
@@ -128,8 +128,7 @@ export default function About() {
             <Button
               onClick={() => onNavigate({ type: "teachers" })}
               size="lg"
-              variant="outline"
-              className="border-white text-white hover:bg-white/10"
+              variant="outline-white"
             >
               <Users className="w-5 h-5 mr-2" />
               Gặp gỡ giáo viên
@@ -144,7 +143,7 @@ export default function About() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {stats.map((stat, index) => (
               <Card key={index} className="bg-white shadow-xl border-0 hover:shadow-2xl transition-shadow">
-                <CardContent className="p-6 text-center">
+                <CardContent className="p-6 pt-8 text-center">
                   <div className={`w-14 h-14 ${stat.bg} rounded-xl flex items-center justify-center mx-auto mb-4`}>
                     <stat.icon className={`w-7 h-7 ${stat.color}`} />
                   </div>
@@ -177,7 +176,7 @@ export default function About() {
             {values.map((item, index) => (
               <Card key={index} className="group hover:shadow-2xl transition-all duration-300 overflow-hidden border-0">
                 <div className={`h-2 bg-gradient-to-r ${item.color}`}></div>
-                <CardContent className="p-8">
+                <CardContent className="p-8 pt-10">
                   <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                     <item.icon className="w-8 h-8 text-white" />
                   </div>
@@ -209,7 +208,7 @@ export default function About() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
               <Card key={index} className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 hover:border-blue-200">
-                <CardContent className="p-6">
+                <CardContent className="p-6 pt-8">
                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
                     <feature.icon className="w-6 h-6 text-blue-600 group-hover:text-white transition-colors" />
                   </div>

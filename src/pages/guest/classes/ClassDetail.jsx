@@ -9,6 +9,11 @@ import {
   CheckCircle,
   Video,
   Award,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Layers,
+  BookOpen,
 } from "lucide-react";
 import { classService } from "../../../services/class/class.service";
 import { enrollmentService } from "../../../services/enrollment/enrollment.service";
@@ -287,7 +292,8 @@ export default function ClassDetail() {
 
             {/* Description */}
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-6 pt-5">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Giới thiệu lớp học</h2>
                 <div
                   className="text-gray-700 leading-relaxed rich-text-content"
                   dangerouslySetInnerHTML={{
@@ -301,7 +307,8 @@ export default function ClassDetail() {
 
             {/* Schedule Info */}
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-6 pt-5">
+                <h2 className="text-xl font-bold text-gray-900 mb-5">Lịch học</h2>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <div className="flex items-center gap-2 text-gray-700 mb-2">
@@ -466,8 +473,8 @@ export default function ClassDetail() {
 
             {/* Teacher Info */}
             <Card>
-              <CardContent className="p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <CardContent className="p-6 pt-5">
+                <h2 className="text-xl font-bold text-gray-900 mb-5">
                   Giáo viên giảng dạy
                 </h2>
                 <div className="flex items-start gap-4">
@@ -517,56 +524,78 @@ export default function ClassDetail() {
               </CardContent>
             </Card>
 
-            {/* Curriculum - Dynamic from Course Lessons */}
+            {/* Curriculum - Dynamic from Course Chapters */}
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Chương trình học
-                  </h2>
+              <CardContent className="p-6 pt-5">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 pb-5 border-b border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                      <Layers className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">
+                        Nội dung khóa học
+                      </h2>
+                      {data.courseChapters && data.courseChapters.length > 0 && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          {data.courseChapters.length} chương · {data.courseLessons?.length || 0} bài học
+                        </p>
+                      )}
+                    </div>
+                  </div>
                   {data.courseTitle && (
-                    <span className="text-blue-600 text-sm font-medium">
-                      {data.courseTitle}
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  {data.courseLessons && data.courseLessons.length > 0 ? (
-                    data.courseLessons.map((lesson, idx) => (
-                      <div
-                        key={lesson.id}
-                        className={`border-l-4 ${
-                          idx < 3 ? "border-blue-600" : "border-gray-300"
-                        } pl-4`}
-                      >
-                        <div className="flex items-start gap-2">
-                          <CheckCircle
-                            className={`w-4 h-4 ${
-                              idx < 3 ? "text-blue-600" : "text-gray-400"
-                            } mt-0.5 flex-shrink-0`}
-                          />
-                          <div>
-                            <span className="font-medium text-gray-900">
-                              {lesson.title}
-                            </span>
-                            {lesson.description && (
-                              <p className="text-sm text-gray-500 mt-1">
-                                {stripHtmlTags(lesson.description)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="border-l-4 border-gray-300 pl-4">
-                      <p className="text-gray-500">
-                        Nội dung sẽ được cập nhật bởi giáo viên
-                      </p>
+                    <div className="sm:text-right mt-2 sm:mt-0">
+                      <span className="inline-flex items-center gap-2 text-blue-600 text-sm font-medium bg-blue-50 px-4 py-2 rounded-full shadow-sm">
+                        <BookOpen className="w-4 h-4 flex-shrink-0" />
+                        <span className="max-w-[220px] truncate">{data.courseTitle}</span>
+                      </span>
                     </div>
                   )}
                 </div>
+
+                {/* Chapters with Lessons - Expandable */}
+                {data.courseChapters && data.courseChapters.length > 0 ? (
+                  <div className="space-y-3">
+                    {data.courseChapters.map((chapter, idx) => (
+                      <ChapterItem key={chapter.id} chapter={chapter} index={idx + 1} />
+                    ))}
+                  </div>
+                ) : data.courseLessons && data.courseLessons.length > 0 ? (
+                  // Fallback: flat lessons list if no chapters
+                  <div className="space-y-3">
+                    {data.courseLessons.map((lesson, idx) => (
+                      <div
+                        key={lesson.id}
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="w-7 h-7 rounded-md bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-medium text-blue-600">
+                            {idx + 1}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium text-gray-900">
+                            {lesson.title}
+                          </span>
+                          {lesson.description && (
+                            <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">
+                              {stripHtmlTags(lesson.description)}
+                            </p>
+                          )}
+                        </div>
+                        <FileText className="w-4 h-4 text-gray-400" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-xl">
+                    <Layers className="w-10 h-10 mx-auto text-gray-300 mb-2" />
+                    <p className="text-gray-500">
+                      Nội dung sẽ được cập nhật bởi giáo viên
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -767,6 +796,89 @@ export default function ClassDetail() {
         classId={classId}
         className={data?.name}
       />
+    </div>
+  );
+}
+
+// ===========================
+// CHAPTER ITEM COMPONENT
+// ===========================
+function ChapterItem({ chapter, index }) {
+  const [open, setOpen] = useState(false);
+  const lessonCount = chapter.lessons?.length || 0;
+
+  return (
+    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+      {/* Chapter Header */}
+      <div
+        className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        <div className="flex items-center gap-3 flex-1">
+          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-semibold text-blue-600">{index}</span>
+          </div>
+          <div className="flex-1">
+            <h4 className="text-base font-semibold text-neutral-900">
+              {chapter.title}
+            </h4>
+            {chapter.description && (
+              <p className="text-sm text-gray-600 mt-0.5 line-clamp-1">
+                {stripHtmlTags(chapter.description)}
+              </p>
+            )}
+          </div>
+          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+            {lessonCount} bài học
+          </span>
+        </div>
+        <div className="ml-3">
+          {open ? (
+            <ChevronDown className="w-5 h-5 text-gray-600" />
+          ) : (
+            <ChevronRight className="w-5 h-5 text-gray-600" />
+          )}
+        </div>
+      </div>
+
+      {/* Lessons */}
+      {open && (
+        <div className="bg-white">
+          {lessonCount === 0 && (
+            <div className="p-4 text-center text-sm text-gray-500">
+              Chương này chưa có bài học
+            </div>
+          )}
+
+          {lessonCount > 0 && (
+            <div className="divide-y divide-gray-100">
+              {chapter.lessons.map((lesson, lessonIdx) => (
+                <div
+                  key={lesson.id}
+                  className="flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="w-7 h-7 rounded-md bg-purple-50 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-medium text-purple-600">
+                      {lessonIdx + 1}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-neutral-900">
+                      {lesson.title}
+                    </p>
+                    {lesson.description && (
+                      <p className="text-xs text-gray-600 mt-0.5 line-clamp-1">
+                        {stripHtmlTags(lesson.description)}
+                      </p>
+                    )}
+                  </div>
+                  <FileText className="w-4 h-4 text-gray-400" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

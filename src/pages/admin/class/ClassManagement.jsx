@@ -530,18 +530,21 @@ function DetailPanel({
         </div>
 
         {/* Description */}
-        {cls.description && (
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-gray-400" />
-              Mô tả
-            </h3>
-            <div
-              className="text-sm text-gray-600 leading-relaxed p-4 bg-gray-50 rounded-xl rich-text-content"
-              dangerouslySetInnerHTML={{ __html: cls.description }}
-            />
-          </div>
-        )}
+        {(() => {
+          const cleanDesc = (cls.description || "").replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "").trim();
+          return cleanDesc ? (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-400" />
+                Mô tả
+              </h3>
+              <div
+                className="text-sm text-gray-600 leading-relaxed p-4 bg-gray-50 rounded-xl rich-text-content"
+                dangerouslySetInnerHTML={{ __html: cleanDesc }}
+              />
+            </div>
+          ) : null;
+        })()}
 
         {/* Action Info */}
         <div className="p-4 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border border-gray-100">

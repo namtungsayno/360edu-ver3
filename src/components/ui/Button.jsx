@@ -37,6 +37,16 @@ const Button = forwardRef(
       destructive: "bg-red-600 text-white hover:bg-red-700",
       outline:
         "border border-gray-300 bg-white hover:bg-gray-50 hover:text-gray-900",
+      "outline-primary":
+        "border-2 border-blue-600 bg-transparent text-blue-600 hover:bg-blue-600 hover:text-white",
+      "outline-success":
+        "border-2 border-green-600 bg-transparent text-green-600 hover:bg-green-600 hover:text-white",
+      "outline-pink":
+        "border-2 border-pink-600 bg-transparent text-pink-600 hover:bg-pink-600 hover:text-white",
+      "outline-purple":
+        "border-2 border-purple-600 bg-transparent text-purple-600 hover:bg-purple-600 hover:text-white",
+      "outline-white":
+        "border-2 border-white bg-transparent text-white hover:bg-white hover:text-blue-700",
       secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200",
       ghost: "hover:bg-gray-100 hover:text-gray-900", // Sử dụng trong Header
       link: "text-blue-600 underline-offset-4 hover:underline",

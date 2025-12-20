@@ -881,7 +881,7 @@ export default function ClassList() {
                               } transition-all`}
                             ></div>
                             <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
-                              <div className="flex flex-col gap-2">
+                              <div className="flex flex-col gap-2 items-start">
                                 <Badge className="bg-white/95 text-gray-900 backdrop-blur-sm shadow-lg w-fit font-medium">
                                   {c.subjectName || "Môn học"}
                                 </Badge>
@@ -905,14 +905,14 @@ export default function ClassList() {
                                   const b = getDerivedBadge(c);
                                   return b ? (
                                     <span
-                                      className={`px-2 py-1 text-xs rounded-full ${b.className}`}
+                                      className={`inline-block px-2 py-1 text-xs rounded-full w-fit ${b.className}`}
                                     >
                                       {b.label}
                                     </span>
                                   ) : null;
                                 })()}
                                 {c.startDate && (
-                                  <span className="px-2 py-1 text-xs rounded-full bg-white/90 text-gray-800 shadow-sm border border-gray-200">
+                                  <span className="inline-block px-2 py-1 text-xs rounded-full bg-white/90 text-gray-800 shadow-sm border border-gray-200 w-fit">
                                     Mở: {formatDateVN(c.startDate)}
                                   </span>
                                 )}
