@@ -372,6 +372,32 @@ export default function Classes() {
                         : 0;
                     const isOnline = c.online || c.isOnline;
 
+                    // Xác định trạng thái học dựa trên ngày
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const startDate = c.startDate ? new Date(c.startDate) : null;
+                    const endDate = c.endDate ? new Date(c.endDate) : null;
+                    
+                    let classStatus = "registered"; // Mặc định: Đã đăng ký
+                    let statusLabel = " Đã đăng ký";
+                    let statusColor = "bg-blue-500/90";
+                    
+                    if (startDate && endDate) {
+                      if (today < startDate) {
+                        classStatus = "registered";
+                        statusLabel = " Chờ khai giảng";
+                        statusColor = "bg-amber-500/90";
+                      } else if (today >= startDate && today <= endDate) {
+                        classStatus = "active";
+                        statusLabel = " Đang học";
+                        statusColor = "bg-green-500/90";
+                      } else if (today > endDate) {
+                        classStatus = "completed";
+                        statusLabel = " Đã hoàn thành";
+                        statusColor = "bg-emerald-500/90";
+                      }
+                    }
+
                     return (
                       <Card
                         key={c.classId}
@@ -397,19 +423,11 @@ export default function Classes() {
                                 {c.subjectName || "Môn học"}
                               </Badge>
                               <div className="flex gap-1.5">
-                                {c.status && (
-                                  <Badge
-                                    className={
-                                      c.status === "ACTIVE"
-                                        ? "bg-green-500/90 backdrop-blur-sm shadow-lg w-fit text-xs"
-                                        : "bg-gray-500/90 backdrop-blur-sm shadow-lg w-fit text-xs"
-                                    }
-                                  >
-                                    {c.status === "ACTIVE"
-                                      ? "✓ Đang học"
-                                      : c.status}
-                                  </Badge>
-                                )}
+                                <Badge
+                                  className={`${statusColor} backdrop-blur-sm shadow-lg w-fit text-xs`}
+                                >
+                                  {statusLabel}
+                                </Badge>
                                 {isOnline && (
                                   <Badge className="bg-blue-500/90 backdrop-blur-sm shadow-lg w-fit text-xs">
                                     <Video className="w-3 h-3 mr-1" />
@@ -487,8 +505,8 @@ export default function Classes() {
                             )}
                           </div>
 
-                          {/* Progress Bar for Active Classes */}
-                          {c.status === "ACTIVE" && totalSessions > 0 && (
+                          {/* Progress Bar for Active/Completed Classes */}
+                          {(classStatus === "active" || classStatus === "completed") && totalSessions > 0 && (
                             <div className="mb-3">
                               <div className="flex justify-between text-xs text-gray-600 mb-1">
                                 <span>Tiến độ</span>

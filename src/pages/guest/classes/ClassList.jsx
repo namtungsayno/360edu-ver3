@@ -924,7 +924,7 @@ export default function ClassList() {
                             <div className={`mb-4 rounded-lg p-3 ${isFull ? 'bg-red-50 ring-2 ring-red-200' : 'bg-gray-50'}`}>
                               <div className="flex items-center justify-between text-xs mb-2">
                                 <span className={`font-medium ${isFull ? 'text-red-600' : 'text-gray-600'}`}>
-                                  {isFull ? '🚫 Lớp đã đầy' : 'Đã đăng ký'}
+                                  {isFull ? ' Lớp đã đầy' : 'Đã đăng ký'}
                                 </span>
                                 <span className={`font-bold ${isFull ? 'text-red-600' : 'text-blue-600'}`}>
                                   {currentStudents}/{maxStudents}
