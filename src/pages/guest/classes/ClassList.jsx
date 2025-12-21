@@ -406,17 +406,17 @@ export default function ClassList() {
 
               {/* Quick Stats Cards - Same width as search */}
               <div className="w-full max-w-2xl flex gap-4 justify-center">
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20">
+                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20 text-center">
                   <div className="text-2xl font-bold mb-1">{totalElements}</div>
                   <div className="text-xs text-blue-100">Lớp học</div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20">
+                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20 text-center">
                   <div className="text-2xl font-bold mb-1">
                     {subjects.length}
                   </div>
                   <div className="text-xs text-blue-100">Môn học</div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20">
+                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 flex-1 border border-white/20 text-center">
                   <div className="text-2xl font-bold mb-1">
                     {teachers.length}
                   </div>
