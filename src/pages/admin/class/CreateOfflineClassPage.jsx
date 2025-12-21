@@ -894,7 +894,7 @@ export default function CreateOfflineClassPage() {
                       min={1}
                       value={totalSessions}
                       onChange={(e) => setTotalSessions(e.target.value)}
-                      placeholder="24"
+                      placeholder="Nhập số buổi"
                       className={`h-9 text-sm ${
                         showErrors && fieldErrors.totalSessions
                           ? "border-red-500 focus:ring-red-500"
@@ -920,7 +920,7 @@ export default function CreateOfflineClassPage() {
                       min={1}
                       value={capacity}
                       onChange={(e) => setCapacity(e.target.value)}
-                      placeholder={roomCapacity ? `Max ${roomCapacity}` : "30"}
+                      placeholder="Số lượng học sinh/lớp"
                       className={`h-9 text-sm ${
                         showErrors && fieldErrors.capacity
                           ? "border-red-500 focus:ring-red-500"
