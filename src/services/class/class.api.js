@@ -7,7 +7,7 @@ export const classApi = {
 
   /**
    * GET /classes/paginated - Lấy classes với phân trang từ server
-   * @param {Object} params - { search, status, isOnline, teacherUserId, subjectId, minPrice, maxPrice, page, size, sortBy, order }
+   * @param {Object} params - { search, status, isOnline, teacherUserId, subjectId, minPrice, maxPrice, page, size, sortBy, order, excludeHidden }
    * @returns {Promise<{content: Array, totalElements: number, totalPages: number, ...}>}
    */
   listPaginated: (params = {}) => {
@@ -23,6 +23,7 @@ export const classApi = {
       size = 10,
       sortBy = "id",
       order = "asc",
+      excludeHidden = null, // true để ẩn các lớp bị admin ẩn
     } = params;
     const queryParams = { search, status, page, size, sortBy, order };
     if (isOnline !== null) queryParams.online = isOnline;
@@ -30,6 +31,7 @@ export const classApi = {
     if (subjectId) queryParams.subjectId = subjectId;
     if (minPrice !== null) queryParams.minPrice = minPrice;
     if (maxPrice !== null) queryParams.maxPrice = maxPrice;
+    if (excludeHidden !== null) queryParams.excludeHidden = excludeHidden;
     return http
       .get(`/classes/paginated`, { params: queryParams })
       .then((r) => r.data);
@@ -50,4 +52,10 @@ export const classApi = {
   // Get DRAFT classes approaching start date (within 3 days) - for admin warning
   getDraftApproaching: () =>
     http.get(`/classes/draft-approaching`).then((r) => r.data),
+
+  // Toggle hidden status of a class (admin only)
+  toggleHidden: (id, hidden) =>
+    http
+      .put(`/classes/${id}/hidden`, null, { params: { hidden } })
+      .then((r) => r.data),
 };

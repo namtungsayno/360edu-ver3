@@ -89,6 +89,22 @@ export default function PaymentHistory() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, size, filters, sortField, sortDir]);
 
+  // Listen for realtime payment updates
+  useEffect(() => {
+    const handleNewPayment = () => {
+      console.log("🔄 New payment detected - reloading data...");
+      loadData();
+    };
+
+    // Listen custom event từ RealtimeNotificationProvider
+    window.addEventListener("newPaymentPending", handleNewPayment);
+
+    return () => {
+      window.removeEventListener("newPaymentPending", handleNewPayment);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, size, filters, sortField, sortDir]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -359,7 +375,7 @@ export default function PaymentHistory() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
                   Trạng thái
                 </th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-100 transition-colors select-none"
                   onClick={() => handleSort("createdAt")}
                 >
@@ -368,7 +384,7 @@ export default function PaymentHistory() {
                     {renderSortIcon("createdAt")}
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase cursor-pointer hover:bg-gray-100 transition-colors select-none"
                   onClick={() => handleSort("paidAt")}
                 >
@@ -440,9 +456,7 @@ export default function PaymentHistory() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <p
-                          className="text-sm text-gray-700 font-mono bg-gray-50 px-2 py-1 rounded break-all"
-                        >
+                        <p className="text-sm text-gray-700 font-mono bg-gray-50 px-2 py-1 rounded break-all">
                           {p.content}
                         </p>
                       </td>

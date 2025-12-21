@@ -141,7 +141,7 @@ export default function ClassList() {
     try {
       const response = await classApi.listPaginated({
         search: debouncedQuery,
-        status: "ALL", // Guest always sees PUBLIC classes (BE filters DRAFT)
+        status: "PUBLIC", // Only show PUBLIC classes on landing
         isOnline: isOnline,
         teacherUserId: selectedTeacherId || null,
         subjectId: selectedSubjectId || null, // Filter by subject ID on backend
@@ -150,6 +150,7 @@ export default function ClassList() {
         size,
         sortBy: "id",
         order: "desc",
+        excludeHidden: true, // Exclude admin-hidden classes
       });
 
       let content = response.content || [];
@@ -190,10 +191,13 @@ export default function ClassList() {
         });
       }
 
-      // 3. Always hide DRAFT classes for guests
+      // 3. Always hide DRAFT classes for guests (redundant since status=PUBLIC, but safety check)
       content = content.filter((c) => c.status !== "DRAFT");
 
-      // 4. Sort: Push full classes to the end
+      // 4. Hidden classes are filtered on server side via excludeHidden=true
+      // Admin quyết định ẩn/hiện thông qua field 'hidden' trong database
+
+      // 5. Sort: Push full classes to the end
       content.sort((a, b) => {
         const aFull = (a.currentStudents || 0) >= (a.maxStudents || 30);
         const bFull = (b.currentStudents || 0) >= (b.maxStudents || 30);

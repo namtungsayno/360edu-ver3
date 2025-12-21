@@ -113,4 +113,16 @@ export const courseApi = {
    */
   setSessionContent: (sessionId, payload) =>
     http.post(`/sessions/${sessionId}/content`, payload).then((r) => r.data),
+
+  // ====== TOGGLE HIDDEN (Admin) ======
+
+  /**
+   * Toggle hidden status of a course
+   * @param {number} id - Course ID
+   * @param {boolean} hidden - true to hide, false to show
+   */
+  toggleHidden: (id, hidden) =>
+    http
+      .put(`/courses/${id}/hidden`, null, { params: { hidden } })
+      .then((r) => r.data),
 };

@@ -7,6 +7,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import Navigation from "../components/common/Navigation";
 import Sidebar from "../components/common/Sidebar";
 import PageTransition from "../components/common/PageTransition";
+import RealtimeNotificationProvider from "../components/common/RealtimeNotificationProvider";
 import { Menu, X } from "lucide-react";
 
 export default function AdminLayout() {
@@ -67,9 +68,12 @@ export default function AdminLayout() {
       <div className="lg:pl-72 min-h-screen flex flex-col overflow-x-auto">
         {/* Content LIGHT - với Page Transition */}
         <main className="flex-1 text-slate-900 min-w-0">
-          <PageTransition>
-            <Outlet />
-          </PageTransition>
+          {/* Realtime Notification Provider - polling và hiển thị toast */}
+          <RealtimeNotificationProvider>
+            <PageTransition>
+              <Outlet />
+            </PageTransition>
+          </RealtimeNotificationProvider>
         </main>
       </div>
     </div>

@@ -153,10 +153,11 @@ export default function CreateOnlineClassPage() {
 
   async function loadCourses() {
     try {
-      // Chỉ lấy các khóa học hợp lệ do admin tạo (APPROVED), loại bỏ khóa cá nhân/đã chỉnh sửa
+      // Chỉ lấy các khóa học hợp lệ do admin tạo (APPROVED), loại bỏ khóa cá nhân/đã chỉnh sửa và khóa học đã ẩn
       const data = await courseApi.list({
         subjectId: parseInt(subjectId),
         status: "APPROVED",
+        excludeHidden: true,
       });
       const filtered = (Array.isArray(data) ? data : []).filter((c) => {
         const hasSourceTag = String(c.description || "").includes("[[SOURCE:");

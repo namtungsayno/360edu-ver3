@@ -27,4 +27,8 @@ export const classService = {
   async delete(id) {
     return classApi.delete(id);
   },
+  // Toggle hidden status (admin only)
+  async toggleHidden(id, hidden) {
+    return classApi.toggleHidden(id, hidden);
+  },
 };
