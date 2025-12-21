@@ -33,7 +33,7 @@
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { RequireRole, RequireAuth } from "../utils/RouteGuards.jsx";
+import { RequireRole, RequireAuth, GuestOnly } from "../utils/RouteGuards.jsx";
 
 import AuthLayout from "../layouts/AuthLayout";
 import AdminLayout from "../layouts/AdminLayout";
@@ -130,11 +130,14 @@ function AppRouter() {
         {/* ROOT REDIRECT - Tự động chuyển từ "/" về "/home" */}
         <Route path="/" element={<Navigate to="/home" replace />} />
         {/* AUTH ROUTES - Các route đăng nhập/đăng ký (không có Header) */}
-        <Route element={<AuthLayout />}>
-          <Route path="/home/login" element={<Login />} />
-          <Route path="/home/register" element={<Register />} />
-          <Route path="/home/forgot-password" element={<ForgotPassword />} />
-          <Route path="/home/reset-password" element={<ResetPassword />} />
+        {/* GuestOnly: Nếu người dùng đã đăng nhập, chuyển hướng về trang landing */}
+        <Route element={<GuestOnly />}>
+          <Route element={<AuthLayout />}>
+            <Route path="/home/login" element={<Login />} />
+            <Route path="/home/register" element={<Register />} />
+            <Route path="/home/forgot-password" element={<ForgotPassword />} />
+            <Route path="/home/reset-password" element={<ResetPassword />} />
+          </Route>
         </Route>
         {/* GOOGLE AUTH CALLBACK - Xử lý OAuth redirect */}
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
