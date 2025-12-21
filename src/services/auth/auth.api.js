@@ -66,4 +66,23 @@ export const authApi = {
     http
       .get(`/auth/check-parent-phone?phone=${encodeURIComponent(phone)}`)
       .then((r) => r.data),
+
+  // ===================== EMAIL VERIFICATION (OTP) =====================
+
+  /**
+   * Gửi OTP xác thực email
+   * @param {string} email - Email cần xác thực
+   * @returns {Promise<{success: boolean, message: string, expiryMinutes?: number}>}
+   */
+  sendOtp: (email) =>
+    http.post("/auth/send-otp", { email }).then((r) => r.data),
+
+  /**
+   * Xác thực OTP
+   * @param {string} email - Email đã gửi OTP
+   * @param {string} otp - Mã OTP 6 số
+   * @returns {Promise<{success: boolean, message: string, verified?: boolean, remainingAttempts?: number}>}
+   */
+  verifyOtp: (email, otp) =>
+    http.post("/auth/verify-otp", { email, otp }).then((r) => r.data),
 };

@@ -112,6 +112,11 @@ const NotificationService = {
         bgColor: "bg-orange-100",
         dotColor: "bg-orange-500",
       },
+      NEW_PAYMENT_PENDING: {
+        color: "text-amber-600",
+        bgColor: "bg-amber-100",
+        dotColor: "bg-amber-500",
+      },
       CLASS_REMINDER: {
         color: "text-blue-600",
         bgColor: "bg-blue-100",

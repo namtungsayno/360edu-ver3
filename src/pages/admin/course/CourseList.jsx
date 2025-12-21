@@ -91,7 +91,7 @@ const STATUS_FILTER_OPTIONS = [
 
 export default function AdminCourseList() {
   const navigate = useNavigate();
-  const { error } = useToast();
+  const { error, success } = useToast();
   const toastRef = useRef(error);
   useEffect(() => {
     toastRef.current = error;

@@ -13,6 +13,7 @@ import {
   XCircle,
   AlertCircle,
   Eye,
+  EyeOff,
   ArrowLeft,
   Edit,
   Plus,
@@ -20,6 +21,7 @@ import {
   Calendar,
   Save,
   X,
+  Loader2,
 } from "lucide-react";
 import {
   getAllSubjects,
@@ -46,7 +48,7 @@ export default function SubjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { error: showError } = useToast();
+  const { error: showError, success: showSuccess } = useToast();
   const [subject, setSubject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -55,6 +57,37 @@ export default function SubjectDetail() {
   const [editMode, setEditMode] = useState(false);
   const [tempStatusActive, setTempStatusActive] = useState(false);
   const [tempDescription, setTempDescription] = useState("");
+  const [togglingHidden, setTogglingHidden] = useState(false);
+
+  // Handle toggle hide/show course via API
+  const handleToggleCourseHidden = async (course) => {
+    if (togglingHidden) return;
+    setTogglingHidden(true);
+    try {
+      const courseId = course.courseId || course.id;
+      const newHiddenValue = !course.hidden;
+      const updated = await courseApi.toggleHidden(courseId, newHiddenValue);
+
+      // Update in list
+      setCourses((prev) =>
+        prev.map((c) => {
+          const cId = c.courseId || c.id;
+          return cId === courseId ? { ...c, hidden: updated.hidden } : c;
+        })
+      );
+
+      if (updated.hidden) {
+        showSuccess?.("Đã ẩn khóa học");
+      } else {
+        showSuccess?.("Đã hiện khóa học");
+      }
+    } catch (err) {
+      console.error("Toggle hidden error:", err);
+      showError?.("Không thể thay đổi trạng thái ẩn/hiện khóa học");
+    } finally {
+      setTogglingHidden(false);
+    }
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -469,11 +502,14 @@ export default function SubjectDetail() {
                   (sum, ch) => sum + (ch.lessons?.length || 0),
                   0
                 ) || 0;
+              const isHidden = course.hidden;
 
               return (
                 <div
                   key={course.courseId || course.id}
-                  className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
+                  className={`bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow ${
+                    isHidden ? "opacity-60 bg-gray-50" : ""
+                  }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -482,6 +518,15 @@ export default function SubjectDetail() {
                           <StatusIcon className="w-3 h-3 mr-1" />
                           {statusInfo.label}
                         </Badge>
+                        {isHidden && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs bg-gray-200 text-gray-700"
+                          >
+                            <EyeOff className="w-3 h-3 mr-1" />
+                            Đã ẩn
+                          </Badge>
+                        )}
                       </div>
                       <h4 className="font-semibold text-gray-900 text-lg mb-2">
                         🎯 {course.title || course.courseName || course.name}
@@ -507,17 +552,44 @@ export default function SubjectDetail() {
                         )}
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      onClick={() =>
-                        handleViewCourse(course.courseId || course.id)
-                      }
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Xem
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        onClick={() =>
+                          handleViewCourse(course.courseId || course.id)
+                        }
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Xem
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={togglingHidden}
+                        className={`${
+                          isHidden
+                            ? "border-green-300 text-green-700 hover:bg-green-50"
+                            : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleToggleCourseHidden(course)}
+                      >
+                        {togglingHidden ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : isHidden ? (
+                          <>
+                            <Eye className="w-4 h-4 mr-1" />
+                            Hiện
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-4 h-4 mr-1" />
+                            Ẩn
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );

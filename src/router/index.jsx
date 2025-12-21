@@ -51,7 +51,6 @@ import StudentPaymentHistory from "../pages/student/PaymentHistory.jsx";
 
 // GUEST PAGES - Các trang dành cho user chưa đăng nhập
 import Home from "../pages/guest/home/Home";
-import Profile from "../pages/guest/profile/Profile";
 import TeacherList from "../pages/guest/teachers/TeacherList";
 import TeacherDetail from "../pages/guest/teachers/TeacherDetail";
 // Guest - Classes
@@ -144,7 +143,6 @@ function AppRouter() {
         {/* GUEST ROUTES - Các route cho người dùng chưa đăng nhập (có Header) */}
         <Route element={<GuestLayout />}>
           <Route path="/home" element={<Home />} /> {/* Trang chủ */}
-          <Route path="/home/profile" element={<Profile />} />
           <Route path="/home/classes" element={<ClassList />} />{" "}
           {/* Danh sách lớp học */}
           <Route path="/home/classes/:id" element={<ClassDetail />} />

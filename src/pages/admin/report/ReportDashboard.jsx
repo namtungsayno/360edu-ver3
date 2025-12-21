@@ -44,7 +44,9 @@ const getVietnamDate = (date = new Date()) => {
   // Chuyển sang múi giờ Việt Nam
   const vietnamOffset = 7 * 60; // UTC+7 in minutes
   const localOffset = d.getTimezoneOffset();
-  const vietnamTime = new Date(d.getTime() + (vietnamOffset + localOffset) * 60 * 1000);
+  const vietnamTime = new Date(
+    d.getTime() + (vietnamOffset + localOffset) * 60 * 1000
+  );
   return vietnamTime;
 };
 
@@ -52,12 +54,13 @@ const getVietnamDate = (date = new Date()) => {
 const formatDateToYMD = (date = new Date()) => {
   const d = getVietnamDate(date);
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
 // Hàm xuất Excel (dùng Tab separator để Excel tự nhận dạng cột)
+// eslint-disable-next-line no-unused-vars
 const exportToExcel = (data, filename, columns) => {
   // columns là array của {key, label, format}
   // format: "currency" | "number" | "text"
@@ -100,48 +103,606 @@ const exportToExcel = (data, filename, columns) => {
   URL.revokeObjectURL(link.href);
 };
 
+// Hàm xuất HTML report Tổng quan
+const exportOverviewToHTML = (overview, filename) => {
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo cáo Tổng quan 360edu - ${new Date().toLocaleDateString(
+    "vi-VN"
+  )}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; background: #f8fafc; }
+    .report-container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+    .header h1 { color: #1e40af; font-size: 28px; margin-bottom: 8px; }
+    .header p { color: #64748b; font-size: 14px; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #10b981; display: inline-block; }
+    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .stat-card { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 24px; border-radius: 12px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: #1e293b; }
+    .stat-label { font-size: 14px; color: #64748b; margin-top: 8px; }
+    .stat-card.revenue { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); }
+    .stat-card.revenue .stat-value { color: #16a34a; }
+    .stat-card.pending { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+    .stat-card.pending .stat-value { color: #d97706; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px; }
+    @media print {
+      body { padding: 0; background: white; }
+      .report-container { box-shadow: none; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+    <div class="header">
+      <h1>📊 Báo cáo Tổng quan</h1>
+      <p>Ngày xuất: ${new Date().toLocaleDateString("vi-VN", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })}</p>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">💰 Doanh thu</h2>
+      <div class="stats-grid">
+        <div class="stat-card revenue">
+          <div class="stat-value">${formatCurrency(
+            overview?.totalRevenue
+          )}</div>
+          <div class="stat-label">Tổng doanh thu</div>
+        </div>
+        <div class="stat-card revenue">
+          <div class="stat-value">${formatCurrency(
+            overview?.monthlyRevenue
+          )}</div>
+          <div class="stat-label">Doanh thu tháng này</div>
+        </div>
+        <div class="stat-card revenue">
+          <div class="stat-value">${formatCurrency(
+            overview?.weeklyRevenue
+          )}</div>
+          <div class="stat-label">Doanh thu tuần này</div>
+        </div>
+        <div class="stat-card pending">
+          <div class="stat-value">${formatCurrency(
+            overview?.pendingRevenue
+          )}</div>
+          <div class="stat-label">Chờ thanh toán</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">👥 Thống kê hệ thống</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${formatNumber(overview?.totalStudents)}</div>
+          <div class="stat-label">Tổng học sinh</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${formatNumber(overview?.totalTeachers)}</div>
+          <div class="stat-label">Tổng giáo viên</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${formatNumber(overview?.publicClasses)}</div>
+          <div class="stat-label">Lớp học PUBLIC</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${formatNumber(overview?.draftClasses)}</div>
+          <div class="stat-label">Lớp học DRAFT</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Báo cáo được tạo tự động bởi hệ thống 360edu</p>
+      <p>© ${new Date().getFullYear()} 360edu - Hệ thống quản lý giáo dục</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}_${new Date().toISOString().split("T")[0]}.html`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+// Hàm xuất HTML report Doanh thu Giáo viên
+const exportTeacherRevenueToHTML = (teacherRevenue, filename) => {
+  const totalRevenue = (teacherRevenue || []).reduce(
+    (sum, t) => sum + (t.totalRevenue || 0),
+    0
+  );
+  const totalPending = (teacherRevenue || []).reduce(
+    (sum, t) => sum + (t.pendingRevenue || 0),
+    0
+  );
+  const totalStudents = (teacherRevenue || []).reduce(
+    (sum, t) => sum + (t.totalStudents || 0),
+    0
+  );
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo cáo Doanh thu Giáo viên 360edu - ${new Date().toLocaleDateString(
+    "vi-VN"
+  )}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; background: #f8fafc; }
+    .report-container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+    .header h1 { color: #1e40af; font-size: 28px; margin-bottom: 8px; }
+    .header p { color: #64748b; font-size: 14px; }
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .summary-card { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 20px; border-radius: 12px; text-align: center; }
+    .summary-card.green { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); }
+    .summary-card.orange { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+    .summary-value { font-size: 24px; font-weight: 700; color: #1e293b; }
+    .summary-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #3b82f6; display: inline-block; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f1f5f9; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; }
+    td { color: #1e293b; font-size: 14px; }
+    tr:hover { background: #f8fafc; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .text-green { color: #16a34a; }
+    .text-orange { color: #ea580c; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-purple { background: #ede9fe; color: #7c3aed; }
+    .rank-1 { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+    .rank-2 { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); }
+    .rank-3 { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px; }
+    @media print {
+      body { padding: 0; background: white; }
+      .report-container { box-shadow: none; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+    <div class="header">
+      <h1>👨‍🏫 Báo cáo Doanh thu Giáo viên</h1>
+      <p>Ngày xuất: ${new Date().toLocaleDateString("vi-VN", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })}</p>
+    </div>
+
+    <div class="summary">
+      <div class="summary-card green">
+        <div class="summary-value">${formatCurrency(totalRevenue)}</div>
+        <div class="summary-label">Tổng doanh thu</div>
+      </div>
+      <div class="summary-card orange">
+        <div class="summary-value">${formatCurrency(totalPending)}</div>
+        <div class="summary-label">Tổng chờ thanh toán</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value">${formatNumber(totalStudents)}</div>
+        <div class="summary-label">Tổng học sinh</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">📋 Chi tiết doanh thu theo Giáo viên</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Hạng</th>
+            <th>Giáo viên</th>
+            <th class="text-right">Doanh thu</th>
+            <th class="text-right">Chờ TT</th>
+            <th class="text-center">Số lớp</th>
+            <th class="text-center">Học sinh</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(teacherRevenue || [])
+            .map(
+              (t, idx) => `
+            <tr class="${
+              idx === 0
+                ? "rank-1"
+                : idx === 1
+                ? "rank-2"
+                : idx === 2
+                ? "rank-3"
+                : ""
+            }">
+              <td><strong>${idx + 1}</strong></td>
+              <td><strong>${
+                t.teacherName
+              }</strong><br/><small style="color:#64748b">${
+                t.teacherEmail
+              }</small></td>
+              <td class="text-right text-green"><strong>${formatCurrency(
+                t.totalRevenue
+              )}</strong></td>
+              <td class="text-right text-orange">${formatCurrency(
+                t.pendingRevenue
+              )}</td>
+              <td class="text-center"><span class="badge badge-blue">${
+                t.totalClasses
+              }</span></td>
+              <td class="text-center"><span class="badge badge-purple">${
+                t.totalStudents
+              }</span></td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <p>Báo cáo được tạo tự động bởi hệ thống 360edu</p>
+      <p>© ${new Date().getFullYear()} 360edu - Hệ thống quản lý giáo dục</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}_${new Date().toISOString().split("T")[0]}.html`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+// Hàm xuất HTML report Doanh thu Môn học
+const exportSubjectRevenueToHTML = (subjectRevenue, filename) => {
+  const totalRevenue = (subjectRevenue || []).reduce(
+    (sum, s) => sum + (s.totalRevenue || 0),
+    0
+  );
+  const totalClasses = (subjectRevenue || []).reduce(
+    (sum, s) => sum + (s.totalClasses || 0),
+    0
+  );
+  const totalStudents = (subjectRevenue || []).reduce(
+    (sum, s) => sum + (s.totalStudents || 0),
+    0
+  );
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo cáo Doanh thu Môn học 360edu - ${new Date().toLocaleDateString(
+    "vi-VN"
+  )}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; background: #f8fafc; }
+    .report-container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+    .header h1 { color: #7c3aed; font-size: 28px; margin-bottom: 8px; }
+    .header p { color: #64748b; font-size: 14px; }
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .summary-card { background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); padding: 20px; border-radius: 12px; text-align: center; }
+    .summary-card.green { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); }
+    .summary-value { font-size: 24px; font-weight: 700; color: #1e293b; }
+    .summary-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #8b5cf6; display: inline-block; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f5f3ff; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; }
+    td { color: #1e293b; font-size: 14px; }
+    tr:hover { background: #faf5ff; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .text-green { color: #16a34a; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-purple { background: #ede9fe; color: #7c3aed; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px; }
+    @media print {
+      body { padding: 0; background: white; }
+      .report-container { box-shadow: none; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+    <div class="header">
+      <h1>📚 Báo cáo Doanh thu Môn học</h1>
+      <p>Ngày xuất: ${new Date().toLocaleDateString("vi-VN", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })}</p>
+    </div>
+
+    <div class="summary">
+      <div class="summary-card green">
+        <div class="summary-value">${formatCurrency(totalRevenue)}</div>
+        <div class="summary-label">Tổng doanh thu</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value">${formatNumber(totalClasses)}</div>
+        <div class="summary-label">Tổng số lớp</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value">${formatNumber(totalStudents)}</div>
+        <div class="summary-label">Tổng học sinh</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">📋 Chi tiết doanh thu theo Môn học</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Môn học</th>
+            <th class="text-right">Doanh thu</th>
+            <th class="text-center">Số lớp</th>
+            <th class="text-center">Học sinh</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(subjectRevenue || [])
+            .map(
+              (s, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td><strong>${s.subjectName}</strong></td>
+              <td class="text-right text-green"><strong>${formatCurrency(
+                s.totalRevenue
+              )}</strong></td>
+              <td class="text-center"><span class="badge badge-blue">${
+                s.totalClasses
+              }</span></td>
+              <td class="text-center"><span class="badge badge-purple">${
+                s.totalStudents
+              }</span></td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <p>Báo cáo được tạo tự động bởi hệ thống 360edu</p>
+      <p>© ${new Date().getFullYear()} 360edu - Hệ thống quản lý giáo dục</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}_${new Date().toISOString().split("T")[0]}.html`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+// Hàm xuất HTML report Doanh thu theo ngày
+const exportDailyRevenueToHTML = (revenueByDay, filename) => {
+  const totalRevenue = (revenueByDay || []).reduce(
+    (sum, d) => sum + (d.revenue || 0),
+    0
+  );
+  const totalPayments = (revenueByDay || []).reduce(
+    (sum, d) => sum + (d.paymentCount || 0),
+    0
+  );
+  const avgRevenue = revenueByDay?.length
+    ? totalRevenue / revenueByDay.length
+    : 0;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo cáo Doanh thu theo ngày 360edu - ${new Date().toLocaleDateString(
+    "vi-VN"
+  )}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; background: #f8fafc; }
+    .report-container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+    .header h1 { color: #d97706; font-size: 28px; margin-bottom: 8px; }
+    .header p { color: #64748b; font-size: 14px; }
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .summary-card { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 20px; border-radius: 12px; text-align: center; }
+    .summary-card.green { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); }
+    .summary-card.blue { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+    .summary-value { font-size: 24px; font-weight: 700; color: #1e293b; }
+    .summary-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #f59e0b; display: inline-block; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #fffbeb; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; }
+    td { color: #1e293b; font-size: 14px; }
+    tr:hover { background: #fffbeb; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .text-green { color: #16a34a; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .badge-amber { background: #fef3c7; color: #d97706; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px; }
+    @media print {
+      body { padding: 0; background: white; }
+      .report-container { box-shadow: none; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+    <div class="header">
+      <h1>📅 Báo cáo Doanh thu theo ngày</h1>
+      <p>Ngày xuất: ${new Date().toLocaleDateString("vi-VN", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })}</p>
+    </div>
+
+    <div class="summary">
+      <div class="summary-card green">
+        <div class="summary-value">${formatCurrency(totalRevenue)}</div>
+        <div class="summary-label">Tổng doanh thu</div>
+      </div>
+      <div class="summary-card blue">
+        <div class="summary-value">${formatNumber(totalPayments)}</div>
+        <div class="summary-label">Tổng giao dịch</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value">${formatCurrency(
+          Math.round(avgRevenue)
+        )}</div>
+        <div class="summary-label">Trung bình/ngày</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">📋 Chi tiết doanh thu theo ngày</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Ngày</th>
+            <th class="text-right">Doanh thu</th>
+            <th class="text-center">Số giao dịch</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(revenueByDay || [])
+            .map(
+              (d, idx) => `
+            <tr>
+              <td>${idx + 1}</td>
+              <td><strong>${d.label}</strong></td>
+              <td class="text-right text-green"><strong>${formatCurrency(
+                d.revenue
+              )}</strong></td>
+              <td class="text-center"><span class="badge badge-amber">${
+                d.paymentCount
+              } giao dịch</span></td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <p>Báo cáo được tạo tự động bởi hệ thống 360edu</p>
+      <p>© ${new Date().getFullYear()} 360edu - Hệ thống quản lý giáo dục</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${filename}_${new Date().toISOString().split("T")[0]}.html`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
 // Hàm xuất HTML report (có thể in/save as PDF) - Phiên bản chuyên nghiệp
 const exportToHTML = (reportData, filename, startDate, endDate) => {
   const { overview, teacherRevenue, subjectRevenue, revenueByDay } = reportData;
-  
+
   // Chuẩn hóa ngày để so sánh (bỏ phần time)
   const normalizeDate = (d) => {
     const date = new Date(d);
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    ).getTime();
   };
-  
+
   const startTime = normalizeDate(startDate);
   const endTime = normalizeDate(endDate);
-  
+
   // Lọc dữ liệu theo khoảng thời gian được chọn
-  const filteredRevenueByDay = (revenueByDay || []).filter(item => {
+  const filteredRevenueByDay = (revenueByDay || []).filter((item) => {
     if (!item.date) return false;
     const itemTime = normalizeDate(item.date);
     return itemTime >= startTime && itemTime <= endTime;
   });
-  
+
   // Tính tổng doanh thu trong khoảng thời gian
-  const periodRevenue = filteredRevenueByDay.reduce((sum, item) => sum + (item.revenue || 0), 0);
-  const periodPayments = filteredRevenueByDay.reduce((sum, item) => sum + (item.paymentCount || 0), 0);
-  
+  const periodRevenue = filteredRevenueByDay.reduce(
+    (sum, item) => sum + (item.revenue || 0),
+    0
+  );
+  const periodPayments = filteredRevenueByDay.reduce(
+    (sum, item) => sum + (item.paymentCount || 0),
+    0
+  );
+
   // Tính tổng doanh thu giáo viên và môn học (đã được lọc theo thời gian từ API)
-  const teacherTotalRevenue = (teacherRevenue || []).reduce((sum, t) => sum + (t.totalRevenue || 0), 0);
-  const subjectTotalRevenue = (subjectRevenue || []).reduce((sum, s) => sum + (s.totalRevenue || 0), 0);
-  
+  const teacherTotalRevenue = (teacherRevenue || []).reduce(
+    (sum, t) => sum + (t.totalRevenue || 0),
+    0
+  );
+  const subjectTotalRevenue = (subjectRevenue || []).reduce(
+    (sum, s) => sum + (s.totalRevenue || 0),
+    0
+  );
+
   // Sử dụng dữ liệu đã tính hoặc từ overview
   const pendingRevenue = overview?.pendingRevenue || 0;
   const pendingPayments = overview?.pendingPayments || 0;
-  
+
   // Tính max revenue cho biểu đồ bar
-  const maxTeacherRevenue = Math.max(...(teacherRevenue || []).map(t => t.totalRevenue || 0), 1);
-  
+  const maxTeacherRevenue = Math.max(
+    ...(teacherRevenue || []).map((t) => t.totalRevenue || 0),
+    1
+  );
+
   // Format ngày cho báo cáo
   const formatDate = (date) => date.toLocaleDateString("vi-VN");
   const reportPeriod = `Từ ${formatDate(startDate)} đến ${formatDate(endDate)}`;
-  
+
   // Tính số ngày trong khoảng
   const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-  const avgDailyRevenue = daysDiff > 0 ? Math.round(periodRevenue / daysDiff) : 0;
+  const avgDailyRevenue =
+    daysDiff > 0 ? Math.round(periodRevenue / daysDiff) : 0;
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -485,7 +1046,9 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
           <div style="opacity: 0.8; margin-top: 5px;">Hệ thống Quản lý Giáo dục Trực tuyến</div>
         </div>
         <div class="company-details">
-          <div>Ngày xuất báo cáo: ${getVietnamDate().toLocaleDateString("vi-VN")}</div>
+          <div>Ngày xuất báo cáo: ${getVietnamDate().toLocaleDateString(
+            "vi-VN"
+          )}</div>
           <div>Người lập: Quản trị viên</div>
         </div>
       </div>
@@ -500,7 +1063,9 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
       <div class="stat-card green">
         <div class="stat-label">Doanh Thu Kỳ Báo Cáo</div>
         <div class="stat-value green">${formatCurrency(periodRevenue)}</div>
-        <div class="stat-change">${daysDiff} ngày (${formatDate(startDate)} - ${formatDate(endDate)})</div>
+        <div class="stat-change">${daysDiff} ngày (${formatDate(
+    startDate
+  )} - ${formatDate(endDate)})</div>
       </div>
       <div class="stat-card blue">
         <div class="stat-label">Doanh Thu Trung Bình/Ngày</div>
@@ -520,19 +1085,26 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
       <div class="chart-card">
         <div class="chart-title">📈 Doanh Thu Theo Giáo Viên (Top 5) <span style="font-size: 11px; color: #10b981; font-weight: 400;">[Trong kỳ báo cáo]</span></div>
         <div class="bar-chart">
-          ${(teacherRevenue || []).slice(0, 5).map((t, idx) => {
-            const percent = Math.round((t.totalRevenue / maxTeacherRevenue) * 100);
-            const colors = ['blue', 'green', 'orange', 'purple', 'pink'];
-            return `
+          ${(teacherRevenue || [])
+            .slice(0, 5)
+            .map((t, idx) => {
+              const percent = Math.round(
+                (t.totalRevenue / maxTeacherRevenue) * 100
+              );
+              const colors = ["blue", "green", "orange", "purple", "pink"];
+              return `
               <div class="bar-item">
                 <div class="bar-label">${t.teacherName}</div>
                 <div class="bar-track">
-                  <div class="bar-fill ${colors[idx]}" style="width: ${percent}%"></div>
+                  <div class="bar-fill ${
+                    colors[idx]
+                  }" style="width: ${percent}%"></div>
                 </div>
                 <div class="bar-value">${formatCurrency(t.totalRevenue)}</div>
               </div>
             `;
-          }).join('')}
+            })
+            .join("")}
         </div>
       </div>
     </div>
@@ -541,7 +1113,9 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
     <div class="table-section">
       <div class="section-header">
         <div class="section-title">📚 Doanh Thu Theo Môn Học <span style="font-size: 12px; color: #10b981; font-weight: 400;">[Trong kỳ báo cáo]</span></div>
-        <div class="section-badge">${(subjectRevenue || []).length} môn học</div>
+        <div class="section-badge">${
+          (subjectRevenue || []).length
+        } môn học</div>
       </div>
       <table>
         <thead>
@@ -555,25 +1129,49 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
           </tr>
         </thead>
         <tbody>
-          ${(subjectRevenue || []).map((s, idx) => {
-            const percentage = subjectTotalRevenue > 0 ? ((s.totalRevenue / subjectTotalRevenue) * 100).toFixed(1) : 0;
-            const rankClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'rank-default';
-            return `
+          ${(subjectRevenue || [])
+            .map((s, idx) => {
+              const percentage =
+                subjectTotalRevenue > 0
+                  ? ((s.totalRevenue / subjectTotalRevenue) * 100).toFixed(1)
+                  : 0;
+              const rankClass =
+                idx === 0
+                  ? "rank-1"
+                  : idx === 1
+                  ? "rank-2"
+                  : idx === 2
+                  ? "rank-3"
+                  : "rank-default";
+              return `
               <tr>
                 <td><span class="rank-badge ${rankClass}">${idx + 1}</span></td>
                 <td class="font-bold">${s.subjectName}</td>
-                <td class="text-center text-blue font-bold">${s.totalClasses}</td>
+                <td class="text-center text-blue font-bold">${
+                  s.totalClasses
+                }</td>
                 <td class="text-center">${s.totalStudents}</td>
-                <td class="text-right text-green font-bold">${formatCurrency(s.totalRevenue)}</td>
+                <td class="text-right text-green font-bold">${formatCurrency(
+                  s.totalRevenue
+                )}</td>
                 <td class="text-right">${percentage}%</td>
               </tr>
             `;
-          }).join('')}
+            })
+            .join("")}
           <tr class="total-row">
             <td colspan="2">TỔNG CỘNG KỲ BÁO CÁO</td>
-            <td class="text-center">${(subjectRevenue || []).reduce((sum, s) => sum + (s.totalClasses || 0), 0)}</td>
-            <td class="text-center">${(subjectRevenue || []).reduce((sum, s) => sum + (s.totalStudents || 0), 0)}</td>
-            <td class="text-right text-green font-bold">${formatCurrency(subjectTotalRevenue)}</td>
+            <td class="text-center">${(subjectRevenue || []).reduce(
+              (sum, s) => sum + (s.totalClasses || 0),
+              0
+            )}</td>
+            <td class="text-center">${(subjectRevenue || []).reduce(
+              (sum, s) => sum + (s.totalStudents || 0),
+              0
+            )}</td>
+            <td class="text-right text-green font-bold">${formatCurrency(
+              subjectTotalRevenue
+            )}</td>
             <td class="text-right">100%</td>
           </tr>
         </tbody>
@@ -597,23 +1195,34 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
           </tr>
         </thead>
         <tbody>
-          ${filteredRevenueByDay.map((d, idx) => {
-            const percentage = periodRevenue > 0 ? ((d.revenue / periodRevenue) * 100).toFixed(1) : 0;
-            const dateStr = d.date ? new Date(d.date).toLocaleDateString("vi-VN") : d.label;
-            return `
+          ${filteredRevenueByDay
+            .map((d, idx) => {
+              const percentage =
+                periodRevenue > 0
+                  ? ((d.revenue / periodRevenue) * 100).toFixed(1)
+                  : 0;
+              const dateStr = d.date
+                ? new Date(d.date).toLocaleDateString("vi-VN")
+                : d.label;
+              return `
               <tr>
                 <td class="text-center">${idx + 1}</td>
                 <td class="font-bold">${dateStr}</td>
                 <td class="text-center">${d.paymentCount || 0}</td>
-                <td class="text-right text-green font-bold">${formatCurrency(d.revenue)}</td>
+                <td class="text-right text-green font-bold">${formatCurrency(
+                  d.revenue
+                )}</td>
                 <td class="text-right">${percentage}%</td>
               </tr>
             `;
-          }).join('')}
+            })
+            .join("")}
           <tr class="total-row">
             <td colspan="2">TỔNG CỘNG KỲ BÁO CÁO</td>
             <td class="text-center font-bold">${periodPayments}</td>
-            <td class="text-right text-green font-bold">${formatCurrency(periodRevenue)}</td>
+            <td class="text-right text-green font-bold">${formatCurrency(
+              periodRevenue
+            )}</td>
             <td class="text-right">100%</td>
           </tr>
         </tbody>
@@ -624,7 +1233,9 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
     <div class="table-section">
       <div class="section-header">
         <div class="section-title">👨‍🏫 Chi Tiết Doanh Thu Giáo Viên <span style="font-size: 12px; color: #10b981; font-weight: 400;">[Trong kỳ báo cáo]</span></div>
-        <div class="section-badge">${(teacherRevenue || []).length} giáo viên</div>
+        <div class="section-badge">${
+          (teacherRevenue || []).length
+        } giáo viên</div>
       </div>
       <table>
         <thead>
@@ -639,26 +1250,56 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
           </tr>
         </thead>
         <tbody>
-          ${(teacherRevenue || []).map((t, idx) => {
-            const rankClass = idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'rank-default';
-            return `
+          ${(teacherRevenue || [])
+            .map((t, idx) => {
+              const rankClass =
+                idx === 0
+                  ? "rank-1"
+                  : idx === 1
+                  ? "rank-2"
+                  : idx === 2
+                  ? "rank-3"
+                  : "rank-default";
+              return `
               <tr>
                 <td><span class="rank-badge ${rankClass}">${idx + 1}</span></td>
                 <td class="font-bold">${t.teacherName}</td>
-                <td style="color: #64748b; font-size: 13px;">${t.teacherEmail}</td>
-                <td class="text-center text-blue font-bold">${t.totalClasses}</td>
+                <td style="color: #64748b; font-size: 13px;">${
+                  t.teacherEmail
+                }</td>
+                <td class="text-center text-blue font-bold">${
+                  t.totalClasses
+                }</td>
                 <td class="text-center">${t.totalStudents}</td>
-                <td class="text-right text-green font-bold">${formatCurrency(t.totalRevenue)}</td>
-                <td class="text-right text-orange">${formatCurrency(t.pendingRevenue)}</td>
+                <td class="text-right text-green font-bold">${formatCurrency(
+                  t.totalRevenue
+                )}</td>
+                <td class="text-right text-orange">${formatCurrency(
+                  t.pendingRevenue
+                )}</td>
               </tr>
             `;
-          }).join('')}
+            })
+            .join("")}
           <tr class="total-row">
             <td colspan="3">TỔNG CỘNG KỲ BÁO CÁO</td>
-            <td class="text-center">${(teacherRevenue || []).reduce((sum, t) => sum + (t.totalClasses || 0), 0)}</td>
-            <td class="text-center">${(teacherRevenue || []).reduce((sum, t) => sum + (t.totalStudents || 0), 0)}</td>
-            <td class="text-right text-green font-bold">${formatCurrency(teacherTotalRevenue)}</td>
-            <td class="text-right text-orange">${formatCurrency((teacherRevenue || []).reduce((sum, t) => sum + (t.pendingRevenue || 0), 0))}</td>
+            <td class="text-center">${(teacherRevenue || []).reduce(
+              (sum, t) => sum + (t.totalClasses || 0),
+              0
+            )}</td>
+            <td class="text-center">${(teacherRevenue || []).reduce(
+              (sum, t) => sum + (t.totalStudents || 0),
+              0
+            )}</td>
+            <td class="text-right text-green font-bold">${formatCurrency(
+              teacherTotalRevenue
+            )}</td>
+            <td class="text-right text-orange">${formatCurrency(
+              (teacherRevenue || []).reduce(
+                (sum, t) => sum + (t.pendingRevenue || 0),
+                0
+              )
+            )}</td>
           </tr>
         </tbody>
       </table>
@@ -669,9 +1310,17 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
       <div class="summary-card">
         <div class="summary-title">📋 Tổng Kết Kỳ Báo Cáo</div>
         <div class="summary-text">
-          Trong kỳ báo cáo từ <span class="highlight">${formatDate(startDate)}</span> đến <span class="highlight">${formatDate(endDate)}</span> (${daysDiff} ngày),
-          hệ thống đã ghi nhận doanh thu <span class="highlight">${formatCurrency(periodRevenue)}</span> với ${periodPayments} giao dịch.
-          Trung bình mỗi ngày đạt <span class="highlight">${formatCurrency(avgDailyRevenue)}</span>.
+          Trong kỳ báo cáo từ <span class="highlight">${formatDate(
+            startDate
+          )}</span> đến <span class="highlight">${formatDate(
+    endDate
+  )}</span> (${daysDiff} ngày),
+          hệ thống đã ghi nhận doanh thu <span class="highlight">${formatCurrency(
+            periodRevenue
+          )}</span> với ${periodPayments} giao dịch.
+          Trung bình mỗi ngày đạt <span class="highlight">${formatCurrency(
+            avgDailyRevenue
+          )}</span>.
           <br/><br/>
           <em style="color: #64748b; font-size: 12px;">* Tất cả số liệu doanh thu trong báo cáo này đều được lọc theo kỳ báo cáo đã chọn.</em>
         </div>
@@ -679,9 +1328,27 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
       <div class="summary-card">
         <div class="summary-title">💡 Nhận Xét</div>
         <div class="summary-text">
-          ${teacherRevenue && teacherRevenue[0] ? `Giáo viên <strong>${teacherRevenue[0].teacherName}</strong> đứng đầu về doanh thu với ${formatCurrency(teacherRevenue[0].totalRevenue)}.` : ''}
-          ${subjectRevenue && subjectRevenue[0] ? ` Môn <strong>${subjectRevenue[0].subjectName}</strong> có doanh thu cao nhất.` : ''}
-          ${pendingPayments > 0 ? ` Cần xử lý <strong>${pendingPayments} đơn</strong> đang chờ thanh toán với tổng giá trị <strong>${formatCurrency(pendingRevenue)}</strong>.` : ' Tất cả đơn hàng đã được thanh toán.'}
+          ${
+            teacherRevenue && teacherRevenue[0]
+              ? `Giáo viên <strong>${
+                  teacherRevenue[0].teacherName
+                }</strong> đứng đầu về doanh thu với ${formatCurrency(
+                  teacherRevenue[0].totalRevenue
+                )}.`
+              : ""
+          }
+          ${
+            subjectRevenue && subjectRevenue[0]
+              ? ` Môn <strong>${subjectRevenue[0].subjectName}</strong> có doanh thu cao nhất.`
+              : ""
+          }
+          ${
+            pendingPayments > 0
+              ? ` Cần xử lý <strong>${pendingPayments} đơn</strong> đang chờ thanh toán với tổng giá trị <strong>${formatCurrency(
+                  pendingRevenue
+                )}</strong>.`
+              : " Tất cả đơn hàng đã được thanh toán."
+          }
         </div>
       </div>
     </div>
@@ -689,7 +1356,9 @@ const exportToHTML = (reportData, filename, startDate, endDate) => {
     <!-- FOOTER -->
     <div class="report-footer">
       <div class="footer-date">
-        Ngày ${endDate.getDate()} tháng ${endDate.getMonth() + 1} năm ${endDate.getFullYear()}
+        Ngày ${endDate.getDate()} tháng ${
+    endDate.getMonth() + 1
+  } năm ${endDate.getFullYear()}
       </div>
       <div class="signatures">
         <div class="signature-box">
@@ -731,15 +1400,19 @@ function ExportReportButton({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [selectedType, setSelectedType] = useState(null);
+  const [, setSelectedType] = useState(null);
   const [exporting, setExporting] = useState(null);
   const { success, error } = useToast();
   const menuRef = useRef(null);
-  
+
   // State cho date picker - mặc định là tháng hiện tại (theo giờ Việt Nam)
   const todayVN = getVietnamDate();
   const todayStr = formatDateToYMD();
-  const defaultStartDate = new Date(todayVN.getFullYear(), todayVN.getMonth(), 1);
+  const defaultStartDate = new Date(
+    todayVN.getFullYear(),
+    todayVN.getMonth(),
+    1
+  );
   const [startDate, setStartDate] = useState(formatDateToYMD(defaultStartDate));
   const [endDate, setEndDate] = useState(todayStr);
 
@@ -769,12 +1442,12 @@ function ExportReportButton({
   const handleExportWithDateRange = async () => {
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     if (start > end) {
       error("Ngày bắt đầu phải nhỏ hơn ngày kết thúc!");
       return;
     }
-    
+
     setExporting("full-html");
     try {
       // Gọi API để lấy dữ liệu theo date range
@@ -782,16 +1455,16 @@ function ExportReportButton({
         reportApi.getTeacherRevenueBetween(startDate, endDate),
         reportApi.getSubjectRevenueBetween(startDate, endDate),
       ]);
-      
+
       const filteredTeacherRevenue = teacherRes.data || [];
       const filteredSubjectRevenue = subjectRes.data || [];
-      
+
       exportToHTML(
-        { 
-          overview, 
-          teacherRevenue: filteredTeacherRevenue, 
-          subjectRevenue: filteredSubjectRevenue, 
-          revenueByDay 
+        {
+          overview,
+          teacherRevenue: filteredTeacherRevenue,
+          subjectRevenue: filteredSubjectRevenue,
+          revenueByDay,
         },
         "360edu_baocao",
         start,
@@ -809,120 +1482,99 @@ function ExportReportButton({
 
   // Các preset thời gian nhanh (theo múi giờ Việt Nam)
   const datePresets = [
-    { label: "Hôm nay", getValue: () => {
-      const t = formatDateToYMD();
-      return { start: t, end: t };
-    }},
-    { label: "7 ngày qua", getValue: () => {
-      const t = getVietnamDate();
-      const s = new Date(t.getTime() - 6 * 24 * 60 * 60 * 1000); // 7 ngày bao gồm hôm nay
-      return { start: formatDateToYMD(s), end: formatDateToYMD(t) };
-    }},
-    { label: "30 ngày qua", getValue: () => {
-      const t = getVietnamDate();
-      const s = new Date(t.getTime() - 29 * 24 * 60 * 60 * 1000); // 30 ngày bao gồm hôm nay
-      return { start: formatDateToYMD(s), end: formatDateToYMD(t) };
-    }},
-    { label: "Tháng này", getValue: () => {
-      const t = getVietnamDate();
-      const s = new Date(t.getFullYear(), t.getMonth(), 1);
-      return { start: formatDateToYMD(s), end: formatDateToYMD(t) };
-    }},
-    { label: "Tháng trước", getValue: () => {
-      const t = getVietnamDate();
-      const s = new Date(t.getFullYear(), t.getMonth() - 1, 1);
-      const e = new Date(t.getFullYear(), t.getMonth(), 0);
-      return { start: formatDateToYMD(s), end: formatDateToYMD(e) };
-    }},
-    { label: "Quý này", getValue: () => {
-      const t = new Date();
-      const quarter = Math.floor(t.getMonth() / 3);
-      const s = new Date(t.getFullYear(), quarter * 3, 1);
-      return { start: s.toISOString().split('T')[0], end: t.toISOString().split('T')[0] };
-    }},
+    {
+      label: "Hôm nay",
+      getValue: () => {
+        const t = formatDateToYMD();
+        return { start: t, end: t };
+      },
+    },
+    {
+      label: "7 ngày qua",
+      getValue: () => {
+        const t = getVietnamDate();
+        const s = new Date(t.getTime() - 6 * 24 * 60 * 60 * 1000); // 7 ngày bao gồm hôm nay
+        return { start: formatDateToYMD(s), end: formatDateToYMD(t) };
+      },
+    },
+    {
+      label: "30 ngày qua",
+      getValue: () => {
+        const t = getVietnamDate();
+        const s = new Date(t.getTime() - 29 * 24 * 60 * 60 * 1000); // 30 ngày bao gồm hôm nay
+        return { start: formatDateToYMD(s), end: formatDateToYMD(t) };
+      },
+    },
+    {
+      label: "Tháng này",
+      getValue: () => {
+        const t = getVietnamDate();
+        const s = new Date(t.getFullYear(), t.getMonth(), 1);
+        return { start: formatDateToYMD(s), end: formatDateToYMD(t) };
+      },
+    },
+    {
+      label: "Tháng trước",
+      getValue: () => {
+        const t = getVietnamDate();
+        const s = new Date(t.getFullYear(), t.getMonth() - 1, 1);
+        const e = new Date(t.getFullYear(), t.getMonth(), 0);
+        return { start: formatDateToYMD(s), end: formatDateToYMD(e) };
+      },
+    },
+    {
+      label: "Quý này",
+      getValue: () => {
+        const t = new Date();
+        const quarter = Math.floor(t.getMonth() / 3);
+        const s = new Date(t.getFullYear(), quarter * 3, 1);
+        return {
+          start: s.toISOString().split("T")[0],
+          end: t.toISOString().split("T")[0],
+        };
+      },
+    },
   ];
 
   const handleExport = async (type) => {
     setExporting(type);
     try {
       switch (type) {
-        case "overview-csv":
-          exportToExcel([overview], "360edu_tongquan", [
-            {
-              key: "totalRevenue",
-              label: "Tổng doanh thu",
-              format: "currency",
-            },
-            {
-              key: "monthlyRevenue",
-              label: "Doanh thu tháng",
-              format: "currency",
-            },
-            {
-              key: "weeklyRevenue",
-              label: "Doanh thu tuần",
-              format: "currency",
-            },
-            {
-              key: "pendingRevenue",
-              label: "Chờ thanh toán",
-              format: "currency",
-            },
-            { key: "totalStudents", label: "Tổng học sinh", format: "number" },
-            { key: "totalTeachers", label: "Tổng giáo viên", format: "number" },
-            { key: "publicClasses", label: "Lớp PUBLIC", format: "number" },
-            { key: "draftClasses", label: "Lớp DRAFT", format: "number" },
-          ]);
-          success("Xuất báo cáo tổng quan thành công!");
+        case "overview-html":
+          exportOverviewToHTML(overview, "360edu_tongquan");
+          success(
+            "Xuất báo cáo tổng quan thành công! Mở file HTML và in ra PDF nếu cần."
+          );
           break;
 
-        case "teacher-csv":
-          exportToExcel(teacherRevenue, "360edu_doanhthu_giaovien", [
-            { key: "teacherName", label: "Tên giáo viên", format: "text" },
-            { key: "teacherEmail", label: "Email", format: "text" },
-            {
-              key: "totalRevenue",
-              label: "Tổng doanh thu",
-              format: "currency",
-            },
-            {
-              key: "pendingRevenue",
-              label: "Chờ thanh toán",
-              format: "currency",
-            },
-            { key: "totalClasses", label: "Số lớp", format: "number" },
-            { key: "totalStudents", label: "Số học sinh", format: "number" },
-          ]);
-          success("Xuất doanh thu giáo viên thành công!");
+        case "teacher-html":
+          exportTeacherRevenueToHTML(
+            teacherRevenue,
+            "360edu_doanhthu_giaovien"
+          );
+          success(
+            "Xuất doanh thu giáo viên thành công! Mở file HTML và in ra PDF nếu cần."
+          );
           break;
 
-        case "subject-csv":
-          exportToExcel(subjectRevenue, "360edu_doanhthu_monhoc", [
-            { key: "subjectName", label: "Tên môn học", format: "text" },
-            {
-              key: "totalRevenue",
-              label: "Tổng doanh thu",
-              format: "currency",
-            },
-            { key: "totalClasses", label: "Số lớp", format: "number" },
-            { key: "totalStudents", label: "Số học sinh", format: "number" },
-          ]);
-          success("Xuất doanh thu môn học thành công!");
+        case "subject-html":
+          exportSubjectRevenueToHTML(subjectRevenue, "360edu_doanhthu_monhoc");
+          success(
+            "Xuất doanh thu môn học thành công! Mở file HTML và in ra PDF nếu cần."
+          );
           break;
 
-        case "daily-csv":
-          exportToExcel(revenueByDay, "360edu_doanhthu_theongay", [
-            { key: "label", label: "Ngày", format: "text" },
-            { key: "revenue", label: "Doanh thu", format: "currency" },
-            { key: "paymentCount", label: "Số giao dịch", format: "number" },
-          ]);
-          success("Xuất doanh thu theo ngày thành công!");
+        case "daily-html":
+          exportDailyRevenueToHTML(revenueByDay, "360edu_doanhthu_theongay");
+          success(
+            "Xuất doanh thu theo ngày thành công! Mở file HTML và in ra PDF nếu cần."
+          );
           break;
 
         default:
           break;
       }
-    } catch (e) {
+    } catch {
       error("Có lỗi khi xuất báo cáo");
     } finally {
       setExporting(null);
@@ -941,34 +1593,34 @@ function ExportReportButton({
       featured: true,
     },
     {
-      id: "overview-csv",
-      icon: FileSpreadsheet,
+      id: "overview-html",
+      icon: FileText,
       label: "Tổng quan",
-      desc: "Excel/CSV",
+      desc: "HTML (có thể in PDF)",
       color: "text-green-500",
       bgColor: "bg-green-50",
     },
     {
-      id: "teacher-csv",
-      icon: FileSpreadsheet,
+      id: "teacher-html",
+      icon: FileText,
       label: "Doanh thu Giáo viên",
-      desc: "Excel/CSV",
+      desc: "HTML (có thể in PDF)",
       color: "text-blue-500",
       bgColor: "bg-blue-50",
     },
     {
-      id: "subject-csv",
-      icon: FileSpreadsheet,
+      id: "subject-html",
+      icon: FileText,
       label: "Doanh thu Môn học",
-      desc: "Excel/CSV",
+      desc: "HTML (có thể in PDF)",
       color: "text-purple-500",
       bgColor: "bg-purple-50",
     },
     {
-      id: "daily-csv",
-      icon: FileSpreadsheet,
+      id: "daily-html",
+      icon: FileText,
       label: "Doanh thu theo ngày",
-      desc: "Excel/CSV",
+      desc: "HTML (có thể in PDF)",
       color: "text-amber-500",
       bgColor: "bg-amber-50",
     },
@@ -984,8 +1636,12 @@ function ExportReportButton({
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-white">📊 Xuất Báo Cáo Đầy Đủ</h3>
-                  <p className="text-blue-100 text-sm">Chọn khoảng thời gian báo cáo</p>
+                  <h3 className="text-lg font-semibold text-white">
+                    📊 Xuất Báo Cáo Đầy Đủ
+                  </h3>
+                  <p className="text-blue-100 text-sm">
+                    Chọn khoảng thời gian báo cáo
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
@@ -995,7 +1651,7 @@ function ExportReportButton({
                 </button>
               </div>
             </div>
-            
+
             {/* Content */}
             <div className="p-6">
               {/* Preset buttons */}
@@ -1019,7 +1675,7 @@ function ExportReportButton({
                   ))}
                 </div>
               </div>
-              
+
               {/* Date inputs */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
@@ -1047,18 +1703,24 @@ function ExportReportButton({
                   />
                 </div>
               </div>
-              
+
               {/* Preview info */}
               <div className="bg-blue-50 rounded-lg p-3 mb-6">
                 <p className="text-sm text-blue-800">
                   <span className="font-medium">Kỳ báo cáo:</span>{" "}
-                  {new Date(startDate).toLocaleDateString("vi-VN")} - {new Date(endDate).toLocaleDateString("vi-VN")}
+                  {new Date(startDate).toLocaleDateString("vi-VN")} -{" "}
+                  {new Date(endDate).toLocaleDateString("vi-VN")}
                   <span className="text-blue-600 ml-2">
-                    ({Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1} ngày)
+                    (
+                    {Math.ceil(
+                      (new Date(endDate) - new Date(startDate)) /
+                        (1000 * 60 * 60 * 24)
+                    ) + 1}{" "}
+                    ngày)
                   </span>
                 </p>
               </div>
-              
+
               {/* Actions */}
               <div className="flex gap-3">
                 <button
@@ -1089,7 +1751,7 @@ function ExportReportButton({
           </div>
         </div>
       )}
-      
+
       {/* Button và Dropdown */}
       <div className="relative" ref={menuRef}>
         <button
@@ -1122,8 +1784,8 @@ function ExportReportButton({
                   onClick={() => handleSelectReport(option.id)}
                   disabled={exporting === option.id}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left group disabled:opacity-50 ${
-                    option.featured 
-                      ? "bg-gradient-to-r from-rose-50 to-pink-50 hover:from-rose-100 hover:to-pink-100 border border-rose-200 mb-2" 
+                    option.featured
+                      ? "bg-gradient-to-r from-rose-50 to-pink-50 hover:from-rose-100 hover:to-pink-100 border border-rose-200 mb-2"
                       : "hover:bg-gray-50"
                   }`}
                 >
@@ -1139,7 +1801,11 @@ function ExportReportButton({
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className={`font-medium text-sm ${option.featured ? "text-rose-700" : "text-gray-900"}`}>
+                    <p
+                      className={`font-medium text-sm ${
+                        option.featured ? "text-rose-700" : "text-gray-900"
+                      }`}
+                    >
                       {option.label}
                     </p>
                     <p className="text-xs text-gray-400">{option.desc}</p>
@@ -1862,10 +2528,12 @@ export default function ReportDashboard() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     loadRevenueByDay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daysToFetch]);
 
   const loadData = async () => {
@@ -1880,16 +2548,12 @@ export default function ReportDashboard() {
           reportApi.getRevenueByDay(daysToFetch),
         ]);
 
-      const totalDayRevenue = (dayRes.data || []).reduce(
-        (sum, d) => sum + (d.revenue || 0),
-        0
-      );
       setOverview(overviewRes.data);
       setTeacherRevenue(teacherRes.data || []);
       setTopTeacher(topRes.data);
       setSubjectRevenue(subjectRes.data || []);
       setRevenueByDay(dayRes.data || []);
-    } catch (e) {
+    } catch {
       error("Không thể tải dữ liệu báo cáo");
     } finally {
       setLoading(false);
@@ -1900,7 +2564,9 @@ export default function ReportDashboard() {
     try {
       const res = await reportApi.getRevenueByDay(daysToFetch);
       setRevenueByDay(res.data || []);
-    } catch (e) {}
+    } catch {
+      // Silently ignore error - data will remain unchanged
+    }
   };
 
   // Aggregate data based on filter mode
@@ -1939,7 +2605,6 @@ export default function ReportDashboard() {
         // Parse date from label (format: "DD/MM")
         const parts = item.label?.split("/");
         if (parts && parts.length >= 2) {
-          const day = parseInt(parts[0]);
           const month = parseInt(parts[1]);
 
           // Xác định năm dựa trên logic: nếu tháng > tháng hiện tại thì là năm trước

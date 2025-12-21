@@ -71,9 +71,6 @@ export default function GuestLayout() {
         case "register":
           navigate("/home/register");
           break;
-        case "profile":
-          navigate("/home/profile");
-          break;
         case "classes":
           // Support filter params: subjectId, teacherId, search
           {
@@ -84,7 +81,9 @@ export default function GuestLayout() {
             if (page.teacherName) params.set("teacherName", page.teacherName);
             if (page.search) params.set("search", page.search);
             const queryString = params.toString();
-            navigate(queryString ? `/home/classes?${queryString}` : "/home/classes");
+            navigate(
+              queryString ? `/home/classes?${queryString}` : "/home/classes"
+            );
           }
           break;
         case "class":
@@ -146,7 +145,7 @@ export default function GuestLayout() {
           navigate("/home/payment-history");
           break;
         default:
-          }
+      }
     },
     [navigate]
   );

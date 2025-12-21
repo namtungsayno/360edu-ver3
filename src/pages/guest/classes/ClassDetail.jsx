@@ -55,7 +55,7 @@ export default function ClassDetail() {
         const cls = await classService.getPublicDetail(classId);
         setData(cls || null);
         if (!cls) setError("Không tìm thấy lớp.");
-        
+
         // Check if user is already enrolled in this class
         if (user) {
           try {
@@ -81,7 +81,10 @@ export default function ClassDetail() {
     const currentStudentsCount = data?.currentStudents || 0;
     const maxStudentsCount = data?.maxStudents || 30;
     if (currentStudentsCount >= maxStudentsCount) {
-      showError("Lớp học này đã đầy, vui lòng chọn lớp khác!", "Không thể đăng ký");
+      showError(
+        "Lớp học này đã đầy, vui lòng chọn lớp khác!",
+        "Không thể đăng ký"
+      );
       return;
     }
 
@@ -293,7 +296,9 @@ export default function ClassDetail() {
             {/* Description */}
             <Card>
               <CardContent className="p-6 pt-5">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Giới thiệu lớp học</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">
+                  Giới thiệu lớp học
+                </h2>
                 <div
                   className="text-gray-700 leading-relaxed rich-text-content"
                   dangerouslySetInnerHTML={{
@@ -308,7 +313,9 @@ export default function ClassDetail() {
             {/* Schedule Info */}
             <Card>
               <CardContent className="p-6 pt-5">
-                <h2 className="text-xl font-bold text-gray-900 mb-5">Lịch học</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-5">
+                  Lịch học
+                </h2>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <div className="flex items-center gap-2 text-gray-700 mb-2">
@@ -537,18 +544,22 @@ export default function ClassDetail() {
                       <h2 className="text-xl font-bold text-gray-900">
                         Nội dung khóa học
                       </h2>
-                      {data.courseChapters && data.courseChapters.length > 0 && (
-                        <p className="text-sm text-gray-500 mt-1">
-                          {data.courseChapters.length} chương · {data.courseLessons?.length || 0} bài học
-                        </p>
-                      )}
+                      {data.courseChapters &&
+                        data.courseChapters.length > 0 && (
+                          <p className="text-sm text-gray-500 mt-1">
+                            {data.courseChapters.length} chương ·{" "}
+                            {data.courseLessons?.length || 0} bài học
+                          </p>
+                        )}
                     </div>
                   </div>
                   {data.courseTitle && (
                     <div className="sm:text-right mt-2 sm:mt-0">
                       <span className="inline-flex items-center gap-2 text-blue-600 text-sm font-medium bg-blue-50 px-4 py-2 rounded-full shadow-sm">
                         <BookOpen className="w-4 h-4 flex-shrink-0" />
-                        <span className="max-w-[220px] truncate">{data.courseTitle}</span>
+                        <span className="max-w-[220px] truncate">
+                          {data.courseTitle}
+                        </span>
                       </span>
                     </div>
                   )}
@@ -558,7 +569,11 @@ export default function ClassDetail() {
                 {data.courseChapters && data.courseChapters.length > 0 ? (
                   <div className="space-y-3">
                     {data.courseChapters.map((chapter, idx) => (
-                      <ChapterItem key={chapter.id} chapter={chapter} index={idx + 1} />
+                      <ChapterItem
+                        key={chapter.id}
+                        chapter={chapter}
+                        index={idx + 1}
+                      />
                     ))}
                   </div>
                 ) : data.courseLessons && data.courseLessons.length > 0 ? (
@@ -622,10 +637,18 @@ export default function ClassDetail() {
                   {/* Enrollment Progress */}
                   <div className="mb-6">
                     <div className="flex items-center justify-between text-sm mb-2">
-                      <span className={isFull ? "text-red-600 font-medium" : "text-gray-600"}>
+                      <span
+                        className={
+                          isFull ? "text-red-600 font-medium" : "text-gray-600"
+                        }
+                      >
                         {isFull ? "🚫 Lớp đã đầy" : `Còn ${availableSlots} chỗ`}
                       </span>
-                      <span className={`font-bold ${isFull ? "text-red-600" : "text-blue-600"}`}>
+                      <span
+                        className={`font-bold ${
+                          isFull ? "text-red-600" : "text-blue-600"
+                        }`}
+                      >
                         {currentStudents}/{maxStudents}
                       </span>
                     </div>
@@ -710,11 +733,15 @@ export default function ClassDetail() {
                         Giá mỗi buổi:
                       </span>
                       <span className="text-gray-900 font-medium">
-                        {data.pricePerSession === 0
-                          ? <span className="text-green-600 font-bold">Miễn phí</span>
-                          : data.pricePerSession
-                          ? `${data.pricePerSession.toLocaleString()}đ`
-                          : "Liên hệ"}
+                        {data.pricePerSession === 0 ? (
+                          <span className="text-green-600 font-bold">
+                            Miễn phí
+                          </span>
+                        ) : data.pricePerSession ? (
+                          `${data.pricePerSession.toLocaleString()} VNĐ`
+                        ) : (
+                          "Liên hệ"
+                        )}
                       </span>
                     </div>
 
@@ -741,7 +768,9 @@ export default function ClassDetail() {
                           const total = price * sessions;
                           // Nếu price = 0 thì miễn phí
                           if (price === 0) {
-                            return <span className="text-green-600">Miễn phí</span>;
+                            return (
+                              <span className="text-green-600">Miễn phí</span>
+                            );
                           }
                           return total > 0
                             ? `${total.toLocaleString()}đ`
@@ -756,8 +785,8 @@ export default function ClassDetail() {
                       className={`w-full text-lg py-6 ${
                         isEnrolled
                           ? "bg-green-600 hover:bg-green-600 cursor-not-allowed text-white"
-                          : isFull 
-                          ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed text-white" 
+                          : isFull
+                          ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed text-white"
                           : "bg-blue-600 hover:bg-blue-700 text-white"
                       }`}
                     >

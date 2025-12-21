@@ -1,7 +1,7 @@
 export const formatCurrency = (amount) => {
   const n = Number(amount);
-  if (!Number.isFinite(n)) return "0 ₫";
-  return `${n.toLocaleString("vi-VN")} ₫`;
+  if (!Number.isFinite(n)) return "0 VNĐ";
+  return `${n.toLocaleString("vi-VN")} VNĐ`;
 };
 
 /**

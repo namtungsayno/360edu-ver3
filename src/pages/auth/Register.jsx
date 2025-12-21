@@ -10,9 +10,10 @@
  * - Submit -> authService.register -> toast thông báo -> điều hướng /home/login
  * - Split screen layout với banner và form
  * - Kiểm tra số điện thoại phụ huynh: nếu đã tồn tại, hiện dialog xác nhận
+ * - EMAIL VERIFICATION: Yêu cầu xác thực OTP trước khi đăng ký
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -36,6 +37,9 @@ import {
   Lock,
   Shield,
   Sparkles,
+  CheckCircle,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
@@ -84,6 +88,251 @@ export default function Register() {
   });
   const [parentConfirmed, setParentConfirmed] = useState(false); // Đã xác nhận là phụ huynh cũ
   const [existingParentId, setExistingParentId] = useState(null);
+
+  // ============ STATE CHO EMAIL VERIFICATION (OTP) - HỌC SINH ============
+  const [emailVerified, setEmailVerified] = useState(false); // Email đã xác thực chưa
+  const [otpSent, setOtpSent] = useState(false); // Đã gửi OTP chưa
+  const [otp, setOtp] = useState(""); // Mã OTP user nhập
+  const [sendingOtp, setSendingOtp] = useState(false); // Đang gửi OTP
+  const [verifyingOtp, setVerifyingOtp] = useState(false); // Đang xác thực OTP
+  const [otpCooldown, setOtpCooldown] = useState(0); // Cooldown gửi lại OTP (giây)
+  const [otpExpiry, setOtpExpiry] = useState(0); // Thời gian hết hạn OTP (giây)
+
+  // ============ STATE CHO EMAIL VERIFICATION (OTP) - PHỤ HUYNH ============
+  const [parentEmailVerified, setParentEmailVerified] = useState(false);
+  const [parentOtpSent, setParentOtpSent] = useState(false);
+  const [parentOtp, setParentOtp] = useState("");
+  const [sendingParentOtp, setSendingParentOtp] = useState(false);
+  const [verifyingParentOtp, setVerifyingParentOtp] = useState(false);
+  const [parentOtpCooldown, setParentOtpCooldown] = useState(0);
+  const [parentOtpExpiry, setParentOtpExpiry] = useState(0);
+
+  // Countdown cho cooldown gửi lại OTP - Học sinh
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
+
+  // Countdown cho OTP expiry - Học sinh
+  useEffect(() => {
+    if (otpExpiry <= 0) return;
+    const timer = setInterval(() => {
+      setOtpExpiry((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpExpiry]);
+
+  // Countdown cho cooldown gửi lại OTP - Phụ huynh
+  useEffect(() => {
+    if (parentOtpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setParentOtpCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [parentOtpCooldown]);
+
+  // Countdown cho OTP expiry - Phụ huynh
+  useEffect(() => {
+    if (parentOtpExpiry <= 0) return;
+    const timer = setInterval(() => {
+      setParentOtpExpiry((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [parentOtpExpiry]);
+
+  // Gửi OTP đến email
+  const handleSendOtp = useCallback(async () => {
+    const email = formData.email.trim();
+
+    if (!email) {
+      setErrors((prev) => ({ ...prev, email: "Vui lòng nhập email trước." }));
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      setErrors((prev) => ({ ...prev, email: "Email không hợp lệ." }));
+      return;
+    }
+
+    try {
+      setSendingOtp(true);
+      const response = await authApi.sendOtp(email);
+
+      if (response.success) {
+        setOtpSent(true);
+        setOtpExpiry(response.expiryMinutes * 60); // Convert phút sang giây
+        setOtpCooldown(60); // Cooldown 60s trước khi gửi lại
+        success("Mã OTP đã được gửi đến email của bạn", "Kiểm tra hộp thư 📧");
+        setErrors((prev) => ({ ...prev, email: "", otp: "" }));
+      } else {
+        error(response.message || "Không thể gửi OTP", "Lỗi gửi mã");
+      }
+    } catch (err) {
+      const apiMsg =
+        err?.response?.data?.message || "Không thể gửi OTP. Vui lòng thử lại.";
+      error(apiMsg, "Lỗi gửi mã");
+
+      // Nếu email đã tồn tại trong hệ thống
+      if (apiMsg.includes("đã được sử dụng")) {
+        setErrors((prev) => ({ ...prev, email: apiMsg }));
+      }
+    } finally {
+      setSendingOtp(false);
+    }
+  }, [formData.email, success, error]);
+
+  // Xác thực OTP
+  const handleVerifyOtp = useCallback(async () => {
+    const email = formData.email.trim();
+    const otpValue = otp.trim();
+
+    if (!otpValue || otpValue.length !== 6) {
+      setErrors((prev) => ({ ...prev, otp: "Vui lòng nhập mã OTP 6 số." }));
+      return;
+    }
+
+    try {
+      setVerifyingOtp(true);
+      const response = await authApi.verifyOtp(email, otpValue);
+
+      if (response.success) {
+        setEmailVerified(true);
+        success("Email đã được xác thực thành công!", "Xác thực thành công ✅");
+        setErrors((prev) => ({ ...prev, otp: "" }));
+      } else {
+        setErrors((prev) => ({ ...prev, otp: response.message }));
+        if (response.remainingAttempts === 0) {
+          // Reset OTP state nếu hết lượt thử
+          setOtpSent(false);
+          setOtp("");
+          setOtpExpiry(0);
+        }
+      }
+    } catch (err) {
+      const apiMsg = err?.response?.data?.message || "Xác thực OTP thất bại.";
+      setErrors((prev) => ({ ...prev, otp: apiMsg }));
+    } finally {
+      setVerifyingOtp(false);
+    }
+  }, [formData.email, otp, success]);
+
+  // Reset email verification khi thay đổi email
+  const handleEmailChange = (e) => {
+    const { value } = e.target;
+    setFormData((prev) => ({ ...prev, email: value }));
+    if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+
+    // Reset verification state
+    if (emailVerified || otpSent) {
+      setEmailVerified(false);
+      setOtpSent(false);
+      setOtp("");
+      setOtpExpiry(0);
+    }
+  };
+
+  // ============ HÀM XỬ LÝ OTP CHO PHỤ HUYNH ============
+
+  // Gửi OTP đến email phụ huynh
+  const handleSendParentOtp = useCallback(async () => {
+    const email = formData.parentEmail.trim();
+
+    if (!email) {
+      setErrors((prev) => ({
+        ...prev,
+        parentEmail: "Vui lòng nhập email trước.",
+      }));
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      setErrors((prev) => ({ ...prev, parentEmail: "Email không hợp lệ." }));
+      return;
+    }
+
+    try {
+      setSendingParentOtp(true);
+      const response = await authApi.sendOtp(email);
+
+      if (response.success) {
+        setParentOtpSent(true);
+        setParentOtpExpiry(response.expiryMinutes * 60);
+        setParentOtpCooldown(60);
+        success(
+          "Mã OTP đã được gửi đến email phụ huynh",
+          "Kiểm tra hộp thư 📧"
+        );
+        setErrors((prev) => ({ ...prev, parentEmail: "", parentOtp: "" }));
+      } else {
+        error(response.message || "Không thể gửi OTP", "Lỗi gửi mã");
+      }
+    } catch (err) {
+      const apiMsg =
+        err?.response?.data?.message || "Không thể gửi OTP. Vui lòng thử lại.";
+      error(apiMsg, "Lỗi gửi mã");
+
+      if (apiMsg.includes("đã được sử dụng")) {
+        setErrors((prev) => ({ ...prev, parentEmail: apiMsg }));
+      }
+    } finally {
+      setSendingParentOtp(false);
+    }
+  }, [formData.parentEmail, success, error]);
+
+  // Xác thực OTP phụ huynh
+  const handleVerifyParentOtp = useCallback(async () => {
+    const email = formData.parentEmail.trim();
+    const otpValue = parentOtp.trim();
+
+    if (!otpValue || otpValue.length !== 6) {
+      setErrors((prev) => ({
+        ...prev,
+        parentOtp: "Vui lòng nhập mã OTP 6 số.",
+      }));
+      return;
+    }
+
+    try {
+      setVerifyingParentOtp(true);
+      const response = await authApi.verifyOtp(email, otpValue);
+
+      if (response.success) {
+        setParentEmailVerified(true);
+        success("Email phụ huynh đã được xác thực!", "Xác thực thành công ✅");
+        setErrors((prev) => ({ ...prev, parentOtp: "" }));
+      } else {
+        setErrors((prev) => ({ ...prev, parentOtp: response.message }));
+        if (response.remainingAttempts === 0) {
+          setParentOtpSent(false);
+          setParentOtp("");
+          setParentOtpExpiry(0);
+        }
+      }
+    } catch (err) {
+      const apiMsg = err?.response?.data?.message || "Xác thực OTP thất bại.";
+      setErrors((prev) => ({ ...prev, parentOtp: apiMsg }));
+    } finally {
+      setVerifyingParentOtp(false);
+    }
+  }, [formData.parentEmail, parentOtp, success]);
+
+  // Reset parent email verification khi thay đổi email phụ huynh
+  const handleParentEmailChange = (e) => {
+    const { value } = e.target;
+    setFormData((prev) => ({ ...prev, parentEmail: value }));
+    if (errors.parentEmail) setErrors((prev) => ({ ...prev, parentEmail: "" }));
+
+    // Reset verification state
+    if (parentEmailVerified || parentOtpSent) {
+      setParentEmailVerified(false);
+      setParentOtpSent(false);
+      setParentOtp("");
+      setParentOtpExpiry(0);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -168,6 +417,9 @@ export default function Register() {
       next.parentEmail = "Vui lòng nhập email phụ huynh.";
     } else if (!EMAIL_REGEX.test(formData.parentEmail)) {
       next.parentEmail = "Email phụ huynh không hợp lệ.";
+    } else if (!parentConfirmed && !parentEmailVerified) {
+      // Chỉ yêu cầu xác thực nếu không phải phụ huynh đã có trong hệ thống
+      next.parentEmail = "Email phụ huynh chưa được xác thực.";
     }
 
     if (!formData.parentName.trim()) {
@@ -191,6 +443,8 @@ export default function Register() {
       next.email = "Vui lòng nhập email.";
     } else if (!EMAIL_REGEX.test(formData.email)) {
       next.email = "Email không hợp lệ.";
+    } else if (!emailVerified) {
+      next.email = "Email chưa được xác thực. Vui lòng xác thực email trước.";
     }
 
     if (!formData.phone.trim()) {
@@ -410,39 +664,177 @@ export default function Register() {
                     )}
                   </div>
 
-                  {/* Parent Email */}
+                  {/* Parent Email với xác thực OTP */}
                   <div className="group">
                     <label
                       htmlFor="parentEmail"
                       className="block text-xs font-medium text-gray-600 mb-1"
                     >
                       Email <span className="text-red-400">*</span>
+                      {(parentConfirmed || parentEmailVerified) && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-green-600">
+                          <CheckCircle className="w-3 h-3" />
+                          {parentConfirmed ? "Đã liên kết" : "Đã xác thực"}
+                        </span>
+                      )}
                     </label>
-                    <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-purple-500 transition-colors">
-                        <Mail className="w-4 h-4" />
+
+                    {/* Nếu đã xác nhận là phụ huynh cũ, chỉ hiện email (masked) */}
+                    {parentConfirmed ? (
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                          <Mail className="w-4 h-4" />
+                        </div>
+                        <Input
+                          id="parentEmail"
+                          type="email"
+                          value={maskEmail(formData.parentEmail)}
+                          disabled
+                          className="w-full pl-9 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        </div>
                       </div>
-                      <Input
-                        id="parentEmail"
-                        name="parentEmail"
-                        type="email"
-                        required
-                        value={
-                          parentConfirmed
-                            ? maskEmail(formData.parentEmail)
-                            : formData.parentEmail
-                        }
-                        onChange={handleInputChange}
-                        placeholder="email@example.com"
-                        className={`w-full pl-9 py-2.5 bg-gray-50/50 border rounded-xl transition-all duration-300 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 text-sm ${
-                          errors.parentEmail
-                            ? "border-red-400 bg-red-50/50"
-                            : "border-gray-200"
-                        } ${parentConfirmed ? "bg-gray-100" : ""}`}
-                        disabled={parentConfirmed}
-                      />
-                    </div>
-                    {errors.parentEmail && (
+                    ) : (
+                      <>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-purple-500 transition-colors">
+                              <Mail className="w-4 h-4" />
+                            </div>
+                            <Input
+                              id="parentEmail"
+                              name="parentEmail"
+                              type="email"
+                              required
+                              value={formData.parentEmail}
+                              onChange={handleParentEmailChange}
+                              placeholder="email@example.com"
+                              disabled={parentEmailVerified}
+                              className={`w-full pl-9 py-2.5 bg-gray-50/50 border rounded-xl transition-all duration-300 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 text-sm ${
+                                errors.parentEmail
+                                  ? "border-red-400 bg-red-50/50"
+                                  : parentEmailVerified
+                                  ? "border-green-400 bg-green-50/50"
+                                  : "border-gray-200"
+                              }`}
+                            />
+                            {parentEmailVerified && (
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                              </div>
+                            )}
+                          </div>
+                          {!parentEmailVerified && (
+                            <Button
+                              type="button"
+                              onClick={handleSendParentOtp}
+                              disabled={
+                                sendingParentOtp ||
+                                parentOtpCooldown > 0 ||
+                                !formData.parentEmail.trim()
+                              }
+                              className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {sendingParentOtp ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : parentOtpCooldown > 0 ? (
+                                `${parentOtpCooldown}s`
+                              ) : parentOtpSent ? (
+                                <RefreshCw className="w-4 h-4" />
+                              ) : (
+                                "Gửi mã"
+                              )}
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* OTP Input - Hiện khi đã gửi OTP và chưa xác thực */}
+                        {parentOtpSent && !parentEmailVerified && (
+                          <div className="mt-3 p-3 bg-purple-50/50 rounded-xl border border-purple-100">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Shield className="w-4 h-4 text-purple-600" />
+                              <span className="text-xs font-medium text-purple-700">
+                                Nhập mã xác thực từ email
+                              </span>
+                              {parentOtpExpiry > 0 && (
+                                <span className="ml-auto text-xs text-purple-500">
+                                  Hết hạn sau:{" "}
+                                  {Math.floor(parentOtpExpiry / 60)}:
+                                  {String(parentOtpExpiry % 60).padStart(
+                                    2,
+                                    "0"
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Input
+                                type="text"
+                                value={parentOtp}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                    .replace(/\D/g, "")
+                                    .slice(0, 6);
+                                  setParentOtp(value);
+                                  if (errors.parentOtp)
+                                    setErrors((prev) => ({
+                                      ...prev,
+                                      parentOtp: "",
+                                    }));
+                                }}
+                                placeholder="Nhập mã 6 số"
+                                maxLength={6}
+                                className={`flex-1 text-center text-lg tracking-[0.5em] font-mono py-2.5 border rounded-xl ${
+                                  errors.parentOtp
+                                    ? "border-red-400 bg-red-50/50"
+                                    : "border-purple-200"
+                                }`}
+                              />
+                              <Button
+                                type="button"
+                                onClick={handleVerifyParentOtp}
+                                disabled={
+                                  verifyingParentOtp || parentOtp.length !== 6
+                                }
+                                className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {verifyingParentOtp ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  "Xác nhận"
+                                )}
+                              </Button>
+                            </div>
+                            {errors.parentOtp && (
+                              <p className="mt-2 text-xs text-red-500">
+                                {errors.parentOtp}
+                              </p>
+                            )}
+                            <p className="mt-2 text-xs text-gray-500">
+                              Không nhận được mã?{" "}
+                              {parentOtpCooldown > 0 ? (
+                                <span className="text-gray-400">
+                                  Gửi lại sau {parentOtpCooldown}s
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={handleSendParentOtp}
+                                  disabled={sendingParentOtp}
+                                  className="text-purple-600 hover:underline font-medium"
+                                >
+                                  Gửi lại mã
+                                </button>
+                              )}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {errors.parentEmail && !parentOtpSent && (
                       <p className="mt-1 text-xs text-red-500">
                         {errors.parentEmail}
                       </p>
@@ -518,40 +910,187 @@ export default function Register() {
                 </div>
 
                 <div className="space-y-3">
-                  {/* Full Name & Username - 2 columns */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="group">
-                      <label
-                        htmlFor="fullName"
-                        className="block text-xs font-medium text-gray-600 mb-1"
-                      >
-                        Họ và tên <span className="text-red-400">*</span>
-                      </label>
-                      <div className="relative">
+                  {/* Full Name only */}
+                  <div className="group">
+                    <label
+                      htmlFor="fullName"
+                      className="block text-xs font-medium text-gray-600 mb-1"
+                    >
+                      Họ và tên <span className="text-red-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors">
+                        <User className="w-4 h-4" />
+                      </div>
+                      <Input
+                        id="fullName"
+                        name="fullName"
+                        type="text"
+                        required
+                        value={formData.fullName}
+                        onChange={handleInputChange}
+                        placeholder="Họ và tên"
+                        className={`w-full pl-9 py-2.5 bg-gray-50/50 border rounded-xl transition-all duration-300 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm ${
+                          errors.fullName
+                            ? "border-red-400 bg-red-50/50"
+                            : "border-gray-200"
+                        }`}
+                      />
+                    </div>
+                    {errors.fullName && (
+                      <p className="mt-1 text-xs text-red-500">
+                        {errors.fullName}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Email với xác thực OTP - FULL WIDTH */}
+                  <div className="group">
+                    <label
+                      htmlFor="email"
+                      className="block text-xs font-medium text-gray-600 mb-1"
+                    >
+                      Email <span className="text-red-400">*</span>
+                      {emailVerified && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-green-600">
+                          <CheckCircle className="w-3 h-3" />
+                          Đã xác thực
+                        </span>
+                      )}
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors">
-                          <User className="w-4 h-4" />
+                          <Mail className="w-4 h-4" />
                         </div>
                         <Input
-                          id="fullName"
-                          name="fullName"
-                          type="text"
+                          id="email"
+                          name="email"
+                          type="email"
                           required
-                          value={formData.fullName}
-                          onChange={handleInputChange}
-                          placeholder="Họ và tên"
+                          value={formData.email}
+                          onChange={handleEmailChange}
+                          placeholder="email@example.com"
+                          disabled={emailVerified}
                           className={`w-full pl-9 py-2.5 bg-gray-50/50 border rounded-xl transition-all duration-300 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm ${
-                            errors.fullName
+                            errors.email
                               ? "border-red-400 bg-red-50/50"
+                              : emailVerified
+                              ? "border-green-400 bg-green-50/50"
                               : "border-gray-200"
                           }`}
                         />
+                        {emailVerified && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          </div>
+                        )}
                       </div>
-                      {errors.fullName && (
-                        <p className="mt-1 text-xs text-red-500">
-                          {errors.fullName}
-                        </p>
+                      {!emailVerified && (
+                        <Button
+                          type="button"
+                          onClick={handleSendOtp}
+                          disabled={
+                            sendingOtp ||
+                            otpCooldown > 0 ||
+                            !formData.email.trim()
+                          }
+                          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {sendingOtp ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : otpCooldown > 0 ? (
+                            `${otpCooldown}s`
+                          ) : otpSent ? (
+                            <RefreshCw className="w-4 h-4" />
+                          ) : (
+                            "Gửi mã"
+                          )}
+                        </Button>
                       )}
                     </div>
+                    {errors.email && (
+                      <p className="mt-1 text-xs text-red-500">
+                        {errors.email}
+                      </p>
+                    )}
+
+                    {/* OTP Input - Hiện khi đã gửi OTP và chưa xác thực */}
+                    {otpSent && !emailVerified && (
+                      <div className="mt-3 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Shield className="w-4 h-4 text-indigo-600" />
+                          <span className="text-xs font-medium text-indigo-700">
+                            Nhập mã xác thực từ email
+                          </span>
+                          {otpExpiry > 0 && (
+                            <span className="ml-auto text-xs text-indigo-500">
+                              Hết hạn sau: {Math.floor(otpExpiry / 60)}:
+                              {String(otpExpiry % 60).padStart(2, "0")}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            type="text"
+                            value={otp}
+                            onChange={(e) => {
+                              const value = e.target.value
+                                .replace(/\D/g, "")
+                                .slice(0, 6);
+                              setOtp(value);
+                              if (errors.otp)
+                                setErrors((prev) => ({ ...prev, otp: "" }));
+                            }}
+                            placeholder="Nhập mã 6 số"
+                            maxLength={6}
+                            className={`flex-1 text-center text-lg tracking-[0.5em] font-mono py-2.5 border rounded-xl ${
+                              errors.otp
+                                ? "border-red-400 bg-red-50/50"
+                                : "border-indigo-200"
+                            }`}
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleVerifyOtp}
+                            disabled={verifyingOtp || otp.length !== 6}
+                            className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {verifyingOtp ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Xác nhận"
+                            )}
+                          </Button>
+                        </div>
+                        {errors.otp && (
+                          <p className="mt-2 text-xs text-red-500">
+                            {errors.otp}
+                          </p>
+                        )}
+                        <p className="mt-2 text-xs text-gray-500">
+                          Không nhận được mã?{" "}
+                          {otpCooldown > 0 ? (
+                            <span className="text-gray-400">
+                              Gửi lại sau {otpCooldown}s
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleSendOtp}
+                              disabled={sendingOtp}
+                              className="text-indigo-600 hover:underline font-medium"
+                            >
+                              Gửi lại mã
+                            </button>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Phone & Username - 2 columns */}
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="group">
                       <label
                         htmlFor="username"
@@ -581,42 +1120,6 @@ export default function Register() {
                       {errors.username && (
                         <p className="mt-1 text-xs text-red-500">
                           {errors.username}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Email & Phone - 2 columns */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="group">
-                      <label
-                        htmlFor="email"
-                        className="block text-xs font-medium text-gray-600 mb-1"
-                      >
-                        Email <span className="text-red-400">*</span>
-                      </label>
-                      <div className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors">
-                          <Mail className="w-4 h-4" />
-                        </div>
-                        <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          required
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          placeholder="email@example.com"
-                          className={`w-full pl-9 py-2.5 bg-gray-50/50 border rounded-xl transition-all duration-300 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-sm ${
-                            errors.email
-                              ? "border-red-400 bg-red-50/50"
-                              : "border-gray-200"
-                          }`}
-                        />
-                      </div>
-                      {errors.email && (
-                        <p className="mt-1 text-xs text-red-500">
-                          {errors.email}
                         </p>
                       )}
                     </div>
