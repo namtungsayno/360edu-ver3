@@ -1396,6 +1396,7 @@ export default function ClassEditPage() {
                         max={isOnline ? 30 : undefined}
                         value={capacity}
                         onChange={(e) => setCapacity(e.target.value)}
+                        placeholder="Số lượng học sinh/lớp"
                         className={`h-9 text-sm ${
                           isPublic &&
                           capacity &&
