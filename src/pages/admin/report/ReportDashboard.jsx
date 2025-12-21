@@ -38,7 +38,29 @@ const formatCurrency = (amount) => {
   return formatNumber(amount) + " ₫";
 };
 
+// Helper: Lấy ngày theo múi giờ Việt Nam (UTC+7)
+const getVietnamDate = (date = new Date()) => {
+  const d = new Date(date);
+  // Chuyển sang múi giờ Việt Nam
+  const vietnamOffset = 7 * 60; // UTC+7 in minutes
+  const localOffset = d.getTimezoneOffset();
+  const vietnamTime = new Date(
+    d.getTime() + (vietnamOffset + localOffset) * 60 * 1000
+  );
+  return vietnamTime;
+};
+
+// Helper: Format date sang YYYY-MM-DD theo múi giờ Việt Nam
+const formatDateToYMD = (date = new Date()) => {
+  const d = getVietnamDate(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 // Hàm xuất Excel (dùng Tab separator để Excel tự nhận dạng cột)
+// eslint-disable-next-line no-unused-vars
 const exportToExcel = (data, filename, columns) => {
   // columns là array của {key, label, format}
   // format: "currency" | "number" | "text"
@@ -76,7 +98,7 @@ const exportToExcel = (data, filename, columns) => {
   });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `${filename}_${new Date().toISOString().split("T")[0]}.xls`;
+  link.download = `${filename}_${formatDateToYMD()}.xls`;
   link.click();
   URL.revokeObjectURL(link.href);
 };
@@ -619,169 +641,742 @@ const exportDailyRevenueToHTML = (revenueByDay, filename) => {
   URL.revokeObjectURL(link.href);
 };
 
-// Hàm xuất HTML report đầy đủ (có thể in/save as PDF)
-const exportToHTML = (reportData, filename) => {
-  const { overview, teacherRevenue, subjectRevenue } = reportData;
+// Hàm xuất HTML report (có thể in/save as PDF) - Phiên bản chuyên nghiệp
+const exportToHTML = (reportData, filename, startDate, endDate) => {
+  const { overview, teacherRevenue, subjectRevenue, revenueByDay } = reportData;
+
+  // Chuẩn hóa ngày để so sánh (bỏ phần time)
+  const normalizeDate = (d) => {
+    const date = new Date(d);
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    ).getTime();
+  };
+
+  const startTime = normalizeDate(startDate);
+  const endTime = normalizeDate(endDate);
+
+  // Lọc dữ liệu theo khoảng thời gian được chọn
+  const filteredRevenueByDay = (revenueByDay || []).filter((item) => {
+    if (!item.date) return false;
+    const itemTime = normalizeDate(item.date);
+    return itemTime >= startTime && itemTime <= endTime;
+  });
+
+  // Tính tổng doanh thu trong khoảng thời gian
+  const periodRevenue = filteredRevenueByDay.reduce(
+    (sum, item) => sum + (item.revenue || 0),
+    0
+  );
+  const periodPayments = filteredRevenueByDay.reduce(
+    (sum, item) => sum + (item.paymentCount || 0),
+    0
+  );
+
+  // Tính tổng doanh thu giáo viên và môn học (đã được lọc theo thời gian từ API)
+  const teacherTotalRevenue = (teacherRevenue || []).reduce(
+    (sum, t) => sum + (t.totalRevenue || 0),
+    0
+  );
+  const subjectTotalRevenue = (subjectRevenue || []).reduce(
+    (sum, s) => sum + (s.totalRevenue || 0),
+    0
+  );
+
+  // Sử dụng dữ liệu đã tính hoặc từ overview
+  const pendingRevenue = overview?.pendingRevenue || 0;
+  const pendingPayments = overview?.pendingPayments || 0;
+
+  // Tính max revenue cho biểu đồ bar
+  const maxTeacherRevenue = Math.max(
+    ...(teacherRevenue || []).map((t) => t.totalRevenue || 0),
+    1
+  );
+
+  // Format ngày cho báo cáo
+  const formatDate = (date) => date.toLocaleDateString("vi-VN");
+  const reportPeriod = `Từ ${formatDate(startDate)} đến ${formatDate(endDate)}`;
+
+  // Tính số ngày trong khoảng
+  const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+  const avgDailyRevenue =
+    daysDiff > 0 ? Math.round(periodRevenue / daysDiff) : 0;
 
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Báo cáo 360edu - ${new Date().toLocaleDateString("vi-VN")}</title>
+  <title>Báo Cáo Doanh Thu - 360edu</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; background: #f8fafc; }
-    .report-container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
-    .header h1 { color: #1e40af; font-size: 28px; margin-bottom: 8px; }
-    .header p { color: #64748b; font-size: 14px; }
-    .section { margin-bottom: 32px; }
-    .section-title { font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #3b82f6; display: inline-block; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
-    .stat-card { background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); padding: 20px; border-radius: 12px; text-align: center; }
-    .stat-value { font-size: 24px; font-weight: 700; color: #1e293b; }
-    .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-    th { background: #f1f5f9; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; }
-    td { color: #1e293b; font-size: 14px; }
-    tr:hover { background: #f8fafc; }
+    body { 
+      font-family: 'Segoe UI', Arial, sans-serif; 
+      background: #f5f7fa; 
+      color: #2c3e50;
+      line-height: 1.6;
+    }
+    .container { 
+      max-width: 1200px; 
+      margin: 0 auto; 
+      padding: 30px;
+    }
+    
+    /* HEADER */
+    .report-header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: white;
+      padding: 40px;
+      border-radius: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+    }
+    .company-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 30px;
+    }
+    .company-name {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .company-details {
+      font-size: 13px;
+      opacity: 0.9;
+      text-align: right;
+    }
+    .report-title {
+      text-align: center;
+      padding: 20px 0;
+    }
+    .report-title h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .report-period {
+      font-size: 16px;
+      opacity: 0.9;
+      background: rgba(255,255,255,0.15);
+      padding: 8px 20px;
+      border-radius: 30px;
+      display: inline-block;
+    }
+    
+    /* STATS CARDS */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      border-left: 4px solid;
+      transition: transform 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); }
+    .stat-card.blue { border-color: #3b82f6; }
+    .stat-card.green { border-color: #10b981; }
+    .stat-card.orange { border-color: #f59e0b; }
+    .stat-card.purple { border-color: #8b5cf6; }
+    .stat-label {
+      font-size: 13px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .stat-value.green { color: #10b981; }
+    .stat-value.orange { color: #f59e0b; }
+    .stat-change {
+      font-size: 12px;
+      margin-top: 8px;
+      color: #64748b;
+    }
+    
+    /* CHARTS SECTION */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+    .chart-card {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .chart-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    
+    /* BAR CHART */
+    .bar-chart { padding: 10px 0; }
+    .bar-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .bar-label {
+      width: 150px;
+      font-size: 13px;
+      color: #475569;
+      flex-shrink: 0;
+    }
+    .bar-track {
+      flex: 1;
+      height: 28px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 0 15px;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding-left: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      transition: width 0.5s ease;
+    }
+    .bar-fill.blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .bar-fill.green { background: linear-gradient(90deg, #10b981, #34d399); }
+    .bar-fill.orange { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .bar-fill.purple { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+    .bar-fill.pink { background: linear-gradient(90deg, #ec4899, #f472b6); }
+    .bar-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1e293b;
+      width: 120px;
+      text-align: right;
+    }
+    
+    /* TABLES */
+    .table-section {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .section-badge {
+      background: #dbeafe;
+      color: #1d4ed8;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th {
+      background: #f8fafc;
+      padding: 14px 12px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    td {
+      padding: 14px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 14px;
+      color: #334155;
+    }
+    tr:hover td { background: #f8fafc; }
     .text-right { text-align: right; }
     .text-center { text-align: center; }
-    .text-green { color: #16a34a; }
-    .text-orange { color: #ea580c; }
-    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
-    .badge-blue { background: #dbeafe; color: #1d4ed8; }
-    .badge-purple { background: #ede9fe; color: #7c3aed; }
-    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px; }
+    .font-bold { font-weight: 600; }
+    .text-green { color: #10b981; }
+    .text-orange { color: #f59e0b; }
+    .text-blue { color: #3b82f6; }
+    .rank-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .rank-1 { background: #fef3c7; color: #d97706; }
+    .rank-2 { background: #e2e8f0; color: #475569; }
+    .rank-3 { background: #fed7aa; color: #c2410c; }
+    .rank-default { background: #f1f5f9; color: #64748b; }
+    .total-row td {
+      background: #f8fafc;
+      font-weight: 600;
+      border-top: 2px solid #e2e8f0;
+    }
+    
+    /* SUMMARY & NOTES */
+    .summary-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+    .summary-card {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .summary-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 15px;
+    }
+    .summary-text {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.7;
+    }
+    .highlight { 
+      background: #fef3c7; 
+      padding: 2px 6px; 
+      border-radius: 4px;
+      font-weight: 600;
+      color: #92400e;
+    }
+    
+    /* FOOTER */
+    .report-footer {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .footer-date {
+      text-align: center;
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 30px;
+    }
+    .signatures {
+      display: flex;
+      justify-content: space-around;
+    }
+    .signature-box {
+      text-align: center;
+      min-width: 200px;
+    }
+    .signature-title {
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 60px;
+    }
+    .signature-line {
+      border-top: 1px solid #cbd5e1;
+      padding-top: 10px;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .copyright {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    
+    /* PRINT STYLES */
     @media print {
-      body { padding: 0; background: white; }
-      .report-container { box-shadow: none; padding: 20px; }
+      body { background: white; }
+      .container { padding: 0; max-width: none; }
+      .chart-card, .table-section, .summary-card, .report-footer { 
+        box-shadow: none; 
+        break-inside: avoid;
+      }
+      .report-header { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     }
   </style>
 </head>
 <body>
-  <div class="report-container">
-    <div class="header">
-      <h1>📊 Báo cáo Thống kê 360edu</h1>
-      <p>Ngày xuất: ${new Date().toLocaleDateString("vi-VN", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })}</p>
+  <div class="container">
+    <!-- HEADER -->
+    <div class="report-header">
+      <div class="company-info">
+        <div>
+          <div class="company-name">🎓 360EDU</div>
+          <div style="opacity: 0.8; margin-top: 5px;">Hệ thống Quản lý Giáo dục Trực tuyến</div>
+        </div>
+        <div class="company-details">
+          <div>Ngày xuất báo cáo: ${getVietnamDate().toLocaleDateString(
+            "vi-VN"
+          )}</div>
+          <div>Người lập: Quản trị viên</div>
+        </div>
+      </div>
+      <div class="report-title">
+        <h1>📊 Báo Cáo Doanh Thu</h1>
+        <div class="report-period">${reportPeriod}</div>
+      </div>
     </div>
-
-    <div class="section">
-      <h2 class="section-title">📈 Tổng quan</h2>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value text-green">${formatCurrency(
-            overview?.totalRevenue
-          )}</div>
-          <div class="stat-label">Tổng doanh thu</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${formatCurrency(
-            overview?.monthlyRevenue
-          )}</div>
-          <div class="stat-label">Doanh thu tháng này</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${formatNumber(overview?.totalStudents)}</div>
-          <div class="stat-label">Tổng học sinh</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${formatNumber(overview?.totalTeachers)}</div>
-          <div class="stat-label">Tổng giáo viên</div>
+    
+    <!-- STATS CARDS -->
+    <div class="stats-row">
+      <div class="stat-card green">
+        <div class="stat-label">Doanh Thu Kỳ Báo Cáo</div>
+        <div class="stat-value green">${formatCurrency(periodRevenue)}</div>
+        <div class="stat-change">${daysDiff} ngày (${formatDate(
+    startDate
+  )} - ${formatDate(endDate)})</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Doanh Thu Trung Bình/Ngày</div>
+        <div class="stat-value">${formatCurrency(avgDailyRevenue)}</div>
+        <div class="stat-change">${periodPayments} giao dịch trong kỳ</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">Chờ Thanh Toán</div>
+        <div class="stat-value orange">${formatCurrency(pendingRevenue)}</div>
+        <div class="stat-change">${pendingPayments} đơn chờ xử lý</div>
+      </div>
+    </div>
+    
+    <!-- CHARTS ROW -->
+    <div class="charts-row" style="grid-template-columns: 1fr;">
+      <!-- Bar Chart: Doanh thu theo Giáo viên -->
+      <div class="chart-card">
+        <div class="chart-title">📈 Doanh Thu Theo Giáo Viên (Top 5) <span style="font-size: 11px; color: #10b981; font-weight: 400;">[Trong kỳ báo cáo]</span></div>
+        <div class="bar-chart">
+          ${(teacherRevenue || [])
+            .slice(0, 5)
+            .map((t, idx) => {
+              const percent = Math.round(
+                (t.totalRevenue / maxTeacherRevenue) * 100
+              );
+              const colors = ["blue", "green", "orange", "purple", "pink"];
+              return `
+              <div class="bar-item">
+                <div class="bar-label">${t.teacherName}</div>
+                <div class="bar-track">
+                  <div class="bar-fill ${
+                    colors[idx]
+                  }" style="width: ${percent}%"></div>
+                </div>
+                <div class="bar-value">${formatCurrency(t.totalRevenue)}</div>
+              </div>
+            `;
+            })
+            .join("")}
         </div>
       </div>
     </div>
-
-    <div class="section">
-      <h2 class="section-title">👨‍🏫 Doanh thu theo Giáo viên</h2>
+    
+    <!-- TABLE: Doanh thu theo Môn học -->
+    <div class="table-section">
+      <div class="section-header">
+        <div class="section-title">📚 Doanh Thu Theo Môn Học <span style="font-size: 12px; color: #10b981; font-weight: 400;">[Trong kỳ báo cáo]</span></div>
+        <div class="section-badge">${
+          (subjectRevenue || []).length
+        } môn học</div>
+      </div>
       <table>
         <thead>
           <tr>
-            <th>Hạng</th>
-            <th>Giáo viên</th>
-            <th class="text-right">Doanh thu</th>
-            <th class="text-right">Chờ TT</th>
-            <th class="text-center">Số lớp</th>
-            <th class="text-center">Học sinh</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${(teacherRevenue || [])
-            .map(
-              (t, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td><strong>${
-                t.teacherName
-              }</strong><br/><small style="color:#64748b">${
-                t.teacherEmail
-              }</small></td>
-              <td class="text-right text-green"><strong>${formatCurrency(
-                t.totalRevenue
-              )}</strong></td>
-              <td class="text-right text-orange">${formatCurrency(
-                t.pendingRevenue
-              )}</td>
-              <td class="text-center"><span class="badge badge-blue">${
-                t.totalClasses
-              }</span></td>
-              <td class="text-center"><span class="badge badge-purple">${
-                t.totalStudents
-              }</span></td>
-            </tr>
-          `
-            )
-            .join("")}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="section">
-      <h2 class="section-title">📚 Doanh thu theo Môn học</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>STT</th>
-            <th>Môn học</th>
-            <th class="text-right">Doanh thu</th>
-            <th class="text-center">Số lớp</th>
-            <th class="text-center">Học sinh</th>
+            <th style="width: 60px;">STT</th>
+            <th>Môn Học</th>
+            <th class="text-center">Số Lớp</th>
+            <th class="text-center">Học Sinh</th>
+            <th class="text-right">Doanh Thu</th>
+            <th class="text-right">Tỷ Trọng</th>
           </tr>
         </thead>
         <tbody>
           ${(subjectRevenue || [])
-            .map(
-              (s, idx) => `
-            <tr>
-              <td>${idx + 1}</td>
-              <td><strong>${s.subjectName}</strong></td>
-              <td class="text-right text-green"><strong>${formatCurrency(
-                s.totalRevenue
-              )}</strong></td>
-              <td class="text-center"><span class="badge badge-blue">${
-                s.totalClasses
-              }</span></td>
-              <td class="text-center"><span class="badge badge-purple">${
-                s.totalStudents
-              }</span></td>
-            </tr>
-          `
-            )
+            .map((s, idx) => {
+              const percentage =
+                subjectTotalRevenue > 0
+                  ? ((s.totalRevenue / subjectTotalRevenue) * 100).toFixed(1)
+                  : 0;
+              const rankClass =
+                idx === 0
+                  ? "rank-1"
+                  : idx === 1
+                  ? "rank-2"
+                  : idx === 2
+                  ? "rank-3"
+                  : "rank-default";
+              return `
+              <tr>
+                <td><span class="rank-badge ${rankClass}">${idx + 1}</span></td>
+                <td class="font-bold">${s.subjectName}</td>
+                <td class="text-center text-blue font-bold">${
+                  s.totalClasses
+                }</td>
+                <td class="text-center">${s.totalStudents}</td>
+                <td class="text-right text-green font-bold">${formatCurrency(
+                  s.totalRevenue
+                )}</td>
+                <td class="text-right">${percentage}%</td>
+              </tr>
+            `;
+            })
             .join("")}
+          <tr class="total-row">
+            <td colspan="2">TỔNG CỘNG KỲ BÁO CÁO</td>
+            <td class="text-center">${(subjectRevenue || []).reduce(
+              (sum, s) => sum + (s.totalClasses || 0),
+              0
+            )}</td>
+            <td class="text-center">${(subjectRevenue || []).reduce(
+              (sum, s) => sum + (s.totalStudents || 0),
+              0
+            )}</td>
+            <td class="text-right text-green font-bold">${formatCurrency(
+              subjectTotalRevenue
+            )}</td>
+            <td class="text-right">100%</td>
+          </tr>
         </tbody>
       </table>
     </div>
-
-    <div class="footer">
-      <p>Báo cáo được tạo tự động bởi hệ thống 360edu</p>
-      <p>© ${new Date().getFullYear()} 360edu - Hệ thống quản lý giáo dục</p>
+    
+    <!-- TABLE: Doanh thu theo Ngày trong kỳ -->
+    <div class="table-section">
+      <div class="section-header">
+        <div class="section-title">📅 Doanh Thu Theo Ngày (Trong Kỳ Báo Cáo)</div>
+        <div class="section-badge">${filteredRevenueByDay.length} ngày</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 60px;">STT</th>
+            <th>Ngày</th>
+            <th class="text-center">Số Giao Dịch</th>
+            <th class="text-right">Doanh Thu</th>
+            <th class="text-right">Tỷ Trọng</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredRevenueByDay
+            .map((d, idx) => {
+              const percentage =
+                periodRevenue > 0
+                  ? ((d.revenue / periodRevenue) * 100).toFixed(1)
+                  : 0;
+              const dateStr = d.date
+                ? new Date(d.date).toLocaleDateString("vi-VN")
+                : d.label;
+              return `
+              <tr>
+                <td class="text-center">${idx + 1}</td>
+                <td class="font-bold">${dateStr}</td>
+                <td class="text-center">${d.paymentCount || 0}</td>
+                <td class="text-right text-green font-bold">${formatCurrency(
+                  d.revenue
+                )}</td>
+                <td class="text-right">${percentage}%</td>
+              </tr>
+            `;
+            })
+            .join("")}
+          <tr class="total-row">
+            <td colspan="2">TỔNG CỘNG KỲ BÁO CÁO</td>
+            <td class="text-center font-bold">${periodPayments}</td>
+            <td class="text-right text-green font-bold">${formatCurrency(
+              periodRevenue
+            )}</td>
+            <td class="text-right">100%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- TABLE: Doanh thu theo Giáo viên (chi tiết) -->
+    <div class="table-section">
+      <div class="section-header">
+        <div class="section-title">👨‍🏫 Chi Tiết Doanh Thu Giáo Viên <span style="font-size: 12px; color: #10b981; font-weight: 400;">[Trong kỳ báo cáo]</span></div>
+        <div class="section-badge">${
+          (teacherRevenue || []).length
+        } giáo viên</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 60px;">Hạng</th>
+            <th>Giáo Viên</th>
+            <th>Email</th>
+            <th class="text-center">Số Lớp</th>
+            <th class="text-center">Học Sinh</th>
+            <th class="text-right">Doanh Thu</th>
+            <th class="text-right">Chờ TT</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(teacherRevenue || [])
+            .map((t, idx) => {
+              const rankClass =
+                idx === 0
+                  ? "rank-1"
+                  : idx === 1
+                  ? "rank-2"
+                  : idx === 2
+                  ? "rank-3"
+                  : "rank-default";
+              return `
+              <tr>
+                <td><span class="rank-badge ${rankClass}">${idx + 1}</span></td>
+                <td class="font-bold">${t.teacherName}</td>
+                <td style="color: #64748b; font-size: 13px;">${
+                  t.teacherEmail
+                }</td>
+                <td class="text-center text-blue font-bold">${
+                  t.totalClasses
+                }</td>
+                <td class="text-center">${t.totalStudents}</td>
+                <td class="text-right text-green font-bold">${formatCurrency(
+                  t.totalRevenue
+                )}</td>
+                <td class="text-right text-orange">${formatCurrency(
+                  t.pendingRevenue
+                )}</td>
+              </tr>
+            `;
+            })
+            .join("")}
+          <tr class="total-row">
+            <td colspan="3">TỔNG CỘNG KỲ BÁO CÁO</td>
+            <td class="text-center">${(teacherRevenue || []).reduce(
+              (sum, t) => sum + (t.totalClasses || 0),
+              0
+            )}</td>
+            <td class="text-center">${(teacherRevenue || []).reduce(
+              (sum, t) => sum + (t.totalStudents || 0),
+              0
+            )}</td>
+            <td class="text-right text-green font-bold">${formatCurrency(
+              teacherTotalRevenue
+            )}</td>
+            <td class="text-right text-orange">${formatCurrency(
+              (teacherRevenue || []).reduce(
+                (sum, t) => sum + (t.pendingRevenue || 0),
+                0
+              )
+            )}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- SUMMARY & NOTES -->
+    <div class="summary-section">
+      <div class="summary-card">
+        <div class="summary-title">📋 Tổng Kết Kỳ Báo Cáo</div>
+        <div class="summary-text">
+          Trong kỳ báo cáo từ <span class="highlight">${formatDate(
+            startDate
+          )}</span> đến <span class="highlight">${formatDate(
+    endDate
+  )}</span> (${daysDiff} ngày),
+          hệ thống đã ghi nhận doanh thu <span class="highlight">${formatCurrency(
+            periodRevenue
+          )}</span> với ${periodPayments} giao dịch.
+          Trung bình mỗi ngày đạt <span class="highlight">${formatCurrency(
+            avgDailyRevenue
+          )}</span>.
+          <br/><br/>
+          <em style="color: #64748b; font-size: 12px;">* Tất cả số liệu doanh thu trong báo cáo này đều được lọc theo kỳ báo cáo đã chọn.</em>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-title">💡 Nhận Xét</div>
+        <div class="summary-text">
+          ${
+            teacherRevenue && teacherRevenue[0]
+              ? `Giáo viên <strong>${
+                  teacherRevenue[0].teacherName
+                }</strong> đứng đầu về doanh thu với ${formatCurrency(
+                  teacherRevenue[0].totalRevenue
+                )}.`
+              : ""
+          }
+          ${
+            subjectRevenue && subjectRevenue[0]
+              ? ` Môn <strong>${subjectRevenue[0].subjectName}</strong> có doanh thu cao nhất.`
+              : ""
+          }
+          ${
+            pendingPayments > 0
+              ? ` Cần xử lý <strong>${pendingPayments} đơn</strong> đang chờ thanh toán với tổng giá trị <strong>${formatCurrency(
+                  pendingRevenue
+                )}</strong>.`
+              : " Tất cả đơn hàng đã được thanh toán."
+          }
+        </div>
+      </div>
+    </div>
+    
+    <!-- FOOTER -->
+    <div class="report-footer">
+      <div class="footer-date">
+        Ngày ${endDate.getDate()} tháng ${
+    endDate.getMonth() + 1
+  } năm ${endDate.getFullYear()}
+      </div>
+      <div class="signatures">
+        <div class="signature-box">
+          <div class="signature-title">NGƯỜI LẬP BIỂU</div>
+          <div class="signature-line">(Ký, họ tên)</div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-title">QUẢN TRỊ VIÊN</div>
+          <div class="signature-line">(Ký, họ tên)</div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-title">GIÁM ĐỐC</div>
+          <div class="signature-line">(Ký, đóng dấu)</div>
+        </div>
+      </div>
+      <div class="copyright">
+        © ${getVietnamDate().getFullYear()} 360edu - Hệ thống Quản lý Giáo dục Trực tuyến | Báo cáo được tạo tự động
+      </div>
     </div>
   </div>
 </body>
@@ -791,12 +1386,12 @@ const exportToHTML = (reportData, filename) => {
   const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `${filename}_${new Date().toISOString().split("T")[0]}.html`;
+  link.download = `${filename}_${formatDateToYMD()}.html`;
   link.click();
   URL.revokeObjectURL(link.href);
 };
 
-// Component nút xuất báo cáo
+// Component nút xuất báo cáo với Modal chọn ngày
 function ExportReportButton({
   overview,
   teacherRevenue,
@@ -804,11 +1399,24 @@ function ExportReportButton({
   revenueByDay,
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [, setSelectedType] = useState(null);
   const [exporting, setExporting] = useState(null);
   const { success, error } = useToast();
   const menuRef = useRef(null);
 
-  // Click outside to close
+  // State cho date picker - mặc định là tháng hiện tại (theo giờ Việt Nam)
+  const todayVN = getVietnamDate();
+  const todayStr = formatDateToYMD();
+  const defaultStartDate = new Date(
+    todayVN.getFullYear(),
+    todayVN.getMonth(),
+    1
+  );
+  const [startDate, setStartDate] = useState(formatDateToYMD(defaultStartDate));
+  const [endDate, setEndDate] = useState(todayStr);
+
+  // Click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -818,6 +1426,115 @@ function ExportReportButton({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Mở modal chọn ngày cho báo cáo đầy đủ
+  const handleSelectReport = (type) => {
+    if (type === "full-html") {
+      setSelectedType(type);
+      setShowModal(true);
+      setIsOpen(false);
+    } else {
+      handleExport(type);
+    }
+  };
+
+  // Xuất báo cáo đầy đủ với date range - GỌI API MỚI ĐỂ LỌC THEO THỜI GIAN
+  const handleExportWithDateRange = async () => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (start > end) {
+      error("Ngày bắt đầu phải nhỏ hơn ngày kết thúc!");
+      return;
+    }
+
+    setExporting("full-html");
+    try {
+      // Gọi API để lấy dữ liệu theo date range
+      const [teacherRes, subjectRes] = await Promise.all([
+        reportApi.getTeacherRevenueBetween(startDate, endDate),
+        reportApi.getSubjectRevenueBetween(startDate, endDate),
+      ]);
+
+      const filteredTeacherRevenue = teacherRes.data || [];
+      const filteredSubjectRevenue = subjectRes.data || [];
+
+      exportToHTML(
+        {
+          overview,
+          teacherRevenue: filteredTeacherRevenue,
+          subjectRevenue: filteredSubjectRevenue,
+          revenueByDay,
+        },
+        "360edu_baocao",
+        start,
+        end
+      );
+      success("Xuất báo cáo thành công! Mở file HTML và in ra PDF nếu cần.");
+      setShowModal(false);
+    } catch (e) {
+      console.error("Export error:", e);
+      error("Có lỗi khi xuất báo cáo. Vui lòng thử lại.");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  // Các preset thời gian nhanh (theo múi giờ Việt Nam)
+  const datePresets = [
+    {
+      label: "Hôm nay",
+      getValue: () => {
+        const t = formatDateToYMD();
+        return { start: t, end: t };
+      },
+    },
+    {
+      label: "7 ngày qua",
+      getValue: () => {
+        const t = getVietnamDate();
+        const s = new Date(t.getTime() - 6 * 24 * 60 * 60 * 1000); // 7 ngày bao gồm hôm nay
+        return { start: formatDateToYMD(s), end: formatDateToYMD(t) };
+      },
+    },
+    {
+      label: "30 ngày qua",
+      getValue: () => {
+        const t = getVietnamDate();
+        const s = new Date(t.getTime() - 29 * 24 * 60 * 60 * 1000); // 30 ngày bao gồm hôm nay
+        return { start: formatDateToYMD(s), end: formatDateToYMD(t) };
+      },
+    },
+    {
+      label: "Tháng này",
+      getValue: () => {
+        const t = getVietnamDate();
+        const s = new Date(t.getFullYear(), t.getMonth(), 1);
+        return { start: formatDateToYMD(s), end: formatDateToYMD(t) };
+      },
+    },
+    {
+      label: "Tháng trước",
+      getValue: () => {
+        const t = getVietnamDate();
+        const s = new Date(t.getFullYear(), t.getMonth() - 1, 1);
+        const e = new Date(t.getFullYear(), t.getMonth(), 0);
+        return { start: formatDateToYMD(s), end: formatDateToYMD(e) };
+      },
+    },
+    {
+      label: "Quý này",
+      getValue: () => {
+        const t = new Date();
+        const quarter = Math.floor(t.getMonth() / 3);
+        const s = new Date(t.getFullYear(), quarter * 3, 1);
+        return {
+          start: s.toISOString().split("T")[0],
+          end: t.toISOString().split("T")[0],
+        };
+      },
+    },
+  ];
 
   const handleExport = async (type) => {
     setExporting(type);
@@ -854,20 +1571,10 @@ function ExportReportButton({
           );
           break;
 
-        case "full-html":
-          exportToHTML(
-            { overview, teacherRevenue, subjectRevenue, revenueByDay },
-            "360edu_full_report"
-          );
-          success(
-            "Xuất báo cáo đầy đủ thành công! Mở file HTML và in ra PDF nếu cần."
-          );
-          break;
-
         default:
           break;
       }
-    } catch (e) {
+    } catch {
       error("Có lỗi khi xuất báo cáo");
     } finally {
       setExporting(null);
@@ -879,10 +1586,11 @@ function ExportReportButton({
     {
       id: "full-html",
       icon: FileText,
-      label: "Báo cáo đầy đủ",
-      desc: "HTML (có thể in PDF)",
-      color: "text-rose-500",
+      label: "📊 BÁO CÁO ĐẦY ĐỦ",
+      desc: "Chọn khoảng thời gian để xuất",
+      color: "text-rose-600",
       bgColor: "bg-rose-50",
+      featured: true,
     },
     {
       id: "overview-html",
@@ -919,70 +1627,211 @@ function ExportReportButton({
   ];
 
   return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-medium shadow-lg shadow-blue-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/30"
-      >
-        <Download className="h-4 w-4" />
-        <span>Xuất báo cáo</span>
-        <ChevronDown
-          className={`h-4 w-4 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-100">
-            <p className="font-semibold text-gray-900 text-sm">
-              Chọn loại báo cáo
-            </p>
-            <p className="text-xs text-gray-500">Xuất dữ liệu sang file</p>
-          </div>
-
-          <div className="p-2">
-            {exportOptions.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => handleExport(option.id)}
-                disabled={exporting === option.id}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors text-left group disabled:opacity-50"
-              >
-                <div
-                  className={`w-10 h-10 rounded-lg ${option.bgColor} flex items-center justify-center transition-transform group-hover:scale-110`}
-                >
-                  {exporting === option.id ? (
-                    <Loader2
-                      className={`h-5 w-5 ${option.color} animate-spin`}
-                    />
-                  ) : (
-                    <option.icon className={`h-5 w-5 ${option.color}`} />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 text-sm">
-                    {option.label}
+    <>
+      {/* Modal chọn ngày */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">
+                    📊 Xuất Báo Cáo Đầy Đủ
+                  </h3>
+                  <p className="text-blue-100 text-sm">
+                    Chọn khoảng thời gian báo cáo
                   </p>
-                  <p className="text-xs text-gray-400">{option.desc}</p>
                 </div>
-                {exporting === option.id && (
-                  <span className="text-xs text-blue-500">Đang xuất...</span>
-                )}
-              </button>
-            ))}
-          </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                >
+                  <X className="h-4 w-4 text-white" />
+                </button>
+              </div>
+            </div>
 
-          <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center">
-              💡 File HTML có thể mở và in ra PDF
-            </p>
+            {/* Content */}
+            <div className="p-6">
+              {/* Preset buttons */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chọn nhanh:
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {datePresets.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        const { start, end } = preset.getValue();
+                        setStartDate(start);
+                        setEndDate(end);
+                      }}
+                      className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-colors"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date inputs */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Từ ngày
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    max={todayStr}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Đến ngày
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    max={todayStr}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Preview info */}
+              <div className="bg-blue-50 rounded-lg p-3 mb-6">
+                <p className="text-sm text-blue-800">
+                  <span className="font-medium">Kỳ báo cáo:</span>{" "}
+                  {new Date(startDate).toLocaleDateString("vi-VN")} -{" "}
+                  {new Date(endDate).toLocaleDateString("vi-VN")}
+                  <span className="text-blue-600 ml-2">
+                    (
+                    {Math.ceil(
+                      (new Date(endDate) - new Date(startDate)) /
+                        (1000 * 60 * 60 * 24)
+                    ) + 1}{" "}
+                    ngày)
+                  </span>
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleExportWithDateRange}
+                  disabled={exporting === "full-html"}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {exporting === "full-html" ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Đang xuất...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Xuất báo cáo
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* Button và Dropdown */}
+      <div className="relative" ref={menuRef}>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-medium shadow-lg shadow-blue-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/30"
+        >
+          <Download className="h-4 w-4" />
+          <span>Xuất báo cáo</span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform duration-200 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {/* Dropdown Menu */}
+        {isOpen && (
+          <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-100">
+              <p className="font-semibold text-gray-900 text-sm">
+                Chọn loại báo cáo
+              </p>
+              <p className="text-xs text-gray-500">Xuất dữ liệu sang file</p>
+            </div>
+
+            <div className="p-2">
+              {exportOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleSelectReport(option.id)}
+                  disabled={exporting === option.id}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left group disabled:opacity-50 ${
+                    option.featured
+                      ? "bg-gradient-to-r from-rose-50 to-pink-50 hover:from-rose-100 hover:to-pink-100 border border-rose-200 mb-2"
+                      : "hover:bg-gray-50"
+                  }`}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-lg ${option.bgColor} flex items-center justify-center transition-transform group-hover:scale-110`}
+                  >
+                    {exporting === option.id ? (
+                      <Loader2
+                        className={`h-5 w-5 ${option.color} animate-spin`}
+                      />
+                    ) : (
+                      <option.icon className={`h-5 w-5 ${option.color}`} />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p
+                      className={`font-medium text-sm ${
+                        option.featured ? "text-rose-700" : "text-gray-900"
+                      }`}
+                    >
+                      {option.label}
+                    </p>
+                    <p className="text-xs text-gray-400">{option.desc}</p>
+                  </div>
+                  {option.featured && (
+                    <span className="text-xs bg-rose-500 text-white px-2 py-0.5 rounded-full">
+                      <Calendar className="h-3 w-3 inline mr-1" />
+                      Chọn ngày
+                    </span>
+                  )}
+                  {exporting === option.id && (
+                    <span className="text-xs text-blue-500">Đang xuất...</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+              <p className="text-xs text-gray-400 text-center">
+                💡 File HTML có thể mở và in ra PDF
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -1679,10 +2528,12 @@ export default function ReportDashboard() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     loadRevenueByDay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daysToFetch]);
 
   const loadData = async () => {
@@ -1697,16 +2548,12 @@ export default function ReportDashboard() {
           reportApi.getRevenueByDay(daysToFetch),
         ]);
 
-      const totalDayRevenue = (dayRes.data || []).reduce(
-        (sum, d) => sum + (d.revenue || 0),
-        0
-      );
       setOverview(overviewRes.data);
       setTeacherRevenue(teacherRes.data || []);
       setTopTeacher(topRes.data);
       setSubjectRevenue(subjectRes.data || []);
       setRevenueByDay(dayRes.data || []);
-    } catch (e) {
+    } catch {
       error("Không thể tải dữ liệu báo cáo");
     } finally {
       setLoading(false);
@@ -1717,7 +2564,9 @@ export default function ReportDashboard() {
     try {
       const res = await reportApi.getRevenueByDay(daysToFetch);
       setRevenueByDay(res.data || []);
-    } catch (e) {}
+    } catch {
+      // Silently ignore error - data will remain unchanged
+    }
   };
 
   // Aggregate data based on filter mode
@@ -1756,7 +2605,6 @@ export default function ReportDashboard() {
         // Parse date from label (format: "DD/MM")
         const parts = item.label?.split("/");
         if (parts && parts.length >= 2) {
-          const day = parseInt(parts[0]);
           const month = parseInt(parts[1]);
 
           // Xác định năm dựa trên logic: nếu tháng > tháng hiện tại thì là năm trước

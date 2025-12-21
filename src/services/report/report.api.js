@@ -9,11 +9,23 @@ export const reportApi = {
   // Doanh thu theo giáo viên
   getTeacherRevenue: () => http.get(`${BASE_URL}/teacher-revenue`),
 
+  // Doanh thu theo giáo viên - LỌC THEO THỜI GIAN
+  getTeacherRevenueBetween: (startDate, endDate) =>
+    http.get(`${BASE_URL}/teacher-revenue/between`, { 
+      params: { startDate, endDate } 
+    }),
+
   // Top giáo viên doanh thu cao nhất
   getTopTeacher: () => http.get(`${BASE_URL}/top-teacher`),
 
   // Doanh thu theo môn học
   getSubjectRevenue: () => http.get(`${BASE_URL}/subject-revenue`),
+
+  // Doanh thu theo môn học - LỌC THEO THỜI GIAN
+  getSubjectRevenueBetween: (startDate, endDate) =>
+    http.get(`${BASE_URL}/subject-revenue/between`, { 
+      params: { startDate, endDate } 
+    }),
 
   // Doanh thu theo ngày
   getRevenueByDay: (days = 30) =>

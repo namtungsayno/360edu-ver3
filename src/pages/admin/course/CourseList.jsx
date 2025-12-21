@@ -100,7 +100,7 @@ export default function AdminCourseList() {
   // ====== DATA STATE ======
   const [courses, setCourses] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [teachers, setTeachers] = useState([]);
+  const [teachers, setTeachers] = useState([]); // Danh sách tất cả giáo viên
   const [loading, setLoading] = useState(true);
   const [classMap, setClassMap] = useState({}); // { [classId]: classDetail }
   const [sourceCourseMap, setSourceCourseMap] = useState({}); // { [sourceId]: courseDetail }
@@ -128,18 +128,26 @@ export default function AdminCourseList() {
   const [selectedSubjectId, setSelectedSubjectId] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  // ====== LOAD SUBJECTS & TEACHERS ======
+  // ====== LOAD SUBJECTS ======
   useEffect(() => {
     (async () => {
       try {
-        const [subjectData, teacherData] = await Promise.all([
-          subjectService.all(),
-          teacherService.list(),
-        ]);
-        setSubjects(Array.isArray(subjectData) ? subjectData : []);
-        setTeachers(Array.isArray(teacherData) ? teacherData : []);
-      } catch {
-        toastRef.current("Không thể tải dữ liệu bộ lọc");
+        const data = await subjectService.all();
+        setSubjects(Array.isArray(data) ? data : []);
+      } catch (e) {
+        toastRef.current("Không thể tải danh sách môn học");
+      }
+    })();
+  }, []);
+
+  // ====== LOAD TEACHERS (riêng, không phụ thuộc filter) ======
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await teacherService.list();
+        setTeachers(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("Không thể tải danh sách giáo viên", e);
       }
     })();
   }, []);
@@ -210,8 +218,9 @@ export default function AdminCourseList() {
 
       const response = await courseApi.listPaginated(params);
       const content = response.content || [];
-      // Server đã filter chỉ teacher courses (có ownerTeacherId)
-      setCourses(content);
+      // Filter only teacher courses (có ownerTeacherId)
+      const teacherCourses = content.filter((c) => !!c.ownerTeacherId);
+      setCourses(teacherCourses);
       setTotalElements(response.totalElements || 0);
       setTotalPages(response.totalPages || 0);
     } catch (e) {
@@ -360,11 +369,11 @@ export default function AdminCourseList() {
     };
   }, [courses, courseIdToClass]);
 
-  // ====== TEACHER OPTIONS (từ API) ======
+  // ====== TEACHER OPTIONS (từ danh sách teachers đã load) ======
   const teacherOptions = useMemo(() => {
     return teachers.map((t) => ({
       id: t.userId || t.id,
-      name: t.fullName || t.name || "Không rõ",
+      name: t.name || t.fullName || "Không rõ",
     }));
   }, [teachers]);
 
@@ -435,6 +444,36 @@ export default function AdminCourseList() {
             </div>
             <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
               <CheckCircle2 className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-500 to-gray-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Nháp</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {stats.draft}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <FileText className="w-6 h-6 text-white" />
+            </div>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-500 to-slate-600 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">Đã lưu trữ</p>
+              <p className="text-2xl font-bold text-white mt-1">
+                {stats.archived}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-white" />
             </div>
           </div>
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
@@ -616,16 +655,19 @@ export default function AdminCourseList() {
                       <p className="text-sm text-gray-500">
                         {course.subjectName || "Chưa có môn học"}
                       </p>
-                      {course.description && (
-                        <div
-                          className="text-sm text-gray-600 line-clamp-3 rich-text-content"
-                          dangerouslySetInnerHTML={{
-                            __html: (course.description || "")
-                              .replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "")
-                              .trim(),
-                          }}
-                        />
-                      )}
+                      {(() => {
+                        const cleanDesc = (course.description || "")
+                          .replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "")
+                          .trim();
+                        return cleanDesc ? (
+                          <div
+                            className="text-sm text-gray-600 line-clamp-3 rich-text-content"
+                            dangerouslySetInnerHTML={{
+                              __html: cleanDesc,
+                            }}
+                          />
+                        ) : null;
+                      })()}
                     </div>
                   </div>
 

@@ -121,12 +121,15 @@ export default function TeachingContentDetail() {
       {/* Summary */}
       <Card className="rounded-xl border border-gray-200">
         <CardContent className="p-5">
-          {course.description && (
-            <div
-              className="text-sm text-[#45556c] mb-4 rich-text-content"
-              dangerouslySetInnerHTML={{ __html: course.description }}
-            />
-          )}
+          {(() => {
+            const cleanDesc = (course.description || "").replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "").trim();
+            return cleanDesc ? (
+              <div
+                className="text-sm text-[#45556c] mb-4 rich-text-content"
+                dangerouslySetInnerHTML={{ __html: cleanDesc }}
+              />
+            ) : null;
+          })()}
           <div className="flex gap-6">
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">

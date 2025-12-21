@@ -14,7 +14,7 @@
  * - Điều hướng đến các trang con (lớp học, khóa học)
  */
 
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   Video,
@@ -45,6 +45,7 @@ import { stripHtmlTags, stripAndTruncate } from "../../../utils/html-helpers";
 export default function Home() {
   // Nhận onNavigate function từ GuestLayout qua context
   const { onNavigate } = useOutletContext();
+  const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [news, setNews] = useState([]);
   const [teachers, setTeachers] = useState([]);
@@ -180,12 +181,20 @@ export default function Home() {
               </div>
               <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
-                  style={{ width: `${enrollmentPercentage}%` }}
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    enrollmentPercentage >= 100
+                      ? "bg-red-600"
+                      : "bg-gradient-to-r from-blue-500 to-purple-500"
+                  }`}
+                  style={{ width: `${Math.min(enrollmentPercentage, 100)}%` }}
                 />
               </div>
               <div className="mt-2 text-xs">
-                {enrollmentPercentage >= 80 ? (
+                {enrollmentPercentage >= 100 ? (
+                  <span className="text-red-800 font-medium">
+                    🚫 Đã đầy chỗ
+                  </span>
+                ) : enrollmentPercentage >= 80 ? (
                   <span className="text-red-600 font-medium">
                     ⚡ Sắp đầy chỗ!
                   </span>
@@ -517,8 +526,7 @@ export default function Home() {
             <Button
               onClick={() => onNavigate({ type: "classes" })}
               size="lg"
-              variant="outline"
-              className="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
+              variant="outline-primary"
             >
               Xem tất cả lớp học
               <ArrowRight className="w-5 h-5 ml-2" />
@@ -597,7 +605,7 @@ export default function Home() {
                   return (
                     <Card
                       key={teacher.id}
-                      className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-purple-200"
+                      className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-purple-200 flex flex-col h-full"
                       onClick={() =>
                         onNavigate({
                           type: "teacher",
@@ -606,11 +614,11 @@ export default function Home() {
                       }
                     >
                       {/* Header Background with Gradient */}
-                      <div className="h-32 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 relative">
+                      <div className="h-32 bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 relative flex-shrink-0">
                         <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
                       </div>
 
-                      <CardContent className="p-5 text-center relative">
+                      <CardContent className="p-5 text-center relative flex-1 flex flex-col">
                         {/* Avatar - Overlapping the header */}
                         <div className="relative mx-auto -mt-16 mb-4">
                           <div className="w-28 h-28 rounded-full ring-4 ring-white shadow-xl overflow-hidden mx-auto bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
@@ -633,9 +641,42 @@ export default function Home() {
                         <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-1">
                           {teacher.name}
                         </h3>
-                        <Badge className="mb-2 bg-purple-100 text-purple-700 border-purple-200 text-xs">
-                          {teacher.subject}
-                        </Badge>
+                        <div className="flex flex-wrap justify-center gap-1 mb-2 min-h-[28px]">
+                          {(() => {
+                            const subjects = teacher.subject?.split(",").map(s => s.trim()).filter(Boolean) || [];
+                            const displaySubjects = subjects.slice(0, 2);
+                            const remaining = subjects.length - 2;
+                            const hiddenSubjects = subjects.slice(2);
+                            return (
+                              <>
+                                {displaySubjects.map((subj, idx) => (
+                                  <Badge key={idx} className="bg-purple-100 text-purple-700 border-purple-200 text-xs">
+                                    {subj}
+                                  </Badge>
+                                ))}
+                                {remaining > 0 && (
+                                  <div className="relative group/tooltip">
+                                    <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs cursor-pointer hover:bg-gray-200">
+                                      +{remaining}
+                                    </Badge>
+                                    {/* Tooltip */}
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50">
+                                      <div className="bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-xl min-w-[200px] max-w-[280px]">
+                                        <p className="font-semibold mb-2 text-center border-b border-gray-600 pb-1">Môn học khác</p>
+                                        <div className={`${hiddenSubjects.length > 3 ? 'grid grid-cols-2 gap-x-3 gap-y-1' : 'space-y-1'}`}>
+                                          {hiddenSubjects.map((subj, idx) => (
+                                            <p key={idx} className="text-gray-300 truncate">• {subj}</p>
+                                          ))}
+                                        </div>
+                                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-gray-800"></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
                         <p className="text-xs text-gray-600 mb-3 line-clamp-2 min-h-[32px]">
                           {teacher.experience}
                         </p>
@@ -670,11 +711,14 @@ export default function Home() {
                             ))}
                         </div>
 
+                        {/* Spacer to push button to bottom */}
+                        <div className="flex-1"></div>
+
                         {/* View Profile Button */}
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="w-full group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 transition-all"
+                          variant="outline-purple"
+                          className="w-full"
                         >
                           <GraduationCap className="w-4 h-4 mr-2" />
                           Xem hồ sơ
@@ -692,8 +736,7 @@ export default function Home() {
             <Button
               onClick={() => onNavigate({ type: "teachers" })}
               size="lg"
-              variant="outline"
-              className="border-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+              variant="outline-success"
             >
               Xem tất cả giáo viên
               <ArrowRight className="w-5 h-5 ml-2" />
@@ -833,7 +876,13 @@ export default function Home() {
                           </p>
 
                           {/* Read More Link */}
-                          <button className="text-pink-600 hover:text-pink-700 font-medium text-sm flex items-center gap-1 mt-auto">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/home/news/${item.id}`);
+                            }}
+                            className="text-pink-600 hover:text-pink-700 font-medium text-sm flex items-center gap-1 mt-auto"
+                          >
                             Đọc thêm
                             <ArrowRight className="w-4 h-4" />
                           </button>
@@ -848,8 +897,7 @@ export default function Home() {
                   <Button
                     onClick={() => onNavigate({ type: "news" })}
                     size="lg"
-                    variant="outline"
-                    className="border-2 border-pink-600 text-pink-600 hover:bg-pink-600 hover:text-white"
+                    variant="outline-pink"
                   >
                     Xem tất cả tin tức
                     <ArrowRight className="w-5 h-5 ml-2" />
