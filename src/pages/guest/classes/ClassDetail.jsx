@@ -713,7 +713,7 @@ export default function ClassDetail() {
                         {data.pricePerSession === 0
                           ? <span className="text-green-600 font-bold">Miễn phí</span>
                           : data.pricePerSession
-                          ? `${data.pricePerSession.toLocaleString()}đ`
+                          ? `${data.pricePerSession.toLocaleString()} VNĐ`
                           : "Liên hệ"}
                       </span>
                     </div>
