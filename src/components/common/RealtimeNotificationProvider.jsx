@@ -16,7 +16,8 @@ const POLLING_INTERVAL = 5000;
 
 // Các loại notification quan trọng cần hiển thị toast
 const IMPORTANT_NOTIFICATION_TYPES = [
-  "NEW_PAYMENT_PENDING", // Có student đăng ký lớp mới
+  "NEW_PAYMENT_PENDING", // Có student đăng ký lớp mới (chờ thanh toán)
+  "NEW_ENROLLMENT", // Có học sinh mới đăng ký lớp thành công
   "PAYMENT_SUCCESS", // Thanh toán thành công
   "SYSTEM_ANNOUNCEMENT", // Thông báo hệ thống
 ];
@@ -41,6 +42,10 @@ export default function RealtimeNotificationProvider({ children }) {
           toastType = "warning"; // Màu vàng/cam để thu hút attention
           duration = 10000; // 10 giây để admin có đủ thời gian đọc
           break;
+        case "NEW_ENROLLMENT":
+          toastType = "success"; // Màu xanh cho đăng ký thành công
+          duration = 8000;
+          break;
         case "PAYMENT_SUCCESS":
           toastType = "success";
           duration = 5000;
@@ -62,17 +67,17 @@ export default function RealtimeNotificationProvider({ children }) {
 
   // Hàm check notifications mới
   const checkNewNotifications = useCallback(async () => {
-    console.log("🔍 Checking for new notifications...");
+    console.log(" [ADMIN] Checking for new notifications...");
 
     try {
       // Lấy notifications chưa đọc
       const unreadNotifications =
         await NotificationService.getUnreadNotifications();
 
-      console.log("📬 Unread notifications:", unreadNotifications);
+      console.log(" [ADMIN] Unread notifications:", unreadNotifications?.length || 0, unreadNotifications);
 
       if (!unreadNotifications || unreadNotifications.length === 0) {
-        console.log("📭 No unread notifications");
+        console.log(" No unread notifications");
         return;
       }
 
@@ -82,7 +87,7 @@ export default function RealtimeNotificationProvider({ children }) {
         const maxId = Math.max(...unreadNotifications.map((n) => n.id));
         lastNotificationIdRef.current = maxId;
         isFirstLoadRef.current = false;
-        console.log("📋 First load - set lastNotificationId:", maxId);
+        console.log(" First load - set lastNotificationId:", maxId);
         return;
       }
 
@@ -126,7 +131,7 @@ export default function RealtimeNotificationProvider({ children }) {
       // Dispatch event để PaymentHistory tự reload nếu có payment notification
       if (hasPaymentNotification) {
         console.log(
-          "📢 Dispatching newPaymentPending event for PaymentHistory"
+          " Dispatching newPaymentPending event for PaymentHistory"
         );
         window.dispatchEvent(new CustomEvent("newPaymentPending"));
       }
@@ -138,7 +143,7 @@ export default function RealtimeNotificationProvider({ children }) {
       }
     } catch (error) {
       // Silently fail - không hiển thị lỗi cho user
-      console.error("❌ Failed to check new notifications:", error);
+      console.error(" Failed to check new notifications:", error);
     }
   }, [showNotificationToast]);
 
@@ -155,7 +160,7 @@ export default function RealtimeNotificationProvider({ children }) {
     // Cleanup
     return () => {
       console.log(
-        "🛑 RealtimeNotificationProvider unmounted - stopping polling"
+        " RealtimeNotificationProvider unmounted - stopping polling"
       );
       clearInterval(intervalId);
     };

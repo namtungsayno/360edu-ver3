@@ -339,7 +339,7 @@ export default function StudentProfile() {
               <div className="text-xs text-[#62748e] mt-2 text-center">
                 <p>
                   <Camera className="w-3 h-3 inline mr-1" />
-                  Upload ảnh
+                  Click để upload ảnh
                 </p>
               </div>
             </div>
