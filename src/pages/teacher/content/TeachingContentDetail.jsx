@@ -122,7 +122,9 @@ export default function TeachingContentDetail() {
       <Card className="rounded-xl border border-gray-200">
         <CardContent className="p-5 pt-6">
           {(() => {
-            const cleanDesc = (course.description || "").replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "").trim();
+            const cleanDesc = (course.description || "")
+              .replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "")
+              .trim();
             return cleanDesc ? (
               <div
                 className="text-sm text-[#45556c] mb-4 rich-text-content pt-1"

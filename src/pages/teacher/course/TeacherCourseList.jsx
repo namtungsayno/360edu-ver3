@@ -145,8 +145,7 @@ export default function TeacherCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {
@@ -190,8 +189,7 @@ export default function TeacherCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {

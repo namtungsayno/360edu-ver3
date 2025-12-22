@@ -121,8 +121,7 @@ export default function TeachingContent() {
               .filter((s) => legacyNames.includes(normalizeText(s.name)))
               .map((s) => s.id);
             opts = list.filter((s) => subjectIds.includes(s.id));
-          } catch (legacyErr) {
-            }
+          } catch (legacyErr) {}
         }
         setSubjectOptions(opts);
 
