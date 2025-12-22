@@ -175,8 +175,10 @@ export default function CourseOfSubjectCreate() {
         showError("Không thể tạo khóa học. Vui lòng thử lại.", "Lỗi");
       }
     } catch (e) {
-      setErrorMsg("Có lỗi khi tạo khóa học. Vui lòng thử lại.");
-      showError("Có lỗi khi tạo khóa học. Vui lòng thử lại.", "Lỗi");
+      // Hiển thị lỗi từ backend (bao gồm lỗi trùng tên khóa học)
+      const errorMessage = e?.displayMessage || e?.response?.data?.message || e?.message || "Có lỗi khi tạo khóa học. Vui lòng thử lại.";
+      setErrorMsg(errorMessage);
+      showError(errorMessage, "Lỗi");
     } finally {
       setSaving(false);
     }
