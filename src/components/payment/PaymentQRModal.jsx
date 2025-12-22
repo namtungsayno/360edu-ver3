@@ -1,13 +1,16 @@
 // src/components/payment/PaymentQRModal.jsx
 // Modal hiển thị QR code thanh toán học phí - Layout ngang đẹp
 
-import { useState, useEffect, useRef } from "react";
-import { X, Copy, CheckCircle2, Loader2, Phone, Clock, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { X, Copy, CheckCircle2, Loader2, Phone, Clock, AlertTriangle, Check } from "lucide-react";
 import { paymentService } from "../../services/payment/payment.service";
+import { paymentApi } from "../../services/payment/payment.api";
 import { useToast } from "../../hooks/use-toast";
 
 // Thời gian hết hạn QR code (15 phút)
 const QR_EXPIRY_MINUTES = 15;
+// Polling interval để check payment status (5 giây)
+const POLLING_INTERVAL = 5000;
 
 export default function PaymentQRModal({
   isOpen,
@@ -15,16 +18,55 @@ export default function PaymentQRModal({
   classId,
   className,
   onPaymentCreated,
+  onPaymentSuccess, // Callback khi thanh toán thành công
 }) {
   const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState("PENDING"); // PENDING, PAID, FAILED
+  const [isPaid, setIsPaid] = useState(false);
   const modalRef = useRef(null);
+  const pollingRef = useRef(null);
   
   // Countdown state
   const [timeLeft, setTimeLeft] = useState(QR_EXPIRY_MINUTES * 60); // seconds
   const [isExpired, setIsExpired] = useState(false);
+
+  // Check payment status function
+  const checkPaymentStatus = useCallback(async () => {
+    if (!paymentData?.paymentId || isPaid || isExpired) return;
+    
+    try {
+      const statusData = await paymentApi.checkPaymentStatus(paymentData.paymentId);
+      console.log("🔄 Payment status check:", statusData);
+      
+      if (statusData.isPaid) {
+        setPaymentStatus("PAID");
+        setIsPaid(true);
+        // Stop polling
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        // Show success message
+        success("Thanh toán thành công! Bạn đã được ghi danh vào lớp học.", "Thành công");
+        
+        // Callback to parent
+        if (onPaymentSuccess) {
+          onPaymentSuccess(statusData);
+        }
+        
+        // Auto close after 3 seconds
+        setTimeout(() => {
+          onClose();
+        }, 3000);
+      }
+    } catch (e) {
+      console.error("Payment status check error:", e);
+      // Don't show error to user, just continue polling
+    }
+  }, [paymentData?.paymentId, isPaid, isExpired, success, onPaymentSuccess, onClose]);
 
   useEffect(() => {
     console.log("🔍 PaymentQRModal useEffect - isOpen:", isOpen, "classId:", classId);
@@ -34,19 +76,52 @@ export default function PaymentQRModal({
       // Reset countdown when modal opens
       setTimeLeft(QR_EXPIRY_MINUTES * 60);
       setIsExpired(false);
+      setIsPaid(false);
+      setPaymentStatus("PENDING");
     }
     if (!isOpen) {
       setPaymentData(null);
       setCopied(false);
       setTimeLeft(QR_EXPIRY_MINUTES * 60);
       setIsExpired(false);
+      setIsPaid(false);
+      setPaymentStatus("PENDING");
+      // Stop polling when modal closes
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, classId]);
 
+  // Start polling when paymentData is available
+  useEffect(() => {
+    if (!paymentData?.paymentId || isPaid || isExpired) {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+      return;
+    }
+
+    // Initial check
+    checkPaymentStatus();
+    
+    // Start polling
+    pollingRef.current = setInterval(checkPaymentStatus, POLLING_INTERVAL);
+    
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [paymentData?.paymentId, isPaid, isExpired, checkPaymentStatus]);
+
   // Countdown timer effect
   useEffect(() => {
-    if (!isOpen || !paymentData || isExpired) return;
+    if (!isOpen || !paymentData || isExpired || isPaid) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -250,12 +325,21 @@ export default function PaymentQRModal({
                 </div>
 
                 {/* Status */}
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
-                  <span className="text-gray-600">
-                    Tự động xác nhận trong 1-5 phút
-                  </span>
-                </div>
+                {isPaid ? (
+                  <div className="flex items-center gap-2 text-sm bg-green-100 px-4 py-3 rounded-lg">
+                    <Check className="w-5 h-5 text-green-600" />
+                    <span className="text-green-700 font-medium">
+                      Thanh toán thành công! Đang chuyển hướng...
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
+                    <span className="text-gray-600">
+                      Đang chờ thanh toán... (tự động xác nhận trong 1-5 phút)
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

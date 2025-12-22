@@ -50,4 +50,12 @@ export const paymentApi = {
    */
   getMyHistory: ({ page = 0, size = 10 } = {}) =>
     http.get(`/payments/my-history`, { params: { page, size } }).then((r) => r.data),
+
+  /**
+   * Student/Admin: Check payment status (for polling)
+   * @param {number} paymentId
+   * @returns {Promise<{paymentId, status, isPaid, className, amount, paidAt?, bankTransactionId?}>}
+   */
+  checkPaymentStatus: (paymentId) =>
+    http.get(`/payments/${paymentId}/status`).then((r) => r.data),
 };
