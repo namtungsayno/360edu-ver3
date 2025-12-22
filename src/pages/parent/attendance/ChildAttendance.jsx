@@ -1,5 +1,5 @@
 // pages/parent/attendance/ChildAttendance.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle,
@@ -8,10 +8,9 @@ import {
   Calendar,
   User,
   Filter,
+  TrendingUp,
+  BookOpen,
 } from "lucide-react";
-import PageTitle from "../../../components/common/PageTitle";
-import { Card } from "../../../components/ui/Card";
-import { Select } from "../../../components/ui/Select";
 import { parentApi } from "../../../services/parent/parent.api";
 
 const ChildAttendance = () => {
@@ -22,6 +21,8 @@ const ChildAttendance = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const [selectedClass, setSelectedClass] = useState("all");
+  const [classList, setClassList] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
     present: 0,
@@ -77,6 +78,15 @@ const ChildAttendance = () => {
         status: att.status,
         note: att.note,
       }));
+
+      // Extract unique class names for filter
+      const uniqueClasses = [
+        ...new Set(transformedData.map((att) => att.className)),
+      ].filter(Boolean);
+      setClassList(uniqueClasses);
+
+      // Reset selected class when child changes
+      setSelectedClass("all");
 
       setAttendanceData(transformedData);
       setStats(
@@ -152,166 +162,297 @@ const ChildAttendance = () => {
     label: `Năm ${new Date().getFullYear() - i}`,
   }));
 
+  // Filter data và tính stats theo lớp được chọn
+  const { filteredData, filteredStats } = useMemo(() => {
+    const filtered =
+      selectedClass === "all"
+        ? attendanceData
+        : attendanceData.filter((att) => att.className === selectedClass);
+
+    const total = filtered.length;
+    const present = filtered.filter((att) => att.status === "PRESENT").length;
+    const absent = filtered.filter((att) => att.status === "ABSENT").length;
+    const late = filtered.filter((att) => att.status === "LATE").length;
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    return {
+      filteredData: filtered,
+      filteredStats:
+        selectedClass === "all"
+          ? stats
+          : { total, present, absent, late, rate },
+    };
+  }, [attendanceData, selectedClass, stats]);
+
   if (loading && !selectedChild) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-600 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Đang tải dữ liệu...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <PageTitle
-        title="Điểm danh"
-        subtitle="Theo dõi tình trạng điểm danh của con"
-      />
+    <div className="min-h-screen bg-slate-50">
+      {/* Hero Header */}
+      <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-700 text-white">
+        <div className="px-6 py-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            {/* Child Info */}
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center border-2 border-white/30">
+                <CheckCircle className="w-8 h-8" />
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={selectedChild || ""}
+                    onChange={(e) => setSelectedChild(Number(e.target.value))}
+                    className="text-2xl font-bold bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer appearance-none pr-8"
+                    style={{
+                      backgroundImage:
+                        "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")",
+                      backgroundPosition: "right 0 center",
+                      backgroundRepeat: "no-repeat",
+                      backgroundSize: "1.5em 1.5em",
+                    }}
+                  >
+                    {children.map((child) => (
+                      <option
+                        key={child.id}
+                        value={child.id}
+                        className="text-gray-900 text-base"
+                      >
+                        {child.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-emerald-200 mt-1">Theo dõi điểm danh</p>
+              </div>
+            </div>
 
-      {/* Child Selector */}
-      <Card className="p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div className="flex items-center gap-4">
-            <User className="w-6 h-6 text-blue-600" />
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">
-                Chọn con
-              </label>
-              <select
-                value={selectedChild || ""}
-                onChange={(e) => setSelectedChild(Number(e.target.value))}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {children.map((child) => (
-                  <option key={child.id} value={child.id}>
-                    {child.name}
-                  </option>
-                ))}
-              </select>
+            {/* Month/Year Filter in Header */}
+            <div className="flex items-center gap-3">
+              {/* Class Filter */}
+              {classList.length > 0 && (
+                <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-2 border border-white/20">
+                  <select
+                    value={selectedClass}
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    className="bg-transparent text-white border-none focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="text-gray-900">
+                      Tất cả lớp
+                    </option>
+                    {classList.map((className) => (
+                      <option
+                        key={className}
+                        value={className}
+                        className="text-gray-900"
+                      >
+                        {className}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-2 border border-white/20">
+                <select
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(Number(e.target.value))}
+                  className="bg-transparent text-white border-none focus:outline-none cursor-pointer"
+                >
+                  {months.map((month) => (
+                    <option
+                      key={month.value}
+                      value={month.value}
+                      className="text-gray-900"
+                    >
+                      {month.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-2 border border-white/20">
+                <select
+                  value={filterYear}
+                  onChange={(e) => setFilterYear(Number(e.target.value))}
+                  className="bg-transparent text-white border-none focus:outline-none cursor-pointer"
+                >
+                  {years.map((year) => (
+                    <option
+                      key={year.value}
+                      value={year.value}
+                      className="text-gray-900"
+                    >
+                      {year.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Filter className="w-5 h-5 text-gray-600" />
-            <select
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(Number(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {months.map((month) => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filterYear}
-              onChange={(e) => setFilterYear(Number(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {years.map((year) => (
-                <option key={year.value} value={year.value}>
-                  {year.label}
-                </option>
-              ))}
-            </select>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 border border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{filteredStats.total}</p>
+                  <p className="text-xs text-emerald-200">Tổng buổi</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 border border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-500/30 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{filteredStats.present}</p>
+                  <p className="text-xs text-emerald-200">Có mặt</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 border border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-500/30 rounded-lg flex items-center justify-center">
+                  <XCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{filteredStats.absent}</p>
+                  <p className="text-xs text-emerald-200">Vắng mặt</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 border border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-yellow-500/30 rounded-lg flex items-center justify-center">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{filteredStats.late}</p>
+                  <p className="text-xs text-emerald-200">Đi muộn</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 border border-white/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-500/30 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{filteredStats.rate}%</p>
+                  <p className="text-xs text-emerald-200">Tỷ lệ</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </Card>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <Card className="p-4">
-          <p className="text-sm text-gray-600 mb-1">Tổng buổi học</p>
-          <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-gray-600 mb-1">Có mặt</p>
-          <p className="text-2xl font-bold text-green-600">{stats.present}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-gray-600 mb-1">Vắng mặt</p>
-          <p className="text-2xl font-bold text-red-600">{stats.absent}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-gray-600 mb-1">Đi muộn</p>
-          <p className="text-2xl font-bold text-yellow-600">{stats.late}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-gray-600 mb-1">Tỷ lệ</p>
-          <p className="text-2xl font-bold text-blue-600">{stats.rate}%</p>
-        </Card>
       </div>
 
       {/* Attendance List */}
-      <Card className="p-6">
-        <h2 className="text-xl font-bold mb-4">Chi tiết điểm danh</h2>
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100">
+            <h2 className="text-xl font-bold text-gray-900">
+              Chi tiết điểm danh
+            </h2>
           </div>
-        ) : attendanceData.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    Ngày
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    Lớp học
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    Môn học
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    Giáo viên
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    Thời gian
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    Trạng thái
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                    Ghi chú
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {attendanceData.map((record) => (
-                  <tr key={record.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {new Date(record.date).toLocaleDateString("vi-VN")}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {record.className}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {record.subject}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {record.teacher}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      {record.time}
-                    </td>
-                    <td className="px-4 py-3">
-                      {getStatusBadge(record.status)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {record.note || "-"}
-                    </td>
+
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-4 border-emerald-200 border-t-emerald-600"></div>
+            </div>
+          ) : filteredData.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Ngày
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Lớp học
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Môn học
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Giáo viên
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Thời gian
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Ghi chú
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-gray-500 text-center py-8">
-            Không có dữ liệu điểm danh trong tháng này
-          </p>
-        )}
-      </Card>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredData.map((record) => (
+                    <tr
+                      key={record.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-900">
+                            {new Date(record.date).toLocaleDateString("vi-VN")}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                        {record.className}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {record.subject}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {record.teacher}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-600">
+                            {record.time}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {getStatusBadge(record.status)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {record.note || "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-500">
+                Không có dữ liệu điểm danh trong tháng này
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

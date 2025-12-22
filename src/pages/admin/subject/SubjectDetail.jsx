@@ -248,7 +248,9 @@ export default function SubjectDetail() {
   };
 
   const handleOpenCreateCourse = () =>
-    navigate(`/home/admin/subject/${id}/courses/create`);
+    navigate(`/home/admin/subject/${id}/courses/create`, {
+      state: { subjectName: subject?.name },
+    });
 
   const handleViewCourse = (courseId) => {
     navigate(`/home/admin/subject/${id}/courses/${courseId}`);

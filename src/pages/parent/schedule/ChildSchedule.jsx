@@ -7,9 +7,10 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Calendar,
+  Clock,
+  Play,
 } from "lucide-react";
-import PageTitle from "../../../components/common/PageTitle";
-import { Card } from "../../../components/ui/Card";
 import ModernWeekCalendar, {
   CalendarEventCard,
   CalendarStatusBadge,
@@ -290,56 +291,109 @@ const ChildSchedule = () => {
 
   if (loading && !selectedChild) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Đang tải dữ liệu...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <PageTitle title="Lịch học" subtitle="Xem lịch học của con" />
+  const getSelectedChildData = () => {
+    return children.find((c) => c.id === selectedChild);
+  };
 
-      {/* Child Selector */}
-      <Card className="p-6 mb-6">
-        <div className="flex items-center gap-4">
-          <User className="w-6 h-6 text-blue-600" />
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
-              Chọn con
-            </label>
-            <select
-              value={selectedChild || ""}
-              onChange={(e) => setSelectedChild(Number(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {children.map((child) => (
-                <option key={child.id} value={child.id}>
-                  {child.name}
-                </option>
-              ))}
-            </select>
+  const childData = getSelectedChildData();
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Hero Header */}
+      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white">
+        <div className="px-6 py-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            {/* Child Info */}
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center border-2 border-white/30">
+                <Calendar className="w-8 h-8" />
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={selectedChild || ""}
+                    onChange={(e) => setSelectedChild(Number(e.target.value))}
+                    className="text-2xl font-bold bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer appearance-none pr-8"
+                    style={{
+                      backgroundImage:
+                        "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")",
+                      backgroundPosition: "right 0 center",
+                      backgroundRepeat: "no-repeat",
+                      backgroundSize: "1.5em 1.5em",
+                    }}
+                  >
+                    {children.map((child) => (
+                      <option
+                        key={child.id}
+                        value={child.id}
+                        className="text-gray-900 text-base"
+                      >
+                        {child.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-blue-200 mt-1">Lịch học trong tuần</p>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="flex gap-4">
+              <div className="bg-white/10 backdrop-blur rounded-xl px-5 py-3 border border-white/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{scheduleData.length}</p>
+                    <p className="text-xs text-blue-200">Buổi học</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white/10 backdrop-blur rounded-xl px-5 py-3 border border-white/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-500/30 rounded-lg flex items-center justify-center">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{timeSlots.length}</p>
+                    <p className="text-xs text-blue-200">Slot học</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Modern Week Calendar */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      ) : (
-        <ModernWeekCalendar
-          currentWeek={currentWeek}
-          onWeekChange={setCurrentWeek}
-          timeSlots={timeSlots}
-          getEventsForSlot={getEventsForSlot}
-          renderEvent={renderEvent}
-          renderEmptySlot={renderEmptySlot}
-          accentColor="blue"
-          showStats={false}
-        />
-      )}
+      {/* Calendar Content */}
+      <div className="p-6">
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
+          </div>
+        ) : (
+          <ModernWeekCalendar
+            currentWeek={currentWeek}
+            onWeekChange={setCurrentWeek}
+            timeSlots={timeSlots}
+            getEventsForSlot={getEventsForSlot}
+            renderEvent={renderEvent}
+            renderEmptySlot={renderEmptySlot}
+            accentColor="blue"
+            showStats={false}
+          />
+        )}
+      </div>
     </div>
   );
 };

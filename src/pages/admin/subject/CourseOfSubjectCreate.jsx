@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -24,10 +24,14 @@ import { useToast } from "../../../hooks/use-toast";
 
 export default function CourseOfSubjectCreate() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id: subjectId } = useParams();
   const { success, error: showError } = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+
+  // Lấy tên môn học từ state được truyền từ SubjectDetail
+  const subjectName = location.state?.subjectName || "";
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   // Chương & bài học
@@ -180,7 +184,7 @@ export default function CourseOfSubjectCreate() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="space-y-6">
         <div className="flex items-center gap-4">
           <BackButton onClick={handleBack} showLabel={false} />
           <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-200">
@@ -190,7 +194,9 @@ export default function CourseOfSubjectCreate() {
             <h1 className="text-2xl font-bold text-gray-900">
               Tạo khóa học mới
             </h1>
-            <p className="text-sm text-gray-500">Thuộc môn ID #{subjectId}</p>
+            <p className="text-sm text-gray-500">
+              Thuộc môn {subjectName || "đang tải..."}
+            </p>
           </div>
         </div>
 

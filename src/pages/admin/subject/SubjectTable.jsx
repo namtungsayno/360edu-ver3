@@ -30,7 +30,6 @@ export default function SubjectTable({
         <TableHeader>
           <TableRow className="bg-gray-50">
             <TableHead className="w-16">STT</TableHead>
-            <TableHead>Ảnh</TableHead>
             <TableHead>Tên môn học</TableHead>
             <TableHead>Số khóa học</TableHead>
             <TableHead>Số lớp học</TableHead>
@@ -42,7 +41,7 @@ export default function SubjectTable({
           {loading && (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={5}
                 className="text-center py-10 text-gray-500"
               >
                 Đang tải…
@@ -53,7 +52,7 @@ export default function SubjectTable({
           {!loading && items.length === 0 && (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={5}
                 className="text-center py-10 text-gray-500"
               >
                 Không có dữ liệu
@@ -74,18 +73,6 @@ export default function SubjectTable({
               >
                 <TableCell className="text-center text-gray-700">
                   {subject.id}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center mr-3">
-                      <span className="text-blue-600 text-xs font-bold">
-                        {(subject.code || "").substring(0, 2).toUpperCase()}
-                      </span>
-                    </div>
-                    <span className="font-semibold text-blue-600">
-                      {subject.code}
-                    </span>
-                  </div>
                 </TableCell>
                 <TableCell className="font-medium">{subject.name}</TableCell>
                 <TableCell className="text-gray-700">

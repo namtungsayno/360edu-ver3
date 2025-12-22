@@ -305,7 +305,7 @@ export default function ClassroomList() {
               Quản lý phòng học
             </h1>
             <p className="text-sm text-gray-500">
-              Click vào dòng để xem chi tiết • Double-click để chỉnh sửa
+              Click vào dòng để xem chi tiết
             </p>
           </div>
         </div>

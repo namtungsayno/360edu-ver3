@@ -366,7 +366,7 @@ export default function ModernWeekCalendar({
         <div className="overflow-x-auto">
           <div className="min-w-[1200px]">
             {/* Header Row */}
-            <div className="grid grid-cols-[120px_repeat(7,1fr)]">
+            <div className="grid grid-cols-[120px_repeat(7,minmax(140px,1fr))]">
               {/* Time Column Header */}
               <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 border-r border-b border-gray-200">
                 <div className="flex flex-col items-center justify-center h-full">
@@ -431,7 +431,7 @@ export default function ModernWeekCalendar({
             {timeSlots.map((slot, slotIndex) => (
               <div
                 key={slot.id}
-                className={`grid grid-cols-[120px_repeat(7,1fr)] ${
+                className={`grid grid-cols-[120px_repeat(7,minmax(140px,1fr))] ${
                   slotIndex !== timeSlots.length - 1
                     ? "border-b border-gray-100"
                     : ""
@@ -439,7 +439,7 @@ export default function ModernWeekCalendar({
               >
                 {/* Slot Label */}
                 <div className="p-4 bg-gradient-to-r from-gray-50 to-white border-r border-gray-200">
-                  <div className="flex flex-col justify-center h-full min-h-[100px]">
+                  <div className="flex flex-col justify-center h-full min-h-[120px]">
                     <div className="inline-flex items-center justify-center w-fit mx-auto px-3 py-1 rounded-full bg-gray-100 mb-2">
                       <span className="text-sm font-bold text-gray-700">
                         {slot.label || `Slot ${slot.id}`}
@@ -461,7 +461,7 @@ export default function ModernWeekCalendar({
                   return (
                     <div
                       key={day.id}
-                      className={`p-2 min-h-[120px] transition-colors duration-200 ${
+                      className={`p-2 min-h-[120px] max-h-[280px] overflow-y-auto transition-colors duration-200 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent ${
                         dayIndex < 6 ? "border-r border-gray-100" : ""
                       } ${
                         isToday
@@ -542,7 +542,7 @@ export function CalendarEventCard({
   return (
     <div
       onClick={onClick}
-      className={`p-3 rounded-xl bg-gradient-to-br border transition-all duration-200 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 ${variants[variant]} ${className}`}
+      className={`p-2.5 rounded-xl bg-gradient-to-br border transition-all duration-200 cursor-pointer hover:shadow-lg hover:-translate-y-0.5 overflow-hidden w-full ${variants[variant]} ${className}`}
     >
       {children}
     </div>
