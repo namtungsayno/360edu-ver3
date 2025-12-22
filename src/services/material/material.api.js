@@ -1,7 +1,7 @@
 // src/services/material/material.api.js
-import { http } from '../http';
+import { http } from "../http";
 
-const BASE_URL = '/materials';
+const BASE_URL = "/materials";
 
 export const materialApi = {
   /**
@@ -10,15 +10,15 @@ export const materialApi = {
    * @param {File} file - File cần upload
    * @param {string} description - Mô tả tài liệu (optional)
    */
-  uploadMaterial: (sessionId, file, description = '') => {
+  uploadMaterial: (sessionId, file, description = "") => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
     if (description) {
-      formData.append('description', description);
+      formData.append("description", description);
     }
     return http.post(`${BASE_URL}/upload/${sessionId}`, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
     });
   },
@@ -62,7 +62,7 @@ export const materialApi = {
    * @param {string} fileName - Tên file
    */
   getDownloadUrl: (sessionId, fileName) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
     return `${baseUrl}/api/materials/download/${sessionId}/${fileName}`;
   },
 };
