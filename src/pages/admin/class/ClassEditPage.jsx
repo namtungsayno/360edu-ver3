@@ -595,21 +595,23 @@ export default function ClassEditPage() {
   function toggleSlot(slot) {
     const targetKey = slotKey(slot);
     const has = pickedSlots.some((s) => slotKey(s) === targetKey);
-    
+
     // Nếu bỏ chọn slot -> cho phép
     if (has) {
       const next = pickedSlots.filter((s) => slotKey(s) !== targetKey);
       setPickedSlots(next);
       return;
     }
-    
+
     // Nếu thêm slot mới -> kiểm tra không vượt quá totalSessions
     const maxSlots = parseInt(totalSessions) || 0;
     if (maxSlots > 0 && pickedSlots.length >= maxSlots) {
-      error(`Số buổi học tối đa là ${maxSlots}. Vui lòng bỏ chọn slot khác hoặc tăng số buổi học.`);
+      error(
+        `Số buổi học tối đa là ${maxSlots}. Vui lòng bỏ chọn slot khác hoặc tăng số buổi học.`
+      );
       return; // Không thêm slot mới
     }
-    
+
     const next = uniqByKey([...pickedSlots, slot]);
     setPickedSlots(next);
     // endDate sẽ tự động cập nhật theo lịch phía trên
@@ -752,7 +754,10 @@ export default function ClassEditPage() {
 
     // Validate số slot phải khớp với số buổi (cho lớp DRAFT)
     const maxSlots = parseInt(totalSessions) || 0;
-    const slotsCountMismatch = cls?.status === "DRAFT" && maxSlots > 0 && pickedSlots.length !== maxSlots;
+    const slotsCountMismatch =
+      cls?.status === "DRAFT" &&
+      maxSlots > 0 &&
+      pickedSlots.length !== maxSlots;
 
     if (
       !subjectId ||
@@ -1539,13 +1544,15 @@ export default function ClassEditPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* Hiển thị số slot đã chọn / tối đa */}
                     {totalSessions && parseInt(totalSessions) > 0 && (
-                      <div className={`text-xs px-2.5 py-1 rounded-lg ${
-                        pickedSlots.length === parseInt(totalSessions)
-                          ? "bg-green-100 text-green-800"
-                          : pickedSlots.length > parseInt(totalSessions)
-                          ? "bg-red-100 text-red-800"
-                          : "bg-white/20 text-white"
-                      }`}>
+                      <div
+                        className={`text-xs px-2.5 py-1 rounded-lg ${
+                          pickedSlots.length === parseInt(totalSessions)
+                            ? "bg-green-100 text-green-800"
+                            : pickedSlots.length > parseInt(totalSessions)
+                            ? "bg-red-100 text-red-800"
+                            : "bg-white/20 text-white"
+                        }`}
+                      >
                         <span className="font-medium">
                           Đã chọn: {pickedSlots.length}/{totalSessions} slot
                         </span>

@@ -275,21 +275,23 @@ export default function CreateOfflineClassPage() {
       const exists = prev.some(
         (s) => s.isoStart === slot.isoStart && s.isoEnd === slot.isoEnd
       );
-      
+
       // Nếu bỏ chọn slot -> cho phép
       if (exists) {
         return prev.filter(
           (s) => !(s.isoStart === slot.isoStart && s.isoEnd === slot.isoEnd)
         );
       }
-      
+
       // Nếu thêm slot mới -> kiểm tra không vượt quá totalSessions
       const maxSlots = parseInt(totalSessions) || 0;
       if (maxSlots > 0 && prev.length >= maxSlots) {
-        error(`Số buổi học tối đa là ${maxSlots}. Vui lòng bỏ chọn slot khác hoặc tăng số buổi học.`);
+        error(
+          `Số buổi học tối đa là ${maxSlots}. Vui lòng bỏ chọn slot khác hoặc tăng số buổi học.`
+        );
         return prev; // Không thêm slot mới
       }
-      
+
       return [...prev, slot];
     });
   }
@@ -1044,13 +1046,15 @@ export default function CreateOfflineClassPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* Hiển thị số slot đã chọn / tối đa */}
                     {totalSessions && parseInt(totalSessions) > 0 && (
-                      <div className={`text-sm px-3 py-1.5 rounded-lg border ${
-                        pickedSlots.length === parseInt(totalSessions)
-                          ? "bg-green-50 border-green-200 text-green-700"
-                          : pickedSlots.length > parseInt(totalSessions)
-                          ? "bg-red-50 border-red-200 text-red-700"
-                          : "bg-blue-50 border-blue-200 text-blue-700"
-                      }`}>
+                      <div
+                        className={`text-sm px-3 py-1.5 rounded-lg border ${
+                          pickedSlots.length === parseInt(totalSessions)
+                            ? "bg-green-50 border-green-200 text-green-700"
+                            : pickedSlots.length > parseInt(totalSessions)
+                            ? "bg-red-50 border-red-200 text-red-700"
+                            : "bg-blue-50 border-blue-200 text-blue-700"
+                        }`}
+                      >
                         <span className="font-medium">
                           Đã chọn: {pickedSlots.length}/{totalSessions} slot
                         </span>
