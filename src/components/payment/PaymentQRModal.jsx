@@ -27,7 +27,9 @@ export default function PaymentQRModal({
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
+    console.log("🔍 PaymentQRModal useEffect - isOpen:", isOpen, "classId:", classId);
     if (isOpen && classId) {
+      console.log("🔍 PaymentQRModal - calling loadPaymentQR...");
       loadPaymentQR();
       // Reset countdown when modal opens
       setTimeLeft(QR_EXPIRY_MINUTES * 60);
@@ -61,12 +63,16 @@ export default function PaymentQRModal({
   }, [isOpen, paymentData, isExpired]);
 
   const loadPaymentQR = async () => {
+    console.log("💰 loadPaymentQR called - classId:", classId);
     setLoading(true);
     try {
+      console.log("💰 Calling paymentService.getPaymentQR...");
       const data = await paymentService.getPaymentQR(classId);
+      console.log("💰 Payment data received:", data);
       setPaymentData(data);
       if (onPaymentCreated) onPaymentCreated(data);
     } catch (e) {
+      console.error("❌ loadPaymentQR error:", e);
       const msg =
         e?.response?.data?.message ||
         e?.message ||

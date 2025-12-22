@@ -258,99 +258,54 @@ export default function CreateNews() {
 
               <div className="space-y-2">
                 <Label>Ảnh đại diện</Label>
-                <div className="flex gap-4 mb-2">
-                  <Button
-                    type="button"
-                    variant={imageMode === "upload" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setImageMode("upload")}
-                  >
-                    Upload ảnh
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={imageMode === "url" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setImageMode("url")}
-                  >
-                    Nhập URL ảnh
-                  </Button>
+                <div className="space-y-3">
+                  {imagePreview ? (
+                    <div className="relative border-2 border-dashed rounded-lg p-4 hover:border-blue-400 transition-colors">
+                      <img
+                        src={`${
+                          import.meta.env.VITE_API_BASE_URL ||
+                          "http://localhost:8080"
+                        }${imagePreview}`}
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded-lg"
+                        onError={(e) => {
+                          e.target.src = "/placeholder-image.png";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          setImagePreview(null);
+                          setImageUrlInput("");
+                        }}
+                        disabled={loading}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 cursor-pointer hover:border-blue-400 transition-colors">
+                      <Upload className="h-12 w-12 text-gray-400 mb-3" />
+                      <span className="text-sm text-gray-600 mb-1">
+                        Click để tải ảnh lên
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        PNG, JPG, JPEG, GIF, WebP (tối đa 5MB)
+                      </span>
+                      <input
+                        id="newsImage"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageChange}
+                        disabled={loading}
+                      />
+                    </label>
+                  )}
                 </div>
-                {imageMode === "upload" ? (
-                  <div className="space-y-3">
-                    {imagePreview ? (
-                      <div className="relative border-2 border-dashed rounded-lg p-4 hover:border-blue-400 transition-colors">
-                        <img
-                          src={`${
-                            import.meta.env.VITE_API_BASE_URL ||
-                            "http://localhost:8080"
-                          }${imagePreview}`}
-                          alt="Preview"
-                          className="w-full h-48 object-cover rounded-lg"
-                          onError={(e) => {
-                            e.target.src = "/placeholder-image.png";
-                          }}
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2"
-                          onClick={() => {
-                            setImagePreview(null);
-                            setImageUrlInput("");
-                          }}
-                          disabled={loading}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 cursor-pointer hover:border-blue-400 transition-colors">
-                        <Upload className="h-12 w-12 text-gray-400 mb-3" />
-                        <span className="text-sm text-gray-600 mb-1">
-                          Click để tải ảnh lên
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          PNG, JPG, JPEG, GIF, WebP (tối đa 5MB)
-                        </span>
-                        <input
-                          id="newsImage"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleImageChange}
-                          disabled={loading}
-                        />
-                      </label>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Input
-                      type="text"
-                      placeholder="Nhập URL ảnh (http...)"
-                      value={imageUrlInput}
-                      onChange={(e) => {
-                        setImageUrlInput(e.target.value);
-                        setImagePreview(e.target.value);
-                      }}
-                      disabled={loading}
-                    />
-                    {imageUrlInput && (
-                      <div className="mt-2">
-                        <img
-                          src={imageUrlInput}
-                          alt="Preview"
-                          className="w-full h-48 object-cover rounded-lg"
-                          onError={(e) => {
-                            e.target.src = "/placeholder-image.png";
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
