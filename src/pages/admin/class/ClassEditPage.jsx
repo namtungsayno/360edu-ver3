@@ -240,6 +240,16 @@ export default function ClassEditPage() {
     }
   }, [startDate, cls, prevStartDate]);
 
+  // Tự động xóa slot thừa khi totalSessions giảm (DRAFT mode)
+  useEffect(() => {
+    if (!cls || cls.status !== "DRAFT") return;
+    const maxSlots = parseInt(totalSessions) || 0;
+    if (maxSlots > 0 && pickedSlots.length > maxSlots) {
+      // Giữ lại maxSlots slot đầu tiên
+      setPickedSlots((prev) => prev.slice(0, maxSlots));
+    }
+  }, [totalSessions, cls]);
+
   // Load dependent lists when subject changes
   useEffect(() => {
     (async () => {
@@ -585,9 +595,22 @@ export default function ClassEditPage() {
   function toggleSlot(slot) {
     const targetKey = slotKey(slot);
     const has = pickedSlots.some((s) => slotKey(s) === targetKey);
-    const next = has
-      ? pickedSlots.filter((s) => slotKey(s) !== targetKey)
-      : uniqByKey([...pickedSlots, slot]);
+    
+    // Nếu bỏ chọn slot -> cho phép
+    if (has) {
+      const next = pickedSlots.filter((s) => slotKey(s) !== targetKey);
+      setPickedSlots(next);
+      return;
+    }
+    
+    // Nếu thêm slot mới -> kiểm tra không vượt quá totalSessions
+    const maxSlots = parseInt(totalSessions) || 0;
+    if (maxSlots > 0 && pickedSlots.length >= maxSlots) {
+      error(`Số buổi học tối đa là ${maxSlots}. Vui lòng bỏ chọn slot khác hoặc tăng số buổi học.`);
+      return; // Không thêm slot mới
+    }
+    
+    const next = uniqByKey([...pickedSlots, slot]);
     setPickedSlots(next);
     // endDate sẽ tự động cập nhật theo lịch phía trên
   }
@@ -727,6 +750,10 @@ export default function ClassEditPage() {
     // Lớp PUBLIC đã có startDate trong quá khứ vẫn cho phép edit
     const startDateInvalid = cls?.status === "DRAFT" && startDate < todayStr;
 
+    // Validate số slot phải khớp với số buổi (cho lớp DRAFT)
+    const maxSlots = parseInt(totalSessions) || 0;
+    const slotsCountMismatch = cls?.status === "DRAFT" && maxSlots > 0 && pickedSlots.length !== maxSlots;
+
     if (
       !subjectId ||
       !teacherId ||
@@ -735,6 +762,7 @@ export default function ClassEditPage() {
       !startDate ||
       startDateInvalid ||
       !pickedSlots.length ||
+      slotsCountMismatch ||
       // Yêu cầu giá mỗi buổi chỉ khi DRAFT
       (cls?.status === "DRAFT" &&
         (pricePerSession === "" || parseInt(pricePerSession) < 0)) ||
@@ -1505,21 +1533,46 @@ export default function ClassEditPage() {
                 }`}
               >
                 <div
-                  className={`-mx-4 px-4 py-2.5 rounded-xl text-white ${accentStepGradient} shadow-md flex items-center justify-between`}
+                  className={`-mx-4 px-4 py-2.5 rounded-xl text-white ${accentStepGradient} shadow-md flex items-center justify-between flex-wrap gap-2`}
                 >
                   <h2 className="text-lg font-bold">Lịch học</h2>
-                  {/* Lớp PUBLIC: cần bấm Chỉnh sửa để sửa lịch */}
-                  {isPublic &&
-                    (!isEditingSchedule ? (
-                      <Button
-                        variant="outline"
-                        onClick={startEditSchedule}
-                        className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
-                        disabled={isPublic}
-                      >
-                        Chỉnh sửa
-                      </Button>
-                    ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Hiển thị số slot đã chọn / tối đa */}
+                    {totalSessions && parseInt(totalSessions) > 0 && (
+                      <div className={`text-xs px-2.5 py-1 rounded-lg ${
+                        pickedSlots.length === parseInt(totalSessions)
+                          ? "bg-green-100 text-green-800"
+                          : pickedSlots.length > parseInt(totalSessions)
+                          ? "bg-red-100 text-red-800"
+                          : "bg-white/20 text-white"
+                      }`}>
+                        <span className="font-medium">
+                          Đã chọn: {pickedSlots.length}/{totalSessions} slot
+                        </span>
+                      </div>
+                    )}
+                    {/* Lớp PUBLIC: cần bấm Chỉnh sửa để sửa lịch */}
+                    {isPublic &&
+                      (!isEditingSchedule ? (
+                        <Button
+                          variant="outline"
+                          onClick={startEditSchedule}
+                          className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
+                          disabled={isPublic}
+                        >
+                          Chỉnh sửa
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          onClick={cancelEditSchedule}
+                          className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
+                        >
+                          Hủy
+                        </Button>
+                      ))}
+                    {/* Lớp DRAFT: có nút Hủy để quản lý thay đổi */}
+                    {isDraft && (
                       <Button
                         variant="outline"
                         onClick={cancelEditSchedule}
@@ -1527,17 +1580,8 @@ export default function ClassEditPage() {
                       >
                         Hủy
                       </Button>
-                    ))}
-                  {/* Lớp DRAFT: có nút Hủy để quản lý thay đổi */}
-                  {isDraft && (
-                    <Button
-                      variant="outline"
-                      onClick={cancelEditSchedule}
-                      className="h-8 px-3 text-xs bg-white/10 border-white/30 text-white hover:brightness-110"
-                    >
-                      Hủy
-                    </Button>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* Lớp DRAFT: hiện ScheduleGrid luôn để dễ xem phòng bận + lịch GV */}
