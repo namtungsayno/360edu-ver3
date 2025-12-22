@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Calendar,
   CheckCircle,
-  Bell,
   Wallet,
   BookOpen,
   User,
@@ -59,12 +58,6 @@ const SidebarParent = () => {
           icon: Wallet,
           href: "/home/parent/payment",
         },
-        {
-          id: "notifications",
-          label: "Thông báo",
-          icon: Bell,
-          href: "/home/parent/notifications",
-        },
       ],
     },
     {
@@ -82,12 +75,6 @@ const SidebarParent = () => {
 
   const isActive = (href) =>
     location.pathname === href || location.pathname.startsWith(href + "/");
-
-  const handleLogout = () => {
-    logout();
-    success("Đăng xuất thành công!");
-    navigate("/home/login");
-  };
 
   return (
     <div className="w-72 bg-white text-black h-full flex flex-col border-r border-gray-200">
@@ -108,23 +95,6 @@ const SidebarParent = () => {
         </div>
       </div>
 
-      {/* User Info */}
-      {user && (
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-              {user.name?.charAt(0) || "P"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-black truncate">
-                {user.name || "Phụ huynh"}
-              </p>
-              <p className="text-xs text-gray-600 truncate">{user.email}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto py-4">
         {nav.map((section) => (
@@ -142,7 +112,7 @@ const SidebarParent = () => {
                     to={item.href}
                     className={`flex items-center px-6 py-3 text-sm font-medium transition-colors duration-200 ${
                       active
-                        ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600"
+                        ? "bg-gray-100 text-black border-r-2 border-black"
                         : "text-gray-600 hover:bg-gray-50 hover:text-black"
                     }`}
                   >
@@ -156,15 +126,35 @@ const SidebarParent = () => {
         ))}
       </div>
 
-      {/* Logout Button */}
-      <div className="p-4 border-t border-gray-200">
+      {/* User & Logout */}
+      <div className="border-t border-gray-200 p-6">
         <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+          onClick={async () => {
+            await logout();
+            success("Đã đăng xuất thành công", "Đăng xuất");
+            setTimeout(() => {
+              navigate("/home/login");
+            }, 1000);
+          }}
+          className="flex items-center w-full text-sm text-gray-600 hover:text-black mb-4 transition-colors duration-200"
         >
-          <LogOut className="h-5 w-5 mr-2" />
+          <LogOut className="h-5 w-5 mr-3 text-current" />
           Đăng xuất
         </button>
+
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
+            <span className="text-white font-bold text-sm">
+              {user?.name?.[0] || user?.fullName?.[0] || "P"}
+            </span>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-black">
+              {user?.name || user?.fullName || "Phụ huynh"}
+            </p>
+            <p className="text-xs text-gray-600">{user?.email}</p>
+          </div>
+        </div>
       </div>
     </div>
   );

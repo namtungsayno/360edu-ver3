@@ -409,7 +409,7 @@ export default function AdminCourseList() {
               Quản lý khóa học
             </h1>
             <p className="text-sm text-gray-500">
-              Xem và quản lý tất cả khóa học do giáo viên biên soạn
+              Xem tất cả khóa học do giáo viên biên soạn
             </p>
           </div>
         </div>

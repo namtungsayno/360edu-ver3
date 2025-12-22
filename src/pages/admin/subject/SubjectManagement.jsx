@@ -157,8 +157,7 @@ export default function SubjectManagement() {
               Quản lý môn học
             </h1>
             <p className="text-sm text-gray-500">
-              Quản lý thông tin các môn học trong hệ thống (Server-side
-              Pagination)
+              Quản lý thông tin các môn học trong hệ thống
             </p>
           </div>
         </div>
