@@ -362,9 +362,9 @@ const ChildClasses = () => {
           {/* Class Detail Panel */}
           <div className="xl:col-span-7">
             {selectedClass ? (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
                 {/* Detail Header */}
-                <div className="relative bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-white">
+                <div className="relative bg-gradient-to-r from-indigo-500 to-purple-600 p-6 lg:pr-32 text-white rounded-t-2xl">
                   <button
                     onClick={() => setSelectedClass(null)}
                     className="xl:hidden absolute top-4 right-4 p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -391,7 +391,7 @@ const ChildClasses = () => {
                   <p className="text-indigo-200">{selectedClass.subject}</p>
 
                   {/* Progress Ring */}
-                  <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden lg:block">
+                  <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden lg:block z-10">
                     <div className="relative w-20 h-20">
                       <svg className="w-20 h-20 transform -rotate-90">
                         <circle

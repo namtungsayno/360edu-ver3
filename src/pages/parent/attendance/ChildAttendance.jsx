@@ -1,5 +1,5 @@
 // pages/parent/attendance/ChildAttendance.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle,
@@ -21,6 +21,8 @@ const ChildAttendance = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const [selectedClass, setSelectedClass] = useState("all");
+  const [classList, setClassList] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
     present: 0,
@@ -76,6 +78,15 @@ const ChildAttendance = () => {
         status: att.status,
         note: att.note,
       }));
+
+      // Extract unique class names for filter
+      const uniqueClasses = [
+        ...new Set(transformedData.map((att) => att.className)),
+      ].filter(Boolean);
+      setClassList(uniqueClasses);
+
+      // Reset selected class when child changes
+      setSelectedClass("all");
 
       setAttendanceData(transformedData);
       setStats(
@@ -151,6 +162,28 @@ const ChildAttendance = () => {
     label: `Năm ${new Date().getFullYear() - i}`,
   }));
 
+  // Filter data và tính stats theo lớp được chọn
+  const { filteredData, filteredStats } = useMemo(() => {
+    const filtered =
+      selectedClass === "all"
+        ? attendanceData
+        : attendanceData.filter((att) => att.className === selectedClass);
+
+    const total = filtered.length;
+    const present = filtered.filter((att) => att.status === "PRESENT").length;
+    const absent = filtered.filter((att) => att.status === "ABSENT").length;
+    const late = filtered.filter((att) => att.status === "LATE").length;
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    return {
+      filteredData: filtered,
+      filteredStats:
+        selectedClass === "all"
+          ? stats
+          : { total, present, absent, late, rate },
+    };
+  }, [attendanceData, selectedClass, stats]);
+
   if (loading && !selectedChild) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
@@ -204,6 +237,29 @@ const ChildAttendance = () => {
 
             {/* Month/Year Filter in Header */}
             <div className="flex items-center gap-3">
+              {/* Class Filter */}
+              {classList.length > 0 && (
+                <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-2 border border-white/20">
+                  <select
+                    value={selectedClass}
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    className="bg-transparent text-white border-none focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="text-gray-900">
+                      Tất cả lớp
+                    </option>
+                    {classList.map((className) => (
+                      <option
+                        key={className}
+                        value={className}
+                        className="text-gray-900"
+                      >
+                        {className}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="bg-white/10 backdrop-blur rounded-xl px-4 py-2 border border-white/20">
                 <select
                   value={filterMonth}
@@ -249,7 +305,7 @@ const ChildAttendance = () => {
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.total}</p>
+                  <p className="text-2xl font-bold">{filteredStats.total}</p>
                   <p className="text-xs text-emerald-200">Tổng buổi</p>
                 </div>
               </div>
@@ -260,7 +316,7 @@ const ChildAttendance = () => {
                   <CheckCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.present}</p>
+                  <p className="text-2xl font-bold">{filteredStats.present}</p>
                   <p className="text-xs text-emerald-200">Có mặt</p>
                 </div>
               </div>
@@ -271,7 +327,7 @@ const ChildAttendance = () => {
                   <XCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.absent}</p>
+                  <p className="text-2xl font-bold">{filteredStats.absent}</p>
                   <p className="text-xs text-emerald-200">Vắng mặt</p>
                 </div>
               </div>
@@ -282,7 +338,7 @@ const ChildAttendance = () => {
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.late}</p>
+                  <p className="text-2xl font-bold">{filteredStats.late}</p>
                   <p className="text-xs text-emerald-200">Đi muộn</p>
                 </div>
               </div>
@@ -293,7 +349,7 @@ const ChildAttendance = () => {
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.rate}%</p>
+                  <p className="text-2xl font-bold">{filteredStats.rate}%</p>
                   <p className="text-xs text-emerald-200">Tỷ lệ</p>
                 </div>
               </div>
@@ -315,7 +371,7 @@ const ChildAttendance = () => {
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-4 border-emerald-200 border-t-emerald-600"></div>
             </div>
-          ) : attendanceData.length > 0 ? (
+          ) : filteredData.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
@@ -344,7 +400,7 @@ const ChildAttendance = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {attendanceData.map((record) => (
+                  {filteredData.map((record) => (
                     <tr
                       key={record.id}
                       className="hover:bg-gray-50 transition-colors"
