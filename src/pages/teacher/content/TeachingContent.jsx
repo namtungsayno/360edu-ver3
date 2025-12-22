@@ -121,8 +121,7 @@ export default function TeachingContent() {
               .filter((s) => legacyNames.includes(normalizeText(s.name)))
               .map((s) => s.id);
             opts = list.filter((s) => subjectIds.includes(s.id));
-          } catch (legacyErr) {
-            }
+          } catch (legacyErr) {}
         }
         setSubjectOptions(opts);
 
@@ -286,9 +285,9 @@ export default function TeachingContent() {
                 key={course.id}
                 className="rounded-xl border-2 border-gray-200 hover:border-blue-300 transition-colors"
               >
-                <CardContent className="p-5 flex flex-col md:flex-row md:items-start md:justify-between gap-5">
+                <CardContent className="p-6 pt-7 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
                   <div className="flex items-start gap-4 flex-1">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0">
                       <BookOpen className="w-8 h-8 text-white" />
                     </div>
                     <div className="space-y-1">
@@ -315,7 +314,7 @@ export default function TeachingContent() {
                     </div>
                   </div>
 
-                  <div className="flex gap-6">
+                  <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
                       <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
                         <ChapterIcon className="w-4 h-4 text-blue-600" />

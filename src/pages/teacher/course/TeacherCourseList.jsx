@@ -145,8 +145,7 @@ export default function TeacherCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {
@@ -190,8 +189,7 @@ export default function TeacherCourseList() {
             return next;
           });
         }
-      } catch (e) {
-        }
+      } catch (e) {}
     })();
 
     return () => {
@@ -426,7 +424,7 @@ export default function TeacherCourseList() {
                 className="rounded-[14px] border border-gray-200 hover:border-blue-300 hover:shadow-md transition-colors cursor-pointer"
                 onClick={() => navigate(`/home/teacher/courses/${course.id}`)}
               >
-                <CardContent className="p-5">
+                <CardContent className="px-5 py-7">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     {/* LEFT */}
                     <div className="flex-1 space-y-2">

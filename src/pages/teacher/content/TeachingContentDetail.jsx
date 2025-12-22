@@ -120,12 +120,14 @@ export default function TeachingContentDetail() {
 
       {/* Summary */}
       <Card className="rounded-xl border border-gray-200">
-        <CardContent className="p-5">
+        <CardContent className="p-5 pt-6">
           {(() => {
-            const cleanDesc = (course.description || "").replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "").trim();
+            const cleanDesc = (course.description || "")
+              .replace(/\n?\[\[SOURCE:[^\]]+\]\]/g, "")
+              .trim();
             return cleanDesc ? (
               <div
-                className="text-sm text-[#45556c] mb-4 rich-text-content"
+                className="text-sm text-[#45556c] mb-4 rich-text-content pt-1"
                 dangerouslySetInnerHTML={{ __html: cleanDesc }}
               />
             ) : null;
@@ -160,11 +162,11 @@ export default function TeachingContentDetail() {
       {/* Outline (simple) */}
       {Array.isArray(course.chapters) && course.chapters.length > 0 && (
         <Card className="rounded-xl border border-gray-200">
-          <CardContent className="p-5 space-y-4">
+          <CardContent className="p-5 pt-6 space-y-4">
             {course.chapters.map((ch, idx) => (
               <div
                 key={ch.id || idx}
-                className="border border-gray-200 rounded-lg p-4"
+                className="border border-gray-200 rounded-lg p-4 pt-5"
               >
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
