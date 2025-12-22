@@ -1,7 +1,7 @@
 // src/services/lesson-material/lesson-material.api.js
-import { http } from '../http';
+import { http } from "../http";
 
-const BASE_URL = '/lesson-materials';
+const BASE_URL = "/lesson-materials";
 
 export const lessonMaterialApi = {
   /**
@@ -10,15 +10,15 @@ export const lessonMaterialApi = {
    * @param {File} file - File cần upload
    * @param {string} description - Mô tả tài liệu (optional)
    */
-  uploadMaterial: (lessonId, file, description = '') => {
+  uploadMaterial: (lessonId, file, description = "") => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
     if (description) {
-      formData.append('description', description);
+      formData.append("description", description);
     }
     return http.post(`${BASE_URL}/upload/${lessonId}`, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
     });
   },
@@ -70,7 +70,7 @@ export const lessonMaterialApi = {
    * @param {string} fileName - Tên file
    */
   getDownloadUrl: (lessonId, fileName) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
     return `${baseUrl}/api/lesson-materials/download/${lessonId}/${fileName}`;
   },
 };

@@ -176,7 +176,11 @@ export default function CourseOfSubjectCreate() {
       }
     } catch (e) {
       // Hiển thị lỗi từ backend (bao gồm lỗi trùng tên khóa học)
-      const errorMessage = e?.displayMessage || e?.response?.data?.message || e?.message || "Có lỗi khi tạo khóa học. Vui lòng thử lại.";
+      const errorMessage =
+        e?.displayMessage ||
+        e?.response?.data?.message ||
+        e?.message ||
+        "Có lỗi khi tạo khóa học. Vui lòng thử lại.";
       setErrorMsg(errorMessage);
       showError(errorMessage, "Lỗi");
     } finally {

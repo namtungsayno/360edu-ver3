@@ -89,16 +89,17 @@ export default function StudentProfile() {
           grade: data.grade || "",
           school: data.school || "",
         });
-        
+
         // Fetch parent child count if parent has phone
         if (data.parent?.phoneNumber) {
           try {
-            const parentCheck = await authApi.checkParentPhone(data.parent.phoneNumber);
+            const parentCheck = await authApi.checkParentPhone(
+              data.parent.phoneNumber
+            );
             if (parentCheck.exists && parentCheck.parentInfo) {
               setParentChildInfo(parentCheck.parentInfo);
             }
-          } catch (e) {
-            }
+          } catch (e) {}
         }
       } catch (e) {
         showError("Không thể tải thông tin profile");
@@ -112,7 +113,7 @@ export default function StudentProfile() {
   async function handleSaveProfile() {
     // Validate form
     const errors = {};
-    
+
     // Validate phone number: 10 digits, starts with 0
     if (editForm.phoneNumber) {
       const phoneRegex = /^0\d{9}$/;
@@ -120,7 +121,7 @@ export default function StudentProfile() {
         errors.phoneNumber = "Số điện thoại phải có 10 số và bắt đầu bằng 0";
       }
     }
-    
+
     // Validate dob: not in the future
     if (editForm.dob) {
       const dobDate = new Date(editForm.dob);
@@ -130,20 +131,20 @@ export default function StudentProfile() {
         errors.dob = "Ngày sinh không được lớn hơn ngày hôm nay";
       }
     }
-    
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
-    
+
     setFormErrors({});
-    
+
     try {
       setSaving(true);
       const updated = await studentProfileService.updateProfile(editForm);
       setProfile(updated);
       setIsEditing(false);
-      
+
       // Sync updated info to AuthContext and localStorage to prevent logout on navigation
       if (user) {
         const updatedUser = {
@@ -155,10 +156,10 @@ export default function StudentProfile() {
         setUser(updatedUser);
         // Also update localStorage directly
         try {
-          localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+          localStorage.setItem("auth_user", JSON.stringify(updatedUser));
         } catch {}
       }
-      
+
       success("Cập nhật profile thành công");
     } catch (e) {
       showError(e.displayMessage || "Cập nhật thất bại");
@@ -438,7 +439,9 @@ export default function StudentProfile() {
                   className={formErrors.phoneNumber ? "border-red-500" : ""}
                 />
                 {formErrors.phoneNumber && (
-                  <p className="text-sm text-red-500">{formErrors.phoneNumber}</p>
+                  <p className="text-sm text-red-500">
+                    {formErrors.phoneNumber}
+                  </p>
                 )}
               </div>
 
@@ -451,7 +454,7 @@ export default function StudentProfile() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, dob: e.target.value })
                   }
-                  max={new Date().toISOString().split('T')[0]}
+                  max={new Date().toISOString().split("T")[0]}
                   className={formErrors.dob ? "border-red-500" : ""}
                 />
                 {formErrors.dob && (
@@ -577,9 +580,11 @@ export default function StudentProfile() {
                     <Users className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-[#62748e]">Số con đang học tại trung tâm</p>
+                    <p className="text-xs text-[#62748e]">
+                      Số con đang học tại trung tâm
+                    </p>
                     <p className="font-semibold text-neutral-950">
-                      {parentChildInfo?.childCount 
+                      {parentChildInfo?.childCount
                         ? `${parentChildInfo.childCount} học sinh`
                         : "—"}
                     </p>

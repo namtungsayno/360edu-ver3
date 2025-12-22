@@ -9,16 +9,16 @@ const BASE =
 
 // Helper function to get JWT token from cookie/localStorage
 const getTokenFromCookie = () => {
-  const cookies = document.cookie.split(';');
+  const cookies = document.cookie.split(";");
   for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split('=');
-    if (name === 'edu360_jwt') {
+    const [name, value] = cookie.trim().split("=");
+    if (name === "edu360_jwt") {
       return value;
     }
   }
   // Fallback: localStorage (more reliable across ports in dev)
   try {
-    const lsToken = window.localStorage.getItem('edu360_jwt');
+    const lsToken = window.localStorage.getItem("edu360_jwt");
     if (lsToken) return lsToken;
   } catch {}
   return null;
@@ -48,13 +48,13 @@ http.interceptors.response.use(
     // Handle 401 Unauthorized - session expired, redirect to login
     if (err?.response?.status === 401) {
       // Clear localStorage and redirect to login
-      localStorage.removeItem('auth_user');
+      localStorage.removeItem("auth_user");
       // Only redirect if not already on login page
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/home/login';
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = "/home/login";
       }
     }
-    
+
     // Extract message from various response formats
     const data = err?.response?.data;
     let message = null;
