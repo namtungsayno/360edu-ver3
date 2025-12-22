@@ -90,6 +90,15 @@ export default function CreateOnlineClassPage() {
     setPickedSlots([]);
   }, [startDate]);
 
+  // Tự động xóa slot thừa khi totalSessions giảm
+  useEffect(() => {
+    const maxSlots = parseInt(totalSessions) || 0;
+    if (maxSlots > 0 && pickedSlots.length > maxSlots) {
+      // Giữ lại maxSlots slot đầu tiên
+      setPickedSlots((prev) => prev.slice(0, maxSlots));
+    }
+  }, [totalSessions]);
+
   // Helpers for alias + random code (FE only)
   const makeTeacherAlias = useCallback((fullName) => {
     const removeDiacritics = (s) =>
@@ -238,11 +247,22 @@ export default function CreateOnlineClassPage() {
       const exists = prev.some(
         (s) => s.isoStart === slot.isoStart && s.isoEnd === slot.isoEnd
       );
-      return exists
-        ? prev.filter(
-            (s) => !(s.isoStart === slot.isoStart && s.isoEnd === slot.isoEnd)
-          )
-        : [...prev, slot];
+      
+      // Nếu bỏ chọn slot -> cho phép
+      if (exists) {
+        return prev.filter(
+          (s) => !(s.isoStart === slot.isoStart && s.isoEnd === slot.isoEnd)
+        );
+      }
+      
+      // Nếu thêm slot mới -> kiểm tra không vượt quá totalSessions
+      const maxSlots = parseInt(totalSessions) || 0;
+      if (maxSlots > 0 && prev.length >= maxSlots) {
+        error(`Số buổi học tối đa là ${maxSlots}. Vui lòng bỏ chọn slot khác hoặc tăng số buổi học.`);
+        return prev; // Không thêm slot mới
+      }
+      
+      return [...prev, slot];
     });
   }
 
@@ -388,8 +408,12 @@ export default function CreateOnlineClassPage() {
       errors.pricePerSession = "Vui lòng nhập giá/buổi";
     else if (parseInt(pricePerSession) < 0)
       errors.pricePerSession = "Giá/buổi không được âm";
+    // Validate số slot phải khớp với số buổi
+    const maxSlots = parseInt(totalSessions) || 0;
     if (pickedSlots.length === 0)
       errors.schedule = "Vui lòng chọn ít nhất 1 slot lịch học";
+    else if (maxSlots > 0 && pickedSlots.length !== maxSlots)
+      errors.schedule = `Số slot đã chọn (${pickedSlots.length}) phải bằng số buổi học (${maxSlots})`;
     return errors;
   }, [
     startDate,
@@ -971,25 +995,41 @@ export default function CreateOnlineClassPage() {
               }`}
             >
               <div className="mb-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="px-4 py-2 rounded-xl text-white bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-md">
                     <h2 className="text-base font-bold">Chọn lịch học</h2>
                   </div>
-                  {showErrors && fieldErrors.schedule ? (
-                    <div className="text-sm text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">
-                      <span className="font-medium">
-                        {fieldErrors.schedule}
-                      </span>
-                    </div>
-                  ) : (
-                    startDate && (
-                      <div className="text-sm text-gray-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-                        <span className="text-emerald-700 font-medium">
-                          Chọn slot cho ngày bắt đầu trước
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Hiển thị số slot đã chọn / tối đa */}
+                    {totalSessions && parseInt(totalSessions) > 0 && (
+                      <div className={`text-sm px-3 py-1.5 rounded-lg border ${
+                        pickedSlots.length === parseInt(totalSessions)
+                          ? "bg-green-50 border-green-200 text-green-700"
+                          : pickedSlots.length > parseInt(totalSessions)
+                          ? "bg-red-50 border-red-200 text-red-700"
+                          : "bg-blue-50 border-blue-200 text-blue-700"
+                        }`}>
+                        <span className="font-medium">
+                          Đã chọn: {pickedSlots.length}/{totalSessions} slot
                         </span>
                       </div>
-                    )
-                  )}
+                    )}
+                    {showErrors && fieldErrors.schedule ? (
+                      <div className="text-sm text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">
+                        <span className="font-medium">
+                          {fieldErrors.schedule}
+                        </span>
+                      </div>
+                    ) : (
+                      startDate && (
+                        <div className="text-sm text-gray-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                          <span className="text-emerald-700 font-medium">
+                            Chọn slot cho ngày bắt đầu trước
+                          </span>
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
 
