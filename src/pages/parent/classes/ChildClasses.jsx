@@ -94,7 +94,7 @@ const ChildClasses = () => {
         dot: "bg-blue-500",
       },
       COMPLETED: {
-        label: "Hoàn thành",
+        label: "Đã kết thúc",
         color: "text-gray-500",
         bg: "bg-gray-50",
         border: "border-gray-200",

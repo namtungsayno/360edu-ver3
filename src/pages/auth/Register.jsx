@@ -208,10 +208,19 @@ export default function Register() {
         }, 100);
       }
     } catch (err) {
-      const errMsg =
+      // Handle rate limit (429) and other errors
+      const status = err?.response?.status;
+      let errMsg =
         err?.response?.data?.message || "Không thể gửi OTP. Vui lòng thử lại.";
+
+      if (status === 429) {
+        errMsg =
+          "Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi 1 phút rồi thử lại.";
+      }
+
+      console.error("Send OTP error:", { status, errMsg, err });
       setOtpState((prev) => ({ ...prev, sending: false, error: errMsg }));
-      error(errMsg, "Gửi OTP thất bại");
+      error(errMsg, status === 429 ? "Quá nhiều yêu cầu" : "Gửi OTP thất bại");
     }
   };
 

@@ -29,6 +29,7 @@ import {
 import { courseService } from "../../../services/course/course.service.js";
 import { classService } from "../../../services/class/class.service.js";
 import { stripHtmlTags } from "../../../utils/html-helpers.js";
+import { isClassEnded } from "../../../utils/hidden-items.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import { useAuth } from "../../../hooks/useAuth.js";
 
@@ -401,7 +402,19 @@ export default function TeacherCourseList() {
             const liveClassName = linkedClassId
               ? classMap[String(linkedClassId)]?.name || null
               : null;
-            const effectiveClassName = liveClassName || classNameFromTag;
+            // Also use className from API response if available
+            const effectiveClassName =
+              course.className || liveClassName || classNameFromTag;
+
+            // Check if the linked class has ended
+            // Priority: 1. classEndDate from API, 2. endDate from classMap
+            const linkedClass = linkedClassId
+              ? classMap[String(linkedClassId)]
+              : null;
+            const classEndDate = course.classEndDate || linkedClass?.endDate;
+            const classEnded = classEndDate
+              ? isClassEnded(classEndDate)
+              : false;
 
             const chapterCount =
               course.chapterCount ??
@@ -439,13 +452,10 @@ export default function TeacherCourseList() {
                           <p className="text-[11px] text-[#62748e]">
                             {course.subjectName || "Chưa có môn học"}
                           </p>
-                          {linkedClassId && (
+                          {effectiveClassName && (
                             <div className="mt-1">
                               <Badge className="text-[11px] px-2 py-0.5 bg-green-50 text-green-700 border border-green-200">
-                                Thuộc lớp:{" "}
-                                {effectiveClassName
-                                  ? `${effectiveClassName} (ID: ${linkedClassId})`
-                                  : `ID: ${linkedClassId}`}
+                                Thuộc lớp: {effectiveClassName}
                               </Badge>
                             </div>
                           )}
@@ -495,22 +505,27 @@ export default function TeacherCourseList() {
                           Nguồn: Nội dung giảng dạy
                         </Badge>
                       )}
-                      {linkedClassId && (
+                      {effectiveClassName && (
                         <Badge className="text-[11px] px-3 py-1 bg-green-50 text-green-700 border border-green-200">
-                          Lớp: {linkedClassId}
+                          Lớp: {effectiveClassName}
                         </Badge>
                       )}
-                      <Badge
-                        className={`text-[11px] px-3 py-1 ${statusConfig.className}`}
-                      >
-                        <StatusIcon className="w-3 h-3 mr-1 inline-block align-middle" />
-                        <span className="align-middle">
-                          {statusConfig.label}
-                        </span>
-                      </Badge>
-                      <p className="text-[11px] text-[#62748e]">
-                        ID: {course.id}
-                      </p>
+                      {/* Badge trạng thái: Đã kết thúc hoặc Đang hoạt động */}
+                      {classEnded ? (
+                        <Badge className="text-[11px] px-3 py-1 bg-slate-100 text-slate-600 border border-slate-200">
+                          <Clock className="w-3 h-3 mr-1 inline-block align-middle" />
+                          <span className="align-middle">Đã kết thúc</span>
+                        </Badge>
+                      ) : (
+                        <Badge
+                          className={`text-[11px] px-3 py-1 ${statusConfig.className}`}
+                        >
+                          <StatusIcon className="w-3 h-3 mr-1 inline-block align-middle" />
+                          <span className="align-middle">
+                            {statusConfig.label}
+                          </span>
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </CardContent>

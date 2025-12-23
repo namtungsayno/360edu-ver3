@@ -39,6 +39,9 @@ import { useToast } from "../../../hooks/use-toast.js";
 import { useAuth } from "../../../hooks/useAuth.js";
 import LessonMaterialUpload from "../../../components/teacher/LessonMaterialUpload.jsx";
 import { BackButton } from "../../../components/common/BackButton";
+import RichTextEditor, {
+  RichTextContent,
+} from "../../../components/ui/RichTextEditor";
 
 function createLocalId() {
   return Math.random().toString(36).slice(2, 9);
@@ -346,16 +349,14 @@ export default function TeacherCourseEdit() {
               if (!keepLessonIds.has(ls.id)) {
                 try {
                   await courseService.removeLesson(ls.id);
-                } catch (lessonErr) {
-                  }
+                } catch (lessonErr) {}
               }
             }
           }
           if (!keepChapterIds.has(ch.id)) {
             try {
               await courseService.removeChapter(ch.id);
-            } catch (chapterErr) {
-              }
+            } catch (chapterErr) {}
           }
         }
       }
@@ -544,8 +545,12 @@ export default function TeacherCourseEdit() {
                 <label className="block text-[13px] font-medium text-neutral-950 mb-1.5">
                   Mô tả khóa học
                 </label>
-                <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-neutral-950 min-h-[100px] whitespace-pre-wrap">
-                  {description || "Chưa có mô tả"}
+                <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px] text-neutral-950 min-h-[100px]">
+                  {description ? (
+                    <RichTextContent content={description} />
+                  ) : (
+                    <span className="text-gray-400">Chưa có mô tả</span>
+                  )}
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1">
                   ℹ️ Không thể thay đổi mô tả khóa học
@@ -630,17 +635,17 @@ export default function TeacherCourseEdit() {
                         <label className="block text-[12px] font-medium text-neutral-950 mb-1">
                           Mô tả chương
                         </label>
-                        <Textarea
-                          rows={2}
-                          placeholder="Giới thiệu ngắn gọn về chương..."
+                        <RichTextEditor
                           value={chapter.description}
-                          onChange={(e) =>
+                          onChange={(value) =>
                             handleChangeChapterField(
                               chapter._id,
                               "description",
-                              e.target.value
+                              value
                             )
                           }
+                          placeholder="Giới thiệu ngắn gọn về chương..."
+                          minHeight="80px"
                         />
                       </div>
 
@@ -680,18 +685,18 @@ export default function TeacherCourseEdit() {
                                       )
                                     }
                                   />
-                                  <Textarea
-                                    rows={2}
-                                    placeholder="Giới thiệu ngắn gọn về bài học..."
+                                  <RichTextEditor
                                     value={lesson.description}
-                                    onChange={(e) =>
+                                    onChange={(value) =>
                                       handleChangeLessonField(
                                         chapter._id,
                                         lesson._id,
                                         "description",
-                                        e.target.value
+                                        value
                                       )
                                     }
+                                    placeholder="Giới thiệu ngắn gọn về bài học..."
+                                    minHeight="80px"
                                   />
 
                                   {/* Button to toggle materials */}
