@@ -17,8 +17,8 @@ export const teacherAttendanceService = {
    */
   async getTeacherSummary(teacherId, month, year) {
     const params = {};
-    if (month) params.month = month;
-    if (year) params.year = year;
+    if (month != null) params.month = Number(month);
+    if (year != null) params.year = Number(year);
     return teacherAttendanceApi.getTeacherSummary(teacherId, params);
   },
 

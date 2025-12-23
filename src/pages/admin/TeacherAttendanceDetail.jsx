@@ -53,25 +53,26 @@ export default function TeacherAttendanceDetail() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
-    loadSummary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherId, selectedMonth, selectedYear]);
-
-  async function loadSummary() {
-    try {
-      setLoading(true);
-      const data = await teacherAttendanceService.getTeacherSummary(
-        teacherId,
-        selectedMonth,
-        selectedYear
-      );
-      setSummary(data);
-    } catch (e) {
-      error("Không thể tải thông tin chấm công");
-    } finally {
-      setLoading(false);
+    async function loadSummary() {
+      try {
+        setLoading(true);
+        const data = await teacherAttendanceService.getTeacherSummary(
+          teacherId,
+          selectedMonth,
+          selectedYear
+        );
+        setSummary(data);
+      } catch (e) {
+        error("Không thể tải thông tin chấm công");
+      } finally {
+        setLoading(false);
+      }
     }
-  }
+    
+    if (teacherId) {
+      loadSummary();
+    }
+  }, [teacherId, selectedMonth, selectedYear, error]);
 
   function getAttendanceColor(rate) {
     if (rate >= 90) return "text-green-600 bg-green-50 border-green-200";
@@ -160,18 +161,15 @@ export default function TeacherAttendanceDetail() {
       </div>
 
       {/* Teacher Profile Card - Redesigned */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-purple-700 rounded-2xl shadow-lg overflow-hidden">
         <div className="relative">
-          {/* Background gradient */}
-          <div className="h-24 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
-
           {/* Profile content */}
-          <div className="px-6 pb-6">
-            <div className="flex flex-col lg:flex-row lg:items-start gap-6 -mt-10">
+          <div className="px-6 py-6">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-6">
               {/* Avatar */}
               <div className="relative flex-shrink-0">
-                <div className="w-20 h-20 rounded-2xl bg-white p-1 shadow-lg">
-                  <div className="w-full h-full rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+                <div className="w-20 h-20 rounded-2xl bg-white/20 p-1 shadow-lg backdrop-blur-sm">
+                  <div className="w-full h-full rounded-xl bg-white/30 flex items-center justify-center overflow-hidden">
                     {summary.avatar ? (
                       <img
                         src={getImageUrl(summary.avatar)}
@@ -185,17 +183,17 @@ export default function TeacherAttendanceDetail() {
                     )}
                   </div>
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 rounded-full border-2 border-white flex items-center justify-center">
                   <CheckCircle2 className="w-3 h-3 text-white" />
                 </div>
               </div>
 
               {/* Info */}
-              <div className="flex-1 pt-4 lg:pt-2">
-                <h2 className="text-xl font-bold text-gray-900">
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-white">
                   {summary.teacherName}
                 </h2>
-                <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-500">
+                <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-white/80">
                   <span className="flex items-center gap-1.5">
                     <Mail className="w-4 h-4" />
                     {summary.email}
@@ -209,7 +207,7 @@ export default function TeacherAttendanceDetail() {
                   {summary.subjectNames?.map((subj, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 text-white rounded-full text-xs font-medium backdrop-blur-sm"
                     >
                       <GraduationCap className="w-3.5 h-3.5" />
                       {subj}
@@ -219,8 +217,9 @@ export default function TeacherAttendanceDetail() {
               </div>
 
               {/* Attendance Rate - Moved outside gradient area */}
-              <div className="flex-shrink-0 pt-4 lg:pt-2">
-                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+              {/* Attendance Rate */}
+              <div className="flex-shrink-0">
+                <div className="bg-white/20 rounded-2xl p-4 backdrop-blur-sm">
                   <div className="relative w-24 h-24">
                     <svg
                       className="w-full h-full transform -rotate-90"
@@ -230,7 +229,7 @@ export default function TeacherAttendanceDetail() {
                         cx="50"
                         cy="50"
                         r="42"
-                        stroke="#e5e7eb"
+                        stroke="rgba(255,255,255,0.3)"
                         strokeWidth="8"
                         fill="none"
                       />
@@ -240,10 +239,10 @@ export default function TeacherAttendanceDetail() {
                         r="42"
                         stroke={
                           (summary.attendanceRate || 0) >= 90
-                            ? "#22c55e"
+                            ? "#4ade80"
                             : (summary.attendanceRate || 0) >= 70
-                            ? "#f59e0b"
-                            : "#ef4444"
+                            ? "#fbbf24"
+                            : "#f87171"
                         }
                         strokeWidth="8"
                         fill="none"
@@ -257,15 +256,15 @@ export default function TeacherAttendanceDetail() {
                       <span
                         className={`text-xl font-bold ${
                           (summary.attendanceRate || 0) >= 90
-                            ? "text-green-600"
+                            ? "text-green-300"
                             : (summary.attendanceRate || 0) >= 70
-                            ? "text-amber-600"
-                            : "text-red-600"
+                            ? "text-amber-300"
+                            : "text-red-300"
                         }`}
                       >
                         {(summary.attendanceRate || 0).toFixed(1)}%
                       </span>
-                      <span className="text-[10px] text-gray-500 font-medium">
+                      <span className="text-[10px] text-white/70 font-medium">
                         Hoàn thành
                       </span>
                     </div>
@@ -297,7 +296,7 @@ export default function TeacherAttendanceDetail() {
                 onValueChange={(v) => setSelectedMonth(Number(v))}
               >
                 <SelectTrigger className="bg-gray-50 border-gray-200">
-                  <SelectValue />
+                  <SelectValue placeholder={months.find(m => m.value === selectedMonth)?.label || `Tháng ${selectedMonth}`} />
                 </SelectTrigger>
                 <SelectContent>
                   {months.map((m) => (
@@ -312,7 +311,7 @@ export default function TeacherAttendanceDetail() {
                 onValueChange={(v) => setSelectedYear(Number(v))}
               >
                 <SelectTrigger className="bg-gray-50 border-gray-200">
-                  <SelectValue />
+                  <SelectValue placeholder={String(selectedYear)} />
                 </SelectTrigger>
                 <SelectContent>
                   {years.map((y) => (
@@ -386,7 +385,7 @@ export default function TeacherAttendanceDetail() {
               <p className="text-2xl font-bold text-gray-900">
                 {summary.totalPendingSlots || 0}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Chờ điểm danh</p>
+              <p className="text-xs text-gray-500 mt-1">Chưa điểm danh</p>
             </div>
           </div>
         </div>
@@ -416,13 +415,13 @@ export default function TeacherAttendanceDetail() {
         {!summary.classDetails || summary.classDetails.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-              <BookOpen className="w-8 h-8 text-gray-400" />
+              <Calendar className="w-8 h-8 text-gray-400" />
             </div>
             <p className="text-gray-500 font-medium">
-              Chưa có lớp nào được phân công
+              Không có lịch dạy trong tháng {selectedMonth}/{selectedYear}
             </p>
             <p className="text-sm text-gray-400 mt-1">
-              Giáo viên sẽ xuất hiện ở đây khi được phân công lớp
+              Vui lòng chọn tháng khác để xem lịch chấm công
             </p>
           </div>
         ) : (

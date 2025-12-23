@@ -85,6 +85,7 @@ export default function TeacherClassAttendance() {
         icon: CheckCircle2,
         label: "Đã điểm danh",
         className: "bg-green-100 text-green-700 border-green-200",
+        isPending: false,
       };
     }
 
@@ -94,9 +95,10 @@ export default function TeacherClassAttendance() {
 
     if (sessionDate < today) {
       return {
-        icon: AlertCircle,
+        icon: XCircle,
         label: "Chưa điểm danh",
-        className: "bg-amber-100 text-amber-700 border-amber-200",
+        className: "bg-red-100 text-red-700 border-red-200",
+        isPending: true,
       };
     }
 
@@ -105,6 +107,7 @@ export default function TeacherClassAttendance() {
         icon: Clock,
         label: "Hôm nay",
         className: "bg-blue-100 text-blue-700 border-blue-200",
+        isPending: false,
       };
     }
 
@@ -112,6 +115,7 @@ export default function TeacherClassAttendance() {
       icon: Calendar,
       label: "Sắp tới",
       className: "bg-gray-100 text-gray-600 border-gray-200",
+      isPending: false,
     };
   }
 
@@ -305,7 +309,7 @@ export default function TeacherClassAttendance() {
           <p className="text-2xl font-bold text-amber-600">
             {data.pendingSlots || 0}
           </p>
-          <p className="text-xs text-gray-500 mt-1">Chờ điểm danh</p>
+          <p className="text-xs text-gray-500 mt-1">Chưa điểm danh</p>
         </div>
       </div>
 
@@ -357,12 +361,14 @@ export default function TeacherClassAttendance() {
                         className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                           session.isAttendanceSubmitted
                             ? "bg-gradient-to-br from-green-500 to-green-600 shadow-lg shadow-green-200/50"
+                            : statusBadge.isPending
+                            ? "bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-200/50"
                             : "bg-gray-100"
                         }`}
                       >
                         <span
                           className={`text-base font-bold ${
-                            session.isAttendanceSubmitted
+                            session.isAttendanceSubmitted || statusBadge.isPending
                               ? "text-white"
                               : "text-gray-500"
                           }`}
