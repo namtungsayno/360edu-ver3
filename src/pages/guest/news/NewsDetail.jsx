@@ -28,8 +28,13 @@ export default function NewsDetail() {
         const response = await newsService.getNewsById(id);
         setNews(response);
 
-        // Increment view count
-        await newsService.incrementView(id);
+        // Increment view count (don't block on error)
+        try {
+          await newsService.incrementView(id);
+        } catch (viewError) {
+          // Silently ignore view count errors - not critical for guest
+          console.warn("Could not increment view count:", viewError);
+        }
 
         // Fetch related news
         const allNewsResponse = await newsService.getNews({ page: 0, size: 4 });
@@ -42,6 +47,7 @@ export default function NewsDetail() {
           .slice(0, 3);
         setRelatedNews(related);
       } catch (error) {
+        console.error("Error fetching news detail:", error);
       } finally {
         setLoading(false);
       }

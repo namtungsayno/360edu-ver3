@@ -153,16 +153,20 @@ export function SelectValue({ placeholder, className = "" }) {
 export function SelectContent({ className = "", children }) {
   const { open } = useContext(Ctx);
   return (
-    <div
-      className={cn(
-        "absolute z-50 mt-2 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg",
-        className
-      )}
-      role="listbox"
-      style={{ display: open ? "block" : "none" }}
-    >
-      <div className="p-1 max-h-60 overflow-auto">{children}</div>
-    </div>
+    <>
+      {/* Hidden container to always register items even when closed */}
+      {!open && <div style={{ display: "none" }}>{children}</div>}
+      <div
+        className={cn(
+          "absolute z-50 mt-2 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg",
+          className
+        )}
+        role="listbox"
+        style={{ display: open ? "block" : "none" }}
+      >
+        <div className="p-1 max-h-60 overflow-auto">{children}</div>
+      </div>
+    </>
   );
 }
 

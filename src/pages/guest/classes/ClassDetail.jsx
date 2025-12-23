@@ -31,6 +31,13 @@ import { stripHtmlTags } from "../../../utils/html-helpers";
 import AuthContext from "../../../context/AuthContext";
 import { useToast } from "../../../hooks/use-toast";
 import PaymentQRModal from "../../../components/payment/PaymentQRModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../../../components/ui/Dialog";
 
 export default function ClassDetail() {
   const { id } = useParams();
@@ -43,6 +50,7 @@ export default function ClassDetail() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false); // Track if already enrolled
+  const [showOngoingClassModal, setShowOngoingClassModal] = useState(false); // Modal xác nhận lớp đang diễn ra
 
   const classId = Number(id);
 
@@ -76,36 +84,18 @@ export default function ClassDetail() {
     })();
   }, [classId, user]);
 
-  const handleEnroll = async () => {
-    // Kiểm tra nếu lớp đã đầy
-    const currentStudentsCount = data?.currentStudents || 0;
-    const maxStudentsCount = data?.maxStudents || 30;
-    if (currentStudentsCount >= maxStudentsCount) {
-      showError(
-        "Lớp học này đã đầy, vui lòng chọn lớp khác!",
-        "Không thể đăng ký"
-      );
-      return;
-    }
+  // Kiểm tra lớp có đang diễn ra không (đã bắt đầu)
+  const isClassOngoing = () => {
+    if (!data?.startDate) return false;
+    const startDate = new Date(data.startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
+    return startDate < today;
+  };
 
-    // Nếu đã enrolled trong session này, báo toast
-    if (isEnrolled) {
-      info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
-      return;
-    }
-
-    // Check authentication trước
-    if (!user) {
-      // Chưa đăng nhập -> redirect về login
-      warning("Vui lòng đăng nhập để đăng ký lớp học!", "Yêu cầu đăng nhập");
-      setTimeout(() => {
-        navigate("/home/login", {
-          state: { from: `/home/classes/${classId}` },
-        });
-      }, 1500);
-      return;
-    }
-
+  // Thực hiện đăng ký (sau khi đã xác nhận)
+  const proceedEnroll = async () => {
     if (!data) return;
 
     setEnrolling(true);
@@ -187,6 +177,54 @@ export default function ClassDetail() {
     } finally {
       setEnrolling(false);
     }
+  };
+
+  const handleEnroll = async () => {
+    // Kiểm tra nếu lớp đã đầy
+    const currentStudentsCount = data?.currentStudents || 0;
+    const maxStudentsCount = data?.maxStudents || 30;
+    if (currentStudentsCount >= maxStudentsCount) {
+      showError(
+        "Lớp học này đã đầy, vui lòng chọn lớp khác!",
+        "Không thể đăng ký"
+      );
+      return;
+    }
+
+    // Nếu đã enrolled trong session này, báo toast
+    if (isEnrolled) {
+      info("Bạn đã đăng ký lớp học này rồi!", "Thông báo");
+      return;
+    }
+
+    // Check authentication trước
+    if (!user) {
+      // Chưa đăng nhập -> redirect về login
+      warning("Vui lòng đăng nhập để đăng ký lớp học!", "Yêu cầu đăng nhập");
+      setTimeout(() => {
+        navigate("/home/login", {
+          state: { from: `/home/classes/${classId}` },
+        });
+      }, 1500);
+      return;
+    }
+
+    if (!data) return;
+
+    // Kiểm tra lớp đang diễn ra -> hiện modal xác nhận
+    if (isClassOngoing()) {
+      setShowOngoingClassModal(true);
+      return;
+    }
+
+    // Nếu lớp chưa bắt đầu, đăng ký bình thường
+    await proceedEnroll();
+  };
+
+  // Xử lý khi user xác nhận muốn đăng ký lớp đang diễn ra
+  const handleConfirmOngoingEnroll = async () => {
+    setShowOngoingClassModal(false);
+    await proceedEnroll();
   };
 
   // Handler to open payment modal directly (for "Thanh toán ngay" button)
@@ -825,6 +863,54 @@ export default function ClassDetail() {
         classId={classId}
         className={data?.name}
       />
+
+      {/* Modal xác nhận đăng ký lớp đang diễn ra */}
+      <Dialog open={showOngoingClassModal} onOpenChange={setShowOngoingClassModal}>
+        <div className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <Calendar className="w-5 h-5" />
+              Lớp học đang diễn ra
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContent className="text-gray-600">
+            <div className="space-y-4">
+              <p>
+                Lớp học <span className="font-semibold text-gray-900">{data?.name}</span> đã bắt đầu từ ngày{" "}
+                <span className="font-semibold text-blue-600">
+                  {data?.startDate ? formatDateVN(data.startDate) : ""}
+                </span>.
+              </p>
+              
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-amber-800 text-sm">
+                  ⚠️ <strong>Lưu ý:</strong> Bạn có thể bỏ lỡ một số buổi học đã diễn ra. 
+                  Tuy nhiên, học phí vẫn được tính đầy đủ cho toàn bộ khóa học.
+                </p>
+              </div>
+
+              <p className="text-gray-500 text-sm">
+                Bạn có chắc chắn muốn tiếp tục đăng ký lớp học này không?
+              </p>
+            </div>
+          </DialogContent>
+          <DialogFooter className="flex gap-2 sm:gap-0 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowOngoingClassModal(false)}
+            >
+              Để sau
+            </Button>
+            <Button
+              onClick={handleConfirmOngoingEnroll}
+              disabled={enrolling}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {enrolling ? "Đang xử lý..." : "Xác nhận đăng ký"}
+            </Button>
+          </DialogFooter>
+        </div>
+      </Dialog>
     </div>
   );
 }

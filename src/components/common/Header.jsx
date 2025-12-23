@@ -285,6 +285,46 @@ export default function Header({ onNavigate, currentPage }) {
                         </div>
                       )}
 
+                      {/* Teachers Results */}
+                      {searchResults.teachers?.length > 0 && (
+                        <div>
+                          <div className="px-4 py-2 bg-gray-50 border-b flex items-center gap-2">
+                            <User className="w-4 h-4 text-purple-600" />
+                            <span className="text-sm font-medium text-gray-700">Giáo viên</span>
+                          </div>
+                          {searchResults.teachers.map((teacher) => (
+                            <button
+                              key={`teacher-${teacher.id}`}
+                              onClick={() => handleSearchResultClick("teacher", teacher)}
+                              className="w-full px-4 py-3 text-left hover:bg-purple-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                            >
+                              {/* Avatar */}
+                              <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center flex-shrink-0">
+                                {teacher.avatarUrl ? (
+                                  <ImageWithFallback
+                                    src={teacher.avatarUrl}
+                                    alt={teacher.fullName}
+                                    className="w-10 h-10 object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-white font-bold text-sm">
+                                    {teacher.fullName?.charAt(0).toUpperCase() || "T"}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* Thông tin */}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{teacher.fullName}</p>
+                                <p className="text-sm text-gray-500 truncate">
+                                  {teacher.email}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Subjects Results - Đơn giản, chỉ hiển thị tên */}
                       {searchResults.subjects?.length > 0 && (
                         <div>
