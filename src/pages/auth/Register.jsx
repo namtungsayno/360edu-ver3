@@ -12,7 +12,7 @@
  * - Kiểm tra số điện thoại phụ huynh: nếu đã tồn tại, hiện dialog xác nhận
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -37,10 +37,17 @@ import {
   Shield,
   Sparkles,
   CheckCircle,
+  Send,
+  RefreshCw,
+  Clock,
+  ShieldCheck,
 } from "lucide-react";
 
 const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
 const PHONE_REGEX = /^0\d{9}$/; // 10 số, bắt đầu bằng 0
+// Regex cho tên người Việt: chỉ cho phép chữ cái (bao gồm dấu tiếng Việt) và khoảng trắng
+const VIETNAMESE_NAME_REGEX =
+  /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂẾưăạảấầẩẫậắằẳẵặẹẻẽềềểếỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ\s]+$/;
 
 // Helper functions để che thông tin bảo mật
 const maskEmail = (email) => {
@@ -86,7 +93,19 @@ export default function Register() {
   const [parentConfirmed, setParentConfirmed] = useState(false); // Đã xác nhận là phụ huynh cũ
   const [existingParentId, setExistingParentId] = useState(null);
 
-  // ============ (ĐÃ BỎ OTP - không yêu cầu xác thực email khi đăng ký) ============
+  // ============ OTP VERIFICATION STATE ============
+  const [otpState, setOtpState] = useState({
+    sent: false, // Đã gửi OTP chưa
+    verified: false, // Đã xác thực thành công chưa
+    sending: false, // Đang gửi OTP
+    verifying: false, // Đang xác thực OTP
+    otp: ["", "", "", "", "", ""], // 6 ô OTP
+    countdown: 0, // Đếm ngược gửi lại
+    error: "", // Lỗi OTP
+    emailLocked: "", // Email đã lock để xác thực
+  });
+  const otpInputRefs = useRef([]);
+  const countdownRef = useRef(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -98,6 +117,205 @@ export default function Register() {
       setParentConfirmed(false);
       setExistingParentId(null);
     }
+
+    // Reset OTP state nếu email phụ huynh thay đổi
+    if (
+      name === "parentEmail" &&
+      otpState.emailLocked &&
+      value !== otpState.emailLocked
+    ) {
+      setOtpState({
+        sent: false,
+        verified: false,
+        sending: false,
+        verifying: false,
+        otp: ["", "", "", "", "", ""],
+        countdown: 0,
+        error: "",
+        emailLocked: "",
+      });
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    }
+  };
+
+  // ============ OTP FUNCTIONS ============
+  // Cleanup countdown on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    };
+  }, []);
+
+  // Gửi OTP
+  const handleSendOtp = async () => {
+    const email = formData.parentEmail.trim();
+
+    if (!email) {
+      setErrors((prev) => ({
+        ...prev,
+        parentEmail: "Vui lòng nhập email phụ huynh.",
+      }));
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      setErrors((prev) => ({ ...prev, parentEmail: "Email không hợp lệ." }));
+      return;
+    }
+
+    try {
+      setOtpState((prev) => ({ ...prev, sending: true, error: "" }));
+
+      const response = await authApi.sendOtp(email);
+
+      if (response.success) {
+        success("Mã OTP đã được gửi đến email phụ huynh", "Gửi OTP thành công");
+
+        // Start countdown (5 phút = 300 giây)
+        const expiryMinutes = response.expiryMinutes || 5;
+        setOtpState((prev) => ({
+          ...prev,
+          sent: true,
+          sending: false,
+          countdown: expiryMinutes * 60,
+          emailLocked: email,
+          otp: ["", "", "", "", "", ""],
+        }));
+
+        // Clear existing countdown
+        if (countdownRef.current) {
+          clearInterval(countdownRef.current);
+        }
+
+        // Start countdown timer
+        countdownRef.current = setInterval(() => {
+          setOtpState((prev) => {
+            if (prev.countdown <= 1) {
+              clearInterval(countdownRef.current);
+              return { ...prev, countdown: 0 };
+            }
+            return { ...prev, countdown: prev.countdown - 1 };
+          });
+        }, 1000);
+
+        // Focus first OTP input
+        setTimeout(() => {
+          otpInputRefs.current[0]?.focus();
+        }, 100);
+      }
+    } catch (err) {
+      // Handle rate limit (429) and other errors
+      const status = err?.response?.status;
+      let errMsg =
+        err?.response?.data?.message || "Không thể gửi OTP. Vui lòng thử lại.";
+
+      if (status === 429) {
+        errMsg =
+          "Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi 1 phút rồi thử lại.";
+      }
+
+      console.error("Send OTP error:", { status, errMsg, err });
+      setOtpState((prev) => ({ ...prev, sending: false, error: errMsg }));
+      error(errMsg, status === 429 ? "Quá nhiều yêu cầu" : "Gửi OTP thất bại");
+    }
+  };
+
+  // Xử lý nhập OTP
+  const handleOtpChange = (index, value) => {
+    // Chỉ cho phép số
+    if (value && !/^\d$/.test(value)) return;
+
+    const newOtp = [...otpState.otp];
+    newOtp[index] = value;
+    setOtpState((prev) => ({ ...prev, otp: newOtp, error: "" }));
+
+    // Auto focus next input
+    if (value && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto verify khi nhập đủ 6 số
+    if (value && index === 5 && newOtp.every((v) => v)) {
+      handleVerifyOtp(newOtp.join(""));
+    }
+  };
+
+  // Xử lý paste OTP
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    if (pastedData.length === 6) {
+      const newOtp = pastedData.split("");
+      setOtpState((prev) => ({ ...prev, otp: newOtp, error: "" }));
+      otpInputRefs.current[5]?.focus();
+      handleVerifyOtp(pastedData);
+    }
+  };
+
+  // Xử lý phím Backspace
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !otpState.otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Xác thực OTP
+  const handleVerifyOtp = async (otpCode) => {
+    const email = otpState.emailLocked || formData.parentEmail.trim();
+
+    try {
+      setOtpState((prev) => ({ ...prev, verifying: true, error: "" }));
+
+      const response = await authApi.verifyOtp(email, otpCode);
+
+      if (response.success && response.verified) {
+        success(
+          "Email phụ huynh đã được xác thực thành công!",
+          "Xác thực thành công"
+        );
+        setOtpState((prev) => ({
+          ...prev,
+          verified: true,
+          verifying: false,
+        }));
+
+        // Clear countdown
+        if (countdownRef.current) {
+          clearInterval(countdownRef.current);
+        }
+      }
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || "Mã OTP không chính xác.";
+      const remainingAttempts = err?.response?.data?.remainingAttempts;
+
+      setOtpState((prev) => ({
+        ...prev,
+        verifying: false,
+        error:
+          errMsg +
+          (remainingAttempts !== undefined
+            ? ` Còn ${remainingAttempts} lần thử.`
+            : ""),
+        otp: ["", "", "", "", "", ""],
+      }));
+
+      error(errMsg, "Xác thực thất bại");
+      otpInputRefs.current[0]?.focus();
+    }
+  };
+
+  // Format countdown time
+  const formatCountdown = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   // Kiểm tra số điện thoại phụ huynh khi blur
@@ -140,6 +358,21 @@ export default function Register() {
       }));
       setParentConfirmed(true);
       setExistingParentId(parentInfo.id);
+
+      // Reset OTP state vì không cần xác thực với phụ huynh đã tồn tại
+      setOtpState({
+        sent: false,
+        verified: false,
+        sending: false,
+        verifying: false,
+        otp: ["", "", "", "", "", ""],
+        countdown: 0,
+        error: "",
+        emailLocked: "",
+      });
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
     }
     setParentConfirmDialog({ open: false, parentInfo: null });
   };
@@ -154,6 +387,21 @@ export default function Register() {
       parentPhone:
         "Số điện thoại phụ huynh đã có trong hệ thống. Vui lòng nhập số điện thoại khác.",
     }));
+
+    // Reset OTP state
+    setOtpState({
+      sent: false,
+      verified: false,
+      sending: false,
+      verifying: false,
+      otp: ["", "", "", "", "", ""],
+      countdown: 0,
+      error: "",
+      emailLocked: "",
+    });
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+    }
   };
 
   const validate = () => {
@@ -171,10 +419,17 @@ export default function Register() {
       next.parentEmail = "Vui lòng nhập email phụ huynh.";
     } else if (!EMAIL_REGEX.test(formData.parentEmail)) {
       next.parentEmail = "Email phụ huynh không hợp lệ.";
+    } else if (!parentConfirmed && !otpState.verified) {
+      // Chỉ yêu cầu OTP khi là phụ huynh mới (chưa tồn tại trong hệ thống)
+      next.parentEmail = "Vui lòng xác thực email phụ huynh bằng mã OTP.";
     }
 
     if (!formData.parentName.trim()) {
       next.parentName = "Vui lòng nhập tên phụ huynh.";
+    } else if (formData.parentName.trim().length < 2) {
+      next.parentName = "Tên phụ huynh phải có ít nhất 2 ký tự.";
+    } else if (!VIETNAMESE_NAME_REGEX.test(formData.parentName.trim())) {
+      next.parentName = "Tên phụ huynh không được chứa số hoặc ký tự đặc biệt.";
     }
 
     // Validate thông tin học sinh
@@ -182,6 +437,8 @@ export default function Register() {
       next.fullName = "Vui lòng nhập họ và tên.";
     } else if (formData.fullName.trim().length < 2) {
       next.fullName = "Họ và tên phải có ít nhất 2 ký tự.";
+    } else if (!VIETNAMESE_NAME_REGEX.test(formData.fullName.trim())) {
+      next.fullName = "Họ và tên không được chứa số hoặc ký tự đặc biệt.";
     }
 
     if (!formData.username.trim()) {
@@ -196,9 +453,8 @@ export default function Register() {
       next.email = "Email không hợp lệ.";
     }
 
-    if (!formData.phone.trim()) {
-      next.phone = "Vui lòng nhập số điện thoại.";
-    } else if (!PHONE_REGEX.test(formData.phone)) {
+    // Phone is optional for students, but validate format if provided
+    if (formData.phone.trim() && !PHONE_REGEX.test(formData.phone)) {
       next.phone = "Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0).";
     }
 
@@ -413,7 +669,7 @@ export default function Register() {
                     )}
                   </div>
 
-                  {/* Parent Email - Không cần xác thực OTP */}
+                  {/* Parent Email - Xác thực OTP */}
                   <div className="group">
                     <label
                       htmlFor="parentEmail"
@@ -424,6 +680,12 @@ export default function Register() {
                         <span className="ml-2 inline-flex items-center gap-1 text-green-600">
                           <CheckCircle className="w-3 h-3" />
                           Đã liên kết
+                        </span>
+                      )}
+                      {!parentConfirmed && otpState.verified && (
+                        <span className="ml-2 inline-flex items-center gap-1 text-green-600">
+                          <ShieldCheck className="w-3 h-3" />
+                          Đã xác thực
                         </span>
                       )}
                     </label>
@@ -445,29 +707,141 @@ export default function Register() {
                           <CheckCircle className="w-4 h-4 text-green-500" />
                         </div>
                       </div>
-                    ) : (
+                    ) : otpState.verified ? (
+                      // Email đã xác thực OTP thành công
                       <div className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-purple-500 transition-colors">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-green-500">
                           <Mail className="w-4 h-4" />
                         </div>
                         <Input
                           id="parentEmail"
-                          name="parentEmail"
                           type="email"
-                          required
                           value={formData.parentEmail}
-                          onChange={handleInputChange}
-                          placeholder="email@example.com"
-                          className={`w-full pl-9 py-2.5 bg-gray-50/50 border rounded-xl transition-all duration-300 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 text-sm ${
-                            errors.parentEmail
-                              ? "border-red-400 bg-red-50/50"
-                              : "border-gray-200"
-                          }`}
+                          disabled
+                          className="w-full pl-9 pr-10 py-2.5 bg-green-50 border border-green-300 rounded-xl text-sm text-green-700"
                         />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <ShieldCheck className="w-4 h-4 text-green-500" />
+                        </div>
+                      </div>
+                    ) : (
+                      // Chưa xác thực - hiện input email + nút gửi OTP
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-purple-500 transition-colors">
+                              <Mail className="w-4 h-4" />
+                            </div>
+                            <Input
+                              id="parentEmail"
+                              name="parentEmail"
+                              type="email"
+                              required
+                              value={formData.parentEmail}
+                              onChange={handleInputChange}
+                              placeholder="email@example.com"
+                              disabled={otpState.sent && otpState.countdown > 0}
+                              className={`w-full pl-9 py-2.5 bg-gray-50/50 border rounded-xl transition-all duration-300 focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 text-sm ${
+                                errors.parentEmail
+                                  ? "border-red-400 bg-red-50/50"
+                                  : "border-gray-200"
+                              } ${
+                                otpState.sent && otpState.countdown > 0
+                                  ? "bg-gray-100"
+                                  : ""
+                              }`}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleSendOtp}
+                            disabled={
+                              otpState.sending ||
+                              (otpState.sent && otpState.countdown > 0) ||
+                              !formData.parentEmail.trim()
+                            }
+                            className={`px-3 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 flex items-center gap-1.5 whitespace-nowrap ${
+                              otpState.sending ||
+                              (otpState.sent && otpState.countdown > 0) ||
+                              !formData.parentEmail.trim()
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-500/30"
+                            }`}
+                          >
+                            {otpState.sending ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Gửi...
+                              </>
+                            ) : otpState.sent && otpState.countdown > 0 ? (
+                              <>
+                                <Clock className="w-4 h-4" />
+                                {formatCountdown(otpState.countdown)}
+                              </>
+                            ) : otpState.sent ? (
+                              <>
+                                <RefreshCw className="w-4 h-4" />
+                                Gửi lại
+                              </>
+                            ) : (
+                              <>
+                                <Send className="w-4 h-4" />
+                                Gửi OTP
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* OTP Input Fields - Hiện khi đã gửi OTP */}
+                        {otpState.sent && !otpState.verified && (
+                          <div className="mt-3 p-3 bg-purple-50/50 rounded-xl border border-purple-100 animate-fade-in">
+                            <p className="text-xs text-purple-700 mb-2 flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              Nhập mã OTP 6 số đã gửi đến email
+                            </p>
+                            <div className="flex items-center justify-center gap-2">
+                              {otpState.otp.map((digit, index) => (
+                                <input
+                                  key={index}
+                                  ref={(el) =>
+                                    (otpInputRefs.current[index] = el)
+                                  }
+                                  type="text"
+                                  inputMode="numeric"
+                                  maxLength={1}
+                                  value={digit}
+                                  onChange={(e) =>
+                                    handleOtpChange(index, e.target.value)
+                                  }
+                                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                  onPaste={handleOtpPaste}
+                                  disabled={otpState.verifying}
+                                  className={`w-10 h-10 text-center text-lg font-bold rounded-lg border-2 transition-all duration-200 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 ${
+                                    otpState.error
+                                      ? "border-red-400 bg-red-50"
+                                      : digit
+                                      ? "border-purple-400 bg-purple-50"
+                                      : "border-gray-200 bg-white"
+                                  } ${otpState.verifying ? "opacity-50" : ""}`}
+                                />
+                              ))}
+                              {otpState.verifying && (
+                                <div className="ml-2">
+                                  <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                              )}
+                            </div>
+                            {otpState.error && (
+                              <p className="mt-2 text-xs text-red-500 text-center">
+                                {otpState.error}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {errors.parentEmail && (
+                    {errors.parentEmail && !otpState.sent && (
                       <p className="mt-1 text-xs text-red-500">
                         {errors.parentEmail}
                       </p>
@@ -650,7 +1024,7 @@ export default function Register() {
                         htmlFor="phone"
                         className="block text-xs font-medium text-gray-600 mb-1"
                       >
-                        Số điện thoại <span className="text-red-400">*</span>
+                        Số điện thoại
                       </label>
                       <div className="relative">
                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors">
@@ -660,7 +1034,6 @@ export default function Register() {
                           id="phone"
                           name="phone"
                           type="tel"
-                          required
                           value={formData.phone}
                           onChange={handleInputChange}
                           placeholder="0xxxxxxxxx"

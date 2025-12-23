@@ -35,8 +35,10 @@ import {
 } from "../../../components/common/DetailPageLayout";
 
 import { courseService } from "../../../services/course/course.service.js";
+import { classService } from "../../../services/class/class.service.js";
 import { useToast } from "../../../hooks/use-toast.js";
 import { stripHtmlTags } from "../../../utils/html-helpers.js";
+import { isClassEnded } from "../../../utils/hidden-items.js";
 
 // Helper to remove internal SOURCE tag from description
 function cleanDescription(desc) {
@@ -88,6 +90,7 @@ export default function TeacherCourseDetail() {
   const [loading, setLoading] = useState(true);
   const [expandedChapters, setExpandedChapters] = useState({});
   const [expandedLessons, setExpandedLessons] = useState({}); // Track expanded lessons for materials
+  const [linkedClass, setLinkedClass] = useState(null); // Class linked to this course
 
   useEffect(() => {
     loadCourseDetail();
@@ -116,6 +119,36 @@ export default function TeacherCourseDetail() {
       }
 
       setCourse(data);
+
+      // Use classEndDate directly from API response if available
+      if (data.classEndDate) {
+        setLinkedClass({
+          endDate: data.classEndDate,
+          name: data.className,
+          id: data.classId,
+        });
+      } else {
+        // Fallback: Try to get linked class ID from description tags
+        const classIdFromField = data.classId || data.clazzId || data.classID;
+        let classIdFromTag = null;
+        const classIdMatch = (data.description || "").match(
+          /\[\[CLASS_ID:(\d+)\]\]/
+        );
+        if (classIdMatch && classIdMatch[1]) {
+          classIdFromTag = classIdMatch[1].trim();
+        }
+        const linkedClassId = classIdFromField || classIdFromTag;
+
+        // Fetch linked class info to check if it has ended
+        if (linkedClassId) {
+          try {
+            const classInfo = await classService.getById(linkedClassId);
+            setLinkedClass(classInfo);
+          } catch (e) {
+            console.log("Could not fetch linked class info");
+          }
+        }
+      }
 
       // Mở tất cả chapters mặc định
       if (data.chapters) {
@@ -169,6 +202,19 @@ export default function TeacherCourseDetail() {
 
   const displayTitle = String(course.title || "");
 
+  // Check if linked class has ended
+  const classEnded = linkedClass ? isClassEnded(linkedClass.endDate) : false;
+
+  // Determine final status to display
+  const finalStatus = classEnded
+    ? {
+        label: "Đã kết thúc",
+        className: "bg-slate-100 text-slate-600 border border-slate-200",
+        icon: Clock,
+      }
+    : statusConfig;
+  const FinalStatusIcon = finalStatus.icon;
+
   return (
     <DetailPageWrapper>
       {/* Header */}
@@ -176,11 +222,6 @@ export default function TeacherCourseDetail() {
         title={displayTitle || "Chi tiết khóa học"}
         subtitle={course.subjectName || "Chưa có môn học"}
         onBack={() => navigate("/home/teacher/courses")}
-        status={{
-          label: statusConfig.label,
-          className: statusConfig.className,
-          icon: StatusIcon,
-        }}
         actions={
           <Button
             onClick={() => navigate(`/home/teacher/courses/${id}/edit`)}
@@ -193,7 +234,7 @@ export default function TeacherCourseDetail() {
       />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <DetailHighlightCard
           icon={Layers}
           label="Số chương"
@@ -205,12 +246,6 @@ export default function TeacherCourseDetail() {
           label="Số bài học"
           value={totalLessons}
           colorScheme="purple"
-        />
-        <DetailHighlightCard
-          icon={User}
-          label="Giáo viên"
-          value={course.ownerTeacherName || course.createdByName || "—"}
-          colorScheme="green"
         />
       </div>
 

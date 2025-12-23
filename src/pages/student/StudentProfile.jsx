@@ -114,26 +114,66 @@ export default function StudentProfile() {
     // Validate form
     const errors = {};
 
-    // Validate phone number: 10 digits, starts with 0
-    if (editForm.phoneNumber) {
+    // Validate fullName: required, min 2 chars, max 100 chars
+    if (!editForm.fullName || !editForm.fullName.trim()) {
+      errors.fullName = "Vui lòng nhập họ và tên";
+    } else if (editForm.fullName.trim().length < 2) {
+      errors.fullName = "Họ và tên phải có ít nhất 2 ký tự";
+    } else if (editForm.fullName.trim().length > 100) {
+      errors.fullName = "Họ và tên không được quá 100 ký tự";
+    }
+
+    // Validate email: required, valid format
+    if (!editForm.email || !editForm.email.trim()) {
+      errors.email = "Vui lòng nhập email";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(editForm.email.trim())) {
+        errors.email = "Email không hợp lệ";
+      }
+    }
+
+    // Validate phone number: optional, but if provided must be 10 digits starting with 0
+    if (editForm.phoneNumber && editForm.phoneNumber.trim()) {
       const phoneRegex = /^0\d{9}$/;
-      if (!phoneRegex.test(editForm.phoneNumber)) {
+      if (!phoneRegex.test(editForm.phoneNumber.trim())) {
         errors.phoneNumber = "Số điện thoại phải có 10 số và bắt đầu bằng 0";
       }
     }
 
-    // Validate dob: not in the future
+    // Validate dob: optional, but if provided must not be in the future and not too old
     if (editForm.dob) {
       const dobDate = new Date(editForm.dob);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+
       if (dobDate > today) {
         errors.dob = "Ngày sinh không được lớn hơn ngày hôm nay";
+      } else {
+        // Check if age is reasonable (not older than 100 years)
+        const minDate = new Date();
+        minDate.setFullYear(minDate.getFullYear() - 100);
+        if (dobDate < minDate) {
+          errors.dob = "Ngày sinh không hợp lệ";
+        }
       }
+    }
+
+    // Validate grade: optional, max 20 chars
+    if (editForm.grade && editForm.grade.trim().length > 20) {
+      errors.grade = "Lớp/Khối không được quá 20 ký tự";
+    }
+
+    // Validate school: optional, max 100 chars
+    if (editForm.school && editForm.school.trim().length > 100) {
+      errors.school = "Tên trường không được quá 100 ký tự";
     }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
+      // Show toast with first error message
+      const firstError = Object.values(errors)[0];
+      showError(firstError, "Thông tin không hợp lệ");
       return;
     }
 
@@ -195,6 +235,51 @@ export default function StudentProfile() {
   }
 
   async function handleChangePassword() {
+    // Validate password form
+    if (!passwordForm.currentPassword) {
+      showError("Vui lòng nhập mật khẩu hiện tại", "Thiếu thông tin");
+      return;
+    }
+
+    if (!passwordForm.newPassword) {
+      showError("Vui lòng nhập mật khẩu mới", "Thiếu thông tin");
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      showError(
+        "Mật khẩu mới phải có ít nhất 6 ký tự",
+        "Mật khẩu không hợp lệ"
+      );
+      return;
+    }
+
+    if (passwordForm.newPassword.length > 40) {
+      showError(
+        "Mật khẩu mới không được quá 40 ký tự",
+        "Mật khẩu không hợp lệ"
+      );
+      return;
+    }
+
+    if (!passwordForm.confirmPassword) {
+      showError("Vui lòng xác nhận mật khẩu mới", "Thiếu thông tin");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showError("Mật khẩu xác nhận không khớp", "Mật khẩu không khớp");
+      return;
+    }
+
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      showError(
+        "Mật khẩu mới phải khác mật khẩu hiện tại",
+        "Mật khẩu không hợp lệ"
+      );
+      return;
+    }
+
     try {
       setChangingPassword(true);
       await studentProfileService.changePassword(passwordForm);
@@ -411,7 +496,11 @@ export default function StudentProfile() {
                     setEditForm({ ...editForm, fullName: e.target.value })
                   }
                   placeholder="Nhập họ và tên"
+                  className={formErrors.fullName ? "border-red-500" : ""}
                 />
+                {formErrors.fullName && (
+                  <p className="text-sm text-red-500">{formErrors.fullName}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -424,7 +513,11 @@ export default function StudentProfile() {
                     setEditForm({ ...editForm, email: e.target.value })
                   }
                   placeholder="Nhập email"
+                  className={formErrors.email ? "border-red-500" : ""}
                 />
+                {formErrors.email && (
+                  <p className="text-sm text-red-500">{formErrors.email}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -471,7 +564,11 @@ export default function StudentProfile() {
                     setEditForm({ ...editForm, grade: e.target.value })
                   }
                   placeholder="VD: Lớp 10, Khối 11..."
+                  className={formErrors.grade ? "border-red-500" : ""}
                 />
+                {formErrors.grade && (
+                  <p className="text-sm text-red-500">{formErrors.grade}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -483,7 +580,11 @@ export default function StudentProfile() {
                     setEditForm({ ...editForm, school: e.target.value })
                   }
                   placeholder="Tên trường đang học"
+                  className={formErrors.school ? "border-red-500" : ""}
                 />
+                {formErrors.school && (
+                  <p className="text-sm text-red-500">{formErrors.school}</p>
+                )}
               </div>
             </div>
           </CardContent>

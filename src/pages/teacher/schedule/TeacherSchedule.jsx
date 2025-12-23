@@ -334,38 +334,6 @@ function TeacherSchedule() {
             </span>
           </div>
         )}
-
-        {/* Quick Action */}
-        {!isFuture && (
-          <div className="mt-3">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleClassClick(classData, isMarked ? "edit" : "mark");
-              }}
-              disabled={isPast && !isMarked}
-              className={`w-full flex items-center justify-center gap-1.5 text-xs py-2 px-3 rounded-lg font-semibold transition-all ${
-                isPast && !isMarked
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : isMarked
-                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
-                  : "bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
-              }`}
-            >
-              {isPast && !isMarked ? (
-                "Đã qua"
-              ) : isMarked ? (
-                <>
-                  Xem chi tiết <ArrowRight className="h-3 w-3" />
-                </>
-              ) : (
-                <>
-                  Điểm danh ngay <ArrowRight className="h-3 w-3" />
-                </>
-              )}
-            </button>
-          </div>
-        )}
       </CalendarEventCard>
     );
   };

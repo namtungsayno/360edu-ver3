@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   Card,
@@ -19,6 +19,7 @@ import {
   Info,
 } from "lucide-react";
 import { courseService } from "../../../services/course/course.service";
+import { getSubjectById } from "../../../services/subject/subject.api";
 import { BackButton } from "../../../components/common/BackButton";
 import { useToast } from "../../../hooks/use-toast";
 
@@ -30,8 +31,13 @@ export default function CourseOfSubjectCreate() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
-  // Lấy tên môn học từ state được truyền từ SubjectDetail
-  const subjectName = location.state?.subjectName || "";
+  // Lấy tên môn học từ state được truyền từ SubjectDetail hoặc fetch từ API
+  const [subjectName, setSubjectName] = useState(
+    location.state?.subjectName || ""
+  );
+  const [loadingSubject, setLoadingSubject] = useState(
+    !location.state?.subjectName
+  );
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   // Chương & bài học
@@ -96,6 +102,30 @@ export default function CourseOfSubjectCreate() {
       return arr;
     });
   };
+
+  // Fetch subject name nếu không có trong location state
+  useEffect(() => {
+    const fetchSubjectName = async () => {
+      try {
+        setLoadingSubject(true);
+        console.log("Fetching subject with id:", subjectId);
+        const data = await getSubjectById(subjectId);
+        console.log("Subject data received:", data);
+        if (data?.name) {
+          setSubjectName(data.name);
+        }
+      } catch (err) {
+        console.error("Failed to fetch subject info:", err);
+      } finally {
+        setLoadingSubject(false);
+      }
+    };
+
+    // Luôn fetch nếu subjectId có và chưa có subjectName từ location.state
+    if (subjectId && !location.state?.subjectName) {
+      fetchSubjectName();
+    }
+  }, [subjectId, location.state?.subjectName]);
 
   const handleBack = () => navigate(`/home/admin/subject/${subjectId}`);
 
@@ -201,7 +231,8 @@ export default function CourseOfSubjectCreate() {
               Tạo khóa học mới
             </h1>
             <p className="text-sm text-gray-500">
-              Thuộc môn {subjectName || "đang tải..."}
+              Thuộc môn{" "}
+              {loadingSubject ? "đang tải..." : subjectName || "Không xác định"}
             </p>
           </div>
         </div>

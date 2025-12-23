@@ -14,6 +14,7 @@ import { BackButton } from "./BackButton";
  * @param {function} onBack - Hàm xử lý khi click nút quay lại
  * @param {React.ReactNode} actions - Các nút hành động bên phải
  * @param {object} status - { label, className, icon: IconComponent }
+ * @param {React.ReactNode} extraBadges - Các badge bổ sung (ví dụ: "Đã kết thúc")
  * @param {React.ComponentType} icon - Icon component hiển thị bên cạnh title
  * @param {string} iconColor - Màu gradient cho icon (blue, green, purple, orange, red, indigo)
  */
@@ -23,6 +24,7 @@ export function DetailHeader({
   onBack,
   actions,
   status,
+  extraBadges,
   icon: Icon,
   iconColor = "blue",
 }) {
@@ -64,6 +66,7 @@ export function DetailHeader({
                   {status.label}
                 </Badge>
               )}
+              {extraBadges}
             </div>
             {subtitle && (
               <p className="text-gray-500 text-sm mt-1">{subtitle}</p>

@@ -78,6 +78,23 @@ export const userService = {
   },
 
   /**
+   * ✅ Lấy số lớp đang hoạt động của student theo userId
+   * Dùng để kiểm tra trước khi vô hiệu hóa học sinh
+   * @param {number} userId - ID của user có role STUDENT
+   * @returns {Promise<number>} - Số lớp đang hoạt động, -1 nếu không phải student
+   */
+  async getActiveClassCount(userId) {
+    const result = await userApi.getActiveClassCount(userId);
+    console.log(
+      "[DEBUG] getActiveClassCount userId=",
+      userId,
+      "result=",
+      result
+    );
+    return result.activeClassCount ?? 0;
+  },
+
+  /**
    * ✅ THÊM MỚI: Tìm học sinh theo code/ID/tên
    * Giải quyết lỗi 401 khi gọi /api/students/lookup
    * Thay vì gọi endpoint riêng, sử dụng danh sách users đã có quyền truy cập

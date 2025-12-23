@@ -40,6 +40,15 @@ export const userApi = {
       .then((r) => r.data);
   },
 
+  /**
+   * GET /users/{id}/active-class-count - Lấy số lớp đang hoạt động của student
+   * @param {number} userId - ID của user có role STUDENT
+   * @returns {Promise<{activeClassCount: number}>} - Số lớp đang hoạt động, -1 nếu không phải student
+   */
+  getActiveClassCount(userId) {
+    return http.get(`/users/${userId}/active-class-count`).then((r) => r.data);
+  },
+
   // ✅ Tạo giáo viên đúng endpoint BE /api/auth/register-teacher
   // Lưu ý: BE nhận "phoneNumber" và bắt buộc "subjectId"
   createTeacher({ fullName, email, phone, subjectIds }) {
