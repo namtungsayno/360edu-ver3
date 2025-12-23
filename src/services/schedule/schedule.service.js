@@ -6,8 +6,17 @@ import { teacherService } from "../teacher/teacher.service";
 import { classService } from "../class/class.service";
 import { enrollmentService } from "../enrollment/enrollment.service";
 
-// Helper to map dayOfWeek number to day names
-const DAY_NAMES = ["", "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+// Helper to map dayOfWeek number to day names (Vietnamese)
+const DAY_NAMES = [
+  "",
+  "Thứ 2",
+  "Thứ 3",
+  "Thứ 4",
+  "Thứ 5",
+  "Thứ 6",
+  "Thứ 7",
+  "CN",
+];
 
 export const scheduleService = {
   /**

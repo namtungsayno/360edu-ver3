@@ -157,7 +157,19 @@ export default function UserManagement() {
         }
       }
 
-      // Gọi API update status - Backend sẽ validate thêm cho Student và Parent
+      // Nếu là học sinh, check số lớp đang hoạt động (PUBLIC)
+      if (u.role === "STUDENT" && u.active) {
+        const activeClassCount = await userService.getActiveClassCount(u.id);
+        // Chặn vô hiệu hóa nếu còn lớp đang hoạt động
+        if (activeClassCount > 0) {
+          error(
+            `Học sinh đang tham gia ${activeClassCount} lớp học đang hoạt động, không thể vô hiệu hóa.`
+          );
+          return;
+        }
+      }
+
+      // Gọi API update status - Backend sẽ validate thêm cho Parent
       await userService.updateStatus(u.id, !u.active);
       // Reload data from server
       fetchUsers();
